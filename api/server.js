@@ -2388,6 +2388,92 @@ app.post('/v1/admin/ops/users/:id/kyc', async (req, res) => {
 });
 
 
+app.post('/v1/admin/ops/team', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'team.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const userId = String(req.body?.user_id || '').trim();
+    const roleCode = String(req.body?.role_code || '').toUpperCase();
+    const allowed = ['SUPPORT', 'MODERATION', 'FINANCE', 'ADMIN'];
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+        return res.status(400).json({ success: false, error: 'Compte cible invalide.' });
+    }
+    if (!allowed.includes(roleCode)) {
+        return res.status(400).json({ success: false, error: 'Rôle non autorisé. OWNER et SUPER_ADMIN ne se donnent pas ici.' });
+    }
+    if (userId === authResult.userId) {
+        return res.status(403).json({ success: false, error: 'Un administrateur ne s’ajoute pas lui-même.' });
+    }
+    try {
+        const profile = await supabaseAdmin.from('profiles').select('id').eq('id', userId).maybeSingle();
+        if (profile.error) return res.status(503).json({ success: false, error: profile.error.message });
+        if (!profile.data) return res.status(404).json({ success: false, error: 'Compte introuvable.' });
+        const role = await supabaseAdmin.from('admin_roles').select('id').eq('code', roleCode).maybeSingle();
+        if (role.error || !role.data) return res.status(400).json({ success: false, error: 'Rôle introuvable.' });
+        const existing = await supabaseAdmin.from('admin_members').select('id, status').eq('user_id', userId).maybeSingle();
+        if (existing.error) return res.status(503).json({ success: false, error: existing.error.message });
+        if (existing.data && existing.data.status === 'ACTIVE') {
+            return res.status(409).json({ success: false, error: 'Ce compte est déjà administrateur.' });
+        }
+        const saved = existing.data
+            ? await supabaseAdmin.from('admin_members').update({
+                role_id: role.data.id,
+                status: 'ACTIVE',
+                updated_at: new Date().toISOString()
+            }).eq('id', existing.data.id).select('id, user_id, status').single()
+            : await supabaseAdmin.from('admin_members').insert({
+                user_id: userId,
+                role_id: role.data.id,
+                status: 'ACTIVE',
+                created_by: authResult.userId
+            }).select('id, user_id, status').single();
+        if (saved.error || !saved.data) return res.status(500).json({ success: false, error: saved.error && saved.error.message || 'Ajout impossible.' });
+        await recordMaisonAudit(authResult.userId, 'TEAM_MEMBER_ADDED', userId, { role: roleCode });
+        return res.json({ success: true, row: saved.data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Ajout impossible.' });
+    }
+});
+
+app.patch('/v1/admin/ops/team/:id', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'team.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const status = String(req.body?.status || '').toUpperCase();
+    if (!['ACTIVE', 'SUSPENDED', 'INACTIVE'].includes(status)) {
+        return res.status(400).json({ success: false, error: 'Statut d’équipe invalide.' });
+    }
+    try {
+        const member = await supabaseAdmin
+            .from('admin_members')
+            .select('id, user_id, status, admin_roles!role_id(code)')
+            .eq('id', req.params.id)
+            .maybeSingle();
+        if (member.error) return res.status(503).json({ success: false, error: member.error.message });
+        if (!member.data) return res.status(404).json({ success: false, error: 'Membre introuvable.' });
+        const code = member.data.admin_roles && member.data.admin_roles.code;
+        if (code === 'OWNER' || code === 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, error: 'Ce rôle ne se modifie pas ici.' });
+        }
+        if (member.data.user_id === authResult.userId) {
+            return res.status(403).json({ success: false, error: 'Un administrateur ne change pas son propre statut.' });
+        }
+        const saved = await supabaseAdmin
+            .from('admin_members')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', member.data.id)
+            .select('id, user_id, status')
+            .single();
+        if (saved.error || !saved.data) return res.status(500).json({ success: false, error: saved.error && saved.error.message || 'Mise à jour impossible.' });
+        await recordMaisonAudit(authResult.userId, 'TEAM_MEMBER_STATUS', member.data.user_id, { status });
+        return res.json({ success: true, row: saved.data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Mise à jour impossible.' });
+    }
+});
+
 app.post('/v1/admin/ops/users/:id/role', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'users.manage');
     if (!authResult.authorized) {

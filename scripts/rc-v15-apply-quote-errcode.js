@@ -74,6 +74,17 @@ async function management(token, pathname, body) {
   }
   console.log(JSON.stringify({ applied: true, project: project.id, rollback: 'artifacts/rc-v15/revise_sent_quote.rollback.sql' }));
 })().catch((err) => {
-  console.error(err.message || err);
+  const message = String(err && err.message || err);
+  console.error(message);
+  if (message.startsWith('HTTP 401')) {
+    console.error([
+      'Le jeton de gestion est refusé. Rien n’a été écrit.',
+      'Rétablis l’accès sans coller le secret dans le chat :',
+      '1. Ouvre https://supabase.com/dashboard/account/tokens et crée un jeton.',
+      '2. Écris-le dans /Users/mac/Developer/lyann/.env.local, ligne SUPABASE_ACCESS_TOKEN=…',
+      '3. Le compte de ce jeton doit voir le projet tdktfbtqceldlaeqjtow.',
+      '4. Relance : node scripts/rc-v15-apply-quote-errcode.js'
+    ].join('\n'));
+  }
   process.exit(1);
 });
