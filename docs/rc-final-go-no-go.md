@@ -3,7 +3,7 @@
 Verdict : **NO-GO**
 
 Paquets natifs : `f02e6cca302d4647d32fff61cebdcfc19a531df3`
-Serveur Staging actuellement servi : `f02e6cca302d4647d32fff61cebdcfc19a531df3`
+Serveur Staging actuellement servi : `84cff869a7d281ea0ec40fc06f5fde4116a2756f`
 Branche : `release/lyann-rc-v1-1`
 PR : https://github.com/yoyoonthetrack/LYAN/pull/13 (brouillon, base `feature/bokantaj-map-v1`)
 Date : 2026-10-27
@@ -14,8 +14,8 @@ Date : 2026-10-27
 | --- | --- |
 | Web Staging | `https://staging.lyann.app` |
 | Projet Vercel | `lyann-staging-preview` `prj_FHIKUKYa8IwpiitigUma4gTtTF6q` |
-| Déploiement | `dpl_HPN6MJn2qUvEKV1LaeGHxEL36rF4` |
-| Commit servi | `f02e6cca302d4647d32fff61cebdcfc19a531df3` |
+| Déploiement | `dpl_9wzJXx2Xs15EgabjAJHs7SFmQe2B` |
+| Commit servi | `84cff869a7d281ea0ec40fc06f5fde4116a2756f` |
 | Supabase | `tdktfbtqceldlaeqjtow` |
 | Isolation | `STAGING_ISOLATED`, `production=false` |
 | Stripe | `stripe_mode=test` |
@@ -52,7 +52,7 @@ Date : 2026-10-27
 | Web | Carte, rayon 4 km, puces | OK | Playwright local | 18 tests du lot navigateur, puis les 2 pins | CI `c060bc3` attendait l’ancien titre | Titre de quartier attendu | `f02e6cc` | P1 | CI Chromium du SHA encore en cours au relevé |
 | Staging SQL | `revise_sent_quote` P0001 | KO | Management API | HTTP 401, jeton invalide. Aucun mot de passe base, aucun `psql`. Rien n’a été écrit | La fonction Staging garde `40001`. Une version périmée fait réessayer PostgREST | Procédure dans `scripts/rc-v15-apply-quote-errcode.js` | — | P1 | Nouveau jeton sur le compte qui voit `tdktfbtqceldlaeqjtow` |
 | Stripe Test | Remboursement d’un jalon QA financé | KO contrôlé | API Staging et code du grant | `409 EXECUTION_DISABLED`. `preTransferRefundExecutionEnabled()` reste `false`. Un en-tête client ne l’ouvre pas. Le seul grant admissible vise le paiement `9af9963d-d5a6-40d3-bc8d-fc9fbf2f0175`, QA A, 4 349 centimes, `livemode` faux, 15 minutes. Cette ligne est absente de Staging. Le fichier local de grant n’existe pas et n’est pas déployé | Aucun remboursement créé | Protection conservée | — | P1 | Décision explicite, seulement si cette ligne de paiement existe |
-| Back-office | Modération, signalement, suspension, rôles, abonnements, export | PARTIEL | Session du rôle `qa_finance_610q` | Ce membre Staging, hors compte personnel, a seulement `finance.refund`. Il reçoit 403 sur la liste admin, la file de modération, un signalement, une sanction et un changement de rôle. Son profil reste `USER`. Son journal d’audit compte 0 ligne. Une demande de remboursement inconnue répond `404 REQUEST_NOT_FOUND`. L’offre d’abonnement Pro est marquée indisponible dans l’interface. L’export CSV reste un téléchargement local | `POST /v1/admin/ops/team` manquait : le serveur Staging répond encore 404. Ce commit ajoute l’ajout et la suspension d’équipe, refuse `OWNER` et `SUPER_ADMIN`, et refuse qu’un admin se nomme lui-même | Route présente dans la branche, pas encore servie | ce commit | P1 | Le propriétaire ajoute un membre MODERATION déjà existant, après déploiement Staging |
+| Back-office | Modération, signalement, suspension, rôles, abonnements, export | PARTIEL | Session du rôle `qa_finance_610q` | Ce membre Staging, hors compte personnel, a seulement `finance.refund`. Sur le serveur `84cff86` il reçoit 403 pour s’ajouter, pour se donner `OWNER`, pour suspendre le propriétaire, pour ouvrir la file de modération, pour traiter un signalement, pour sanctionner et pour changer un rôle. Le propriétaire reste `ACTIVE`. Son profil reste `USER`. Son journal d’audit compte 0 ligne. Une demande de remboursement inconnue répond `404 REQUEST_NOT_FOUND`. L’offre d’abonnement Pro est marquée indisponible. L’export CSV reste un téléchargement local | La route d’équipe est servie. Elle refuse `OWNER`, `SUPER_ADMIN` et l’auto-nomination | `84cff86` | P1 | Le propriétaire ajoute un membre MODERATION déjà existant |
 | Auth, annonces, Lyanneurs, messagerie, abonnements | Parcours complets de cette passe | NON TESTÉ | — | Non rejoués ici | — | — | — | P1 | Comptes QA, plusieurs sessions |
 | Production | Non-déploiement | OK | Contrôle | Projet `lyan` non déployé, `lyann.app` identity 404 | `staging-bokantaj` pointe encore vers ce projet | Non déplacé sans accord | — | P0 si on l’oublie | Décider du domaine |
 
@@ -62,13 +62,13 @@ Date : 2026-10-27
 2. Le remboursement Stripe Test reste fermé. Le paiement unique autorisé par le grant, `9af9963d-d5a6-40d3-bc8d-fc9fbf2f0175`, n’existe pas sur Staging.
 3. L’iPhone n’a pas été piloté pour les messages, le devis, l’arrière-plan et la coupure réseau. Les achats Sandbox Apple et Google restent NON TESTÉ.
 4. Le certificat Apple Distribution est émis pour l’équipe, mais sa clé privée n’est pas sur ce Mac. Pas d’archive. L’AAB signé n’est pas déposé.
-5. Le seul administrateur hors compte personnel est `qa_finance_610q`. Il ne peut pas modérer, suspendre, changer un rôle ni exporter les paiements. La route d’équipe n’est pas encore servie par `staging.lyann.app`.
+5. Le seul administrateur hors compte personnel est `qa_finance_610q`. Il ne peut pas modérer, suspendre, changer un rôle ni exporter les paiements. La route d’équipe est servie et lui répond 403.
 6. `staging-bokantaj.lyann.app` sert encore `80ceae7c` depuis le projet Production.
 
 ## Actions humaines
 
 1. Jeton Supabase. Ouvre https://supabase.com/dashboard/account/tokens, crée un jeton avec un compte qui voit le projet `tdktfbtqceldlaeqjtow`, et écris-le dans `/Users/mac/Developer/lyann/.env.local` sur la ligne `SUPABASE_ACCESS_TOKEN=`. Ne le colle pas dans le chat. Ensuite : `node scripts/rc-v15-apply-quote-errcode.js`.
-2. Membre modération. Après le déploiement Staging de ce commit, ouvre `https://staging.lyann.app/admin.html` avec le compte propriétaire, section Équipe, et ajoute l’UUID d’un compte Staging déjà créé avec le rôle `MODERATION`. La route refuse `OWNER` et `SUPER_ADMIN`.
+2. Membre modération. Ouvre `https://staging.lyann.app/admin.html` avec le compte propriétaire, section Équipe, et ajoute l’UUID d’un compte Staging déjà créé avec le rôle `MODERATION`. La route refuse `OWNER` et `SUPER_ADMIN`.
 3. Signature Apple. Importe dans le trousseau de ce Mac le fichier `.p12` du certificat `Apple Distribution: yoann danier (WLV4WC47U2)`. Le profil Store est déjà dans `~/Library/Developer/Xcode/UserData/Provisioning Profiles/db8e9c85-8649-4a45-97b4-c03d2ead4061.mobileprovision`. L’archive attend cette clé. L’envoi TestFlight attend un accord séparé.
 4. Remboursement. Le verrou global reste fermé. La seule opération préparée est le paiement QA `9af9963d-d5a6-40d3-bc8d-fc9fbf2f0175`, Stripe Test, 4 349 centimes maximum, quinze minutes. Cette ligne n’est pas en base. Un accord dans le chat ne sert que lorsque la ligne existe.
 5. Gestes iPhone, achats Sandbox, dépôt Play et déplacement de `staging-bokantaj.lyann.app` restent en attente d’un accord. Aucune de ces actions n’a été lancée.
