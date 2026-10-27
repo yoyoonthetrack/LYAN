@@ -1,6 +1,45 @@
-# LYANN — Release Candidate V1.1 à V1.9
+# LYANN — Release Candidate V1.1 à V2.0
 
 Verdict : **NO-GO**
+
+## V2.0 — lecture iOS, bouton Photo, lieu du compositeur
+
+Le correctif produit est `b7372179aa15cdae7f1d77b84060f2e823cc12fb`. Le paquet reconstruit ensuite porte l’identité `ios-mvpxemcz-946f4c`, le hash d’assets `878bfa601c609b0c8362dad46293b4bc1e5bfd88c3cbb70ad442d9f2a7029b9f`, la version 1.0, le backend `https://staging-bokantaj.lyann.app` et le verrou `tdktfbtqceldlaeqjtow`. Les parcours ci-dessous ont tourné sur le simulateur iPhone 17 Pro `9281CEB1-E36D-4654-91E0-3AA741F8AD10` avec ce même code, avant l’estampille. Ce n’est pas l’iPhone physique.
+
+### iPhone physique
+
+« iPhone de yoann » (`00008140-00112D0C2684801C`) est appairé. `devicectl` indique `passcodeRequired: true`. Le code n’a pas été saisi. Aucun parcours n’a été exécuté sur l’appareil. Pour les lancer : déverrouiller « iPhone de yoann » et le laisser déverrouillé.
+
+### Vidéo
+
+Le fichier du post « Hello » est un `.mov` de 20 943 984 octets, `video/quicktime`, marque `qt`, piste `avc1` et `mp4a`, `moov` en tête. Une plage `bytes=0-1` répond 206. L’en-tête servi par Staging est `Cache-Control: private, no-store`. Avec cet en-tête, WKWebView ouvre le lecteur et laisse l’image blanche. Le fil ne télécharge toujours pas la vidéo avant le toucher. Sur iOS, le toucher « Lire la vidéo » charge alors le fichier et le joue depuis un blob local ; un `avc1` est annoncé `video/mp4`. Web et Android gardent l’URL directe et les plages d’octets.
+
+Sur le simulateur, le lecteur est passé par « Lecture en cours », « Pause », « Lecture en pause », puis la reprise. « Ouvrir le lecteur » affiche la salle (lustre, scène), plus un cadre blanc. Le bouton natif de sortie n’est pas dans l’arbre du test : un retour à l’accueil laisse le lecteur plein écran. Le code appelle `webkitExitFullscreen` quand l’app passe en arrière-plan. Captures : `/tmp/lyann-v20-video.png`, `/tmp/lyann-v20-video-full.png`. Journal : `/tmp/lyann-ios-uitest12.log`.
+
+Le serveur de cette branche n’envoie plus `no-store` sur une vidéo (`private, max-age=300`) et transmet la plage demandée à Storage au lieu de retélécharger tout le fichier. `https://staging-bokantaj.lyann.app/v1/runtime/identity` répond encore le commit `80ceae7` et `cache-control: private, no-store`. Le simulateur a donc joué contre l’API actuelle, par le blob, pas contre ce nouvel en-tête.
+
+### Photo
+
+Le contrôle Photo du compositeur est un bouton nommé Photo, sans permission ajoutée. Un toucher ouvre la feuille système « Photothèque », « Prendre une photo », « Choisir les fichiers ». L’ouverture de la photothèque, l’annulation, l’aperçu, la publication et le nettoyage Storage n’ont pas été enchaînés.
+
+### Lieu
+
+« Me localiser », avec le GPS du simulateur à 16,241, −61,534, puis « Zoomer » et « Partager le nom du quartier », affiche « Mortenol · quartier ». Ce n’est pas une position exacte. Le bouton « Partager la localisation précise » est présent ; le toucher suivant a atteint « Fil » et n’a pas activé le partage exact. Le fil est de nouveau là ensuite. Capture : `/tmp/lyann-v20-place.png`. Journal : `/tmp/lyann-ios-uitest17.log`.
+
+### Périmètre
+
+| | |
+| --- | --- |
+| Web | URL directe et plages d’octets, inchangé dans le geste |
+| iOS | blob après le toucher, bouton Photo, libellé de quartier |
+| Android | même bouton Photo et même libellé ; la lecture directe n’est pas rejouée ici |
+| Serveur | plage transmise à Storage, vidéo sans `no-store` ; pas encore servi par le domaine Staging |
+
+Tests : `tests/bokantaj-video-policy.test.js`, `tests/bokantaj-video-range.test.js`, `tests/bokantaj-publish-finish.test.js`.
+
+### Toujours en attente
+
+Parcours sur l’iPhone déverrouillé. Sélection, publication et suppression d’une photo iOS. Partage du point exact. Sortie du plein écran par le bouton du lecteur. Le domaine Staging sert encore `80ceae7`. Migration devis et remboursement Stripe Test inchangés. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V1.9 — iPhone verrouillé, annonces, carte, médias QA
 
