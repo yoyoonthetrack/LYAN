@@ -202,6 +202,8 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(script, /uprightPosterBlob/);
     assert.match(script, /ratioDeferred/);
     assert.match(script, /is-turn-90/);
+    assert.match(script, /style\.aspectRatio = ratioText/);
+    assert.match(script, /shell\.style\.aspectRatio = ratio/);
     assert.match(script, /--coded-ratio/);
     assert.match(css, /--coded-ratio/);
     assert.doesNotMatch(css, /container-type:\s*size/);

@@ -3143,7 +3143,12 @@ safeDomReady(() => {
         const holder = node.closest('.bokantaj-photos-1 .bokantaj-photo')
             || node.closest('.bokantaj-video-poster')
             || node;
-        holder.style.setProperty('--media-ratio', `${Math.round(width)} / ${Math.round(height)}`);
+        const ratioText = `${Math.round(width)} / ${Math.round(height)}`;
+        // WKWebView drops aspect-ratio when the slash only exists inside a
+        // custom property, and the card then falls back to the video's
+        // default wide frame. The property has to be set directly.
+        holder.style.aspectRatio = ratioText;
+        holder.style.setProperty('--media-ratio', ratioText);
         holder.classList.add('has-media-ratio');
     }
 
@@ -3518,6 +3523,7 @@ safeDomReady(() => {
         if (bokantajFeedMuted) video.setAttribute('muted', '');
         const ratio = button.style.getPropertyValue('--media-ratio');
         if (ratio) {
+            video.style.aspectRatio = ratio;
             video.style.setProperty('--media-ratio', ratio);
             video.classList.add('has-media-ratio');
             video.classList.remove('is-settling');
@@ -3547,6 +3553,7 @@ safeDomReady(() => {
         button.replaceWith(shell);
         if (poster) shell.appendChild(poster);
         if (ratio) {
+            shell.style.aspectRatio = ratio;
             shell.style.setProperty('--media-ratio', ratio);
             shell.classList.add('has-media-ratio');
         }
