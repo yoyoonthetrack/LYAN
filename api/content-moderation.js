@@ -238,9 +238,9 @@ async function decideVideoRelease({ textDecision, files, inspectVideo, downloadM
     if (typeof inspectVideo !== 'function') return { decision: 'pending', reason: 'video_unreviewed' };
     const videos = files.filter((file) => VIDEO_EXT.has(extensionOf(file.path)));
     const posters = files.filter((file) => isPosterPath(file.path));
-    if (!videos.length || posters.length < videos.length || typeof downloadMedia !== 'function') {
-        return { decision: 'pending', reason: 'video_unverified' };
-    }
+    if (!videos.length) return { decision: 'pending', reason: 'video_unverified' };
+    if (posters.length < videos.length) return { decision: 'pending', reason: 'video_unverified' };
+    if (typeof downloadMedia !== 'function') return { decision: 'pending', reason: 'video_unverified' };
     let reports;
     let posterImages;
     try {
