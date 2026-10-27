@@ -1,6 +1,30 @@
-# LYANN — Release Candidate V1.1 à V2.3
+# LYANN — Release Candidate V1.1 à V2.5
 
 Verdict : **NO-GO**
+
+## V2.5 — ratio vidéo, j de Bokantaj, étoiles
+
+Produit `b34f0a3ae922af96004a0af1fc8eabd6901ee55c`. Paquet Staging `ios-mvq3vkvz-d9a544`, hash d’assets `00ff0696f0fa7d5acc23f9412969427fa9f586b8a0886dd93cbc83ed64cdce48`, version 1.0, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`. Le serveur déployé reste `80ceae7c35bcc7a1bbe5160f68e604bd2350ec20`. Aucune fusion, aucun déploiement Production, Stripe Live inchangé, aucune donnée réelle modifiée.
+
+### Vidéo
+
+Le fil réserve le ratio dès le premier rendu quand la miniature le donne en portrait. Une vidéo paysage locale reste paysage. Une seule lecture, en sourdine, démarre dans la zone visible ; les autres ne sont pas téléchargées. Sortir le clip de l’écran le met en pause. Le bouton son passe de « Activer le son » à « Couper le son ». Un fichier absent garde la miniature, le bouton « Lecture » et le message d’échec, sans changer la hauteur réservée. `prefers-reduced-motion` et `saveData` empêchent la lecture automatique. Les vidéos de plus de 60 secondes ne bouclent pas.
+
+Preuve Web, viewport 390×844, fichiers locaux : portrait 360×640 réservé à 555 px avant et pendant la lecture (écart 0). Paysage 640×360 à 176 px. Après défilement, le portrait est en pause et le paysage lit, toujours muet. Seuls les fichiers réellement ouverts apparaissent dans les transferts.
+
+Simulateur iPhone 17 Pro `9281CEB1-E36D-4654-91E0-3AA741F8AD10` et « iPhone de yoann » `00008140-00112D0C2684801C`, paquet `b34f0a3`, session QA, aucune publication. Le titre est le nouveau tracé. Le clip « Hello » (miniature `poster-1920x1080`) reste une bande large : le lecteur rapporte la taille codée, pas la taille verticale. Ce cas n’est pas corrigé à l’écran. L’émulateur Android n’était pas démarré. L’APK debug a été assemblé hors ligne avec ce paquet, sans parcours.
+
+### En-tête
+
+Le « j » de Bokantaj n’est plus le glyphe Fraunces dont le crochet revient sous le « a ». Le mot reste en Fraunces, et seul le « j » est un tracé court qui reste dans sa propre largeur. Vérifié en local à 390 px @3x, à 1100 px @2x, et sur le simulateur. Le nom accessible reste « Bokantaj ».
+
+### Étoiles
+
+Le contrôle partagé `mountLyannStars` peint les étoiles choisies en `#E5B345` et les autres en `#B7AFA3`, affiche `n/5`, prévisualise au survol souris et met à jour la valeur au toucher. Le clavier gauche/droite change la note. Le `<select>` existant reçoit la même valeur numérique ; une note de 3 laisse `select.value` à `3`. Il n’y a pas de thème sombre dans l’application : les couleurs sont celles du fond crème. Les avis de profil qui affichent déjà une étoile dorée et un nombre n’ont pas été réécrits.
+
+### Tests
+
+Sur l’arbre final : `tests/bokantaj-video-policy.test.js` et `tests/lyann-stars.test.js`, 18 tests, 0 échec. `tests/bokantaj-video-range.test.js`, 3 tests, 0 échec.
 
 ## V2.3 — compte QA sur iPhone, signatures
 
