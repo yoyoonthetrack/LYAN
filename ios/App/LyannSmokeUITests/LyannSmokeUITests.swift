@@ -262,6 +262,7 @@ final class LyannSmokeUITests: XCTestCase {
     }
 
     func testQaPhysicalPass() throws {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.buttons["Bokantaj"].waitForExistence(timeout: 30) || app.buttons["Se connecter"].waitForExistence(timeout: 8))
@@ -304,7 +305,7 @@ final class LyannSmokeUITests: XCTestCase {
         }
         if let place = hittable(app, "Ajouter une localisation") {
             place.tap()
-            let once = app.buttons["Une fois"].firstMatch
+            let once = app.buttons["Autoriser une fois"].firstMatch
             if once.waitForExistence(timeout: 2), once.isHittable { once.tap() }
             if let locate = hittable(app, "Me localiser") { locate.tap(); note("locate-tapped") }
             _ = waitUntil(app, seconds: 8) { !app.staticTexts["Recherche de votre position…"].exists }
@@ -364,7 +365,16 @@ final class LyannSmokeUITests: XCTestCase {
         note("qa-scrolled")
     }
 
+    private func dismissLeftoverLocationPrompt() {
+        let board = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let deny = board.buttons["Ne pas autoriser"].firstMatch
+        guard deny.waitForExistence(timeout: 2), deny.isHittable else { return }
+        deny.tap()
+        note("location-prompt-dismissed")
+    }
+
     private func ensureQaAccount(_ app: XCUIApplication) {
+        dismissLeftoverLocationPrompt()
         if app.buttons["Se connecter"].waitForExistence(timeout: 6), app.buttons["Se connecter"].firstMatch.isHittable {
             signIn(app)
             note("qa-signed-in")
@@ -380,18 +390,30 @@ final class LyannSmokeUITests: XCTestCase {
         }
         note("personal-session-logout")
         _ = hittable(app, "Menu Principal")?.tap()
-        var logout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter")).firstMatch
+        guard app.buttons["Fermer le menu"].firstMatch.waitForExistence(timeout: 6) else {
+            note("drawer-not-open")
+            save(app, "v23-drawer")
+            return
+        }
+        let matches = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter"))
+        var logout = matches.firstMatch
         for _ in 0..<4 {
-            if logout.exists, logout.isHittable { break }
+            if logout.exists, logout.isHittable, logout.frame.height > 20 { break }
             app.swipeUp()
-            logout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter")).firstMatch
+            logout = matches.firstMatch
         }
-        if logout.exists, logout.isHittable {
-            logout.tap()
-        } else {
+        note("logout-count \(matches.count) \(logout.exists ? state(logout) : "absent")")
+        guard logout.exists, logout.isHittable else {
             note("logout-control-missing")
+            return
         }
-        let guest = app.buttons["Se connecter"].firstMatch.waitForExistence(timeout: 12)
+        logout.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let guest = waitUntil(app, seconds: 15) {
+            app.buttons["Se connecter"].firstMatch.exists
+                || app.links["Se connecter"].firstMatch.exists
+                || app.links["Connexion"].firstMatch.isHittable
+        }
+        save(app, "v23-after-logout")
         note(guest ? "logged-out" : "logout-failed")
         guard guest else { return }
         signIn(app)
@@ -1516,13 +1538,22 @@ final class LyannSmokeUITests: XCTestCase {
     }
 
     private func signIn(_ app: XCUIApplication) {
-        let guestButton = app.buttons["Se connecter"].firstMatch
-        guard guestButton.waitForExistence(timeout: 30) else {
+        let email = app.textFields["Adresse email de connexion"]
+        let deadline = Date().addingTimeInterval(30)
+        while Date() < deadline, !email.exists {
+            if app.buttons["Se connecter"].firstMatch.isHittable {
+                app.buttons["Se connecter"].firstMatch.tap()
+            } else if app.links["Se connecter"].firstMatch.isHittable {
+                app.links["Se connecter"].firstMatch.tap()
+            } else if app.links["Connexion"].firstMatch.isHittable {
+                app.links["Connexion"].firstMatch.tap()
+            }
+            if email.waitForExistence(timeout: 2) { break }
+        }
+        guard email.exists else {
             note("session-already-present")
             return
         }
-        guestButton.tap()
-        let email = app.textFields["Adresse email de connexion"]
         let password = app.secureTextFields["Mot de passe de connexion"]
         guard email.waitForExistence(timeout: 8), password.waitForExistence(timeout: 4) else {
             XCTFail("Formulaire de connexion absent. \(visibleLabels(app))")

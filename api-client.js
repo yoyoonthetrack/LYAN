@@ -613,10 +613,22 @@ const LYANN_API_CLIENT = {
 
     async logout() {
         if (!this.supabase) return { error: null };
+        // Device deactivation and the server revoke must not keep the local session open.
         if (window.LYANN_PUSH && typeof window.LYANN_PUSH.deactivate === 'function') {
-            try { await window.LYANN_PUSH.deactivate(); } catch (_) {}
+            try { Promise.resolve(window.LYANN_PUSH.deactivate()).catch(() => {}); } catch (_) {}
         }
-        return await this.supabase.auth.signOut();
+        const pending = this.supabase.auth.signOut();
+        let result = { error: null };
+        try {
+            result = await Promise.race([
+                pending,
+                new Promise((resolve) => setTimeout(() => resolve({ error: null, local: true }), 2000))
+            ]);
+        } catch (_) {}
+        if (!result || result.local) {
+            try { await this.supabase.auth.signOut({ scope: 'local' }); } catch (_) {}
+        }
+        return result || { error: null };
     },
 
     async signOut() {
