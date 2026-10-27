@@ -1,6 +1,34 @@
-# LYANN — Release Candidate V1.1 à V2.5
+# LYANN — Release Candidate V1.1 à V2.6
 
 Verdict : **NO-GO**
+
+## V2.6 — un seul Bokantaj, Hello debout
+
+Produit `f13794852c26187971e10eeee5162ef74c1aa2de`. Paquet Staging `ios-mvq625ln-710814`, hash d’assets `e113abb6bc65676171b60c7f73833950990a1a051b09e48ad174dab78dd1a291`, version 1.0, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`. Le serveur déployé répond encore `80ceae7c35bcc7a1bbe5160f68e604bd2350ec20`, `vercel_env` preview. Aucune fusion, aucun déploiement Production, Stripe Live inchangé. Le fichier « Hello » et sa ligne n’ont pas été réécrits.
+
+### En-tête
+
+Le titre est un seul élément `<h1 class="banner-title">Bokantaj</h1>`, en Fraunces 800, sans SVG, sans glyphe raccourci et sans variation par lettre. Le « j » est le glyphe d’origine, avec sa descendante. Sur le simulateur iPhone 17 Pro, il ne touche ni le badge « EN DIRECT », ni le sous-titre, ni l’illustration.
+
+### Hello
+
+Le média servi est le `.mov` d’origine, 20 943 984 octets, `video/quicktime`. La piste est codée en 3840×2160. La matrice `tkhd` du début de fichier vaut 90° (`a = 0`, `b = 65536`). La taille d’affichage est donc 2160×3840, portrait. La miniature stockée `…-poster-1920x1080.jpg` est la frame codée, non tournée : les colonnes y sont couchées. Le nom du fichier ne dit pas l’orientation réelle.
+
+Le fil connecté envoyait `Authorization` avec `Range`. Le prévol CORS du média déployé n’autorise pas `Range`, la lecture de la matrice échouait, et la carte gardait le cadre large. La sonde part maintenant sans jeton, puis avec le jeton seulement si la plage publique ne contient pas de `tkhd`. Le ratio réservé est `1080 / 1920`. Sur le simulateur, le cadre mesuré est 340×604 px CSS, soit 9:16, avec `turn=90`. Une fois la carte amenée en vue, l’image est la batterie debout, cymbales à l’horizontale. Le fichier et la publication n’ont pas été modifiés.
+
+Le lecteur iOS ne télécharge pas le MOV entier pour l’autoplay : la lecture distante reste en plages, et la copie locale ne part que sur un appui explicite. La miniature reste affichée tant qu’une frame n’est pas en lecture.
+
+### Appareils
+
+Simulateur iPhone 17 Pro `9281CEB1-E36D-4654-91E0-3AA741F8AD10`, paquet `ios-mvq625ln-710814`, session QA, aucune écriture. Titre homogène et cadre portrait vérifiés à l’écran.
+
+« iPhone de yoann » `00008140-00112D0C2684801C` a reçu le même paquet. L’écran était verrouillé au moment de la capture. Le rendu sur l’appareil n’a pas été vu. Il faut le déverrouiller et laisser l’écran allumé, sans saisir le code à la place du titulaire.
+
+L’émulateur Android n’était pas démarré. L’APK debug a été assemblé hors ligne avec ce paquet, sans parcours.
+
+### Tests
+
+`tests/bokantaj-video-policy.test.js` et `tests/lyann-stars.test.js`, 18 tests, 0 échec.
 
 ## V2.5 — ratio vidéo, j de Bokantaj, étoiles
 
