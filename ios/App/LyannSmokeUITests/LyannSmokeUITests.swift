@@ -270,8 +270,12 @@ final class LyannSmokeUITests: XCTestCase {
         let qa = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "@lyann.invalid")).firstMatch.exists
             || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Qa A")).firstMatch.exists
         note(qa ? "qa-identity" : "qa-identity-missing")
-        XCTAssertTrue(qa, "La session n’est pas QA A. \(visibleLabels(app))")
         dismissSheet(app)
+        guard qa else {
+            note("stopped-personal-session")
+            XCTFail("La session n’est pas QA A. Aucune écriture. \(visibleLabels(app))")
+            return
+        }
 
         _ = hittable(app, "Bokantaj")?.tap()
         let field = app.textViews.firstMatch
@@ -376,9 +380,20 @@ final class LyannSmokeUITests: XCTestCase {
         }
         note("personal-session-logout")
         _ = hittable(app, "Menu Principal")?.tap()
-        let logout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter")).firstMatch
-        if logout.waitForExistence(timeout: 4), logout.isHittable { logout.tap() }
-        note(app.buttons["Se connecter"].waitForExistence(timeout: 15) ? "logged-out" : "logout-failed")
+        var logout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter")).firstMatch
+        for _ in 0..<4 {
+            if logout.exists, logout.isHittable { break }
+            app.swipeUp()
+            logout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter")).firstMatch
+        }
+        if logout.exists, logout.isHittable {
+            logout.tap()
+        } else {
+            note("logout-control-missing")
+        }
+        let guest = app.buttons["Se connecter"].firstMatch.waitForExistence(timeout: 12)
+        note(guest ? "logged-out" : "logout-failed")
+        guard guest else { return }
         signIn(app)
         note("qa-signed-in")
     }

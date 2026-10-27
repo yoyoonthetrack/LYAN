@@ -8,11 +8,11 @@ Le binaire installé reste `ios-mvpyrwgw-accac6`, SHA `2053e9d5f4a249cb336c4d937
 
 ### iPhone physique
 
-« iPhone de yoann » est appairé en USB, le mode développeur est activé, et la connexion est filaire. Aucun contournement du verrouillage. Au moment de lancer la recette QA, Xcode s’arrête sur « Unlock iPhone de yoann to Continue » : `passcodeRequired` est vrai. Le code n’a pas été saisi.
+« iPhone de yoann » est appairé en USB, le mode développeur est activé, et la connexion est filaire. Aucun contournement du verrouillage. Xcode a d’abord attendu « Unlock iPhone de yoann to Continue », puis la passe a démarré une fois l’écran déverrouillé.
 
-La passe préparée, `testQaPhysicalPass`, déconnecte une session qui n’est pas QA A, puis se connecte au compte QA Staging. Elle ne publie pas depuis le compte personnel. Elle n’a pas démarré, parce que le téléphone était verrouillé. Les parcours QA d’écriture, la lecture vidéo approuvée, Lyanneurs, Messages et le GPS de l’appareil ne sont donc pas exécutés dans cette passe.
+La passe `testQaPhysicalPass` a démarré alors que le compte personnel était connecté. La déconnexion n’a pas trouvé « Se déconnecter » à l’écran, donc la session QA n’a pas pris le relais. Le test a été arrêté avant toute publication : aucune ligne `bokantaj_posts` n’a été créée dans les vingt minutes, et la photothèque ouverte a été annulée. Une demande système « Autoriser LYANN à utiliser votre position » est restée affichée, sans réponse. Le test s’arrête maintenant avant toute écriture tant que la session n’est pas QA A.
 
-Pour la reprendre : déverrouiller « iPhone de yoann » et laisser l’écran allumé. Si iOS affiche l’activation de l’automatisation, toucher Activer.
+Pour reprendre : sur l’iPhone, répondre à la demande de position, déverrouiller l’appareil s’il se reverrouille, et laisser l’écran allumé. Si iOS demande l’automatisation, toucher Activer.
 
 ### Distribution
 
