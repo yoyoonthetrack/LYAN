@@ -348,11 +348,12 @@ body.feed-page .btn-publish-flash {
 body.feed-page .bokantaj-sort-bar {
     display: flex;
     align-items: stretch;
+    flex-wrap: wrap;
     gap: 4px;
     margin: 0 0 12px;
     padding: 0 2px 0;
     border-bottom: 1px solid #eadfcd;
-    overflow-x: auto;
+    overflow: visible;
     scrollbar-width: none;
 }
 body.feed-page .bokantaj-territory-filter {
