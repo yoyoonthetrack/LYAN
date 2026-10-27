@@ -12,10 +12,10 @@ const EDITORIAL_BOTS = [
         healthReview: false,
         bio: 'Compte éditorial automatisé de LYANN. Il reprend des faits publiés par la presse locale et les sites officiels de Guadeloupe, Martinique, Guyane et La Réunion, avec la source.',
         sources: [
-            { name: 'RCI Guadeloupe', url: 'https://rci.fm/guadeloupe/fb/articles_rss_gp', kind: 'rss', territory: 'guadeloupe' },
-            { name: 'RCI Martinique', url: 'https://rci.fm/martinique/fb/articles_rss_mq', kind: 'rss', territory: 'martinique' },
-            { name: 'Collectivité Territoriale de Guyane', url: 'https://www.ctguyane.fr/feed/', kind: 'rss', territory: 'guyane' },
-            { name: 'Free Dom La Réunion', url: 'https://freedom.fr/feed/', kind: 'rss', territory: 'reunion' }
+            { name: 'RCI Guadeloupe', url: 'https://rci.fm/guadeloupe/fb/articles_rss_gp', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 168 },
+            { name: 'RCI Martinique', url: 'https://rci.fm/martinique/fb/articles_rss_mq', kind: 'rss', territory: 'martinique', maxAgeHours: 168 },
+            { name: 'Collectivité Territoriale de Guyane', url: 'https://www.ctguyane.fr/feed/', kind: 'rss', territory: 'guyane', maxAgeHours: 168 },
+            { name: 'Free Dom La Réunion', url: 'https://freedom.fr/feed/', kind: 'rss', territory: 'reunion', maxAgeHours: 168 }
         ]
     },
     {
@@ -27,9 +27,9 @@ const EDITORIAL_BOTS = [
         healthReview: true,
         bio: 'Compte éditorial automatisé de LYANN. Il présente des plantes et des usages documentés par des sources botaniques. Toute indication de santé reste en attente d’une validation humaine.',
         sources: [
-            { name: 'Les Jardins de Nini', url: 'https://lesjardinsdenini.com/feed/', kind: 'rss', territory: 'guadeloupe' },
-            { name: 'Parc National de la Guadeloupe', url: 'https://www.guadeloupe-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'guadeloupe' },
-            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion' },
+            { name: 'Les Jardins de Nini', url: 'https://lesjardinsdenini.com/feed/', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 336 },
+            { name: 'Parc National de la Guadeloupe', url: 'https://www.guadeloupe-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 336 },
+            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion', maxAgeHours: 336 },
             { name: 'TRAMIL', url: 'https://www.tramil.net/fr', kind: 'manual', territory: 'caraibe', note: 'Référentiel ethnopharmacologique caribéen (veille documentaire).' }
         ]
     },
@@ -42,9 +42,9 @@ const EDITORIAL_BOTS = [
         healthReview: false,
         bio: 'Compte éditorial automatisé de LYANN. Il relaie des conseils de jardin, de biodiversité et d’agriculture adaptés au climat tropical, à partir de sources publiques.',
         sources: [
-            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion' },
-            { name: 'Parc Amazonien de Guyane', url: 'https://www.parc-amazonien-guyane.fr/fr/rss.xml', kind: 'rss', territory: 'guyane' },
-            { name: 'Les Jardins de Nini', url: 'https://lesjardinsdenini.com/feed/', kind: 'rss', territory: 'guadeloupe' },
+            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion', maxAgeHours: 336 },
+            { name: 'Parc Amazonien de Guyane', url: 'https://www.parc-amazonien-guyane.fr/fr/rss.xml', kind: 'rss', territory: 'guyane', maxAgeHours: 336 },
+            { name: 'Les Jardins de Nini', url: 'https://lesjardinsdenini.com/feed/', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 336 },
             { name: 'CIRAD', url: 'https://www.cirad.fr/rss/actualites', kind: 'manual', territory: 'caraibe', note: 'Veille agronomique tropicale.' }
         ]
     },
@@ -58,9 +58,9 @@ const EDITORIAL_BOTS = [
         bio: 'Compte éditorial automatisé de LYANN. Il reprend les communiqués de circulation, météo, eau et vigilance publiés par les autorités et médias locaux des outre-mer.',
         sources: [
             { name: 'Routes de Guadeloupe', url: 'https://www.routesdeguadeloupe.fr/feed/', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 240 },
-            { name: 'RCI Guadeloupe', url: 'https://rci.fm/guadeloupe/fb/articles_rss_gp', kind: 'rss', territory: 'guadeloupe', requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'pont'] },
-            { name: 'RCI Martinique', url: 'https://rci.fm/martinique/fb/articles_rss_mq', kind: 'rss', territory: 'martinique', requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'pont'] },
-            { name: 'Free Dom La Réunion', url: 'https://freedom.fr/feed/', kind: 'rss', territory: 'reunion', requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'littoral'] }
+            { name: 'RCI Guadeloupe', url: 'https://rci.fm/guadeloupe/fb/articles_rss_gp', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 168, requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'pont'] },
+            { name: 'RCI Martinique', url: 'https://rci.fm/martinique/fb/articles_rss_mq', kind: 'rss', territory: 'martinique', maxAgeHours: 168, requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'pont'] },
+            { name: 'Free Dom La Réunion', url: 'https://freedom.fr/feed/', kind: 'rss', territory: 'reunion', maxAgeHours: 168, requireTerms: ['route', 'circulation', 'trafic', 'travaux', 'fermeture', 'déviation', 'rn', 'rd', 'accident', 'vigilance', 'météo', 'eau', 'coupure', 'transport', 'littoral'] }
         ]
     },
     {
@@ -72,10 +72,10 @@ const EDITORIAL_BOTS = [
         healthReview: false,
         bio: 'Compte éditorial automatisé de LYANN. Il signale des événements, initiatives patrimoniales et rendez-vous annoncés par les institutions et acteurs culturels des outre-mer.',
         sources: [
-            { name: 'L’Artchipel Scène Nationale Guadeloupe', url: 'https://www.lartchipel.com/feed/', kind: 'rss', territory: 'guadeloupe' },
-            { name: 'Collectivité Territoriale de Martinique', url: 'https://www.collectivitedemartinique.mq/feed/', kind: 'rss', territory: 'martinique' },
-            { name: 'Collectivité Territoriale de Guyane', url: 'https://www.ctguyane.fr/feed/', kind: 'rss', territory: 'guyane' },
-            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion' }
+            { name: 'L’Artchipel Scène Nationale Guadeloupe', url: 'https://www.lartchipel.com/feed/', kind: 'rss', territory: 'guadeloupe', maxAgeHours: 336 },
+            { name: 'Collectivité Territoriale de Martinique', url: 'https://www.collectivitedemartinique.mq/feed/', kind: 'rss', territory: 'martinique', maxAgeHours: 336 },
+            { name: 'Collectivité Territoriale de Guyane', url: 'https://www.ctguyane.fr/feed/', kind: 'rss', territory: 'guyane', maxAgeHours: 336 },
+            { name: 'Parc National de La Réunion', url: 'https://www.reunion-parcnational.fr/fr/rss.xml', kind: 'rss', territory: 'reunion', maxAgeHours: 336 }
         ]
     }
 ];
@@ -156,6 +156,39 @@ function editorialPassSlot(now = new Date()) {
     const hour = Number(value('hour'));
     const slot = hour < 12 ? '07' : hour < 17 ? '12' : '17';
     return `${value('year')}-${value('month')}-${value('day')}T${slot}`;
+}
+
+function nextEditorialPass(now = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'America/Guadeloupe',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(now);
+    const value = (type) => parts.find((part) => part.type === type).value;
+    const minutes = Number(value('hour')) * 60 + Number(value('minute'));
+    const slots = [7 * 60, 12 * 60, 17 * 60];
+    const upcoming = slots.find((slot) => slot > minutes);
+    const wait = upcoming == null ? (24 * 60 - minutes + 7 * 60) : (upcoming - minutes);
+    const next = new Date(now.getTime() + wait * 60000);
+    const nextParts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'America/Guadeloupe',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(next);
+    const nextValue = (type) => nextParts.find((part) => part.type === type).value;
+    const local = `${nextValue('hour')}:${nextValue('minute')}`;
+    return {
+        local,
+        label: `${nextValue('year')}-${nextValue('month')}-${nextValue('day')} ${local} America/Guadeloupe`
+    };
 }
 
 function guadeloupeDayStart(now = new Date()) {
@@ -297,6 +330,7 @@ module.exports = {
     isFresh,
     matchesTerms,
     editorialPassSlot,
+    nextEditorialPass,
     guadeloupeDayStart,
     acceptRewrittenText,
     essentialFacts,

@@ -23,6 +23,27 @@ export LYANN_STAGING_PREFLIGHT_STRICT=1
 export LYANN_VERCEL_CLI_DEPLOY=1
 node scripts/staging-preflight.js
 
+# Vercel enregistre les crons du fichier vercel.json envoyé, pas ceux de
+# --local-config. On y copie uniquement les crons Staging le temps de l'envoi,
+# puis le fichier de Production est restauré. Le projet lyan n'est pas déployé.
+CRON_BACKUP=$(mktemp)
+cp vercel.json "$CRON_BACKUP"
+restore_vercel_json() {
+  if [ -n "${CRON_BACKUP:-}" ] && [ -f "$CRON_BACKUP" ]; then
+    cp "$CRON_BACKUP" vercel.json
+    rm -f "$CRON_BACKUP"
+    CRON_BACKUP=""
+  fi
+}
+trap restore_vercel_json EXIT
+node << 'JS'
+const fs = require('fs');
+const root = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+const staging = JSON.parse(fs.readFileSync('vercel.staging.json', 'utf8'));
+root.crons = staging.crons;
+fs.writeFileSync('vercel.json', JSON.stringify(root, null, 2) + '\n');
+JS
+
 # --prod promotes the stable domain of lyann-staging-preview, not the project lyan.
 RELEASE_SHA=$(git rev-parse HEAD)
 npx vercel deploy --local-config vercel.staging.json --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --prod --yes \
@@ -30,5 +51,7 @@ npx vercel deploy --local-config vercel.staging.json --project "$VERCEL_PROJECT_
   --build-env VERCEL_PROJECT_NAME=lyann-staging-preview \
   --build-env LYANN_RELEASE_SHA="$RELEASE_SHA" \
   --env LYANN_RELEASE_SHA="$RELEASE_SHA"
+restore_vercel_json
 echo "Contrôle : node scripts/verify-staging-hosted.js"
+node scripts/verify-staging-editorial-cron.js
 echo "Retour arrière : npx vercel rollback --local-config vercel.staging.json --project ${VERCEL_PROJECT_ID} --scope ${VERCEL_ORG_ID}"

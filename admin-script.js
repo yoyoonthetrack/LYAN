@@ -3718,9 +3718,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             const envEl = document.getElementById('editorialEnv');
+            const metrics = bots.metrics || {};
+            const lastRun = metrics.lastRun || {};
             if (envEl) {
                 const allowed = bots.collectionAllowed;
-                envEl.innerHTML = `<strong>${maisonEsc(bots.environment || 'staging')}</strong> · Collecte ${allowed ? 'autorisée' : 'bloquée (Production)'} · IA ${bots.aiProvider?.configured ? maisonEsc(bots.aiProvider.model || bots.aiProvider.mode) : 'non configurée'}${bots.aiProvider?.error ? ' · ' + maisonEsc(bots.aiProvider.error) : ''} · Planning ${bots.schedule?.enabled === false ? 'inactif' : (bots.schedule?.passes || []).join(' · ')}`;
+                const when = (value) => value ? new Date(value).toLocaleString('fr-FR') : 'aucune';
+                envEl.innerHTML = `<strong>${maisonEsc(bots.environment || 'staging')}</strong> · Collecte ${allowed ? 'autorisée' : 'bloquée (Production)'} · IA ${bots.aiProvider?.configured ? maisonEsc(bots.aiProvider.model || bots.aiProvider.mode) : 'non configurée'}${bots.aiProvider?.error ? ' · ' + maisonEsc(bots.aiProvider.error) : ''} · Planning ${bots.schedule?.enabled === false ? 'inactif' : (bots.schedule?.passes || []).join(' · ')}<br>Dernière collecte ${maisonEsc(when(metrics.lastCollectAt))} · Dernière réussite ${maisonEsc(when(metrics.lastSuccessAt))} · Durée moyenne ${metrics.averageDurationMs == null ? '—' : maisonEsc(String(Math.round(metrics.averageDurationMs / 1000)) + ' s')} · Trouvés ${maisonEsc(lastRun.found ?? '—')} · Propositions ${maisonEsc(lastRun.created ?? '—')} · Doublons ${maisonEsc(lastRun.duplicates ?? '—')} · Erreurs ${maisonEsc(lastRun.errors ?? '—')} · Prochain passage ${maisonEsc(metrics.nextPassLabel || '07:00, 12:00, 17:00')}`;
             }
             const histEl = document.getElementById('editorialHistory');
             if (histEl) {
@@ -3729,7 +3732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? history.map((h) => `<p class="maison-muted" style="margin:0 0 6px;">${maisonEsc(h.created_at || '')} · ${maisonEsc(h.agent_name || '')} · ${maisonEsc(h.event_type || '')} · ${maisonEsc(h.description || '')}</p>`).join('')
                     : '<p class="maison-muted">Aucun passage enregistré.</p>');
             }
-            const nothing = (item) => item.metadata && item.metadata.outcome === 'nothing_to_propose';
+            const nothing = (item) => item.metadata && (item.metadata.outcome === 'nothing_to_propose' || item.metadata.outcome === 'pass_started');
             const collectionError = (item) => item.status === 'FAILED' || (item.metadata && item.metadata.outcome === 'collection_error');
             const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED' && !nothing(item) && !collectionError(item));
             const approved = rows.filter((item) => item.approval_status === 'APPROVED');
@@ -3817,7 +3820,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="status-badge ${pendingItem ? 'pending' : (item.approval_status === 'APPROVED' ? 'verified' : 'suspended')}">${maisonEsc(statusLabel(item))}</span>
                         </div>
                         <p style="margin:8px 0 4px; font-weight:700;">${maisonEsc(item.title || '')}</p>
-                        <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Lien d’origine')}</a></p>
+                        <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · Rubrique : ${maisonEsc(item.agent_name || '')} · Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Lien d’origine')}</a>${item.metadata?.collected_at ? ' · Collecté le ' + maisonEsc(new Date(item.metadata.collected_at).toLocaleString('fr-FR')) : ''}</p>
+                        ${pendingItem ? `<label class="maison-muted">Territoire <select class="admin-select editorial-territory">${['guadeloupe','martinique','guyane','reunion'].map((code) => `<option value="${code}"${item.metadata?.territory === code ? ' selected' : ''}>${code}</option>`).join('')}</select></label>` : `<p class="maison-muted" style="margin:0 0 8px;">Territoire : ${maisonEsc(item.metadata?.territory || '—')}</p>`}
                         ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
                         <textarea class="admin-input editorial-text" rows="6" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(body)}</textarea>
                         <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
@@ -3881,14 +3885,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
                 const id = card.getAttribute('data-proposal');
                 const text = () => card.querySelector('.editorial-text')?.value || '';
+                const territory = () => card.querySelector('.editorial-territory')?.value || '';
                 card.querySelector('.editorial-save')?.addEventListener('click', run(card.querySelector('.editorial-save'), 'Enregistrement…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
                     method: 'POST',
-                    body: JSON.stringify({ content: text() })
+                    body: JSON.stringify({ content: text(), territory: territory() })
                 }).then((body) => ({ message: body.message || 'Modification enregistrée.' }))));
                 card.querySelector('.editorial-publish')?.addEventListener('click', run(card.querySelector('.editorial-publish'), 'Publication…', async () => {
                     await maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
                         method: 'POST',
-                        body: JSON.stringify({ content: text() })
+                        body: JSON.stringify({ content: text(), territory: territory() })
                     });
                     return maisonJson(`/v1/admin/editorial/proposals/${id}/publish`, {
                         method: 'POST',

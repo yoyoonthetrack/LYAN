@@ -4,7 +4,7 @@ Verdict : **NO-GO**
 
 Tête Git et PR : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`
 Paquets natifs reconstruits : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`, identifiant `ios-mvqzsf62-86ab71`
-Serveur Staging actuellement servi : `84cff869a7d281ea0ec40fc06f5fde4116a2756f`
+Serveur Staging actuellement servi : déploiement `dpl_8WJbtuRYqd5ZMLnzAhN4sXaP9pbr`, estampille Git `cd0ed3ea16acfc919f5289ede08e0cd87f71c96d` plus le correctif éditorial de ce commit (le déploiement a été fait avant le commit)
 Branche : `release/lyann-rc-v1-1`
 PR : https://github.com/yoyoonthetrack/LYAN/pull/13 (brouillon, base `feature/bokantaj-map-v1`)
 Date : 2026-10-27
@@ -59,6 +59,23 @@ Date : 2026-10-27
 | Auth, annonces, Lyanneurs, messagerie, abonnements | Parcours complets de cette passe | NON TESTÉ | — | Non rejoués ici | — | — | — | P1 | Comptes QA, plusieurs sessions |
 | Production | Non-déploiement | OK | Contrôle | Projet `lyan` non déployé, `lyann.app` identity 404 | `staging-bokantaj` pointe encore vers ce projet | Non déplacé sans accord | — | P0 si on l’oublie | Décider du domaine |
 
+## Éditorial Bokantaj
+
+Verdict éditorial : **NO-GO** pour une nouvelle publication visible. La collecte automatique est rétablie. Les trois propositions du 27 octobre restent en attente, et aucun compte QA n’a la permission `agents.approve`.
+
+Cause : les trois crons de `vercel.staging.json` partageaient le chemin `/v1/editorial/collect?scheduled=1`. Vercel n’enregistre pas un chemin en double ni un chemin avec une query. Le déploiement Staging ne lançait donc que `/v1/internal/moderation/run`. Le 401 sans secret est le refus normal. La dernière activité réelle avant correction datait du 22 octobre 2026. Les cinq comptes sont des identités de publication `system`, pas des connexions interactives. Leurs publications déjà approuvées n’ont pas été modifiées.
+
+Preuve sur `https://staging.lyann.app`, Supabase `tdktfbtqceldlaeqjtow`, déploiement `dpl_8WJbtuRYqd5ZMLnzAhN4sXaP9pbr` :
+
+- Cron enregistré : `/v1/editorial/collect/scheduled`, `0 11,16,21 * * *` (07:00, 12:00, 17:00 en Guadeloupe). Le cron de modération reste en place.
+- Appel sans secret : HTTP 401. Les trois comptes QA : HTTP 403 `ADMIN_ACCESS_DENIED` sur la collecte manuelle et sur la suppression.
+- Collecte authentifiée du passage `2026-10-27T17` : HTTP 200 en 38 s. 40 éléments trouvés, 11 doublons, 1 source inaccessible, 3 propositions `WAITING_APPROVAL`. Second appel du même passage : 5 agents « passage déjà traité », 0 création.
+- Préparées, non visibles : Actu, RCI Guadeloupe, territoire Guadeloupe ; Trafik, RCI Guadeloupe, territoire Guadeloupe ; Kilti, Collectivité Territoriale de Guyane, territoire Guyane. Rimèd et Jardinaj : rien de neuf à proposer. Aucune de ces propositions n’a été approuvée.
+- Visibles et inchangées : 5 posts `approved`, 4 `rejected`, tous antérieurs au 23 octobre.
+- Une tâche `QA-EDITORIAL-20261027` a été créée, la suppression par QA a répondu 403, puis la tâche a été retirée. Les 3 propositions réelles sont restées.
+
+Le prochain passage planifié est le 28 octobre 2026 à 07:00, heure de Guadeloupe. La publication continue d’exiger une validation humaine.
+
 ## Blocages qui empêchent le GO
 
 1. Le remboursement Stripe Test reste fermé. Le paiement unique autorisé par le grant, `9af9963d-d5a6-40d3-bc8d-fc9fbf2f0175`, n’existe pas sur Staging.
@@ -66,6 +83,7 @@ Date : 2026-10-27
 3. Ce Mac ne peut pas créer l’identité Apple Distribution sans une session du compte développeur. Le trousseau n’a que l’identité de développement, et Xcode n’a pas de compte enregistré. Pas d’archive. L’AAB signé est prêt pour un premier dépôt et n’a pas été envoyé.
 4. Le seul administrateur hors compte personnel est `qa_finance_610q`. Il ne peut pas modérer, suspendre, changer un rôle ni exporter les paiements. La route d’équipe est servie et lui répond 403.
 5. `staging-bokantaj.lyann.app` sert encore `80ceae7c` depuis le projet Production.
+6. Les trois propositions éditoriales du 27 octobre 2026 attendent un administrateur qui possède `agents.approve`. Les comptes QA ne l’ont pas. Le propriétaire n’a pas été utilisé. Rien de nouveau n’est visible dans Bokantaj.
 
 ## Actions humaines
 

@@ -1702,7 +1702,7 @@ async function actOnMaisonQuote(req, res, action) {
     }
 }
 
-const { collectEditorial, publishEditorialTask, providerConfig } = require('./editorial-run');
+const { collectEditorial, publishEditorialTask, providerConfig, editorialDeskExtras } = require('./editorial-run');
 const { EDITORIAL_BOTS, EDITORIAL_BADGE, reviewEditorialText } = require('./editorial-engine');
 
 function editorialAuthorized(req) {
@@ -1713,7 +1713,7 @@ function editorialAuthorized(req) {
     return require('crypto').timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
 }
 
-app.all('/v1/editorial/collect', async (req, res) => {
+async function runScheduledEditorialCollect(req, res, scheduled) {
     if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
     }
@@ -1722,16 +1722,18 @@ app.all('/v1/editorial/collect', async (req, res) => {
     }
     try {
         const schedule = require('./../config/editorial-schedule.json');
-        const asked = String(req.query.scheduled || '') === '1';
-        if (asked && schedule.enabled === false) {
+        if (scheduled && schedule.enabled === false) {
             return res.json({ success: true, skipped: 'schedule-disabled', created: [], skippedRows: [] });
         }
-        const report = await collectEditorial(supabaseAdmin, { scheduled: asked && schedule.enabled !== false });
+        const report = await collectEditorial(supabaseAdmin, { scheduled: scheduled && schedule.enabled !== false });
         return res.json({ success: true, ...report });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
     }
-});
+}
+
+app.all('/v1/editorial/collect', (req, res) => runScheduledEditorialCollect(req, res, String(req.query.scheduled || '') === '1'));
+app.all('/v1/editorial/collect/scheduled', (req, res) => runScheduledEditorialCollect(req, res, true));
 
 app.post('/v1/admin/editorial/collect', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
@@ -1775,7 +1777,13 @@ app.get('/v1/admin/editorial/bots', async (req, res) => {
             profile: (profiles || []).find((profile) => profile.id === agent.linked_profile_id) || null
         };
     });
-    return res.json({ success: true, bots });
+    let extras = {};
+    try {
+        extras = await editorialDeskExtras(supabaseAdmin);
+    } catch (extraError) {
+        extras = { history: [], metrics: null, extraError: extraError.message };
+    }
+    return res.json({ success: true, bots, ...extras });
 });
 
 app.get('/v1/admin/editorial/proposals', async (req, res) => {
@@ -1885,17 +1893,23 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     const next = String(req.body?.content || '').trim();
+    const allowedTerritories = ['guadeloupe', 'martinique', 'guyane', 'reunion'];
+    const territory = allowedTerritories.includes(req.body?.territory) ? req.body.territory : '';
     if (!next) return res.status(400).json({ success: false, error: 'Le texte corrigé est vide.' });
     const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('instruction, metadata, approval_status').eq('id', req.params.id).maybeSingle();
     if (error) return res.status(500).json({ success: false, error: error.message });
     if (!task || task.approval_status !== 'PENDING') return res.status(409).json({ success: false, error: 'Ce brouillon n’est plus modifiable.' });
     const now = new Date().toISOString();
     const revisions = Array.isArray(task.metadata && task.metadata.revisions) ? task.metadata.revisions.slice() : [];
-    revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next });
+    revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next, territory: territory || (task.metadata && task.metadata.territory) || null });
     const { error: updateError } = await supabaseAdmin.from('lyann_agent_tasks').update({
         instruction: next,
         updated_at: now,
-        metadata: Object.assign({}, task.metadata, { revisions })
+        metadata: Object.assign({}, task.metadata, {
+            revisions,
+            territory: territory || (task.metadata && task.metadata.territory) || null,
+            category: (task.metadata && task.metadata.slug) || null
+        })
     }).eq('id', req.params.id);
     if (updateError) return res.status(500).json({ success: false, error: updateError.message });
     return res.json({ success: true });
@@ -1938,6 +1952,12 @@ app.post('/v1/admin/editorial/bots/:id/status', async (req, res) => {
     const status = req.body?.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
     const { error } = await supabaseAdmin.from('lyann_agents').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
     if (error) return res.status(500).json({ success: false, error: error.message });
+    await supabaseAdmin.from('lyann_agent_activity').insert({
+        agent_id: req.params.id,
+        event_type: status === 'SUSPENDED' ? 'EDITORIAL_SUSPENDED' : 'EDITORIAL_RESUMED',
+        description: status === 'SUSPENDED' ? 'Agent suspendu par un administrateur.' : 'Agent réactivé par un administrateur.',
+        metadata: { by: authResult.userId, status }
+    });
     return res.json({ success: true, status });
 });
 
