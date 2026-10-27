@@ -3526,7 +3526,8 @@ safeDomReady(() => {
             video.style.aspectRatio = ratio;
             video.style.setProperty('--media-ratio', ratio);
             video.classList.add('has-media-ratio');
-            video.classList.remove('is-settling');
+            // Stay hidden until a frame is actually playing. Removing this
+            // early paints the empty player over the upright poster.
         }
         const poster = button.querySelector('img');
         const shell = document.createElement('div');

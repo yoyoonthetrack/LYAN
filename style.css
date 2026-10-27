@@ -13276,7 +13276,8 @@ body.is-native-app .navbar.scrolled,
     justify-content: center;
     aspect-ratio: auto;
 }
-.bokantaj-video-shell:not(.is-stage) > .bokantaj-video.has-media-ratio {
+.bokantaj-video-shell:not(.is-stage) > .bokantaj-video,
+.bokantaj-video-poster.has-media-ratio > .bokantaj-video-poster-image {
     position: absolute;
     inset: 0;
     width: 100%;

@@ -1538,6 +1538,13 @@ final class LyannSmokeUITests: XCTestCase {
     }
 
     private func signIn(_ app: XCUIApplication) {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for label in ["Refuser", "Don’t Allow", "Ne pas autoriser"] {
+            let prompt = springboard.buttons[label]
+            if prompt.waitForExistence(timeout: 1), prompt.isHittable { prompt.tap() }
+            let local = app.buttons[label]
+            if local.exists, local.isHittable { local.tap() }
+        }
         let email = app.textFields["Adresse email de connexion"]
         let deadline = Date().addingTimeInterval(30)
         while Date() < deadline, !email.exists {
