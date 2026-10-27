@@ -30,7 +30,7 @@ La chaîne automatique, relue sans écriture, conclut `approved` / `video_checke
 
 Une vidéo dont la raison est `video_checked` ou `video_poster_checked` peut maintenant être publiée. Une approbation sans ce contrôle reste en revue. Un fichier illisible est repris, puis tenu pour une personne, sans être affiché comme approuvé. « Drums » est laissé `pending` : le worker déployé est encore l’ancien, et la ligne n’a pas été forcée.
 
-Le paquet natif de ce commit n’est pas encore reconstruit. Le serveur déployé reste `80ceae7c`. Aucune fusion, aucun déploiement Production, Stripe Live inchangé.
+Paquet Staging `ios-mvq83de4-1a146f`, hash d’assets `9d84b0aa1e487d48848b47ec540b6409d64e5d698fd3a80217b3bc75b311b7e1`, version 1.0, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`, SHA `23f288b9f7ae3a30006fb8fd4397cf7b4b5aff1e`. Les applications iOS et Android de ce paquet ne sont pas encore réinstallées. Le serveur déployé reste `80ceae7c`. Aucune fusion, aucun déploiement Production, Stripe Live inchangé.
 
 ## V2.6 — un seul Bokantaj, Hello debout
 
