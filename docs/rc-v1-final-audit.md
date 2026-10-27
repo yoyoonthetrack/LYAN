@@ -8,7 +8,7 @@ Le correctif produit est `2053e9d5f4a249cb336c4d937d4c8d3c6d822e5c`. Le paquet r
 
 ### iPhone physique
 
-« iPhone de yoann » (`00008140-00112D0C2684801C`) a été déverrouillé un moment (`passcodeRequired: false`). Le binaire installé était encore `app.lyann.mobile` 1.0 (10), antérieur à V2.0. Aucun parcours n’a été piloté et aucune capture d’écran de l’appareil n’a été prise. Le téléphone s’est ensuite reverrouillé (`passcodeRequired: true`). Le code n’a pas été saisi. Pour reprendre : déverrouiller « iPhone de yoann » et le laisser déverrouillé.
+« iPhone de yoann » (`00008140-00112D0C2684801C`) a été déverrouillé (`passcodeRequired: false`). Le paquet `ios-mvpyrwgw-accac6`, SHA `2053e9d5f4a249cb336c4d937d4c8d3c6d822e5c`, a été installé : `app.lyann.mobile`. Le lanceur de test n’a pas pu démarrer. Le premier essai s’arrête sur « Authentification annulée ». Le second expire sur « Timed out while enabling automation mode ». Aucun parcours n’a été exécuté, et aucune capture de l’écran de l’appareil n’a été prise. Le code n’a pas été saisi. Pour reprendre : laisser « iPhone de yoann » déverrouillé et accepter le mode d’automatisation quand iOS le demande.
 
 ### Photo — simulateur, backend Staging déployé
 
@@ -38,7 +38,7 @@ Les huit lignes `QA-IOS-V21-%` ont été supprimées. Il en reste zéro. `node -
 
 ### Toujours en attente
 
-Recette sur l’iPhone déverrouillé, avec le paquet `2053e9d5`. Seconde vidéo, réseau interrompu, nettoyage des fichiers temporaires, et observation réelle de la disparition d’un repère. Déploiement du correctif d’en-tête, puis rejeu du lecteur contre ce serveur. Migration devis et remboursement Stripe Test inchangés. Aucune fusion, aucun Production, aucun Stripe Live.
+Recette sur l’iPhone : le paquet `2053e9d5` est installé, le mode d’automatisation n’a pas démarré, donc connexion, carte, GPS, photos, vidéos, annonces, Lyanneurs, messages, notifications, profil, clavier et navigation n’ont pas été exécutés sur l’appareil. Seconde vidéo, réseau interrompu, nettoyage des fichiers temporaires, et observation réelle de la disparition d’un repère. Déploiement du correctif d’en-tête, puis rejeu du lecteur contre ce serveur. Migration devis et remboursement Stripe Test inchangés. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V2.0 — lecture iOS, bouton Photo, lieu du compositeur
 
