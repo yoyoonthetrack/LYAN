@@ -3344,6 +3344,14 @@ safeDomReady(() => {
         }
         if (isSwapped && codedW > codedH) {
             applyMediaRatio(button, codedH, codedW);
+        } else if (videoSrc.includes('/v1/media/') && codedW > codedH) {
+            // The stored JPEG is the coded landscape frame. A confirmed 90°
+            // matrix is handled above. Anything else waits for the player,
+            // which reports the upright size, so the sideways still never shows.
+            button.dataset.oriented = '1';
+            button.dataset.ratioDeferred = '1';
+            scheduleFeedAutoplay();
+            return;
         } else if (!isSwapped && rotation === 0 && codedW > 0 && codedH > 0) {
             applyMediaRatio(button, codedW, codedH);
         } else if (rotation === undefined && codedW > 0 && codedH > 0) {
