@@ -159,7 +159,8 @@ test.describe('Isolated QA UI jalon journey', () => {
       await expect(page.locator('#chatModal')).toBeVisible();
       await expect(page.locator('#chatMessagesContainer')).toContainText(description);
       const accept = page.waitForResponse((r) => r.url().includes('/rpc/accept_request_quote'));
-      await page.locator('#chatMessagesContainer').getByRole('button', { name: /Accepter le devis/ }).click();
+      await page.locator('#chatMessagesContainer').getByRole('button', { name: 'Voir le devis' }).click();
+      await page.locator('#quoteReviewOverlay').getByRole('button', { name: 'Signer et accepter le devis' }).click();
       await expect(page.locator('#lyannDialogOverlay')).toBeVisible({ timeout: 10000 });
       await page.locator('#lyannDialogOverlay').getByRole('button', { name: 'Confirmer', exact: true }).click();
       expect((await accept).ok()).toBe(true);

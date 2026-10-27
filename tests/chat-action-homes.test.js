@@ -41,7 +41,7 @@ function sliceBetween(source, start, end) {
 
 test('E2: indispensable deal actions stay on missionCard for both roles', () => {
     const sent = missionCard(quote({ status: 'SENT', mission_id: null }), requester, 'active');
-    assert.deepEqual(sent.actions.map((a) => a.id), ['accept', 'decline']);
+    assert.deepEqual(sent.actions.map((a) => a.id), ['view']);
 
     const waitingProvider = missionCard(quote({ status: 'SENT', mission_id: null }), provider, 'active');
     assert.equal(waitingProvider.actions.length, 0);

@@ -109,19 +109,44 @@ test('a legacy quote stays visible until a timeline event exists', async ({ page
 });
 
 test('accepting a quote once does not rebuild the thread', async ({ page }) => {
-  const quote = { id: QUOTE_ID, description: 'Devis', total_amount: 40, status: 'SENT', requester_id: USER_ID, provider_id: CONTACT_ID, milestones: [] };
+  const quote = {
+    id: QUOTE_ID,
+    description: 'Taille de la haie et évacuation.',
+    total_amount: 40,
+    version: 1,
+    valid_until: '2026-11-02',
+    status: 'SENT',
+    requester_id: USER_ID,
+    provider_id: CONTACT_ID,
+    milestones: [{ id: 'ms-1', title: 'Taille', description: 'Haie de façade', amount: 40, status: 'PENDING', display_order: 1 }]
+  };
   await bootChat(page, [
     { id: 'q1', text: '📄 Devis proposé', sender: 'them', timestamp: Date.parse('2026-02-01T00:00:00Z'), createdAt: '2026-02-01T00:00:00Z', type: 'quote_created', messageType: 'quote_created', entityType: 'quote', entityId: QUOTE_ID }
   ], [quote]);
-  // E2: accept lives on missionCard ([data-deal-recap]), not timeline history.
-  await expect(page.locator('[data-deal-recap="' + QUOTE_ID + '"] button', { hasText: /Accepter/ })).toBeVisible();
+  const openQuote = page.locator('[data-message-id="q1"] button', { hasText: 'Voir le devis' });
+  await expect(openQuote).toBeVisible();
+  await expect(page.locator('[data-message-id="q1"] button', { hasText: 'Signer et accepter le devis' })).toHaveCount(0);
   await expect(page.locator('[data-message-id="q1"] button', { hasText: 'Accepter' })).toHaveCount(0);
+  await expect(page.locator('#quoteReviewOverlay')).toHaveCount(0);
   const before = await page.evaluate(() => window.__refreshBuilds);
   await page.evaluate(() => {
     window.__accepts = 0;
     window.LYANN_API_CLIENT.acceptRequestQuote = async () => { window.__accepts += 1; return { id: 'mission-1' }; };
   });
-  await page.locator('[data-deal-recap="' + QUOTE_ID + '"] button', { hasText: /Accepter/ }).click();
+  await openQuote.click();
+  const review = page.locator('#quoteReviewOverlay');
+  await expect(review).toBeVisible();
+  await expect(review).toContainText('Taille de la haie et évacuation.');
+  await expect(review).toContainText('40 €');
+  await expect(review).toContainText('Taille');
+  await expect(review).toContainText('Haie de façade');
+  await expect(review).toContainText('02/11/2026');
+  expect(await page.evaluate(() => window.__accepts)).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(review.getByRole('button', { name: 'Signer et accepter le devis' })).toBeVisible();
+  await page.setViewportSize({ width: 412, height: 915 });
+  await expect(review.getByRole('button', { name: 'Signer et accepter le devis' })).toBeVisible();
+  await review.getByRole('button', { name: 'Signer et accepter le devis' }).click();
   expect(await page.evaluate(() => window.__accepts)).toBe(1);
   expect(await page.evaluate(() => window.__refreshBuilds)).toBe(before);
   await expect(page.locator('[data-message-id="q1"] .chat-timeline-state')).toHaveText('✓ Accepté');

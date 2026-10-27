@@ -242,9 +242,8 @@
             status = role === 'requester' ? 'Devis reçu' : 'Devis envoyé';
             if (role === 'requester') {
                 actorToAct = 'requester';
-                actions.push({ id: 'accept', label: 'Accepter le devis' });
-                actions.push({ id: 'decline', label: 'Refuser', tone: 'secondary' });
-                context = 'Acceptez ou refusez ce devis pour continuer.';
+                actions.push({ id: 'view', label: 'Voir le devis' });
+                context = 'Ouvrez le devis pour lire la prestation, les jalons et les conditions.';
             } else {
                 actorToAct = 'requester';
                 context = 'En attente de la réponse du demandeur.';
@@ -430,6 +429,51 @@
         };
     }
 
+    function formatQuoteDate(value) {
+        const raw = String(value || '').slice(0, 10);
+        const parts = raw.split('-');
+        if (parts.length !== 3 || parts.some((part) => !part)) return '';
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+
+    /**
+     * Detail shown before a recipient can accept. Opening it never accepts.
+     */
+    function quoteReview(quote, userId) {
+        if (!quote || !userId) return null;
+        const providerId = quote.provider_id || quote.helper_id;
+        const role = String(providerId) === String(userId) ? 'provider' : (String(quote.requester_id) === String(userId) ? 'requester' : '');
+        if (!role) return null;
+        const milestones = activeMilestones(quote)
+            .slice()
+            .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0))
+            .map((milestone) => ({
+                title: String(milestone.title || 'Paiement par étape').trim(),
+                detail: String(milestone.description || '').trim(),
+                amount: euros(milestone.amount)
+            }));
+        const prestation = String(quote.description || (milestones[0] && milestones[0].title) || '').trim();
+        const valid = formatQuoteDate(quote.valid_until);
+        const version = Number(quote.version) || 1;
+        const canAccept = role === 'requester' && quote.status === 'SENT';
+        return {
+            quoteId: quote.id,
+            version,
+            role,
+            status: quote.status,
+            prestation,
+            amount: euros(quote.total_amount != null ? quote.total_amount : quote.amount),
+            milestones,
+            conditions: valid
+                ? 'Valable jusqu’au ' + valid + '. Version ' + version + '.'
+                : 'Aucune date de fin n’est indiquée. Version ' + version + '.',
+            canAccept,
+            acceptLabel: canAccept ? 'Signer et accepter le devis' : '',
+            declineLabel: canAccept ? 'Refuser' : '',
+            acceptsOnOpen: false
+        };
+    }
+
     /** Neutral ActionPanel for ambiguous / loading / error — no inventing an active mission. */
     function actionPanelNeutral(kind, meta) {
         const info = meta && typeof meta === 'object' ? meta : {};
@@ -605,6 +649,7 @@
         isVisibleDealNotice,
         quoteDeclineCopy,
         missionCard,
+        quoteReview,
         actionPanel,
         actionPanelNeutral,
         missionBoard,

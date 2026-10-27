@@ -70,8 +70,8 @@ test('E3 matrix: demandeur × état → primary action', () => {
     assert.equal(sent.phase, 'devis');
     assert.equal(sent.actorToAct, 'requester');
     assert.equal(sent.actorLabel, 'À vous d’agir');
-    assertPrimary(sent, 'accept');
-    assert.equal(sent.secondaryActions[0].id, 'decline');
+    assertPrimary(sent, 'view');
+    assert.equal(sent.secondaryActions.length, 0);
 
     const pay = missionCard(quote(), requester, 'active');
     assert.equal(pay.status, 'Devis accepté');
@@ -182,7 +182,7 @@ test('E3: multi-mission board keeps finished in history, active CTAs only on ope
     assert.ok(board.history.some((q) => q.id === 'done'));
     assert.equal(missionCard(finished, requester, 'active').mode, 'history');
     assert.equal(missionCard(finished, requester, 'active').actions.length, 0);
-    assertPrimary(missionCard(open, requester, 'active'), 'accept');
+    assertPrimary(missionCard(open, requester, 'active'), 'view');
 });
 
 test('E3: neutral panels for ambiguous / loading / error have no CTAs', () => {

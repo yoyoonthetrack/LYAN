@@ -102,7 +102,7 @@
         const status = str(quote.status).toUpperCase();
         if (status === 'SENT' || status === 'VIEWED' || status === 'REVISED') {
             return role === 'requester'
-                ? 'Acceptez ou refusez ce devis pour continuer.'
+                ? 'Ouvrez le devis pour lire la prestation, les jalons et les conditions.'
                 : 'En attente de la réponse du demandeur.';
         }
         if (status === 'REJECTED') {

@@ -15,6 +15,7 @@ const {
     nextFundingAction,
     providerFundsSecuredNote,
     missionCard,
+    quoteReview,
     missionBoard,
     dealRecap,
     quoteSettled,
@@ -221,7 +222,8 @@ test('successive quotes keep one active card and do not mix two missions', () =>
 test('one mission card replaces the stack and keeps a single primary action', () => {
     const sent = missionCard(quote({ status: 'SENT', total_amount: 100, description: 'Haie' }), requester, 'active');
     assert.equal(sent.status, 'Devis reçu');
-    assert.deepEqual(sent.actions.map((action) => action.label), ['Accepter le devis', 'Refuser']);
+    assert.deepEqual(sent.actions.map((action) => action.label), ['Voir le devis']);
+    assert.equal(sent.actions.some((action) => action.id === 'accept'), false);
     const waiting = missionCard(quote({ status: 'SENT' }), provider, 'none');
     assert.equal(waiting.status, 'Devis envoyé');
     assert.equal(waiting.actions.length, 0);
@@ -259,6 +261,40 @@ test('one mission card replaces the stack and keeps a single primary action', ()
     const mixed = missionCard(two, provider, 'active');
     assert.equal(mixed.actions.length, 1);
     assert.equal(mixed.details.find((line) => line.id === 'b').action, null);
+});
+
+test('a received quote is opened before it can be signed', () => {
+    const sent = quote({
+        status: 'SENT',
+        mission_id: null,
+        description: 'Taille de la haie',
+        total_amount: 40,
+        version: 2,
+        valid_until: '2026-11-02T00:00:00Z',
+        milestones: [{ id: 'a', title: 'Taille', description: 'Façade', amount: 40, status: 'PENDING', display_order: 1 }]
+    });
+    const card = missionCard(sent, requester, 'active');
+    assert.deepEqual(card.actions.map((action) => action.id), ['view']);
+    assert.equal(card.primaryAction.label, 'Voir le devis');
+    const review = quoteReview(sent, requester);
+    assert.equal(review.acceptsOnOpen, false);
+    assert.equal(review.canAccept, true);
+    assert.equal(review.acceptLabel, 'Signer et accepter le devis');
+    assert.equal(review.prestation, 'Taille de la haie');
+    assert.equal(review.amount, '40 €');
+    assert.equal(review.milestones[0].title, 'Taille');
+    assert.equal(review.milestones[0].detail, 'Façade');
+    assert.match(review.conditions, /02\/11\/2026/);
+    assert.match(review.conditions, /Version 2/);
+    assert.equal(quoteReview(sent, provider).canAccept, false);
+    const accepted = quoteReview(Object.assign({}, sent, { status: 'ACCEPTED' }), requester);
+    assert.equal(accepted.canAccept, false);
+    assert.equal(accepted.acceptLabel, '');
+    const source = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
+    const viewHandler = source.slice(source.indexOf("if (action.id === 'view')"), source.indexOf("if (action.id === 'accept')"));
+    assert.equal(viewHandler.includes('handleAcceptQuote'), false);
+    assert.match(source, /window\.openQuoteReview = function/);
+    assert.match(source, /Signer et accepter le devis/);
 });
 
 test('secured funds tell the Lyanneur to meet the requester by name', () => {

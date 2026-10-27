@@ -1939,7 +1939,7 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                 lines.push('');
                 lines.push('La mission démarre ensuite.');
                 if (window.lyannConfirm) {
-                    const ok = await window.lyannConfirm(lines.join('\n'), 'info', 'Accepter le devis');
+                    const ok = await window.lyannConfirm(lines.join('\n'), 'info', 'Signer et accepter le devis');
                     if (!ok) {
                         const abort = new Error('__deal_mutation_cancelled__');
                         abort.dealMutationCancelled = true;
@@ -2079,6 +2079,116 @@ window.openPreviousQuoteVersion = function(quoteId) {
     overlay.appendChild(panel);
     overlay.addEventListener('click', (event) => {
         if (event.target === overlay) overlay.remove();
+    });
+    document.body.appendChild(overlay);
+};
+
+function closeQuoteReview() {
+    const overlay = document.getElementById('quoteReviewOverlay');
+    if (overlay) overlay.remove();
+}
+
+window.openQuoteReview = function(quoteId) {
+    const quote = timelineQuotes.get(String(quoteId));
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const review = payment && typeof payment.quoteReview === 'function'
+        ? payment.quoteReview(quote, typeof getMyId === 'function' ? getMyId() : null)
+        : null;
+    if (!review) {
+        if (window.lyannAlert) window.lyannAlert('Ce devis ne peut pas être ouvert.');
+        return;
+    }
+    closeQuoteReview();
+    const overlay = document.createElement('div');
+    overlay.id = 'quoteReviewOverlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'quoteReviewTitle');
+    overlay.style.cssText = 'position:fixed; inset:0; z-index:1000010; background:rgba(15,23,42,0.45); display:flex; align-items:flex-end; justify-content:center; padding:12px;';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'width:min(560px, 100%); max-height:min(88vh, 760px); overflow:auto; background:#fff; border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px;';
+    const title = document.createElement('h3');
+    title.id = 'quoteReviewTitle';
+    title.style.margin = '0';
+    title.textContent = 'Devis';
+    panel.appendChild(title);
+    function section(label, text) {
+        const block = document.createElement('section');
+        const heading = document.createElement('h4');
+        heading.style.cssText = 'margin:0 0 4px; font-size:0.82rem;';
+        heading.textContent = label;
+        const body = document.createElement('p');
+        body.style.cssText = 'margin:0; white-space:pre-wrap;';
+        body.textContent = text || '—';
+        block.append(heading, body);
+        return block;
+    }
+    panel.appendChild(section('Prestation', review.prestation));
+    panel.appendChild(section('Montant', review.amount));
+    const steps = document.createElement('section');
+    const stepsHeading = document.createElement('h4');
+    stepsHeading.style.cssText = 'margin:0 0 4px; font-size:0.82rem;';
+    stepsHeading.textContent = 'Jalons';
+    steps.appendChild(stepsHeading);
+    if (!review.milestones.length) {
+        const empty = document.createElement('p');
+        empty.style.margin = '0';
+        empty.textContent = 'Aucun jalon indiqué.';
+        steps.appendChild(empty);
+    } else {
+        review.milestones.forEach((milestone) => {
+            const line = document.createElement('p');
+            line.style.cssText = 'margin:0 0 6px;';
+            const bits = [milestone.title, milestone.amount].filter(Boolean);
+            line.textContent = bits.join(' · ');
+            if (milestone.detail) {
+                const detail = document.createElement('span');
+                detail.style.cssText = 'display:block; color:#3F5C49;';
+                detail.textContent = milestone.detail;
+                line.appendChild(detail);
+            }
+            steps.appendChild(line);
+        });
+    }
+    panel.appendChild(steps);
+    panel.appendChild(section('Conditions', review.conditions));
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
+    if (review.canAccept) {
+        const accept = document.createElement('button');
+        accept.type = 'button';
+        accept.className = 'btn btn-primary';
+        accept.dataset.dealAction = 'accept';
+        accept.textContent = review.acceptLabel;
+        accept.addEventListener('click', () => {
+            Promise.resolve(window.handleAcceptQuote(quote.id, quote)).finally(() => {
+                const current = timelineQuotes.get(String(quote.id));
+                if (current && current.status === 'ACCEPTED') closeQuoteReview();
+            });
+        });
+        const decline = document.createElement('button');
+        decline.type = 'button';
+        decline.className = 'btn btn-outline';
+        decline.dataset.dealAction = 'decline';
+        decline.textContent = review.declineLabel;
+        decline.addEventListener('click', () => {
+            Promise.resolve(window.handleRejectQuote(quote.id)).finally(() => {
+                const current = timelineQuotes.get(String(quote.id));
+                if (current && current.status === 'REJECTED') closeQuoteReview();
+            });
+        });
+        actions.append(accept, decline);
+    }
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn btn-outline';
+    close.textContent = 'Fermer';
+    close.addEventListener('click', closeQuoteReview);
+    actions.appendChild(close);
+    panel.appendChild(actions);
+    overlay.appendChild(panel);
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeQuoteReview();
     });
     document.body.appendChild(overlay);
 };
@@ -4112,6 +4222,10 @@ function runBannerDealAction(button, row, copy) {
         showChatWait('Un instant…');
         Promise.resolve(work()).finally(finish);
     };
+    if (actionId === 'view') {
+        if (typeof window.openQuoteReview === 'function') window.openQuoteReview(quote.id);
+        return;
+    }
     if (actionId === 'accept') {
         start(() => window.handleAcceptQuote(quote.id, quote));
         return;
@@ -4257,7 +4371,7 @@ function paintPendingActionBanner() {
         action.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
-            if (copy.dealAction === 'done' || copy.dealAction === 'release' || copy.dealAction === 'pay' || copy.dealAction === 'accept' || copy.dealAction === 'decline') {
+            if (copy.dealAction === 'view' || copy.dealAction === 'done' || copy.dealAction === 'release' || copy.dealAction === 'pay' || copy.dealAction === 'accept' || copy.dealAction === 'decline') {
                 runBannerDealAction(action, row, copy);
                 return;
             }
@@ -4526,6 +4640,10 @@ function bindMissionAction(parent, quote, action) {
         if (dealMutationGuard && dealMutationGuard.isBusy(action.id, entityForGuard)) return;
         if ((action.id === 'accept' || action.id === 'decline') && quoteActionLocks.has(String(quote.id))) return;
 
+        if (action.id === 'view') {
+            if (typeof window.openQuoteReview === 'function') window.openQuoteReview(quote.id);
+            return;
+        }
         if (action.id === 'accept') {
             setButtonBusy(button, true);
             Promise.resolve(window.handleAcceptQuote(quote.id, quote)).finally(() => {
@@ -5088,6 +5206,28 @@ function quoteForPayAction(extraData) {
     return found;
 }
 
+function appendReceivedQuoteAction(card, quote) {
+    if (!card || !quote || card.querySelector('[data-deal-action="view"]')) return;
+    const payment = window.LYANN_QUOTE_PAYMENT;
+    const userId = typeof getMyId === 'function' ? getMyId() : null;
+    const review = payment && typeof payment.quoteReview === 'function'
+        ? payment.quoteReview(quote, userId)
+        : null;
+    if (!review || !review.canAccept) return;
+    const actions = document.createElement('div');
+    actions.className = 'chat-timeline-actions';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-primary';
+    button.dataset.dealAction = 'view';
+    button.textContent = 'Voir le devis';
+    button.addEventListener('click', () => {
+        if (typeof window.openQuoteReview === 'function') window.openQuoteReview(quote.id);
+    });
+    actions.appendChild(button);
+    card.appendChild(actions);
+}
+
 function appendPayableQuoteAction(parent, quote) {
     if (payoutBlocksPayment(quote)) {
         appendPayoutPrompt(parent, quote);
@@ -5259,6 +5399,11 @@ function renderTimelineCard(msg) {
         const timeStr = typeof msg.timestamp === 'number' ? chatTimeLabel(msg.timestamp) : '';
         const card = createLyannMomentCard(moment, { id: msg.id, createdAt: msg.createdAt, text: line }, timeStr);
         card.dataset.messageType = type;
+        if (quote && quote.id) {
+            card.dataset.entityType = 'quote';
+            card.dataset.entityId = String(quote.id);
+        }
+        appendReceivedQuoteAction(card, quote);
         return card;
     }
     const wrapper = document.createElement('div');
