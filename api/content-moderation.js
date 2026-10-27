@@ -238,17 +238,23 @@ async function decideVideoRelease({ textDecision, files, inspectVideo, downloadM
     if (typeof inspectVideo !== 'function') return { decision: 'pending', reason: 'video_unreviewed' };
     const videos = files.filter((file) => VIDEO_EXT.has(extensionOf(file.path)));
     const posters = files.filter((file) => isPosterPath(file.path));
-    if (!videos.length) return { decision: 'pending', reason: 'video_unverified' };
-    let containerOk = true;
-    for (const video of videos) {
-        let report = null;
-        try { report = await inspectVideo(video); } catch (err) { report = null; }
-        if (!report || report.verified !== true) containerOk = false;
+    if (!videos.length || posters.length < videos.length || typeof downloadMedia !== 'function') {
+        return { decision: 'pending', reason: 'video_unverified' };
     }
-    if (posters.length < videos.length) return { decision: 'pending', reason: 'video_unverified' };
-    if (typeof downloadMedia !== 'function') return { decision: 'pending', reason: 'video_unverified' };
+    let reports;
     let posterImages;
-    try { posterImages = await downloadMedia(posters); } catch (err) { return { decision: 'pending', reason: 'video_unverified' }; }
+    try {
+        [reports, posterImages] = await Promise.all([
+            Promise.all(videos.map(async (video) => {
+                try { return await inspectVideo(video); } catch (err) { return null; }
+            })),
+            downloadMedia(posters)
+        ]);
+    } catch (err) {
+        return { decision: 'pending', reason: 'video_unverified' };
+    }
+    const containerOk = Array.isArray(reports) && reports.length === videos.length
+        && reports.every((report) => report && report.verified === true);
     if (!Array.isArray(posterImages) || posterImages.length !== posters.length || posterImages.some((image) => !image)) {
         return { decision: 'pending', reason: 'video_unverified' };
     }

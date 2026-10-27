@@ -45,6 +45,7 @@ function createFakeSupabase(store) {
             limit() { return query; },
             range(from, to) { query._from = from; query._to = to; return query; },
             update(payload) { query._op = 'update'; query._payload = payload; return query; },
+            upsert(payload) { query._op = 'upsert'; query._payload = payload; return query; },
             insert(payload) {
                 const rows = Array.isArray(payload) ? payload : [payload];
                 store[table] = (store[table] || []).concat(rows);
@@ -62,6 +63,11 @@ function createFakeSupabase(store) {
             if (query._op === 'update') {
                 store.writes.push({ table, op: 'update', payload: query._payload, filters: query._filters });
                 rows.forEach((row) => Object.assign(row, query._payload));
+            }
+            if (query._op === 'upsert') {
+                const rowsToWrite = Array.isArray(query._payload) ? query._payload : [query._payload];
+                store[table] = (store[table] || []).concat(rowsToWrite);
+                store.writes.push({ table, op: 'upsert', payload: query._payload });
             }
             const count = rows.length;
             if (query._from != null) rows = rows.slice(query._from, (query._to || query._from) + 1);
@@ -107,6 +113,43 @@ test('SQL keeps human lock above an automatic approve', () => {
     assert.match(rollback, /DROP FUNCTION IF EXISTS public.lyann_account_is_restricted/);
     assert.match(sql, /account_sanctions/);
     assert.doesNotMatch(sql, /gzispjfoywklpqatjyop/);
+});
+
+test('a checked video is published and an unchecked video stays held', async () => {
+    const store = {
+        bokantaj_posts: [{
+            id: 'clip-1',
+            content: 'Drums',
+            public_moderation_status: 'pending',
+            media_urls: ['https://staging.lyann.app/v1/media/bokantaj-media-hold/clip.mp4'],
+            human_moderation_lock: false
+        }],
+        moderation_jobs: [{ id: 'job-video', attempts: 1, max_attempts: 3 }],
+        admin_audit_events: [],
+        public_media_releases: []
+    };
+    const published = await applyDecision(createFakeSupabase(store), {
+        id: 'job-video',
+        subject_type: 'post',
+        subject_id: 'clip-1',
+        attempts: 1,
+        max_attempts: 3
+    }, { row: store.bokantaj_posts[0], pendingEdit: null }, { decision: 'approved', reason: 'video_checked' });
+    assert.equal(published, 'approved');
+    assert.equal(store.bokantaj_posts[0].public_moderation_status, 'approved');
+    assert.equal(store.moderation_jobs[0].status, 'done');
+
+    store.bokantaj_posts[0].public_moderation_status = 'pending';
+    const held = await applyDecision(createFakeSupabase(store), {
+        id: 'job-video',
+        subject_type: 'post',
+        subject_id: 'clip-1',
+        attempts: 1,
+        max_attempts: 3
+    }, { row: store.bokantaj_posts[0], pendingEdit: null }, { decision: 'approved', reason: 'clear' });
+    assert.equal(held, 'held');
+    assert.equal(store.bokantaj_posts[0].public_moderation_status, 'pending');
+    assert.equal(store.moderation_jobs[0].reason_code, 'video_unreviewed');
 });
 
 test('hiding a visible post locks it and an IA approve cannot win', async () => {

@@ -144,4 +144,10 @@ test('composer location is a map plus two share choices', () => {
     assert.match(map, /bokantajShareQuarter/);
     assert.match(map, /position exacte/);
     assert.match(map, / · quartier/);
+    assert.match(map, /function revealComposer/);
+    assert.match(map, /togglePicker\(false\);\s*revealComposer\(\)/);
+    assert.match(map, /window\.scrollBy\(0, delta\)/);
+    const css = fs.readFileSync(path.join(__dirname, '../bokantaj-map.css'), 'utf8');
+    assert.match(css, /body\.bokantaj-map-open::before/);
+    assert.match(map, /if \(wantMap\) window\.scrollTo\(0, 0\)/);
 });

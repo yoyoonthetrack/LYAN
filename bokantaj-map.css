@@ -160,4 +160,8 @@ body.feed-page .flash-card.is-map-focus{box-shadow:0 0 0 4px rgba(229,179,69,.45
  body.bokantaj-map-open .bokantaj-map-stage{flex:1;min-height:0}
  body.bokantaj-map-open .bokantaj-map-canvas{height:100%;min-height:0}
  body.bokantaj-map-open .bokantaj-map-detail{border-radius:22px 22px 0 0}
+ /* The banner and the feed stay in the document. This sheet covers them so a
+    scrolled header, a sticky chip, or a fixed-position offset cannot paint
+    over the tiles. The app header and the bottom bar sit above it. */
+ body.bokantaj-map-open::before{content:"";position:fixed;inset:0;background:#fffdf8;z-index:29;pointer-events:none}
 }

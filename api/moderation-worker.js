@@ -102,7 +102,12 @@ async function removeHoldFiles(supabaseAdmin, files) {
 async function applyDecision(supabaseAdmin, job, loaded, decision) {
     const files = urlsFromRow(loaded.pendingEdit ? { ...loaded.row, ...loaded.pendingEdit.payload } : loaded.row);
     const outcome = decision && decision.decision;
-    if (outcome === 'approved' && containsVideo(files)) {
+    // A video is published only after the poster and the text have passed the
+    // same automated checks as a photo. Any other approve reason stays with a
+    // person. A missing poster or an unreadable file is a technical retry, not
+    // a silent approval and not an immediate permanent hold.
+    const videoPublishable = decision && (decision.reason === 'video_checked' || decision.reason === 'video_poster_checked');
+    if (outcome === 'approved' && containsVideo(files) && !videoPublishable) {
         await finishJob(supabaseAdmin, job, 'held', 'video_unreviewed');
         return 'held';
     }
@@ -183,7 +188,7 @@ async function applyDecision(supabaseAdmin, job, loaded, decision) {
         return 'approved';
     }
     const reason = (decision && decision.reason) || 'unavailable';
-    if (reason === 'video_unreviewed' || reason === 'video_unverified') {
+    if (reason === 'video_unreviewed') {
         await finishJob(supabaseAdmin, job, 'held', reason);
         return 'held';
     }

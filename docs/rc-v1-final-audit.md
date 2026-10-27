@@ -1,6 +1,36 @@
-# LYANN — Release Candidate V1.1 à V2.6
+# LYANN — Release Candidate V1.1 à V2.7
 
 Verdict : **NO-GO**
+
+## V2.7 — Gelasio, carte, territoire, compositeur, vidéo « Drums »
+
+Le comportement vidéo V2.6 est inchangé : « Hello » reste en 9:16 avec rotation 90°, une seule lecture, pause hors écran, son, plein écran, et pas de téléchargement massif. Le fichier et la ligne « Hello » n’ont pas été réécrits. « Drums » n’a pas été modifié.
+
+### Typographie
+
+Le mot entier « Bokantaj » passe en Gelasio 700. Fraunces 800 a un J dont la queue revient sous le mot. Gelasio 700, comparé à Gelasio 600, Young Serif 400, DM Serif Display, Newsreader et Source Serif 4, garde le poids et les empattements, avec un J classique. Annonces et Lyanneurs restent en Fraunces. Sur le fil web en 390 px, la police calculée est `Gelasio`, graisse 700, et le titre ne chevauche pas le sous-titre.
+
+### Carte
+
+Sur un téléphone, Fil/Carte et la carte sont fixes sous l’en-tête d’application. L’ouverture remet le document en haut, et un fond couvre le bandeau et le fil pour qu’ils ne passent pas au-dessus des tuiles. Mesure web 390×844 : onglets fixes de y=77 à y=134, carte fixe de y=134 au bas, zoom présent, le fil est `display: none`. Un aller-retour après un défilement de 420 px ramène le document à 0 et laisse la carte collée sous les onglets.
+
+### Territoire
+
+Le filtre affiche « Territoire : » et la valeur choisie. « Tous » remplace « Tous les territoires ». Les autres options sont Guadeloupe, Martinique, Guyane, La Réunion, Saint-Martin. En 390 px, le sélecteur se termine à 236 px et « Publications récentes » commence à 246 px.
+
+### Localisation
+
+Après « Partager le nom du quartier » ou « Partager la localisation précise », le sélecteur se ferme et le compositeur existant revient dans l’écran, juste assez pour montrer Publier. Le texte saisi reste. Le défilement ne renvoie pas en haut de page. Vérifié dans le navigateur : le bouton était à y=1196, il est revenu à y=653 dans un écran de 844 px, texte « QA quartier » conservé.
+
+### Drums
+
+Publication Staging `a9b1fc89-106b-4c49-bff9-6fe5d744ecbf`, contenu « Drums », créée le 2026-10-27 à 04:48:26 UTC, statut `pending`, sans verrou humain. Médias : un `.mp4` et une miniature `poster-480x854.jpg` dans `bokantaj-media-hold`. Le job `cd410362-4fc1-43d0-b3b1-44989ebccde1` a été pris à 04:48:31 et clos à 04:48:36, statut `held`, une tentative sur trois, raison `video_unreviewed`.
+
+La chaîne automatique, relue sans écriture, conclut `approved` / `video_checked` en 3,6 s. Le worker jetait ensuite toute approbation vidéo et la remplaçait par `video_unreviewed`. Ce n’est ni un échec de la miniature, ni un rejet du modèle. Trois jobs Staging sont `held` : deux `video_unreviewed`, un `video_unverified`. Trois publications sont encore `pending`, toutes avec une vidéo.
+
+Une vidéo dont la raison est `video_checked` ou `video_poster_checked` peut maintenant être publiée. Une approbation sans ce contrôle reste en revue. Un fichier illisible est repris, puis tenu pour une personne, sans être affiché comme approuvé. « Drums » est laissé `pending` : le worker déployé est encore l’ancien, et la ligne n’a pas été forcée.
+
+Le paquet natif de ce commit n’est pas encore reconstruit. Le serveur déployé reste `80ceae7c`. Aucune fusion, aucun déploiement Production, Stripe Live inchangé.
 
 ## V2.6 — un seul Bokantaj, Hello debout
 

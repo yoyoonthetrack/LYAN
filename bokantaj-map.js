@@ -432,6 +432,30 @@
         savedPlace = { lat: pub.lat, lng: pub.lng, label, exact: pub.exact };
         updatePlaceButton();
         togglePicker(false);
+        revealComposer();
+    }
+
+    // The picker sits below the writing field. Closing it must bring that
+    // field and Publier back, without jumping the page to the top or rebuilding
+    // the form.
+    function revealComposer() {
+        const card = $('flashComposerCard');
+        const publish = $('bokantajPublish');
+        if (!card) return;
+        const header = document.querySelector('.lyann-page-header') || document.querySelector('nav.navbar');
+        const topLimit = (header ? Math.round(header.getBoundingClientRect().bottom) : 0) + 8;
+        const bottomLimit = Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight) - 12;
+        const cardTop = card.getBoundingClientRect().top;
+        const publishBottom = publish ? publish.getBoundingClientRect().bottom : card.getBoundingClientRect().bottom;
+        let delta = 0;
+        if (publishBottom > bottomLimit) delta = publishBottom - bottomLimit;
+        const nextTop = cardTop - delta;
+        if (nextTop < topLimit && (publishBottom - delta) <= bottomLimit) delta = cardTop - topLimit;
+        if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+        const field = card.querySelector('textarea');
+        if (document.activeElement && document.activeElement !== field && card.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
     }
 
     function sharePlace(exact) {
@@ -736,10 +760,12 @@
     // Fil/Carte has to be pinned: it is the only way back to the feed.
     function pinViewTabs(wantMap) {
         syncShellHeaderHeight();
+        // A phone WebView positions a fixed map against the scrolled layout
+        // viewport, so the banner and the sort bar stay on screen above the
+        // tiles. Putting the document back at the top before pinning keeps
+        // Fil/Carte and the map in one stack under the app header.
+        if (wantMap) window.scrollTo(0, 0);
         document.body.classList.toggle('bokantaj-map-open', wantMap);
-        // Measured after the class lands: the pinned bar does not have the same
-        // padding as the one that scrolls with the feed, so the map would start
-        // a few pixels too low and let the page show through the gap.
         const tabs = document.querySelector('.bokantaj-view-tabs');
         if (tabs && wantMap) {
             const height = Math.round(tabs.getBoundingClientRect().height);
@@ -801,7 +827,10 @@
         if (!$('bokantajMapSection') || !$('createFlashForm')) return;
         $('bokantajMapTerritory').value = centerForTerritory(window.LYANN_CURRENT_USER_PROFILE?.territory);
         syncShellHeaderHeight();
-        window.addEventListener('resize', syncShellHeaderHeight);
+        window.addEventListener('resize', () => {
+            syncShellHeaderHeight();
+            if (isMapView) pinViewTabs(true);
+        });
         // Coming back from the map should land where the member left the feed.
         let feedScrollY = 0;
         $('bokantajViewFeed').addEventListener('click', () => {

@@ -364,10 +364,11 @@ body.feed-page .bokantaj-territory-filter {
     color: #3d5144;
     font-size: 0.82rem;
     font-weight: 750;
+    white-space: nowrap;
 }
 body.feed-page .bokantaj-territory-filter select {
     min-height: 36px;
-    max-width: 168px;
+    max-width: 9.2rem;
     border: 1px solid #e2ddcc;
     border-radius: 999px;
     background: #fffdf8;
@@ -634,13 +635,17 @@ body[data-explorer-mode="lyanneurs"] .banner-lyanneurs {
     font-size: 3.15rem;
     font-weight: 800;
     color: #1F4A2C;
-    /* The whole word, including the j, uses one Fraunces cut. Room below the
-       baseline keeps the real descender inside the banner. */
     line-height: 1.28;
     margin: 2px 0 4px;
     letter-spacing: 0.01em;
     padding-bottom: 0.08em;
     overflow: visible;
+}
+/* Bokantaj only. Gelasio 700 keeps the weight and the old-style serifs, and
+   its J is a classical descender. Annonces and Lyanneurs stay on Fraunces. */
+.banner-bokantaj .banner-title {
+    font-family: 'Gelasio', Georgia, serif;
+    font-weight: 700;
 }
 
 .banner-subtitle {

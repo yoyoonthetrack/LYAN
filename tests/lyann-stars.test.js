@@ -23,11 +23,16 @@ test('a shared star control paints the chosen note and leaves the stored value a
     assert.match(css, /color: #B7AFA3/);
 });
 
-test('the Bokantaj title is one Fraunces word', () => {
+test('the Bokantaj title is one Gelasio word', () => {
     assert.doesNotMatch(header, /banner-title-j/);
     assert.doesNotMatch(header, /"WONK"/);
+    assert.match(header, /\.banner-bokantaj \.banner-title \{[^}]*font-family: 'Gelasio'/);
+    assert.match(header, /\.banner-title \{[^}]*font-family: 'Fraunces'/);
     const feed = fs.readFileSync(path.join(__dirname, '../feed.html'), 'utf8');
     assert.match(feed, /<h1 class="banner-title">Bokantaj<\/h1>/);
     assert.doesNotMatch(feed, /banner-title-j/);
-    assert.match(feed, /family=Fraunces/);
+    assert.match(feed, /family=Gelasio:wght@700/);
+    assert.match(feed, /Territoire :/);
+    assert.match(feed, /<option value="all">Tous<\/option>/);
+    assert.doesNotMatch(feed, /Tous les territoires/);
 });
