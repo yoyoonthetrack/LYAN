@@ -24,7 +24,7 @@ Simulateur iPhone 17 Pro `9281CEB1-E36D-4654-91E0-3AA741F8AD10`, paquet `ios-mvq
 
 « iPhone de yoann » `00008140-00112D0C2684801C` a reçu le même paquet. L’écran était verrouillé au moment de la capture. Le rendu sur l’appareil n’a pas été vu. Il faut le déverrouiller et laisser l’écran allumé, sans saisir le code à la place du titulaire.
 
-L’émulateur Android n’était pas démarré. L’APK debug a été assemblé hors ligne avec ce paquet, sans parcours.
+L’émulateur `lyann_small` a reçu l’APK debug de ce paquet. L’application s’ouvre sur l’accueil. La connexion QA n’a pas abouti : le clavier de l’émulateur n’a pas saisi le domaine de l’email. Le fil et « Hello » n’ont donc pas été vus sur Android.
 
 ### Tests
 
