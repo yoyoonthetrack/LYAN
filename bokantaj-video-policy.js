@@ -169,14 +169,16 @@ function mp4HasTkhd(input) {
 
 function mp4RotationScan(input) {
     const bytes = mp4Bytes(input);
-    if (!bytes) return 0;
+    if (!bytes) return null;
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let identity = false;
     for (let i = 4; i + 8 < bytes.length; i += 1) {
         if (bytes[i] !== 0x74 || bytes[i + 1] !== 0x6b || bytes[i + 2] !== 0x68 || bytes[i + 3] !== 0x64) continue;
         const rotation = tkhdRotation(view, i - 4, Math.min(bytes.length - (i - 4), 240));
         if (rotation) return rotation;
+        identity = true;
     }
-    return 0;
+    return identity ? 0 : null;
 }
 
 function mp4RotationFound(input) {

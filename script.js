@@ -3289,10 +3289,10 @@ safeDomReady(() => {
     const bokantajMediaRotation = new Map();
 
     async function fetchVideoRotation(url) {
-        if (!url || !url.includes('/v1/media/')) return 0;
+        if (!url || !url.includes('/v1/media/')) return null;
         const policy = window.LYANN_BOKANTAJ_VIDEO_POLICY;
         const turn = policy && policy.mp4Rotation;
-        if (!turn) return 0;
+        if (!turn) return null;
         const read = async (range) => {
             try {
                 const token = await bokantajMediaToken();
@@ -3312,8 +3312,11 @@ safeDomReady(() => {
         const head = await read('bytes=0-65535');
         if (head && policy.mp4HasTkhd && policy.mp4HasTkhd(head)) return turn(head);
         const tail = await read('bytes=-262143');
-        if (tail && policy.mp4RotationScan) return policy.mp4RotationScan(tail);
-        return head ? turn(head) : 0;
+        if (tail && policy.mp4RotationScan) {
+            const scanned = policy.mp4RotationScan(tail);
+            if (scanned !== null && scanned !== undefined) return scanned;
+        }
+        return null;
     }
 
     async function ensureVideoPosterOriented(button) {
@@ -3321,7 +3324,7 @@ safeDomReady(() => {
         button.dataset.orienting = '1';
         const videoSrc = button.getAttribute('data-video-src');
         if (!videoSrc) return;
-        let rotation = bokantajMediaRotation.get(videoSrc);
+        let rotation = bokantajMediaRotation.has(videoSrc) ? bokantajMediaRotation.get(videoSrc) : undefined;
         if (rotation === undefined && videoSrc.includes('/v1/media/')) {
             rotation = await fetchVideoRotation(videoSrc);
             bokantajMediaRotation.set(videoSrc, rotation);
@@ -3330,6 +3333,15 @@ safeDomReady(() => {
         const coded = /^(\d+)x(\d+)$/.exec(button.getAttribute('data-coded-ratio') || '');
         const codedW = coded ? Number(coded[1]) : 0;
         const codedH = coded ? Number(coded[2]) : 0;
+        // A missing matrix is not a landscape clip. The raw poster is the coded
+        // frame and would paint the picture on its side. Playback uses the
+        // display size instead.
+        if (rotation === null) {
+            button.dataset.oriented = '1';
+            button.dataset.ratioDeferred = '1';
+            scheduleFeedAutoplay();
+            return;
+        }
         if (isSwapped && codedW > codedH) {
             applyMediaRatio(button, codedH, codedW);
         } else if (!isSwapped && rotation === 0 && codedW > 0 && codedH > 0) {
@@ -3563,7 +3575,18 @@ safeDomReady(() => {
         }
         video.addEventListener('loadedmetadata', () => {
             video.loop = !(Number(video.duration) > 60);
-            if (!ratio) applyMediaRatio(shell, video.videoWidth, video.videoHeight);
+            const dw = video.videoWidth;
+            const dh = video.videoHeight;
+            if (!(dw > 0) || !(dh > 0)) return;
+            const reserved = shell.style.getPropertyValue('--media-ratio');
+            if (!reserved) {
+                applyMediaRatio(shell, dw, dh);
+                return;
+            }
+            const parts = reserved.split('/').map((part) => parseFloat(part));
+            if (parts.length === 2 && (parts[1] > parts[0]) !== (dh > dw)) {
+                applyMediaRatio(shell, dw, dh);
+            }
         });
         return video;
     }
