@@ -188,6 +188,148 @@ final class LyannSmokeUITests: XCTestCase {
         note(resumed ? "resumed" : "resume-failed")
     }
 
+    func testDeviceRemainder() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["Bokantaj"].waitForExistence(timeout: 25))
+        dismissOverlay(app)
+        if let lyanneurs = hittable(app, "Lyanneurs") {
+            lyanneurs.tap()
+            let ready = waitUntil(app, seconds: 16) {
+                app.buttons["Contacter"].firstMatch.exists
+                    || app.staticTexts["Aucun Lyanneur trouvé pour cette recherche."].exists
+                    || app.staticTexts["Lyanneurs"].exists
+            }
+            note(ready ? "lyanneurs-shown" : "lyanneurs-pending")
+            save(app, "v22-lyanneurs")
+        } else {
+            note("lyanneurs-absent")
+        }
+        dismissOverlay(app)
+        if let messages = hittable(app, "Messages") {
+            messages.tap()
+            let ready = waitUntil(app, seconds: 16) {
+                app.staticTexts["Impossible de charger les conversations."].exists
+                    || app.staticTexts["Support LYANN"].exists
+                    || app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Qa")).firstMatch.exists
+                    || app.staticTexts["Messages"].exists
+            }
+            note(ready ? "messages-shown" : "messages-pending")
+            save(app, "v22-messages")
+        } else {
+            note("messages-absent")
+        }
+        dismissOverlay(app)
+        _ = hittable(app, "Bokantaj")?.tap()
+        let field = app.textViews.firstMatch
+        if field.waitForExistence(timeout: 6) {
+            if field.isHittable { field.tap() }
+            let keyboard = app.keyboards.firstMatch.waitForExistence(timeout: 4)
+            note(keyboard ? "keyboard-open" : "keyboard-missing")
+            save(app, "v22-keyboard")
+            dismissKeyboard(app)
+            note(app.keyboards.count == 0 ? "keyboard-closed" : "keyboard-still-open")
+        } else {
+            note("composer-field-missing")
+        }
+        if let place = hittable(app, "Ajouter une localisation") {
+            place.tap()
+            let allow = app.buttons["Une fois"].firstMatch
+            if allow.waitForExistence(timeout: 2), allow.isHittable { allow.tap(); note("location-once") }
+            if let locate = hittable(app, "Me localiser") {
+                locate.tap()
+                note("locate-tapped")
+                _ = waitUntil(app, seconds: 8) { !app.staticTexts["Recherche de votre position…"].exists }
+                save(app, "v22-locate")
+            } else {
+                note("locate-absent")
+                save(app, "v22-locate")
+            }
+            if let closePlace = hittable(app, "Ajouter une localisation") { closePlace.tap() }
+        } else {
+            note("place-trigger-absent")
+        }
+        let first = playNextFeedVideo(app, shot: "v22-video-a")
+        note(first ? "device-video-a" : "device-video-a-missing")
+        app.swipeUp()
+        let second = playNextFeedVideo(app, shot: "v22-video-b")
+        note(second ? "device-video-b" : "device-video-b-missing")
+        XCUIDevice.shared.press(.home)
+        sleep(1)
+        app.activate()
+        note(app.buttons["Bokantaj"].waitForExistence(timeout: 12) ? "device-resumed" : "device-resume-failed")
+        save(app, "v22-resumed")
+    }
+
+    func testTwoFeedVideos() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["Bokantaj"].waitForExistence(timeout: 25))
+        _ = hittable(app, "Bokantaj")?.tap()
+        note("prefetch-window")
+        RunLoop.current.run(until: Date().addingTimeInterval(4))
+        let first = playNextFeedVideo(app, shot: "v22-sim-video-a")
+        note(first ? "sim-video-a" : "sim-video-a-missing")
+        app.swipeUp()
+        let second = playNextFeedVideo(app, shot: "v22-sim-video-b")
+        note(second ? "sim-video-b" : "sim-video-b-missing")
+        note("network-cut-unavailable")
+        XCUIDevice.shared.press(.home)
+        sleep(1)
+        app.activate()
+        let stillPlaying = app.staticTexts["Lecture en cours"].firstMatch.exists
+        note(stillPlaying ? "blob-still-playing" : "blob-cleared")
+        note(app.buttons["Fil"].waitForExistence(timeout: 8) ? "sim-resumed-feed" : "sim-resume-missing")
+        save(app, "v22-sim-resumed")
+    }
+
+    private func playNextFeedVideo(_ app: XCUIApplication, shot: String) -> Bool {
+        for _ in 0..<5 {
+            guard let poster = hittable(app, "Lire la vidéo") else {
+                scrollPage(app, up: true)
+                continue
+            }
+            poster.tap()
+            let playing = app.staticTexts["Lecture en cours"].firstMatch
+            let started = playing.waitForExistence(timeout: 22)
+            let failed = app.staticTexts["La vidéo n’a pas pu être chargée."].firstMatch.exists
+            note(started ? "video-playing" : failed ? "video-failed" : "video-not-playing")
+            save(app, shot)
+            guard started else {
+                scrollPage(app, up: true)
+                continue
+            }
+            var expand = hittable(app, "Ouvrir le lecteur")
+            if expand == nil {
+                scrollPage(app, up: false)
+                expand = hittable(app, "Ouvrir le lecteur")
+            }
+            if let expand {
+                expand.tap()
+                let close = app.buttons["Fermer le lecteur"].firstMatch
+                let staged = close.waitForExistence(timeout: 4)
+                note(staged ? "video-stage" : "video-stage-missing")
+                if staged, close.isHittable {
+                    close.tap()
+                    let back = app.buttons["Fil"].firstMatch.waitForExistence(timeout: 4) && !app.buttons["Fermer le lecteur"].firstMatch.exists
+                    note(back ? "video-back-feed" : "video-back-missing")
+                }
+            } else {
+                note("video-expand-missing")
+            }
+            return true
+        }
+        note("video-poster-absent")
+        return false
+    }
+
+    private func dismissOverlay(_ app: XCUIApplication) {
+        let close = app.buttons["Fermer"].firstMatch
+        if close.exists, close.isHittable { close.tap() }
+        let menu = app.buttons["Fermer le menu"].firstMatch
+        if menu.exists, menu.isHittable { menu.tap() }
+    }
+
     func testAnnoncesMapAndMedia() throws {
         let app = XCUIApplication()
         app.launch()
