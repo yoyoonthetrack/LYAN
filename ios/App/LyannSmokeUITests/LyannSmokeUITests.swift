@@ -261,6 +261,192 @@ final class LyannSmokeUITests: XCTestCase {
         save(app, "v22-resumed")
     }
 
+    func testQaPhysicalPass() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["Bokantaj"].waitForExistence(timeout: 30) || app.buttons["Se connecter"].waitForExistence(timeout: 8))
+        ensureQaAccount(app)
+        openAccount(app, shot: "v23-account")
+        let qa = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "@lyann.invalid")).firstMatch.exists
+            || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Qa A")).firstMatch.exists
+        note(qa ? "qa-identity" : "qa-identity-missing")
+        XCTAssertTrue(qa, "La session n’est pas QA A. \(visibleLabels(app))")
+        dismissSheet(app)
+
+        _ = hittable(app, "Bokantaj")?.tap()
+        let field = app.textViews.firstMatch
+        if field.waitForExistence(timeout: 6) {
+            if field.isHittable { field.tap() }
+            note(app.keyboards.firstMatch.waitForExistence(timeout: 4) ? "keyboard-open" : "keyboard-missing")
+            field.typeText("QA-IOS-V23-TEXT")
+            dismissKeyboard(app)
+            let publish = app.buttons["Publier"].firstMatch
+            if publish.waitForExistence(timeout: 3), publish.isHittable { publish.tap() }
+            note(app.staticTexts["QA-IOS-V23-TEXT"].firstMatch.waitForExistence(timeout: 20) ? "qa-text-published" : "qa-text-missing")
+            save(app, "v23-published")
+        }
+        if let photo = hittable(app, "Photo") {
+            photo.tap()
+            let library = app.buttons["Photothèque"].firstMatch
+            note(library.waitForExistence(timeout: 4) ? "photo-chooser" : "photo-chooser-missing")
+            save(app, "v23-photo")
+            if library.exists, library.isHittable { library.tap() }
+            let cancel = app.buttons["Annuler"].firstMatch
+            if cancel.waitForExistence(timeout: 4), cancel.isHittable {
+                note("photo-library-open")
+                cancel.tap()
+                note("photo-library-cancelled")
+            }
+        }
+        if let place = hittable(app, "Ajouter une localisation") {
+            place.tap()
+            let once = app.buttons["Une fois"].firstMatch
+            if once.waitForExistence(timeout: 2), once.isHittable { once.tap() }
+            if let locate = hittable(app, "Me localiser") { locate.tap(); note("locate-tapped") }
+            _ = waitUntil(app, seconds: 8) { !app.staticTexts["Recherche de votre position…"].exists }
+            publishSharedPlace(app, exact: false, marker: "QA-IOS-V23-QUARTIER")
+        }
+        _ = hittable(app, "Bokantaj")?.tap()
+        dismissKeyboard(app)
+        if let place = hittable(app, "Ajouter une localisation") {
+            place.tap()
+            if let locate = hittable(app, "Me localiser") { locate.tap() }
+            _ = waitUntil(app, seconds: 6) { !app.staticTexts["Recherche de votre position…"].exists }
+            publishSharedPlace(app, exact: true, marker: "QA-IOS-V23-EXACT")
+        }
+        let played = playApprovedVideo(app)
+        note(played ? "qa-video-played" : "qa-video-missing")
+        if let annonces = hittable(app, "Annonces") {
+            annonces.tap()
+            let details = app.buttons["Détails"].firstMatch
+            note(details.waitForExistence(timeout: 12) ? "annonces-list" : "annonces-empty")
+            save(app, "v23-annonces")
+            if details.exists, details.isHittable {
+                details.tap()
+                note(app.buttons["Contacter"].firstMatch.waitForExistence(timeout: 6) || app.buttons["Modifier"].firstMatch.exists ? "annonce-detail" : "annonce-detail-empty")
+                save(app, "v23-annonce-detail")
+                if app.buttons["Fermer"].firstMatch.exists, app.buttons["Fermer"].firstMatch.isHittable { app.buttons["Fermer"].firstMatch.tap() }
+            }
+        }
+        dismissOverlay(app)
+        if let people = hittable(app, "Lyanneurs") {
+            people.tap()
+            let contact = app.buttons["Contacter"].firstMatch
+            note(contact.waitForExistence(timeout: 12) ? "lyanneurs-list" : "lyanneurs-empty")
+            save(app, "v23-lyanneurs")
+        }
+        dismissOverlay(app)
+        if let messages = hittable(app, "Messages") {
+            messages.tap()
+            let ready = waitUntil(app, seconds: 12) {
+                app.staticTexts["Support LYANN"].exists || app.staticTexts["Messages"].exists || app.cells.firstMatch.exists
+            }
+            note(ready ? "messages-open" : "messages-pending")
+            save(app, "v23-messages")
+            if app.buttons["Fermer"].firstMatch.exists, app.buttons["Fermer"].firstMatch.isHittable { app.buttons["Fermer"].firstMatch.tap() }
+        }
+        if let bell = hittable(app, "Notifications") {
+            bell.tap()
+            note(app.staticTexts["Notifications"].waitForExistence(timeout: 4) ? "notifications-open" : "notifications-missing")
+            save(app, "v23-notifications")
+            if app.buttons["Fermer"].firstMatch.exists, app.buttons["Fermer"].firstMatch.isHittable { app.buttons["Fermer"].firstMatch.tap() }
+        }
+        XCUIDevice.shared.press(.home)
+        sleep(1)
+        app.activate()
+        note(app.buttons["Bokantaj"].waitForExistence(timeout: 12) ? "qa-resumed" : "qa-resume-failed")
+        save(app, "v23-resumed")
+        app.swipeUp()
+        note("qa-scrolled")
+    }
+
+    private func ensureQaAccount(_ app: XCUIApplication) {
+        if app.buttons["Se connecter"].waitForExistence(timeout: 6), app.buttons["Se connecter"].firstMatch.isHittable {
+            signIn(app)
+            note("qa-signed-in")
+            return
+        }
+        openAccount(app, shot: "v23-before")
+        let qa = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "@lyann.invalid")).firstMatch.exists
+            || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Qa A")).firstMatch.exists
+        dismissSheet(app)
+        if qa {
+            note("qa-already")
+            return
+        }
+        note("personal-session-logout")
+        _ = hittable(app, "Menu Principal")?.tap()
+        let logout = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Se déconnecter")).firstMatch
+        if logout.waitForExistence(timeout: 4), logout.isHittable { logout.tap() }
+        note(app.buttons["Se connecter"].waitForExistence(timeout: 15) ? "logged-out" : "logout-failed")
+        signIn(app)
+        note("qa-signed-in")
+    }
+
+    private func publishSharedPlace(_ app: XCUIApplication, exact: Bool, marker: String) {
+        let label = exact ? "Partager la localisation précise" : "Partager le nom du quartier"
+        var choice = hittable(app, label)
+        for _ in 0..<4 where choice == nil {
+            scrollPage(app, up: true)
+            choice = hittable(app, label)
+        }
+        guard let choice else {
+            note(exact ? "exact-missing" : "quarter-missing")
+            save(app, exact ? "v23-exact" : "v23-quarter")
+            return
+        }
+        choice.tap()
+        let field = app.textViews.firstMatch
+        if field.waitForExistence(timeout: 3), field.isHittable {
+            field.tap()
+            field.typeText(marker)
+        }
+        dismissKeyboard(app)
+        let publish = app.buttons["Publier"].firstMatch
+        if publish.waitForExistence(timeout: 3), publish.isHittable { publish.tap() }
+        note(app.staticTexts[marker].firstMatch.waitForExistence(timeout: 20) ? "published-\(marker)" : "missing-\(marker)")
+        save(app, exact ? "v23-exact" : "v23-quarter")
+    }
+
+    private func playApprovedVideo(_ app: XCUIApplication) -> Bool {
+        _ = hittable(app, "Bokantaj")?.tap()
+        for _ in 0..<6 {
+            guard let poster = hittable(app, "Lire la vidéo") else {
+                scrollPage(app, up: true)
+                continue
+            }
+            if app.staticTexts["Vidéo en cours de vérification"].firstMatch.exists, poster.frame.minY > 200 {
+                scrollPage(app, up: true)
+            }
+            poster.tap()
+            let playing = app.staticTexts["Lecture en cours"].firstMatch
+            guard playing.waitForExistence(timeout: 22) else {
+                note(app.staticTexts["La vidéo n’a pas pu être chargée."].exists ? "video-failed" : "video-not-playing")
+                scrollPage(app, up: true)
+                continue
+            }
+            note("video-playing")
+            if let pause = hittable(app, "Pause") {
+                pause.tap()
+                note(app.staticTexts["Lecture en pause"].firstMatch.waitForExistence(timeout: 4) ? "video-paused" : "video-pause-missing")
+            }
+            if let resume = hittable(app, "Lecture") {
+                resume.tap()
+                note(playing.waitForExistence(timeout: 6) ? "video-resumed" : "video-resume-missing")
+            }
+            if let expand = hittable(app, "Ouvrir le lecteur") {
+                expand.tap()
+                let close = app.buttons["Fermer le lecteur"].firstMatch
+                note(close.waitForExistence(timeout: 4) ? "video-stage" : "video-stage-missing")
+                save(app, "v23-video")
+                if close.exists, close.isHittable { close.tap() }
+                note(app.buttons["Fil"].firstMatch.waitForExistence(timeout: 4) ? "video-back-feed" : "video-back-missing")
+            }
+            return true
+        }
+        return false
+    }
+
     func testTwoFeedVideos() throws {
         let app = XCUIApplication()
         app.launch()

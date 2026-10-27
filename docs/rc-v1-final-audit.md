@@ -1,6 +1,32 @@
-# LYANN — Release Candidate V1.1 à V2.2
+# LYANN — Release Candidate V1.1 à V2.3
 
 Verdict : **NO-GO**
+
+## V2.3 — compte QA sur iPhone, signatures
+
+Le binaire installé reste `ios-mvpyrwgw-accac6`, SHA `2053e9d5f4a249cb336c4d937d4c8d3c6d822e5c`, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`. Le serveur déployé est toujours `80ceae7c35bcc7a1bbe5160f68e604bd2350ec20`.
+
+### iPhone physique
+
+« iPhone de yoann » est appairé en USB, le mode développeur est activé, et la connexion est filaire. Aucun contournement du verrouillage. Au moment de lancer la recette QA, Xcode s’arrête sur « Unlock iPhone de yoann to Continue » : `passcodeRequired` est vrai. Le code n’a pas été saisi.
+
+La passe préparée, `testQaPhysicalPass`, déconnecte une session qui n’est pas QA A, puis se connecte au compte QA Staging. Elle ne publie pas depuis le compte personnel. Elle n’a pas démarré, parce que le téléphone était verrouillé. Les parcours QA d’écriture, la lecture vidéo approuvée, Lyanneurs, Messages et le GPS de l’appareil ne sont donc pas exécutés dans cette passe.
+
+Pour la reprendre : déverrouiller « iPhone de yoann » et laisser l’écran allumé. Si iOS affiche l’activation de l’automatisation, toucher Activer.
+
+### Distribution
+
+Équipe `WLV4WC47U2`, bundle `app.lyann.mobile`, signature automatique. Le trousseau contient uniquement Apple Development. Trois profils locaux : développement `app.lyann.mobile`, développement générique, et « iOS Team Store Provisioning Profile: app.lyann.mobile » (`get-task-allow` faux, aucun appareil). Sans identité Apple Distribution dans le trousseau, aucune archive TestFlight n’a été produite. Rien n’a été envoyé à des testeurs.
+
+Le keystore d’upload Android est hors du dépôt : `~/Library/Application Support/lyann-release/upload-keystore.jks`, alias `upload`, RSA 2048, certificat `CN=LYANN Upload`, droits `0600`. Le mot de passe est dans le fichier voisin `upload-keystore.password`, mêmes droits. Il n’est pas dans Git. `LYANN_ANDROID_KEYSTORE` n’est pas exporté, donc aucun AAB n’a été assemblé. L’émulateur Android n’a pas été relancé.
+
+### Backend
+
+La migration devis reste bloquée par le jeton de gestion HTTP 401. Aucune écriture. Le remboursement Stripe reste `EXECUTION_DISABLED`. Production n’a pas été touchée.
+
+### Toujours en attente
+
+Déverrouiller l’iPhone et laisser tourner la recette QA. Certificat Apple Distribution dans le trousseau, puis archive. Assembler l’AAB avec le keystore hors dépôt. Coupure réseau, migration `P0001`, remboursement Stripe Test. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V2.2 — iPhone physique, deux vidéos, distribution
 
