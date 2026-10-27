@@ -2,7 +2,7 @@
 
 Verdict : **NO-GO**
 
-Tête Git et PR : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`
+Tête Git et PR : `9c19fdd1094cc57868f1cc8c7c2e7cdf846eb9a7`
 Paquets natifs reconstruits : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`, identifiant `ios-mvqzsf62-86ab71`
 Serveur Staging actuellement servi : déploiement `dpl_8WJbtuRYqd5ZMLnzAhN4sXaP9pbr`, estampille Git `cd0ed3ea16acfc919f5289ede08e0cd87f71c96d` plus le correctif éditorial de ce commit (le déploiement a été fait avant le commit)
 Branche : `release/lyann-rc-v1-1`
