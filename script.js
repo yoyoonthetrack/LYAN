@@ -3550,7 +3550,15 @@ safeDomReady(() => {
             shell.style.setProperty('--media-ratio', ratio);
             shell.classList.add('has-media-ratio');
         }
-        if (button.dataset.turn) shell.dataset.turn = button.dataset.turn;
+        if (button.dataset.turn) {
+            shell.dataset.turn = button.dataset.turn;
+            const parts = String(ratio || '').split('/').map((part) => parseFloat(part));
+            if ((button.dataset.turn === '90' || button.dataset.turn === '270') && parts.length === 2 && parts[0] > 0 && parts[1] > 0) {
+                shell.style.setProperty('--coded-ratio', String(parts[1] / parts[0]));
+                shell.classList.toggle('is-turn-90', button.dataset.turn === '90');
+                shell.classList.toggle('is-turn-270', button.dataset.turn === '270');
+            }
+        }
         shell.append(video, overlay);
         document.querySelectorAll('video.bokantaj-video[data-feed-video="1"]').forEach((other) => {
             if (other !== video && !other.paused) other.pause();
@@ -3639,10 +3647,9 @@ safeDomReady(() => {
             const parts = (shell.style.getPropertyValue('--media-ratio') || '').split('/').map((part) => parseFloat(part));
             const displayPortrait = parts.length === 2 && parts[1] > parts[0];
             const codedPortrait = dh > dw;
-            if ((turn === 90 || turn === 270) && displayPortrait !== codedPortrait) {
-                shell.classList.toggle('is-turn-90', turn === 90);
-                shell.classList.toggle('is-turn-270', turn === 270);
-            }
+            const needsTurn = (turn === 90 || turn === 270) && displayPortrait !== codedPortrait;
+            shell.classList.toggle('is-turn-90', needsTurn && turn === 90);
+            shell.classList.toggle('is-turn-270', needsTurn && turn === 270);
         });
         return video;
     }

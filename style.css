@@ -13286,23 +13286,28 @@ body.is-native-app .navbar.scrolled,
     object-fit: contain;
 }
 /* The decoder paints the coded landscape frame. The matrix already reserved
-   a portrait box, so the element turns inside that box. */
-.bokantaj-video-shell.is-turn-90,
-.bokantaj-video-shell.is-turn-270 {
-    container-type: size;
+   a portrait box, so the element turns inside that box. Size containment
+   collapsed that box in WKWebView, which is why Hello stayed a wide band. */
+.bokantaj-video-poster.has-media-ratio,
+.bokantaj-video-shell.has-media-ratio {
+    flex-shrink: 0;
+    height: auto;
 }
-.bokantaj-video-shell.is-turn-90 > .bokantaj-video,
-.bokantaj-video-shell.is-turn-270 > .bokantaj-video {
-    width: 100cqh;
-    height: 100cqw;
+.bokantaj-video-shell.is-turn-90 > .bokantaj-video.has-media-ratio,
+.bokantaj-video-shell.is-turn-270 > .bokantaj-video.has-media-ratio {
+    inset: auto;
+    width: calc(100% * var(--coded-ratio, 1.7777778));
+    height: calc(100% / var(--coded-ratio, 1.7777778));
     max-height: none;
+    aspect-ratio: auto;
     left: 50%;
     top: 50%;
     right: auto;
     bottom: auto;
+    object-fit: cover;
     transform: translate(-50%, -50%) rotate(90deg);
 }
-.bokantaj-video-shell.is-turn-270 > .bokantaj-video {
+.bokantaj-video-shell.is-turn-270 > .bokantaj-video.has-media-ratio {
     transform: translate(-50%, -50%) rotate(-90deg);
 }
 .bokantaj-video-shell.is-stage > .bokantaj-video {

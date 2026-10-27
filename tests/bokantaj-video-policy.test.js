@@ -202,6 +202,9 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(script, /uprightPosterBlob/);
     assert.match(script, /ratioDeferred/);
     assert.match(script, /is-turn-90/);
+    assert.match(script, /--coded-ratio/);
+    assert.match(css, /--coded-ratio/);
+    assert.doesNotMatch(css, /container-type:\s*size/);
     assert.match(script, /dataset\.explicit/);
     assert.match(script, /replacePlaybackFetch/);
     assert.doesNotMatch(preload, /loadBokantajMedia\(source, 'playback'\)/);
