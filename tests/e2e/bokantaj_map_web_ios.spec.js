@@ -103,6 +103,22 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
         expect(chrome.section.position).toBe('fixed');
         expect(chrome.section.top).toBeGreaterThanOrEqual(chrome.tabs.top + chrome.tabs.height);
         expect(chrome.mapShare).toBeGreaterThan(70);
+        const chips = await page.evaluate(() => {
+            const row = document.querySelector('#bokantajMapFilters');
+            const last = row.querySelector('[data-map-type="evenement"]');
+            const rowBox = row.getBoundingClientRect();
+            const clipped = last.getBoundingClientRect().right > rowBox.right + 1;
+            row.scrollLeft = row.scrollWidth;
+            const after = last.getBoundingClientRect();
+            return {
+                overflows: row.scrollWidth > row.clientWidth + 8,
+                clipped,
+                lastVisible: after.right <= rowBox.right + 1 && after.left >= rowBox.left
+            };
+        });
+        expect(chips.overflows).toBe(true);
+        expect(chips.clipped).toBe(true);
+        expect(chips.lastVisible).toBe(true);
     } else {
         expect(chrome.section.position).toBe('static');
     }

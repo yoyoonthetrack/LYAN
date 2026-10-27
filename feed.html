@@ -15,11 +15,11 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,SOFT,WONK,wght@9..144,0,0,700;9..144,0,0,800;9..144,0,0,900&family=Gelasio:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20261027v27">
-    <link rel="stylesheet" href="universe-header.css?v=20261027v27b">
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@72,700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20261027v37">
+    <link rel="stylesheet" href="universe-header.css?v=20261027v28">
     <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=5.6.1">
-    <link rel="stylesheet" href="bokantaj-map.css?v=20261027v27">
+    <link rel="stylesheet" href="bokantaj-map.css?v=20261027v31">
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4">
     
     <!-- Phosphor Icons -->
@@ -229,13 +229,6 @@
                                 <div class="composer-char-counter"><span id="flashCharCount">0</span>/280</div>
                             </div>
                             <div class="flash-media-preview-container" id="flashMediaPreviewContainer"></div>
-                            <div id="bokantajTrim" class="bokantaj-trim" hidden>
-                                <p id="bokantajTrimHint">Cette vidéo dépasse 60 secondes. Choisissez le passage à publier.</p>
-                                <label>Début <input id="bokantajTrimStart" type="range" min="0" step="0.1" value="0"></label>
-                                <label>Fin <input id="bokantajTrimEnd" type="range" min="0" step="0.1" value="60"></label>
-                                <p id="bokantajTrimWindow" role="status"></p>
-                                <button type="button" id="bokantajTrimApply">Utiliser ce passage</button>
-                            </div>
                             <div class="bokantaj-place-composer">
                                 <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter une localisation</span></button>
                                 <div id="bokantajPlacePicker" class="bokantaj-place-picker" hidden>
@@ -1874,7 +1867,7 @@
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
     <script src="app-router.js?v=20261018legal"></script>
-    <script src="api-client.js?v=20261026territory"></script>
+    <script src="api-client.js?v=20261027trim"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
     <script src="data-cache.js"></script>
@@ -1894,6 +1887,40 @@
 <script src="mission-dossier.js?v=20261018pay"></script>
 <script src="mission-surfaces.js?v=20261015k"></script>
 <script src="finance-policy-ui.js"></script>
+<div id="bokantajTrim" class="bokantaj-trim" hidden>
+    <div class="bokantaj-trim-bar">
+        <button type="button" id="bokantajTrimCancel">Retour</button>
+        <button type="button" id="bokantajTrimGallery">Galerie</button>
+        <button type="button" id="bokantajTrimApply">Terminé</button>
+    </div>
+    <video id="bokantajTrimPreview" class="bokantaj-trim-preview" playsinline></video>
+    <div id="bokantajTrimLoading" class="bokantaj-trim-loading" hidden>
+        <svg class="bokantaj-trim-spinner" viewBox="0 0 48 48" aria-hidden="true">
+            <circle class="track" cx="24" cy="24" r="20"></circle>
+            <circle class="value" cx="24" cy="24" r="20"></circle>
+        </svg>
+        <p>Vidéo en cours de chargement</p>
+    </div>
+    <video id="bokantajTrimCapture" class="bokantaj-trim-capture" playsinline muted></video>
+    <div class="bokantaj-trim-dock">
+        <p id="bokantajTrimHint">Le cadre correspond à 60 secondes. Faites-le glisser, ou rapprochez les crochets pour un passage plus court.</p>
+        <p id="bokantajTrimWindow" role="status"></p>
+        <div id="bokantajTrimScroller" class="bokantaj-trim-scroller">
+            <div id="bokantajTrimTrack" class="bokantaj-trim-track">
+                <div id="bokantajTrimFrames" class="bokantaj-trim-frames"></div>
+                <div class="bokantaj-trim-shade is-before"></div>
+                <div class="bokantaj-trim-shade is-after"></div>
+                <div id="bokantajTrimSelection" class="bokantaj-trim-selection">
+                    <span class="bokantaj-trim-handle is-start" role="slider" aria-label="Début du passage"></span>
+                    <span class="bokantaj-trim-handle is-end" role="slider" aria-label="Fin du passage"></span>
+                </div>
+                <span id="bokantajTrimPlayhead" class="bokantaj-trim-playhead"></span>
+            </div>
+        </div>
+    </div>
+    <input id="bokantajTrimStart" type="hidden" value="0">
+    <input id="bokantajTrimEnd" type="hidden" value="60">
+</div>
 <script src="quote-payment-eligibility.js?v=20261019-coherence"></script>
 <script src="deal-context-sync.js?v=20261013e4"></script>
 <script src="payout-prompt.js?v=20261018pay"></script>
@@ -1910,13 +1937,13 @@
     <script src="messaging-ui.js?v=20261015j"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
     <script src="bokantaj-video-policy.js?v=20261026vid"></script>
-    <script src="bokantaj-video-fast.js?v=20261026vid"></script>
-    <script src="bokantaj-video.js?v=20261025comments"></script>
-    <script src="script.js?v=20261027v26"></script>
+    <script src="bokantaj-video-fast.js?v=20261027trim"></script>
+    <script src="bokantaj-video.js?v=20261027trim2"></script>
+    <script src="script.js?v=20261027v34"></script>
     <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
     <script src="vendor/maplibre/maplibre-gl.js?v=5.6.1"></script>
     <script src="vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4"></script>
-    <script src="bokantaj-map.js?v=20261027v27"></script>
+    <script src="bokantaj-map.js?v=20261027v30"></script>
     <script src="onboarding.js"></script>
     <script src="profile-completion.js"></script>
 

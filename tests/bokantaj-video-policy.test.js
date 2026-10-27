@@ -47,7 +47,7 @@ test('an unread iPhone duration still attaches a small gallery file', () => {
     assert.match(source, /const openWatch = window\.setTimeout/);
     assert.match(source, /clearTimeout\(openWatch\)/);
     const client = fs.readFileSync(path.join(__dirname, '../api-client.js'), 'utf8');
-    assert.match(client, /if \(Number\.isFinite\(duration\) && \(duration <= 0 \|\| duration > 60\)\)/);
+    assert.match(client, /if \(Number\.isFinite\(duration\) && \(duration <= 0 \|\| duration > 60\.5\)\)/);
 });
 
 test('conversion prefers WebCodecs and never drops the sound', () => {
@@ -65,6 +65,9 @@ test('conversion prefers WebCodecs and never drops the sound', () => {
     // The recorder stays reachable for devices without WebCodecs.
     assert.match(video, /fast && fast\.codecsAvailable\(\)/);
     assert.match(video, /recordClip\(source, clip\.start, clip\.end\)/);
+    assert.match(fast, /function remuxClip/);
+    assert.match(video, /fast\.remuxClip/);
+    assert.match(video, /if \(trimmed \|\| source\.size > policy\.MAX_BYTES\) throw err/);
     assert.match(html, /bokantaj-video-fast\.js\?v=/);
     for (const vendored of ['../vendor/mp4/mp4box.all.min.js', '../vendor/mp4/mp4-muxer.js']) {
         assert.ok(fs.statSync(path.join(__dirname, vendored)).size > 1000, vendored);
@@ -89,7 +92,7 @@ test('a phone-sized source is accepted and converted down to the stored limit', 
     assert.equal(policy.needsReencode({ size: 4 * 1024 * 1024 }, { duration: 55, width: 720, height: 1280 }, { start: 5, end: 40 }), true, 'a trimmed window must be re-encoded');
     const video = fs.readFileSync(path.join(__dirname, '../bokantaj-video.js'), 'utf8');
     assert.match(video, /policy\.needsReencode\(source, meta, window\)/);
-    assert.match(video, /if \(source\.size > policy\.MAX_BYTES\) throw err/);
+    assert.match(video, /if \(trimmed \|\| source\.size > policy\.MAX_BYTES\) throw err/);
 });
 
 test('a video is never published without the poster moderation needs', () => {

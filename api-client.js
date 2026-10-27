@@ -1835,7 +1835,7 @@ const LYANN_API_CLIENT = {
             video.onerror = () => { URL.revokeObjectURL(url); resolve(NaN); };
             video.src = url;
         });
-        if (Number.isFinite(duration) && (duration <= 0 || duration > 60)) {
+        if (Number.isFinite(duration) && (duration <= 0 || duration > 60.5)) {
             throw new Error('La vidéo doit durer 60 secondes au plus.');
         }
         // Moderation reviews the poster to release the video, so sending the

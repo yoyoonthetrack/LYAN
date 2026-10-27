@@ -418,9 +418,103 @@
         return poster;
     }
 
+    function videoCodecOf(track) {
+        const codec = String(track && track.codec || '').toLowerCase();
+        if (codec.includes('hev') || codec.includes('hvc')) return 'hevc';
+        if (codec.includes('avc')) return 'avc';
+        if (codec.includes('vp09') || codec.includes('vp9')) return 'vp9';
+        if (codec.includes('av01')) return 'av1';
+        return null;
+    }
+
+    // Copy the chosen minute as-is. Re-encoding is what fails on the phone and
+    // used to leave the original, still longer than a minute, attached.
+    async function remuxClip(file, start, end) {
+        await loadVendor();
+        const parsed = await demux(file);
+        const track = parsed.videoTrack;
+        const codec = videoCodecOf(track);
+        const description = codecDescription(parsed.mp4, track);
+        const codedWidth = Math.round(track.video ? track.video.width : 0);
+        const codedHeight = Math.round(track.video ? track.video.height : 0);
+        if (!codec || !description || codedWidth < 2 || codedHeight < 2) throw new Error('remux_unsupported');
+        const rotation = rotationOf(track);
+        const startUs = Math.round(Number(start) * 1e6);
+        const endUs = Math.round(Number(end) * 1e6);
+        let decodeFrom = 0;
+        parsed.video.forEach((sample, index) => {
+            const at = (sample.cts / sample.timescale) * 1e6;
+            if (sample.isSync && at <= startUs) decodeFrom = index;
+        });
+        const origin = parsed.video[decodeFrom];
+        if (!origin) throw new Error('no_frames');
+        const originUs = (origin.cts / origin.timescale) * 1e6;
+        const clipEndUs = Math.min(endUs, originUs + 60e6);
+        const audioTrack = parsed.audioTrack;
+        const audioMeta = audioTrack && audioTrack.audio ? audioTrack.audio : null;
+        const audio = audioTrack ? audioConfig(parsed.mp4, audioTrack) : null;
+        const withAudio = Boolean(audio && audioMeta);
+        const muxer = new window.Mp4Muxer.Muxer({
+            target: new window.Mp4Muxer.ArrayBufferTarget(),
+            fastStart: 'in-memory',
+            firstTimestampBehavior: 'offset',
+            video: { codec, width: codedWidth, height: codedHeight, rotation },
+            ...(withAudio ? {
+                audio: {
+                    codec: audio.codec,
+                    numberOfChannels: audioMeta.channel_count || 2,
+                    sampleRate: audioMeta.sample_rate || 44100
+                }
+            } : {})
+        });
+        let firstVideo = true;
+        let added = 0;
+        let lastTimestamp = -1;
+        for (let index = decodeFrom; index < parsed.video.length; index += 1) {
+            const sample = parsed.video[index];
+            const at = (sample.cts / sample.timescale) * 1e6;
+            if (at > clipEndUs) break;
+            const timestamp = Math.max(lastTimestamp, Math.max(0, at - originUs));
+            lastTimestamp = timestamp;
+            muxer.addVideoChunkRaw(
+                sample.data,
+                sample.isSync ? 'key' : 'delta',
+                timestamp,
+                Math.max(1, (sample.duration / sample.timescale) * 1e6),
+                firstVideo ? { decoderConfig: { description } } : undefined
+            );
+            firstVideo = false;
+            added += 1;
+        }
+        if (!added) throw new Error('no_frames');
+        if (withAudio) {
+            let firstAudio = true;
+            let lastAudio = -1;
+            for (const sample of parsed.audio) {
+                const at = (sample.cts / sample.timescale) * 1e6;
+                if (at < originUs || at > clipEndUs) continue;
+                const timestamp = Math.max(lastAudio, Math.max(0, at - originUs));
+                lastAudio = timestamp;
+                muxer.addAudioChunkRaw(
+                    sample.data,
+                    'key',
+                    timestamp,
+                    Math.max(1, (sample.duration / sample.timescale) * 1e6),
+                    firstAudio && audio.description ? { decoderConfig: { description: audio.description } } : undefined
+                );
+                firstAudio = false;
+            }
+        }
+        muxer.finalize();
+        const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+        if (!blob.size || blob.size > policy.MAX_BYTES) throw new Error('too_large');
+        return { file: new File([blob], 'bokantaj.mp4', { type: 'video/mp4' }), poster: null };
+    }
+
     window.LYANN_BOKANTAJ_VIDEO_FAST = {
         fastClip,
         firstFrame,
+        remuxClip,
         codecsAvailable,
         rotationOf
     };

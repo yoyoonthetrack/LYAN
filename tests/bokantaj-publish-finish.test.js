@@ -148,6 +148,9 @@ test('composer location is a map plus two share choices', () => {
     assert.match(map, /togglePicker\(false\);\s*revealComposer\(\)/);
     assert.match(map, /window\.scrollBy\(0, delta\)/);
     const css = fs.readFileSync(path.join(__dirname, '../bokantaj-map.css'), 'utf8');
-    assert.match(css, /body\.bokantaj-map-open::before/);
+    assert.doesNotMatch(css, /body\.bokantaj-map-open::before/);
+    assert.match(css, /body\.bokantaj-map-open \.feed-hero-section/);
+    assert.match(map, /document\.body\.appendChild\(mapPanel\)/);
+    assert.match(css, /body\.bokantaj-map-open #flashComposerCard/);
     assert.match(map, /if \(wantMap\) window\.scrollTo\(0, 0\)/);
 });

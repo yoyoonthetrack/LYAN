@@ -632,21 +632,15 @@ body[data-explorer-mode="lyanneurs"] .banner-lyanneurs {
 }
 
 .banner-title {
-    font-family: 'Fraunces', Georgia, serif;
+    font-family: 'Newsreader', Georgia, serif;
     font-size: 3.15rem;
-    font-weight: 800;
+    font-weight: 700;
     color: #1F4A2C;
     line-height: 1.28;
     margin: 2px 0 4px;
     letter-spacing: 0.01em;
     padding-bottom: 0.08em;
     overflow: visible;
-}
-/* Bokantaj only. Gelasio 700 keeps the weight and the old-style serifs, and
-   its J is a classical descender. Annonces and Lyanneurs stay on Fraunces. */
-.banner-bokantaj .banner-title {
-    font-family: 'Gelasio', Georgia, serif;
-    font-weight: 700;
 }
 
 .banner-subtitle {

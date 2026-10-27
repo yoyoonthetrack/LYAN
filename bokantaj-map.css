@@ -65,7 +65,7 @@ body.feed-page{overflow-x:clip !important}
 .bokantaj-map-chips button.is-active{background:#e9c879;border-color:#dab45d;color:#493a22;box-shadow:0 2px 5px #90712b18}
 .bokantaj-map-canvas,.bokantaj-picker-map{background:#f0ede5;isolation:isolate}
 .bokantaj-map-canvas{height:min(62dvh,620px);min-height:380px}
-.bokantaj-map-pin{background:transparent;border:0;border-radius:0;box-shadow:none;display:block;filter:drop-shadow(0 3px 3px #594b3433)}
+.bokantaj-map-pin{position:relative;background:transparent;border:0;border-radius:0;box-shadow:none;display:block;filter:drop-shadow(0 3px 3px #594b3433)}
 .bokantaj-pin-face{position:absolute;inset:0 0 6px;display:grid;place-items:center;border:3px solid #fffdf7;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);background:var(--pin-color,#f3bd97);color:#584332;box-sizing:border-box}
 .bokantaj-pin-face svg{width:24px;height:24px;transform:rotate(45deg)}
 .bokantaj-map-pin.category-trafic{--pin-color:#f2c87c}
@@ -77,6 +77,8 @@ body.feed-page{overflow-x:clip !important}
 .bokantaj-map-pin.category-alerte{--pin-color:#f0ac8d}
 .bokantaj-map-pin.is-cluster{background:transparent;color:#51412c;font-weight:850;font-size:17px}
 .bokantaj-map-pin.is-cluster .bokantaj-pin-face{transform:none;border-radius:50%;background:#f1d996;box-shadow:0 0 0 5px #fff8e68c;inset:2px 2px 6px}
+.bokantaj-map-pin.is-area .bokantaj-pin-face{box-shadow:0 0 0 7px rgba(47,107,69,.45)}
+.bokantaj-map-canvas path.bokantaj-map-zone,.bokantaj-picker-map path.bokantaj-map-zone{stroke-linecap:round}
 .bokantaj-map-pin:focus-visible .bokantaj-pin-face{outline:3px solid #3c705e;outline-offset:3px}
 .bokantaj-map-section button:focus-visible,.bokantaj-place-picker button:focus-visible{outline:3px solid #397260;outline-offset:2px}
 .bokantaj-map-canvas .leaflet-control-zoom,.bokantaj-picker-map .leaflet-control-zoom{border:1px solid #ddd7c9;border-radius:15px;overflow:hidden;box-shadow:0 3px 12px #5b51351c;z-index:500}
@@ -122,16 +124,17 @@ body.feed-page .flash-card.is-map-focus{box-shadow:0 0 0 4px rgba(229,179,69,.45
    category chips and the status line used to eat ~140px before a single street
    was visible. */
 .bokantaj-map-stage{position:relative;display:flex;flex-direction:column;isolation:isolate}
-.bokantaj-map-controls{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;flex-direction:column;gap:8px;padding-top:10px;pointer-events:none}
+.bokantaj-map-controls{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;flex-direction:column;gap:8px;padding-top:10px;pointer-events:none;min-width:0;max-width:100%}
 .bokantaj-map-controls>*{pointer-events:auto}
 .bokantaj-map-topbar{padding:0 12px;gap:6px;justify-content:flex-start}
 .bokantaj-map-topbar select{width:auto;max-width:min(58%,220px);flex:0 0 auto;background:#fffdf8f2;border-color:#ded9c7;box-shadow:0 2px 10px #3a3c2c26;font-weight:750;padding:5px 10px}
 .bokantaj-map-chips{padding:0 12px 4px}
 .bokantaj-map-chips button{background:#fffdf8f2;border-color:#e2ddcc;box-shadow:0 2px 10px #3a3c2c26;backdrop-filter:blur(6px)}
 .bokantaj-map-chips button.is-active{background:#e9c879;border-color:#d8b25a;color:#453519}
-/* The band must not swallow the pan gesture: only the pills react to touch. */
-.bokantaj-map-chips{pointer-events:none}
-.bokantaj-map-chips button{pointer-events:auto}
+/* The row is a real scroller. A flex child defaults to the width of every pill,
+   so the extra categories were clipped and a sideways drag never moved them. */
+.bokantaj-map-chips{width:100%;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;pointer-events:auto;touch-action:pan-x;overscroll-behavior-x:contain}
+.bokantaj-map-chips button{touch-action:pan-x}
 /* Reading matter only: the band must never steal a tap meant for the map. */
 .bokantaj-map-status{position:absolute;left:0;right:0;bottom:0;z-index:2;pointer-events:none;padding:26px 14px 12px;background:linear-gradient(to top,#fffdf8f5 42%,#fffdf800);color:#55614f;font-weight:600;transition:opacity .18s ease}
 .bokantaj-map-stage:has(.bokantaj-map-detail:not([hidden])) .bokantaj-map-status{opacity:0}
@@ -154,14 +157,15 @@ body.feed-page .flash-card.is-map-focus{box-shadow:0 0 0 4px rgba(229,179,69,.45
 @media(max-width:767px){
  body.bokantaj-map-open{overflow:hidden}
  body.bokantaj-map-open .bokantaj-view-tabs{position:fixed;top:var(--lyann-shell-header-height, var(--lyann-header-total-height));left:0;right:0;z-index:31;margin:0;padding:6px 12px;border-radius:0;border-left:0;border-right:0;border-top:0;box-shadow:0 2px 10px #28372a14}
- body.bokantaj-map-open .bokantaj-map-section{position:fixed;left:0;right:0;top:calc(var(--lyann-shell-header-height, var(--lyann-header-total-height)) + var(--lyann-map-tabs-height,54px));bottom:0;z-index:30;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column}
- body.bokantaj-map-open.has-bottom-nav .bokantaj-map-section,
- body.bokantaj-map-open.is-native-app .bokantaj-map-section{bottom:var(--lyann-bottom-nav-total-height)}
+ body.bokantaj-map-open .bokantaj-map-section{position:fixed;left:0;right:0;top:calc(var(--lyann-shell-header-height, var(--lyann-header-total-height)) + var(--lyann-map-tabs-height,54px));bottom:var(--lyann-bottom-nav-total-height,0px);height:auto;z-index:40;margin:0;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;background:#e7efe4}
+ body.bokantaj-map-open .bokantaj-view-tabs{z-index:41}
  body.bokantaj-map-open .bokantaj-map-stage{flex:1;min-height:0}
- body.bokantaj-map-open .bokantaj-map-canvas{height:100%;min-height:0}
+ body.bokantaj-map-open .bokantaj-map-canvas{flex:1;height:auto;min-height:0}
  body.bokantaj-map-open .bokantaj-map-detail{border-radius:22px 22px 0 0}
- /* The banner and the feed stay in the document. This sheet covers them so a
-    scrolled header, a sticky chip, or a fixed-position offset cannot paint
-    over the tiles. The app header and the bottom bar sit above it. */
- body.bokantaj-map-open::before{content:"";position:fixed;inset:0;background:#fffdf8;z-index:29;pointer-events:none}
+ /* The banner and the composer sit in a layer above a map that stays inside
+    the feed. They leave the screen for as long as the map is open. */
+ body.bokantaj-map-open .feed-hero-section,
+ body.bokantaj-map-open #flashComposerCard,
+ body.bokantaj-map-open #feedGuestCta,
+ body.bokantaj-map-open .feed-sidebar{display:none !important}
 }

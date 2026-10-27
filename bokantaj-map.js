@@ -36,20 +36,22 @@
     const APPROX_RADIUS_M = 4000;
     const ZONE_STYLE = Object.freeze({
         interactive: false, className: 'bokantaj-map-zone',
-        color: '#4A7C59', weight: 1.5, opacity: 0.55, dashArray: '6 6',
-        fillColor: '#4A7C59', fillOpacity: 0.12
+        color: '#2f6b45', weight: 2.5, opacity: 0.95, dashArray: '9 7',
+        fillColor: '#4A7C59', fillOpacity: 0.18
     });
     const $ = (id) => document.getElementById(id);
     let map;
     let pickerMap;
     let markerLayer;
     let pickerMarker;
+    let pickerZone;
     let savedPlace = null;
     let pickerPoint = null;
     let pickerRaw = null;
     let placeNameAuto = false;
     let activeType = 'all';
     let isMapView = false;
+    let mapChromeHome = null;
     let fetchGeneration = 0;
     let renderedPosts = [];
     let territoryPosts = [];
@@ -294,6 +296,19 @@
                 setPickerPoint(next);
             });
         }
+        // A neighbourhood share is a perimeter, not a hidden point: the pin sits
+        // in the middle of the same 4 km circle the public map will draw.
+        const showZone = !placeWantsExact();
+        const hadZone = !!pickerZone;
+        if (showZone) {
+            if (pickerZone) pickerZone.setLatLng([pub.lat, pub.lng]);
+            else pickerZone = window.L.circle([pub.lat, pub.lng], { ...ZONE_STYLE, radius: APPROX_RADIUS_M }).addTo(pickerMap);
+            if (!hadZone) pickerMap.fitBounds(pickerZone.getBounds(), { padding: [28, 28], maxZoom: 13, animate: false });
+        } else if (pickerZone) {
+            pickerZone.remove();
+            pickerZone = null;
+            if (hadZone) pickerMap.setView([pub.lat, pub.lng], 16, { animate: false });
+        }
         const guessed = suggestPlaceName();
         const input = $('bokantajPlaceName');
         if (input && guessed && (placeNameAuto || !input.value.trim() || input.value.trim() === 'Repère partagé')) {
@@ -364,6 +379,7 @@
         pickerPoint = null;
         pickerRaw = null;
         if (pickerMarker) { pickerMarker.remove(); pickerMarker = null; }
+        if (pickerZone) { pickerZone.remove(); pickerZone = null; }
         if ($('bokantajPlaceExact')) $('bokantajPlaceExact').checked = !!savedPlace?.exact;
         placeNameAuto = false;
         if (savedPlace) setPickerPoint({ lat: savedPlace.exact ? savedPlace.lat : savedPlace.lat, lng: savedPlace.lng });
@@ -470,6 +486,7 @@
         pickerRaw = null;
         placeNameAuto = false;
         if (pickerMarker) { pickerMarker.remove(); pickerMarker = null; }
+        if (pickerZone) { pickerZone.remove(); pickerZone = null; }
         if ($('bokantajPlaceName')) $('bokantajPlaceName').value = '';
         if ($('bokantajPlaceExact')) $('bokantajPlaceExact').checked = false;
         refreshPlaceSummary('');
@@ -608,28 +625,44 @@
             window.L.circle([Number(post.place_lat), Number(post.place_lng)],
                 { ...ZONE_STYLE, radius: APPROX_RADIUS_M }).addTo(markerLayer);
         });
+        // A quartier share keeps its pin on the centre of the circle. Mixing it
+        // into a nearby cluster would slide that pin off the perimeter.
+        const groups = [];
+        const areaGroups = new Map();
+        posts.forEach((post) => {
+            if (!sharedAsNeighbourhood(post)) return;
+            const key = post.place_lat + ',' + post.place_lng;
+            if (!areaGroups.has(key)) areaGroups.set(key, []);
+            areaGroups.get(key).push(post);
+        });
+        for (const group of areaGroups.values()) groups.push({ group, area: true });
         const pixelGroups = new Map();
         const zoom = map.getZoom();
         posts.forEach((post) => {
+            if (sharedAsNeighbourhood(post)) return;
             const point = map.project([post.place_lat, post.place_lng], zoom);
             const key = Math.floor(point.x / 64) + ':' + Math.floor(point.y / 64);
             if (!pixelGroups.has(key)) pixelGroups.set(key, []);
             pixelGroups.get(key).push(post);
         });
-        for (const group of pixelGroups.values()) {
-            const centerLat = group.reduce((a, p) => a + Number(p.place_lat), 0) / group.length;
-            const centerLng = group.reduce((a, p) => a + Number(p.place_lng), 0) / group.length;
+        for (const group of pixelGroups.values()) groups.push({ group, area: false });
+        for (const entry of groups) {
+            const group = entry.group;
+            const area = entry.area;
+            const centerLat = area ? Number(group[0].place_lat) : group.reduce((a, p) => a + Number(p.place_lat), 0) / group.length;
+            const centerLng = area ? Number(group[0].place_lng) : group.reduce((a, p) => a + Number(p.place_lng), 0) / group.length;
             const first = group[0];
             const crowded = group.length > 1;
             const category = CATEGORY[first.type] || CATEGORY.info;
+            const placeTitle = category.label + ' · ' + first.place_label + (area ? ' · secteur d’environ 4 km' : '');
             const icon = window.L.divIcon({
-                className: 'bokantaj-map-pin' + (crowded ? ' is-cluster' : ' category-' + (CATEGORY[first.type] ? first.type : 'info')),
+                className: 'bokantaj-map-pin' + (area ? ' is-area' : '') + (crowded ? ' is-cluster' : ' category-' + (CATEGORY[first.type] ? first.type : 'info')),
                 html: '<span class="bokantaj-pin-face" aria-hidden="true">' + (crowded ? String(group.length) : glyph(first.type)) + '</span>',
                 iconSize: [46, 52], iconAnchor: [23, 50], popupAnchor: [0, -46]
             });
-            const marker = window.L.marker([centerLat, centerLng], { icon,
-                title: crowded ? group.length + ' partages : zoomer ou choisir' : category.label + ' · ' + first.place_label,
-                alt: crowded ? group.length + ' partages' : category.label + ' · ' + first.place_label, keyboard: true
+            const marker = window.L.marker([centerLat, centerLng], { icon, zIndexOffset: area ? 400 : 0,
+                title: crowded ? group.length + ' partages : zoomer ou choisir' : placeTitle,
+                alt: crowded ? group.length + ' partages' : placeTitle, keyboard: true
             });
             marker.addTo(markerLayer);
             // Leaflet's keyboard flag makes a marker focusable; activation must be
@@ -678,7 +711,17 @@
         renderedPosts = filteredPosts(territoryPosts);
         const size = map.getSize();
         if (refit && renderedPosts.length && size.x > 0 && size.y > 0) {
-            const bounds = window.L.latLngBounds(renderedPosts.map((post) => [Number(post.place_lat), Number(post.place_lng)]));
+            const bounds = window.L.latLngBounds([]);
+            renderedPosts.forEach((post) => {
+                const lat = Number(post.place_lat);
+                const lng = Number(post.place_lng);
+                bounds.extend([lat, lng]);
+                if (!sharedAsNeighbourhood(post)) return;
+                const dLat = APPROX_RADIUS_M / 111320;
+                const dLng = APPROX_RADIUS_M / (111320 * Math.cos(lat * Math.PI / 180));
+                bounds.extend([lat - dLat, lng - dLng]);
+                bounds.extend([lat + dLat, lng + dLng]);
+            });
             // The territory pill, the category chips and the basemap notice sit
             // on the tiles. Inset the frame so a pin never opens underneath them.
             map.fitBounds(bounds.pad(0.2), {
@@ -692,8 +735,10 @@
         paintMarkers(renderedPosts);
         const status = $('bokantajMapStatus');
         if (status) {
+            const areas = renderedPosts.some(sharedAsNeighbourhood);
             status.textContent = renderedPosts.length
-                ? renderedPosts.length + ' partage' + (renderedPosts.length > 1 ? 's' : '') + ' ici · Zoomez pour explorer les quartiers.'
+                ? renderedPosts.length + ' partage' + (renderedPosts.length > 1 ? 's' : '') + ' ici · '
+                    + (areas ? 'un quartier est le pin au centre d’un rayon d’environ 4 km.' : 'Zoomez pour explorer les quartiers.')
                 : 'Aucun partage géolocalisé ici pour le moment. Soyez le premier !';
         }
         if (requestedFocusId) {
@@ -758,13 +803,33 @@
 
     // On a phone the map takes the whole panel and the page stops scrolling, so
     // Fil/Carte has to be pinned: it is the only way back to the feed.
+    function parkMapChrome(wantMap) {
+        const tabs = document.querySelector('.bokantaj-view-tabs');
+        const mapPanel = $('bokantajMapSection');
+        const narrow = window.matchMedia('(max-width: 767px)').matches;
+        if (wantMap && narrow && tabs && mapPanel && !mapChromeHome) {
+            mapChromeHome = {
+                tabsParent: tabs.parentNode,
+                tabsNext: tabs.nextSibling,
+                mapParent: mapPanel.parentNode,
+                mapNext: mapPanel.nextSibling
+            };
+            // Fixed layers inside the feed section collapse on iOS. On the
+            // body they use the real screen, under the app header.
+            document.body.appendChild(tabs);
+            document.body.appendChild(mapPanel);
+        }
+        if (!wantMap && mapChromeHome && tabs && mapPanel) {
+            mapChromeHome.tabsParent.insertBefore(tabs, mapChromeHome.tabsNext);
+            mapChromeHome.mapParent.insertBefore(mapPanel, mapChromeHome.mapNext);
+            mapChromeHome = null;
+        }
+    }
+
     function pinViewTabs(wantMap) {
         syncShellHeaderHeight();
-        // A phone WebView positions a fixed map against the scrolled layout
-        // viewport, so the banner and the sort bar stay on screen above the
-        // tiles. Putting the document back at the top before pinning keeps
-        // Fil/Carte and the map in one stack under the app header.
         if (wantMap) window.scrollTo(0, 0);
+        parkMapChrome(wantMap);
         document.body.classList.toggle('bokantaj-map-open', wantMap);
         const tabs = document.querySelector('.bokantaj-view-tabs');
         if (tabs && wantMap) {

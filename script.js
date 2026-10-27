@@ -2756,7 +2756,7 @@ safeDomReady(() => {
         flashVideoInput.addEventListener('change', async (e) => {
             const file = e.target.files && e.target.files[0];
             e.target.value = '';
-            if (typeof window.openBokantajComposer === 'function') window.openBokantajComposer();
+            if (typeof window.openBokantajComposer === 'function') window.openBokantajComposer({ focus: false });
             if (!file) return;
             if (!window.LYANN_BOKANTAJ_VIDEO) {
                 showVideoAttachError('La préparation vidéo n’est pas disponible. Réessayez.');
@@ -2771,8 +2771,13 @@ safeDomReady(() => {
             showVideoAttachProgress(file);
             videoPicked = true;
             videoAttachFailed = false;
+            primeTrimAudio();
+            dismissComposerKeyboard();
+            showTrimLoadingShell();
             const prepare = (async () => {
                 const meta = await window.LYANN_BOKANTAJ_VIDEO.readMeta(file);
+                trimSourceFile = file;
+                trimSourceDuration = Number(meta.duration) || 0;
                 if (Number.isFinite(meta.duration) && meta.duration > window.LYANN_BOKANTAJ_VIDEO.MAX_SECONDS) {
                     pendingTrimFile = file;
                     openTrim(meta.duration);
@@ -2790,6 +2795,7 @@ safeDomReady(() => {
                 attachedPosterBlob = null;
                 if (attachedVideo) URL.revokeObjectURL(attachedVideo);
                 attachedVideo = null;
+                releaseTrimChrome();
                 showVideoAttachError(err.message || 'Cette vidéo n’a pas pu être ajoutée.');
             } finally {
                 if (videoPreparePromise === prepare) videoPreparePromise = null;
@@ -2797,17 +2803,63 @@ safeDomReady(() => {
         });
     }
 
-    function openTrim(duration) {
+    let trimPreviewUrl = null;
+    let trimFramesToken = 0;
+    let trimSourceFile = null;
+    let trimSourceDuration = 0;
+    let trimChosenStart = 0;
+
+    function clockMinute(seconds) {
+        const whole = Math.max(0, Math.round(Number(seconds) || 0));
+        const minutes = Math.floor(whole / 60);
+        const rest = whole % 60;
+        if (!minutes) return rest + ' s';
+        return minutes + ' min ' + String(rest).padStart(2, '0');
+    }
+
+    function trimBounds() {
         const panel = document.getElementById('bokantajTrim');
-        const start = document.getElementById('bokantajTrimStart');
-        const end = document.getElementById('bokantajTrimEnd');
-        if (!panel || !start || !end) return;
-        start.max = String(duration);
-        end.max = String(duration);
-        start.value = '0';
-        end.value = String(Math.min(duration, 60));
-        panel.hidden = false;
-        paintTrimWindow();
+        return {
+            total: Number(panel?.dataset.duration) || 60,
+            from: Number(document.getElementById('bokantajTrimStart')?.value) || 0,
+            to: Number(document.getElementById('bokantajTrimEnd')?.value) || 60
+        };
+    }
+
+    function sizeTrimTrack() {
+        const scroller = document.getElementById('bokantajTrimScroller');
+        const track = document.getElementById('bokantajTrimTrack');
+        if (!scroller || !track) return;
+        track.style.width = scroller.clientWidth + 'px';
+    }
+
+    function placeTrimPlayhead(seconds) {
+        const track = document.getElementById('bokantajTrimTrack');
+        const playhead = document.getElementById('bokantajTrimPlayhead');
+        if (!track || !playhead) return;
+        const total = trimBounds().total || 1;
+        const x = (Math.max(0, Number(seconds) || 0) / total) * (track.offsetWidth || 1);
+        playhead.style.left = x + 'px';
+    }
+
+    function layoutTrimSelection() {
+        const track = document.getElementById('bokantajTrimTrack');
+        const selection = document.getElementById('bokantajTrimSelection');
+        const before = document.querySelector('.bokantaj-trim-shade.is-before');
+        const after = document.querySelector('.bokantaj-trim-shade.is-after');
+        if (!track || !selection) return;
+        const { total, from, to } = trimBounds();
+        const width = track.offsetWidth || 1;
+        const left = (from / total) * width;
+        const right = (to / total) * width;
+        const box = Math.max(1, right - left);
+        selection.style.left = left + 'px';
+        selection.style.width = box + 'px';
+        if (before) before.style.width = left + 'px';
+        if (after) after.style.left = (left + box) + 'px';
+        const video = document.getElementById('bokantajTrimPreview');
+        const at = video && Number.isFinite(video.currentTime) ? video.currentTime : from;
+        placeTrimPlayhead(at);
     }
 
     function paintTrimWindow() {
@@ -2815,24 +2867,422 @@ safeDomReady(() => {
         const end = document.getElementById('bokantajTrimEnd');
         const label = document.getElementById('bokantajTrimWindow');
         if (!start || !end || !label || !window.LYANN_BOKANTAJ_VIDEO) return;
-        const windowClip = window.LYANN_BOKANTAJ_VIDEO.clipWindow(Number(end.max) || 60, Number(start.value), Number(end.value));
-        label.textContent = windowClip.ok
-            ? `Passage retenu : ${windowClip.seconds} s.`
-            : 'Le passage doit durer entre 1 et 60 secondes.';
+        const { total, from, to } = trimBounds();
+        const windowClip = window.LYANN_BOKANTAJ_VIDEO.clipWindow(total, from, to);
+        if (!windowClip.ok) {
+            label.textContent = 'Choisissez le passage à garder.';
+            return;
+        }
+        start.value = String(windowClip.start);
+        end.value = String(windowClip.end);
+        if (windowClip.seconds >= 59.5) {
+            label.textContent = windowClip.start < 0.5
+                ? '1 minute, depuis le début'
+                : '1 minute, à partir de ' + clockMinute(windowClip.start);
+        } else if (windowClip.start < 0.5) label.textContent = clockMinute(windowClip.seconds);
+        else label.textContent = clockMinute(windowClip.start) + ' → ' + clockMinute(windowClip.end);
     }
 
-    document.getElementById('bokantajTrimStart')?.addEventListener('input', paintTrimWindow);
-    document.getElementById('bokantajTrimEnd')?.addEventListener('input', paintTrimWindow);
-    document.getElementById('bokantajTrimApply')?.addEventListener('click', async () => {
-        if (!pendingTrimFile || !window.LYANN_BOKANTAJ_VIDEO) return;
-        const start = Number(document.getElementById('bokantajTrimStart')?.value || 0);
-        const end = Number(document.getElementById('bokantajTrimEnd')?.value || 60);
-        await acceptPreparedVideo(pendingTrimFile, start, end);
+    function setTrimRange(from, to) {
+        const start = document.getElementById('bokantajTrimStart');
+        const end = document.getElementById('bokantajTrimEnd');
+        if (!start || !end) return;
+        start.value = String(from);
+        end.value = String(to);
+        paintTrimWindow();
+        layoutTrimSelection();
+    }
+
+    function seekTrimPreview(seconds) {
+        const video = document.getElementById('bokantajTrimPreview');
+        if (!video || video.readyState < 1) return;
+        video.muted = false;
+        video.volume = 1;
+        try { video.currentTime = Math.max(0, seconds); } catch (_) {}
+        if (video.paused) video.play().catch(() => {});
+    }
+
+    function bindTrimHandles() {
+        const selection = document.getElementById('bokantajTrimSelection');
+        const track = document.getElementById('bokantajTrimTrack');
+        if (!selection || !track || selection.dataset.bound) return;
+        selection.dataset.bound = '1';
+        let drag = null;
+        selection.addEventListener('pointerdown', (event) => {
+            const handle = event.target.closest('.bokantaj-trim-handle');
+            const { from, to } = trimBounds();
+            drag = {
+                edge: handle ? (handle.classList.contains('is-end') ? 'end' : 'start') : 'move',
+                originX: event.clientX,
+                from,
+                to,
+                pointer: event.pointerId
+            };
+            selection.setPointerCapture(event.pointerId);
+            event.preventDefault();
+        });
+        selection.addEventListener('pointermove', (event) => {
+            if (!drag || event.pointerId !== drag.pointer) return;
+            const total = trimBounds().total;
+            const dt = ((event.clientX - drag.originX) / (track.offsetWidth || 1)) * total;
+            if (drag.edge === 'start') {
+                const next = Math.max(0, Math.min(drag.from + dt, drag.to - 0.4));
+                setTrimRange(Math.max(next, drag.to - 60), drag.to);
+                seekTrimPreview(Math.max(next, drag.to - 60));
+            } else if (drag.edge === 'end') {
+                const next = Math.min(total, Math.max(drag.to + dt, drag.from + 0.4));
+                setTrimRange(drag.from, Math.min(next, drag.from + 60));
+                seekTrimPreview(Math.min(next, drag.from + 60));
+            } else {
+                const span = Math.min(60, drag.to - drag.from);
+                const next = Math.max(0, Math.min(drag.from + dt, total - span));
+                setTrimRange(next, next + span);
+                seekTrimPreview(next);
+            }
+        });
+        const release = (event) => {
+            if (!drag || (event && event.pointerId !== drag.pointer)) return;
+            drag = null;
+            seekTrimPreview(trimBounds().from);
+        };
+        selection.addEventListener('pointerup', release);
+        selection.addEventListener('pointercancel', release);
+    }
+
+    function waitForSeek(video, time) {
+        return new Promise((resolve) => {
+            let settled = false;
+            const done = () => {
+                if (settled) return;
+                settled = true;
+                video.removeEventListener('seeked', done);
+                resolve();
+            };
+            video.addEventListener('seeked', done);
+            try { video.currentTime = time; } catch (_) { done(); }
+            setTimeout(done, 450);
+        });
+    }
+
+    async function fillFilmstrip(video, duration) {
+        const token = ++trimFramesToken;
+        const frames = document.getElementById('bokantajTrimFrames');
+        const track = document.getElementById('bokantajTrimTrack');
+        if (!frames || !track || !video) return;
+        if (video.readyState < 1) {
+            await new Promise((resolve) => {
+                video.addEventListener('loadeddata', resolve, { once: true });
+                setTimeout(resolve, 1500);
+            });
+        }
+        if (token !== trimFramesToken || video.readyState < 1) return;
+        const count = Math.max(8, Math.min(16, Math.round(duration / 4)));
+        frames.replaceChildren();
+        const canvas = document.createElement('canvas');
+        canvas.width = 48;
+        canvas.height = 84;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        for (let index = 0; index < count; index += 1) {
+            if (token !== trimFramesToken) return;
+            const at = Math.min(Math.max(duration - 0.05, 0), (duration * (index + 0.5)) / count);
+            await waitForSeek(video, at);
+            if (token !== trimFramesToken || video.readyState < 2) return;
+            try {
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const image = document.createElement('img');
+                image.alt = '';
+                image.src = canvas.toDataURL('image/jpeg', 0.62);
+                frames.append(image);
+            } catch (_) {
+                return;
+            }
+        }
+    }
+
+    function playTrimLoop() {
+        const video = document.getElementById('bokantajTrimPreview');
+        const end = document.getElementById('bokantajTrimEnd');
+        const start = document.getElementById('bokantajTrimStart');
+        if (!video || !end || !start) return;
+        video.muted = true;
+        video.volume = 1;
+        video.ontimeupdate = () => {
+            const stop = Number(end.value);
+            if (!video.paused && Number.isFinite(stop) && video.currentTime >= stop - 0.08) {
+                try { video.currentTime = Number(start.value) || 0; } catch (_) {}
+            }
+            placeTrimPlayhead(video.currentTime);
+        };
+        video.play().then(() => {
+            video.muted = false;
+            video.volume = 1;
+        }).catch(() => {});
+    }
+
+    function releaseTrimChrome() {
+        const panel = document.getElementById('bokantajTrim');
+        const video = document.getElementById('bokantajTrimPreview');
+        const capture = document.getElementById('bokantajTrimCapture');
+        trimFramesToken += 1;
+        if (video) { video.pause(); video.removeAttribute('src'); video.load(); }
+        if (capture) { capture.removeAttribute('src'); capture.load(); }
+        if (trimPreviewUrl) { URL.revokeObjectURL(trimPreviewUrl); trimPreviewUrl = null; }
+        if (panel) panel.hidden = true;
+        document.body.classList.remove('bokantaj-trim-open');
+        hideTrimLoading();
+    }
+
+    function setTrimLoading(progress) {
+        const node = document.getElementById('bokantajTrimLoading');
+        const ring = node && node.querySelector('.value');
+        if (!node) return;
+        node.hidden = false;
+        const known = Number.isFinite(progress);
+        node.classList.toggle('is-spin', !known);
+        if (ring && known) {
+            ring.style.strokeDashoffset = String(125.6 * (1 - Math.max(0, Math.min(1, progress))));
+        }
+    }
+
+    function hideTrimLoading() {
+        const node = document.getElementById('bokantajTrimLoading');
+        if (!node) return;
+        node.hidden = true;
+        node.classList.remove('is-spin');
+        node.style.pointerEvents = '';
+        const text = node.querySelector('p');
+        if (text) text.textContent = 'Vidéo en cours de chargement';
+        const button = document.getElementById('bokantajTrimApply');
+        if (button) {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+        }
+    }
+
+    function dismissComposerKeyboard() {
+        const dropFocus = () => {
+            const field = document.getElementById('flashContentInput');
+            if (field) field.blur();
+            const active = document.activeElement;
+            if (active && active !== document.body && typeof active.blur === 'function') active.blur();
+            document.body.classList.remove('keyboard-open');
+        };
+        dropFocus();
+        const keyboard = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Keyboard;
+        if (keyboard && typeof keyboard.hide === 'function') keyboard.hide().catch(() => {});
+        requestAnimationFrame(dropFocus);
+        setTimeout(dropFocus, 280);
+    }
+
+    function fitTrimToScreen() {
+        const panel = document.getElementById('bokantajTrim');
+        if (!panel || panel.hidden) return;
+        panel.style.top = '0px';
+        panel.style.height = window.innerHeight + 'px';
+    }
+
+    function primeTrimAudio() {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        try {
+            if (!window.__lyannTrimAudio || window.__lyannTrimAudio.state === 'closed') {
+                window.__lyannTrimAudio = new AudioCtx();
+            }
+            window.__lyannTrimAudio.resume();
+        } catch (_) {}
+    }
+
+    function releaseTrimDecoders() {
+        trimFramesToken += 1;
+        ['bokantajTrimPreview', 'bokantajTrimCapture'].forEach((id) => {
+            const video = document.getElementById(id);
+            if (!video) return;
+            video.pause();
+            video.removeAttribute('src');
+            try { video.load(); } catch (_) {}
+        });
+    }
+
+    function showTrimApplyState(message) {
+        const node = document.getElementById('bokantajTrimLoading');
+        const text = node && node.querySelector('p');
+        const button = document.getElementById('bokantajTrimApply');
+        if (!node) return;
+        if (text) text.textContent = message;
+        node.hidden = false;
+        node.classList.add('is-spin');
+        node.style.pointerEvents = 'auto';
+        if (button) {
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+        }
+    }
+
+    function showTrimApplyError(message) {
+        const node = document.getElementById('bokantajTrimLoading');
+        const text = node && node.querySelector('p');
+        const button = document.getElementById('bokantajTrimApply');
+        const preview = document.getElementById('bokantajTrimPreview');
+        if (node) {
+            node.hidden = false;
+            node.classList.remove('is-spin');
+            node.style.pointerEvents = 'none';
+        }
+        if (text) text.textContent = message;
+        if (button) {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+        }
+        if (preview && trimPreviewUrl) {
+            preview.src = trimPreviewUrl;
+            preview.play().catch(() => {});
+        }
+    }
+
+    function showTrimLoadingShell() {
+        const panel = document.getElementById('bokantajTrim');
+        if (!panel) return;
+        dismissComposerKeyboard();
+        document.body.classList.add('bokantaj-trim-open');
+        panel.hidden = false;
+        fitTrimToScreen();
+        if (window.visualViewport && !panel.dataset.fitBound) {
+            panel.dataset.fitBound = '1';
+            window.visualViewport.addEventListener('resize', fitTrimToScreen);
+        }
+        setTrimLoading();
+    }
+
+    function openTrim(duration, startAt) {
+        const panel = document.getElementById('bokantajTrim');
+        const start = document.getElementById('bokantajTrimStart');
+        const end = document.getElementById('bokantajTrimEnd');
+        const video = document.getElementById('bokantajTrimPreview');
+        const capture = document.getElementById('bokantajTrimCapture');
+        if (!panel || !start || !end) return;
+        const total = Number(duration) || 60;
+        const span = Math.min(60, total);
+        const from = Math.max(0, Math.min(Number(startAt) || 0, Math.max(0, total - span)));
+        panel.dataset.duration = String(total);
+        start.value = String(from);
+        end.value = String(from + span);
+        if (trimPreviewUrl) URL.revokeObjectURL(trimPreviewUrl);
+        trimPreviewUrl = pendingTrimFile ? URL.createObjectURL(pendingTrimFile) : '';
+        dismissComposerKeyboard();
+        document.body.classList.add('bokantaj-trim-open');
+        panel.hidden = false;
+        fitTrimToScreen();
+        bindTrimHandles();
+        paintTrimWindow();
+        requestAnimationFrame(() => {
+            sizeTrimTrack();
+            layoutTrimSelection();
+            if (!video || !trimPreviewUrl) {
+                hideTrimLoading();
+                return;
+            }
+            video.muted = true;
+            video.volume = 1;
+            video.preload = 'auto';
+            video.playsInline = true;
+            if (!video.dataset.soundBound) {
+                video.dataset.soundBound = '1';
+                video.addEventListener('click', () => {
+                    video.muted = false;
+                    video.volume = 1;
+                    if (video.paused) video.play().catch(() => {});
+                    else video.pause();
+                });
+            }
+            const stamp = String(Date.now());
+            panel.dataset.loadStamp = stamp;
+            let revealed = false;
+            const reveal = () => {
+                if (panel.dataset.loadStamp !== stamp) return;
+                hideTrimLoading();
+                if (revealed) return;
+                revealed = true;
+                try { video.currentTime = from; } catch (_) {}
+                playTrimLoop();
+                if (capture && capture.getAttribute('src') !== trimPreviewUrl) capture.src = trimPreviewUrl;
+                fillFilmstrip(capture, total);
+            };
+            video.addEventListener('loadedmetadata', reveal, { once: true });
+            video.addEventListener('loadeddata', reveal, { once: true });
+            video.addEventListener('canplay', reveal, { once: true });
+            video.onerror = () => {
+                if (panel.dataset.loadStamp !== stamp) return;
+                revealed = true;
+                hideTrimLoading();
+                const label = document.getElementById('bokantajTrimWindow');
+                if (label) label.textContent = 'La vidéo s’affiche mal. Vous pouvez quand même valider le passage.';
+            };
+            setTrimLoading(0.2);
+            video.src = trimPreviewUrl;
+            window.setTimeout(reveal, 2500);
+        });
+    }
+
+    function reopenTrimEditor() {
+        if (!trimSourceFile || !window.LYANN_BOKANTAJ_VIDEO) return;
+        pendingTrimFile = trimSourceFile;
+        const open = (duration) => openTrim(duration, trimChosenStart);
+        if (trimSourceDuration > 0) {
+            open(trimSourceDuration);
+            return;
+        }
+        window.LYANN_BOKANTAJ_VIDEO.readMeta(trimSourceFile).then((meta) => {
+            trimSourceDuration = Number(meta && meta.duration) || 0;
+            open(trimSourceDuration || 60);
+        }).catch(() => open(60));
+    }
+
+    document.getElementById('bokantajTrimCancel')?.addEventListener('click', () => {
+        releaseTrimChrome();
+        if (attachedVideoFile) return;
+        pendingTrimFile = null;
+        videoPicked = false;
+        videoAttachFailed = false;
+        if (flashMediaPreviewContainer) flashMediaPreviewContainer.innerHTML = '';
+    });
+    document.getElementById('bokantajTrimGallery')?.addEventListener('click', () => {
+        dismissComposerKeyboard();
+        flashVideoInput?.click();
+    });
+    document.getElementById('btnComposerVideoQuick')?.addEventListener('pointerdown', () => {
+        dismissComposerKeyboard();
+    });
+    let trimApplyBusy = false;
+    async function applyTrimSelection() {
+        if (trimApplyBusy) return;
+        const file = pendingTrimFile || trimSourceFile;
+        if (!file || !window.LYANN_BOKANTAJ_VIDEO) {
+            showTrimApplyError('La vidéo n’est pas prête. Choisissez-la à nouveau.');
+            return;
+        }
+        primeTrimAudio();
+        showTrimApplyState('Préparation de la vidéo…');
+        trimApplyBusy = true;
+        try {
+            const start = Number(document.getElementById('bokantajTrimStart')?.value || 0);
+            const end = Number(document.getElementById('bokantajTrimEnd')?.value || 60);
+            await acceptPreparedVideo(file, start, end);
+        } finally {
+            trimApplyBusy = false;
+        }
+    }
+    document.getElementById('bokantajTrimApply')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        applyTrimSelection();
     });
 
     async function acceptPreparedVideo(file, start, end) {
         const button = document.getElementById('bokantajTrimApply');
         if (button) button.disabled = true;
+        showTrimApplyState('Préparation de la vidéo…');
+        releaseTrimDecoders();
         try {
             const prepared = await window.LYANN_BOKANTAJ_VIDEO.prepareClip(file, start, end);
             if (attachedVideo) URL.revokeObjectURL(attachedVideo);
@@ -2840,24 +3290,21 @@ safeDomReady(() => {
             attachedVideoFile = prepared.file;
             attachedPosterBlob = prepared.poster;
             attachedVideo = URL.createObjectURL(prepared.poster || prepared.file);
+            trimSourceFile = file;
+            trimChosenStart = Number(start) || 0;
             attachedPhotos.forEach(url => URL.revokeObjectURL(url));
             attachedPhotos = [];
             attachedPhotoFiles = [];
             pendingTrimFile = null;
-            const panel = document.getElementById('bokantajTrim');
-            if (panel) panel.hidden = true;
+            releaseTrimChrome();
             updateMediaPreview();
         } catch (err) {
             videoAttachFailed = true;
-            const label = document.getElementById('bokantajTrimWindow');
-            const panel = document.getElementById('bokantajTrim');
-            if (panel && label && pendingTrimFile) {
-                panel.hidden = false;
-                label.textContent = err.message || 'Vidéo impossible à préparer.';
-            }
-            showVideoAttachError(err.message || 'Cette vidéo n’a pas pu être ajoutée.');
+            const message = err.message || 'Cette vidéo n’a pas pu être ajoutée.';
+            showTrimApplyError(message);
+            showVideoAttachError(message);
         } finally {
-            if (button) button.disabled = false;
+            if (button && !document.body.classList.contains('bokantaj-trim-open')) button.disabled = false;
         }
     }
 
@@ -2919,12 +3366,16 @@ safeDomReady(() => {
                 mediaUploadBadge.style.display = 'inline';
                 mediaUploadBadge.textContent = 'Vidéo jointe';
             }
+            const reopen = document.createElement('button');
+            reopen.type = 'button';
+            reopen.className = 'bokantaj-video-reopen';
+            reopen.setAttribute('aria-label', 'Modifier la vidéo');
             if (attachedPosterBlob && attachedVideo) {
                 const img = document.createElement('img');
                 img.src = attachedVideo;
-                img.alt = 'Miniature de la vidéo';
+                img.alt = '';
                 img.className = 'flash-media-preview-thumb';
-                flashMediaPreviewContainer.appendChild(img);
+                reopen.appendChild(img);
             } else {
                 const video = document.createElement('video');
                 video.className = 'flash-media-preview-thumb';
@@ -2933,12 +3384,14 @@ safeDomReady(() => {
                 video.controls = false;
                 video.setAttribute('playsinline', '');
                 video.src = attachedVideo || URL.createObjectURL(attachedVideoFile);
-                flashMediaPreviewContainer.appendChild(video);
+                reopen.appendChild(video);
             }
             const note = document.createElement('p');
             note.className = 'bokantaj-video-attach-status';
-            note.textContent = 'Vidéo jointe';
-            flashMediaPreviewContainer.appendChild(note);
+            note.textContent = 'Vidéo jointe. Touchez pour modifier.';
+            reopen.appendChild(note);
+            reopen.addEventListener('click', () => reopenTrimEditor());
+            flashMediaPreviewContainer.appendChild(reopen);
         } else {
             if (mediaUploadBadge) mediaUploadBadge.style.display = 'none';
         }
@@ -5160,6 +5613,9 @@ safeDomReady(() => {
                 attachedVideoFile = null;
                 attachedPosterBlob = null;
                 pendingTrimFile = null;
+                trimSourceFile = null;
+                trimSourceDuration = 0;
+                trimChosenStart = 0;
                 videoAttachFailed = false;
                 videoPicked = false;
                 videoPreparePromise = null;
@@ -5199,13 +5655,13 @@ safeDomReady(() => {
         });
     }
 
-    window.openBokantajComposer = function() {
+    window.openBokantajComposer = function(options) {
         const form = document.getElementById('createFlashForm');
         const opener = document.getElementById('bokantajComposerOpen');
         if (form) form.hidden = false;
         if (opener) opener.setAttribute('aria-expanded', 'true');
         const input = document.getElementById('flashContentInput');
-        if (input) input.focus();
+        if (input && !(options && options.focus === false)) input.focus();
     };
     window.closeBokantajComposer = function() {
         const input = document.getElementById('flashContentInput');
@@ -5224,6 +5680,10 @@ safeDomReady(() => {
         videoPicked = false;
         videoPreparePromise = null;
         pendingTrimFile = null;
+        trimSourceFile = null;
+        trimSourceDuration = 0;
+        trimChosenStart = 0;
+        releaseTrimChrome();
         document.getElementById('createFlashForm')?.querySelector('.bokantaj-publish-failure')?.remove();
         const infoType = document.querySelector('input[name="bokantajPostType"][value="info"]');
         if (infoType) infoType.checked = true;

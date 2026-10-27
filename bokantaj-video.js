@@ -192,30 +192,40 @@
                     reject(new Error('Cet appareil ne peut pas exporter un MP4 avec le son. Choisissez un MP4 déjà raccourci.'));
                     return;
                 }
-                let stream, audioContext;
+                let stream;
+                let audioContext = null;
+                let ownsAudio = false;
                 const cleanAudio = () => {
                     if (stream) stream.getTracks().forEach((track) => track.stop());
-                    if (audioContext) audioContext.close().catch(() => {});
+                    if (ownsAudio && audioContext) audioContext.close().catch(() => {});
                 };
                 try {
                     stream = canvas.captureStream(24);
-                    const Audio = window.AudioContext || window.webkitAudioContext;
-                    if (!Audio) throw new Error('Le son ne peut pas être préservé sur cet appareil.');
-                    audioContext = new Audio();
-                    const fromVideo = audioContext.createMediaElementSource(video);
-                    const recorderOutput = audioContext.createMediaStreamDestination();
-                    fromVideo.connect(recorderOutput); // deliberately not connected to speakers
-                    const tracks = recorderOutput.stream.getAudioTracks();
-                    if (tracks.length !== 1) throw new Error('Piste audio non disponible.');
-                    stream.addTrack(tracks[0]);
-                    await audioContext.resume();
-                    if (audioContext.state !== 'running') throw new Error('Capture audio non disponible.');
                 } catch (err) {
-                    cleanAudio();
                     URL.revokeObjectURL(url);
-                    reject(new Error('Impossible de conserver le son avec la compression sur cet appareil. Utilisez un MP4 déjà raccourci.'));
+                    reject(new Error('Cet appareil ne peut pas convertir la vidéo. Choisissez un MP4 de 60 secondes et 40 Mo maximum.'));
                     return;
                 }
+                // Sound is kept when the tap already resumed an AudioContext.
+                // If that capture fails, the chosen minute is still exported.
+                try {
+                    const primed = window.__lyannTrimAudio;
+                    const Audio = window.AudioContext || window.webkitAudioContext;
+                    if (primed && primed.state !== 'closed') audioContext = primed;
+                    else if (Audio) {
+                        audioContext = new Audio();
+                        ownsAudio = true;
+                    }
+                    if (audioContext) {
+                        const fromVideo = audioContext.createMediaElementSource(video);
+                        const recorderOutput = audioContext.createMediaStreamDestination();
+                        fromVideo.connect(recorderOutput);
+                        const tracks = recorderOutput.stream.getAudioTracks();
+                        if (tracks.length === 1) stream.addTrack(tracks[0]);
+                        const resumed = audioContext.resume();
+                        if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
+                    }
+                } catch (_) {}
                 let recorder;
                 try {
                     recorder = new MediaRecorder(stream, {
@@ -270,10 +280,23 @@
                         reject(new Error('Impossible de démarrer la compression.'));
                         return;
                     }
-                    video.play().then(() => requestAnimationFrame(paint)).catch(() => {
-                        cleanAudio();
-                        reject(new Error('Lecture nécessaire à la conversion indisponible.'));
-                        try { if (recorder.state === 'recording') recorder.stop(); } catch (_) {}
+                    const playForCapture = () => new Promise((resolvePlay, rejectPlay) => {
+                        const timer = window.setTimeout(() => rejectPlay(new Error('play-timeout')), 1500);
+                        video.play().then(() => {
+                            window.clearTimeout(timer);
+                            resolvePlay();
+                        }).catch((err) => {
+                            window.clearTimeout(timer);
+                            rejectPlay(err);
+                        });
+                    });
+                    playForCapture().then(() => requestAnimationFrame(paint)).catch(() => {
+                        video.muted = true;
+                        video.play().then(() => requestAnimationFrame(paint)).catch(() => {
+                            cleanAudio();
+                            reject(new Error('Lecture nécessaire à la conversion indisponible.'));
+                            try { if (recorder.state === 'recording') recorder.stop(); } catch (_) {}
+                        });
                     });
                 };
                 video.onseeked = startRecording;
@@ -304,6 +327,20 @@
     // fallback for devices that lack it or files it cannot parse.
     async function convert(source, clip, meta) {
         const fast = window.LYANN_BOKANTAJ_VIDEO_FAST;
+        const trimmed = Math.abs((Number(clip.end) - Number(clip.start)) - Number(meta && meta.duration)) >= 0.3;
+        if (fast && fast.remuxClip && trimmed) {
+            try {
+                return await withDeadline(
+                    fast.remuxClip(source, clip.start, clip.end),
+                    45000,
+                    'Le passage n’a pas pu être découpé.'
+                );
+            } catch (err) {
+                if (window.console && console.info) {
+                    console.info('[BOKANTAJ] découpage direct indisponible:', err && err.message);
+                }
+            }
+        }
         if (fast && fast.codecsAvailable()) {
             try {
                 return await withDeadline(
@@ -325,7 +362,8 @@
             );
             return { file: recorded, poster: null };
         } catch (err) {
-            if (source.size > policy.MAX_BYTES) throw err;
+            // A longer source must never be attached in place of the chosen minute.
+            if (trimmed || source.size > policy.MAX_BYTES) throw err;
             return { file: source, poster: null };
         }
     }
@@ -395,6 +433,12 @@
             const converted = await convert(source, window, meta);
             output = converted.file;
             poster = converted.poster;
+            const outMeta = await readMeta(output);
+            if (Number.isFinite(outMeta.duration) && outMeta.duration > policy.MAX_SECONDS + 0.5) {
+                const error = new Error('Le passage n’a pas pu être raccourci à 60 secondes. Réessayez.');
+                error.code = 'duration';
+                throw error;
+            }
         }
         if (!poster) poster = await posterOf(source, window.start);
         if (!poster) throw posterError();
