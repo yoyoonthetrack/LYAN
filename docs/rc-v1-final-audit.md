@@ -4,15 +4,29 @@ Verdict : **NO-GO**
 
 ## V2.3 — compte QA sur iPhone, signatures
 
-Le binaire installé reste `ios-mvpyrwgw-accac6`, SHA `2053e9d5f4a249cb336c4d937d4c8d3c6d822e5c`, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`. Le serveur déployé est toujours `80ceae7c35bcc7a1bbe5160f68e604bd2350ec20`.
+Le paquet installé pour la passe QA est `ios-mvq1ylmz-48feba`, SHA `6df9d7e883812584bd8ee0e35d1868f01889f862`, hash d’assets `fa9f500d4937388de7eaa851455d8ec59a81ad699371533dc6c77fa29772a4c2`, version 1.0, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`. Le serveur déployé est toujours `80ceae7c35bcc7a1bbe5160f68e604bd2350ec20`.
 
 ### iPhone physique
 
-« iPhone de yoann » est appairé en USB, le mode développeur est activé, et la connexion est filaire. Aucun contournement du verrouillage. Xcode a d’abord attendu « Unlock iPhone de yoann to Continue », puis la passe a démarré une fois l’écran déverrouillé.
+« iPhone de yoann » (`00008140-00112D0C2684801C`) est appairé en USB, le mode développeur est activé, et la connexion est filaire. Aucun contournement du verrouillage. Xcode a d’abord attendu « Unlock iPhone de yoann to Continue ». La passe a ensuite tourné téléphone déverrouillé.
 
-La passe `testQaPhysicalPass` a démarré alors que le compte personnel était connecté. La déconnexion n’a pas trouvé « Se déconnecter » à l’écran, donc la session QA n’a pas pris le relais. Le test a été arrêté avant toute publication : aucune ligne `bokantaj_posts` n’a été créée dans les vingt minutes, et la photothèque ouverte a été annulée. Une demande système « Autoriser LYANN à utiliser votre position » est restée affichée, sans réponse. Le test s’arrête maintenant avant toute écriture tant que la session n’est pas QA A.
+Une première exécution a ouvert la photothèque puis l’a annulée, et a affiché la demande système de position, alors que le compte personnel était encore connecté. Le processus a été arrêté avant toute publication. Staging : 0 ligne `bokantaj_posts` sur cette fenêtre. Le test s’arrête désormais avant toute écriture si la feuille de compte n’est pas QA A.
 
-Pour reprendre : sur l’iPhone, répondre à la demande de position, déverrouiller l’appareil s’il se reverrouille, et laisser l’écran allumé. Si iOS demande l’automatisation, toucher Activer.
+La déconnexion restait bloquée : le bouton était touché, la session personnelle restait ouverte. `logout()` attendait la désactivation push puis la révocation réseau. Il libère maintenant la session locale si cette étape dépasse deux secondes. Avec le paquet `ios-mvq1ylmz-48feba`, `testQaPhysicalPass` note `logged-out` puis `qa-identity`. Aucune écriture n’a suivi :
+
+- Le champ de publication n’est pas apparu. Aucun texte `QA-IOS-V23-TEXT`.
+- Le menu Photo s’ouvre, la photothèque s’ouvre, Annuler la ferme. Aucune photo n’est choisie ni publiée.
+- « Me localiser » est touché. « Partager la localisation précise » n’est pas atteignable. Aucune position n’est publiée.
+- Aucun bouton « Lire la vidéo » déjà approuvé n’est joué. « Fiesta », encore en vérification, n’est pas traité comme une vidéo publique.
+- Annonces : la liste montre « Détails ». L’écran de détail ne montre ni « Contacter » ni « Modifier ».
+- Lyanneurs : un bouton « Contacter » est visible. Il n’est pas activé.
+- Messages et Notifications s’ouvrent. Aucun échange entre deux comptes QA.
+- Passage à l’accueil puis retour : `qa-resumed`. Un défilement est noté `qa-scrolled`.
+- Coupure réseau non faite : elle demanderait de changer la configuration de l’appareil ou un mot de passe administrateur.
+
+Staging, après la passe : 0 ligne `QA-IOS-V23-%`, 0 publication créée dans les trente minutes. Journal : `/tmp/lyann-ios-device-v23f.log`. Résultat : `Test-App-2026.10.27_03-15-00-+0100.xcresult`.
+
+Pour continuer les écritures : laisser « iPhone de yoann » déverrouillé, écran allumé. Si iOS redemande l’automatisation, toucher Activer. Si la demande de position est encore affichée, la réponse appartient à la personne qui tient le téléphone.
 
 ### Distribution
 
@@ -26,7 +40,7 @@ La migration devis reste bloquée par le jeton de gestion HTTP 401. Aucune écri
 
 ### Toujours en attente
 
-Déverrouiller l’iPhone et laisser tourner la recette QA. Certificat Apple Distribution dans le trousseau, puis archive. Assembler l’AAB avec le keystore hors dépôt. Coupure réseau, migration `P0001`, remboursement Stripe Test. Aucune fusion, aucun Production, aucun Stripe Live.
+Publication QA, photo choisie, GPS quartier et exact, lecture d’une vidéo déjà approuvée, détail d’annonce, contact Lyanneur, messages entre deux comptes QA. Certificat Apple Distribution dans le trousseau, puis archive. Assembler l’AAB avec le keystore hors dépôt. Coupure réseau, migration `P0001`, remboursement Stripe Test. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V2.2 — iPhone physique, deux vidéos, distribution
 
