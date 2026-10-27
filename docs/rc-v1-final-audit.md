@@ -30,7 +30,7 @@ La chaîne automatique, relue sans écriture, conclut `approved` / `video_checke
 
 Une vidéo dont la raison est `video_checked` ou `video_poster_checked` peut maintenant être publiée. Une approbation sans ce contrôle reste en revue. Un fichier illisible est repris, puis tenu pour une personne, sans être affiché comme approuvé. « Drums » est laissé `pending` : le worker déployé est encore l’ancien, et la ligne n’a pas été forcée.
 
-Paquet Staging `ios-mvq83de4-1a146f`, hash d’assets `9d84b0aa1e487d48848b47ec540b6409d64e5d698fd3a80217b3bc75b311b7e1`, version 1.0, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`, SHA `23f288b9f7ae3a30006fb8fd4397cf7b4b5aff1e`. Les applications iOS et Android de ce paquet ne sont pas encore réinstallées. Le serveur déployé reste `80ceae7c`. Aucune fusion, aucun déploiement Production, Stripe Live inchangé.
+Paquet Staging `ios-mvq8ckif-ad2f83`, hash d’assets `609727e17a9818a5c3381238fb84e12324f21a28fa156314540ceb65aff1a66b`, version 1.0, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`, SHA `807cb874f1bea2576289e25bae48dbe86e06dcbb`. Sur un écran étroit, la ligne de tri passe à la ligne pour que « Publications récentes » reste entier. Le simulateur iPhone 17 Pro et l’iPhone déverrouillé montrent le titre, « Territoire : Tous » et « Publications récentes » en entier, sans chevauchement. L’onglet Carte a été mesuré dans le navigateur en 390 px, pas sur l’iPhone. L’APK est installé sur l’émulateur. Le serveur déployé reste `80ceae7c`. Aucune fusion, aucun déploiement Production, Stripe Live inchangé.
 
 ## V2.6 — un seul Bokantaj, Hello debout
 
