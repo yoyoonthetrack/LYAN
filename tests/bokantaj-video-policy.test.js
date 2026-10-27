@@ -136,12 +136,15 @@ test('the feed video can be scrubbed and opened full screen', () => {
     const source = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
     const css = fs.readFileSync(path.join(__dirname, '../style.css'), 'utf8');
     assert.match(source, /function openFullPlayer/);
-    assert.match(source, /webkitEnterFullscreen/);
+    assert.match(source, /classList\.add\('is-stage'\)/);
+    assert.match(source, /Fermer le lecteur/);
+    assert.match(source, /revokeObjectURL/);
     assert.match(source, /bokantaj-video-expand/);
     assert.match(source, /playing\.controls = true/);
     // The old tap handler only toggled play/pause, with no way to seek.
     assert.doesNotMatch(source, /if \(playing\.paused\) playing\.play\(\)/);
     assert.match(css, /\.bokantaj-video-controls \{/);
+    assert.match(css, /\.bokantaj-video-shell\.is-stage \{/);
     assert.match(css, /\.bokantaj-video-expand \{|\.bokantaj-video-expand,/);
 });
 
@@ -202,6 +205,7 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(script, /video\.classList\.add\('has-media-ratio'\)/);
     const feed = fs.readFileSync(path.join(__dirname, '../feed.html'), 'utf8');
     assert.match(feed, /id="btnComposerPhotoQuick"[^>]*role="button"/);
+    assert.match(feed, /id="btnComposerPhoto"[^>]*role="button"/);
     assert.match(feed, /<span class="sr-only">Photo<\/span>/);
 
     const client = fs.readFileSync(path.join(__dirname, '../api-client.js'), 'utf8');

@@ -13215,6 +13215,26 @@ body.is-native-app .navbar.scrolled,
     border-radius: 16px;
     overflow: hidden;
 }
+.bokantaj-video-shell.is-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    margin: 0;
+    border-radius: 0;
+    background: #0c1210;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.bokantaj-video-shell.is-stage > .bokantaj-video {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    opacity: 1;
+}
+.bokantaj-video-shell.is-stage .bokantaj-video-controls {
+    z-index: 2;
+}
 /* Kept at the top so they never sit on the native control bar, which appears
    at the bottom as soon as the member taps the video to scrub. */
 .bokantaj-video-controls {

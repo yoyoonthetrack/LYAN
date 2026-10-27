@@ -341,6 +341,259 @@ final class LyannSmokeUITests: XCTestCase {
         }
     }
 
+    func testPhotoGpsAndPlayerClose() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["Bokantaj"].waitForExistence(timeout: 30))
+        app.buttons["Bokantaj"].firstMatch.tap()
+        let composer = app.buttons["Ouvrir le compositeur"].firstMatch
+        XCTAssertTrue(composer.waitForExistence(timeout: 8))
+        if composer.isHittable { composer.tap() }
+
+        let photoReady = tapNamed(app, "Photo")
+        note(photoReady ? "photo-tapped" : "photo-not-hittable")
+        let library = app.buttons["Photothèque"].firstMatch
+        if library.waitForExistence(timeout: 5), library.isHittable {
+            note("photo-chooser-open")
+            library.tap()
+            let cancel = app.buttons["Annuler"].firstMatch
+            if cancel.waitForExistence(timeout: 8), cancel.isHittable {
+                note("photo-picker-open")
+                save(app, "v21-photo-library")
+                cancel.tap()
+                note("photo-picker-cancelled")
+            } else {
+                note("photo-picker-not-shown")
+                save(app, "v21-photo-library")
+            }
+        } else {
+            note("photo-chooser-missing")
+            save(app, "v21-photo-chooser")
+        }
+
+        if tapNamed(app, "Photo"), library.waitForExistence(timeout: 5), library.isHittable {
+            library.tap()
+            let cancel = app.buttons["Annuler"].firstMatch
+            let cancelEn = app.buttons["Cancel"].firstMatch
+            let picker = cancel.waitForExistence(timeout: 8) || cancelEn.waitForExistence(timeout: 2)
+            note(picker ? "photo-picker-reopened" : "photo-picker-reopen-missing")
+            if picker {
+                selectLibraryPhoto(app)
+                let stillOpen = app.buttons["Annuler"].firstMatch
+                if stillOpen.waitForExistence(timeout: 2), stillOpen.isHittable {
+                    note("photo-add-missing")
+                    save(app, "v21-photo-picker")
+                    stillOpen.tap()
+                }
+            }
+        }
+        let preview = app.images["Aperçu de la photo"].firstMatch
+        let badge = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "photo(s) jointe")).firstMatch
+        let attached = waitUntil(app, seconds: 8) { preview.exists || badge.exists }
+        note(attached ? "photo-preview" : "photo-preview-missing")
+        save(app, "v21-photo-preview")
+        if attached {
+            let field = app.textViews.firstMatch
+            if field.waitForExistence(timeout: 3) {
+                field.tap()
+                field.typeText("QA-IOS-V21-PHOTO")
+            }
+            let publish = app.buttons["Publier"].firstMatch
+            if publish.waitForExistence(timeout: 3) {
+                if publish.isHittable { publish.tap() } else { publish.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+            }
+            note(app.staticTexts["QA-IOS-V21-PHOTO"].firstMatch.waitForExistence(timeout: 20) ? "photo-published" : "photo-publish-missing")
+            save(app, "v21-photo-published")
+        }
+
+        app.buttons["Bokantaj"].firstMatch.tap()
+        dismissKeyboard(app)
+        var poster: XCUIElement?
+        for _ in 0..<6 {
+            poster = hittable(app, "Lire la vidéo")
+            if poster != nil { break }
+            app.swipeUp()
+        }
+        if let poster {
+            let posters = app.buttons.matching(NSPredicate(format: "label == %@", "Lire la vidéo")).count
+            note(posters > 1 ? "video-several" : "video-single")
+            poster.tap()
+            let playing = app.staticTexts["Lecture en cours"].firstMatch
+            note(playing.waitForExistence(timeout: 25) ? "video-playing" : "video-not-playing")
+            var expand = hittable(app, "Ouvrir le lecteur")
+            if expand == nil {
+                scrollPage(app, up: false)
+                expand = hittable(app, "Ouvrir le lecteur")
+            }
+            if let expand {
+                expand.tap()
+                let close = app.buttons["Fermer le lecteur"].firstMatch
+                note(close.waitForExistence(timeout: 4) ? "video-stage" : "video-stage-missing")
+                save(app, "v21-video-stage")
+                if close.exists, close.isHittable {
+                    close.tap()
+                    let back = app.buttons["Fil"].firstMatch
+                    note(back.waitForExistence(timeout: 4) && back.isHittable && !close.exists ? "video-back-feed" : "video-back-missing")
+                    save(app, "v21-video-back")
+                    let played = poster.frame
+                    var second: XCUIElement?
+                    for _ in 0..<4 {
+                        let videoButtons = app.buttons.matching(NSPredicate(format: "label == %@", "Lire la vidéo"))
+                        let count = min(videoButtons.count, 6)
+                        for index in 0..<count {
+                            let button = videoButtons.element(boundBy: index)
+                            if button.exists, button.isHittable, abs(button.frame.minY - played.minY) > 30 {
+                                second = button
+                                break
+                            }
+                        }
+                        if second != nil { break }
+                        app.swipeUp()
+                    }
+                    if let second {
+                        second.tap()
+                        note(app.staticTexts["Lecture en cours"].firstMatch.waitForExistence(timeout: 20) ? "video-second-playing" : "video-second-missing")
+                        let inlineClose = app.buttons["Fermer le lecteur"].firstMatch
+                        if inlineClose.exists, inlineClose.isHittable { inlineClose.tap() }
+                    } else {
+                        note("video-second-covered")
+                    }
+                }
+            } else {
+                note("video-stage-missing")
+            }
+        } else {
+            note("video-poster-absent")
+            save(app, "v21-video-missing")
+        }
+
+        openComposer(app)
+        publishPlace(app, exact: false, marker: "QA-IOS-V21-QUARTIER")
+        app.buttons["Bokantaj"].firstMatch.tap()
+        openComposer(app)
+        publishPlace(app, exact: true, marker: "QA-IOS-V21-EXACT")
+    }
+
+    private func selectLibraryPhoto(_ app: XCUIApplication) {
+        let cell = app.cells.firstMatch
+        if cell.exists, cell.isHittable {
+            cell.tap()
+            note("photo-cell")
+        } else {
+            // The system library grid is visible but its tiles are not buttons.
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.165, dy: 0.433)).tap()
+            note("photo-tile-tapped")
+        }
+        _ = waitUntil(app, seconds: 2) {
+            app.buttons["Ajouter"].firstMatch.exists || app.buttons["Add"].firstMatch.exists
+        }
+        let confirmLabels = ["Ajouter", "Add", "OK", "Terminé", "Done"]
+        for label in confirmLabels {
+            let button = app.buttons[label].firstMatch
+            if button.exists, button.isHittable {
+                button.tap()
+                note("photo-added")
+                return
+            }
+        }
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.904, dy: 0.122)).tap()
+        note("photo-confirm-tapped")
+    }
+
+    private func scrollPage(_ app: XCUIApplication, up: Bool) {
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.78 : 0.42))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.42 : 0.78))
+        start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    private func dismissKeyboard(_ app: XCUIApplication) {
+        guard app.keyboards.count > 0 else { return }
+        let done = app.keyboards.buttons["retour"].firstMatch
+        if done.exists { done.tap() }
+    }
+
+    private func openComposer(_ app: XCUIApplication) {
+        dismissKeyboard(app)
+        app.buttons["Bokantaj"].firstMatch.tap()
+        var opener: XCUIElement?
+        for _ in 0..<4 {
+            app.swipeDown()
+            opener = hittable(app, "Ouvrir le compositeur")
+            if opener != nil { break }
+        }
+        guard let opener else { note("composer-missing"); return }
+        opener.tap()
+    }
+
+    private func hittable(_ app: XCUIApplication, _ label: String) -> XCUIElement? {
+        let buttons = app.buttons.matching(NSPredicate(format: "label == %@", label))
+        let count = min(buttons.count, 6)
+        for index in 0..<count {
+            let button = buttons.element(boundBy: index)
+            if button.exists, button.isHittable { return button }
+        }
+        return nil
+    }
+
+    private func tapNamed(_ app: XCUIApplication, _ label: String) -> Bool {
+        let buttons = app.buttons.matching(NSPredicate(format: "label == %@", label))
+        let count = min(buttons.count, 4)
+        for index in 0..<count {
+            let button = buttons.element(boundBy: index)
+            if button.exists, button.isHittable {
+                button.tap()
+                return true
+            }
+        }
+        return false
+    }
+
+    private func publishPlace(_ app: XCUIApplication, exact: Bool, marker: String) {
+        var trigger = hittable(app, "Ajouter une localisation")
+        for _ in 0..<4 where trigger == nil {
+            app.swipeUp()
+            trigger = hittable(app, "Ajouter une localisation")
+        }
+        guard let trigger else {
+            note("place-trigger-absent")
+            save(app, exact ? "v21-place-exact" : "v21-place-quarter")
+            return
+        }
+        trigger.tap()
+        let locate = app.buttons["Me localiser"].firstMatch
+        if locate.waitForExistence(timeout: 6), locate.isHittable { locate.tap() }
+        let searching = app.staticTexts["Recherche de votre position…"].firstMatch
+        _ = waitUntil(app, seconds: 8) { !searching.exists }
+        let zoom = app.buttons["Zoomer"].firstMatch
+        if zoom.waitForExistence(timeout: 4), zoom.isHittable { zoom.tap() }
+        let choiceLabel = exact ? "Partager la localisation précise" : "Partager le nom du quartier"
+        var choice = hittable(app, choiceLabel)
+        for _ in 0..<5 where choice == nil {
+            scrollPage(app, up: true)
+            choice = hittable(app, choiceLabel)
+        }
+        guard let choice else {
+            note(exact ? "place-exact-missing" : "place-quarter-missing")
+            save(app, exact ? "v21-place-exact" : "v21-place-quarter")
+            return
+        }
+        choice.tap()
+        let label = exact ? "position exacte" : "quartier"
+        let shared = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", label)).firstMatch
+        note(shared.waitForExistence(timeout: 4) ? (exact ? "place-exact" : "place-quarter") : (exact ? "place-exact-missing" : "place-quarter-missing"))
+        save(app, exact ? "v21-place-exact" : "v21-place-quarter")
+        let field = app.textViews.firstMatch
+        if field.waitForExistence(timeout: 3) {
+            field.tap()
+            field.typeText(marker)
+        }
+        let publish = app.buttons["Publier"].firstMatch
+        if publish.waitForExistence(timeout: 3) {
+            if publish.isHittable { publish.tap() } else { publish.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+        }
+        note(app.staticTexts[marker].firstMatch.waitForExistence(timeout: 20) ? "published-\(marker)" : "publish-missing-\(marker)")
+    }
+
     func testReturnFromMissionPicker() throws {
         let app = XCUIApplication()
         app.launch()

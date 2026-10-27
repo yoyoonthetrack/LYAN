@@ -2910,6 +2910,7 @@ safeDomReady(() => {
             attachedPhotos.forEach(src => {
                 const img = document.createElement('img');
                 img.src = src;
+                img.alt = 'Aperçu de la photo';
                 img.className = 'flash-media-preview-thumb';
                 flashMediaPreviewContainer.appendChild(img);
             });
@@ -3537,25 +3538,44 @@ safeDomReady(() => {
     // standard Fullscreen API is ignored for inline video on iPhone.
     function openFullPlayer(video) {
         if (!video) return;
-        video.controls = true;
-        setBokantajFeedSound(false);
-        if (typeof video.webkitEnterFullscreen === 'function') {
-            try { video.webkitEnterFullscreen(); return; } catch (err) { /* fall through */ }
-        }
-        if (typeof video.requestFullscreen === 'function') {
-            video.requestFullscreen().catch(() => {});
+        const shell = video.closest('.bokantaj-video-shell');
+        const expand = shell?.querySelector('.bokantaj-video-expand');
+        // The system player covers the page and its close control is not
+        // reachable from the feed. The same button stages the clip, then
+        // brings the feed back.
+        if (shell?.classList.contains('is-stage')) {
+            shell.classList.remove('is-stage');
+            if (expand) expand.setAttribute('aria-label', 'Ouvrir le lecteur');
+            if (typeof video.webkitExitFullscreen === 'function') {
+                try { video.webkitExitFullscreen(); } catch (err) { /* already inline */ }
+            }
             return;
         }
-        if (typeof video.webkitRequestFullscreen === 'function') video.webkitRequestFullscreen();
+        if (shell) shell.classList.add('is-stage');
+        if (expand) expand.setAttribute('aria-label', 'Fermer le lecteur');
+        video.controls = true;
+        setBokantajFeedSound(false);
     }
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState !== 'hidden') return;
         document.querySelectorAll('video.bokantaj-video').forEach((video) => {
+            const shell = video.closest('.bokantaj-video-shell');
+            shell?.classList.remove('is-stage');
+            const expand = shell?.querySelector('.bokantaj-video-expand');
+            if (expand) expand.setAttribute('aria-label', 'Ouvrir le lecteur');
             if (typeof video.webkitExitFullscreen === 'function') {
                 try { video.webkitExitFullscreen(); } catch (err) { /* already inline */ }
             }
             if (!video.paused) video.pause();
+            const src = video.getAttribute('src') || '';
+            if (src.startsWith('blob:')) {
+                const remote = video.dataset.videoSrc || '';
+                if (remote) bokantajMediaCache.delete(remote + '\0playback');
+                URL.revokeObjectURL(src);
+                video.removeAttribute('src');
+                try { video.load(); } catch (err) { /* element already gone */ }
+            }
         });
     });
 
