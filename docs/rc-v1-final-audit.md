@@ -1,6 +1,47 @@
-# LYANN — Release Candidate V1.1 à V2.1
+# LYANN — Release Candidate V1.1 à V2.2
 
 Verdict : **NO-GO**
+
+## V2.2 — iPhone physique, deux vidéos, distribution
+
+Le binaire installé reste celui de V2.1 : `ios-mvpyrwgw-accac6`, SHA `2053e9d5f4a249cb336c4d937d4c8d3c6d822e5c`, backend `https://staging-bokantaj.lyann.app`, projet `tdktfbtqceldlaeqjtow`. Aucun source d’application n’a changé. Le backend déployé répond encore `80ceae7c35bcc7a1bbe5160f68e604bd2350ec20`.
+
+### iPhone physique
+
+« iPhone de yoann » (`00008140-00112D0C2684801C`) est appairé en USB, le mode développeur est activé, et le téléphone était déverrouillé. Les échecs précédents viennent de là : « Authentification annulée » est un Face ID refusé pendant l’activation de l’automatisation, et « Timed out while enabling automation mode » signifie que cette activation n’a pas été confirmée à temps. Le code n’a pas été saisi.
+
+Une passe a ensuite démarré. La session ouverte est le compte membre « Yoann D. », pas le compte QA A. Le test cherchait `@lyann.invalid` et « Qa A », donc ces deux assertions échouent. Ce qui a été exécuté :
+
+- Annonces : 7 annonces, la carte `RC14-mvpnz42j-devis`.
+- Bokantaj, puis la carte Guadeloupe avec des repères et le texte « 13 partages ». Retour au fil.
+- Le menu Photo s’ouvre (Photothèque, Prendre une photo, Choisir les fichiers). La photothèque n’a pas été ouverte, et aucune photo personnelle n’a été publiée.
+- Le toucher « Lire la vidéo » sur « Fiesta », encore « en cours de vérification », laisse le bouton en place. La lecture n’a pas démarré.
+- Notifications ouvertes, menu ouvert, Finances ouvert (formule Gratuit). L’application est revenue au premier plan après un passage à l’accueil (`resumed`).
+- Lyanneurs, Messages, le clavier et le GPS n’ont pas été atteints : les feuilles recouvraient la barre, et aucune position du téléphone n’a été publiée.
+
+Le téléphone s’est ensuite reverrouillé. Pour continuer : le déverrouiller, laisser l’écran allumé, et toucher Activer si iOS demande d’activer l’automatisation de l’interface.
+
+Captures : `/tmp/lyann-v22/named/`. Journal : `/tmp/lyann-ios-device-v22.log`.
+
+### Vidéos — simulateur, backend Staging déployé
+
+`testTwoFeedVideos` réussit sur le simulateur iPhone 17 Pro. Deux boutons « Lire la vidéo » distincts passent par « Lecture en cours », « Ouvrir le lecteur », « Fermer le lecteur », puis le fil. La seconde image est le message « Incroyable », avec un cadre paysage. Après un passage à l’accueil, « Lecture en cours » a disparu et le fil est là. Le conteneur de cette passe ne contient pas de fichier `MediaCache` ni de vidéo temporaire de plusieurs mégaoctets.
+
+Le fil ne demande toujours le fichier qu’au toucher : le préchargement des cartes ne charge que les images. Aucune capture réseau de cette passe ne prouve l’absence de requête avant le toucher. La coupure réseau n’a pas été faite : le filtre de paquets demande un mot de passe administrateur, qui n’a pas été fourni.
+
+Journal : `/tmp/lyann-ios-uitest-v22.log`.
+
+### Distribution
+
+Une seule identité de signature : Apple Development. Aucun certificat Apple Distribution, donc pas d’archive ni de TestFlight. Bundle `app.lyann.mobile`, équipe `WLV4WC47U2`, signature automatique. Côté Android, `applicationId` `app.lyann.mobile`, et `LYANN_ANDROID_KEYSTORE` est absent : pas d’AAB signé, pas d’envoi Play. Rien n’a été publié.
+
+### Backend
+
+La migration devis a été relancée contre `tdktfbtqceldlaeqjtow`. Le jeton de gestion répond encore HTTP 401. Aucune écriture. Le remboursement Stripe reste `EXECUTION_DISABLED`. Les boutons admin n’ont pas été rejoués. La feuille du compte physique affiche la formule Gratuit ; elle n’a pas été modifiée.
+
+### Toujours en attente
+
+Lyanneurs, Messages, clavier et GPS sur l’iPhone déverrouillé, sans publier la position réelle du téléphone. Lecture d’une vidéo déjà approuvée sur l’appareil. Coupure réseau, puis retour. Certificat Apple Distribution et keystore Android. Migration `P0001` et remboursement Stripe Test. Aucune fusion, aucun Production, aucun Stripe Live.
 
 ## V2.1 — photo iOS, plein écran, lieu exact
 
