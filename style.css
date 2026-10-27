@@ -13211,6 +13211,9 @@ body.is-native-app .navbar.scrolled,
     position: relative;
     display: block;
     margin-top: 10px;
+    background: #1e2822;
+    border-radius: 16px;
+    overflow: hidden;
 }
 /* Kept at the top so they never sit on the native control bar, which appears
    at the bottom as soon as the member taps the video to scrub. */
@@ -13222,6 +13225,7 @@ body.is-native-app .navbar.scrolled,
     gap: 8px;
 }
 .bokantaj-video-sound,
+.bokantaj-video-toggle,
 .bokantaj-video-expand {
     width: 42px;
     height: 42px;
@@ -13239,6 +13243,7 @@ body.is-native-app .navbar.scrolled,
     box-shadow: 0 2px 10px rgba(12, 20, 15, 0.45);
 }
 .bokantaj-video-sound svg,
+.bokantaj-video-toggle i,
 .bokantaj-video-expand i {
     display: block;
 }

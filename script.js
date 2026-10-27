@@ -3086,11 +3086,12 @@ safeDomReady(() => {
         return null;
     }
 
-    async function loadBokantajMedia(url) {
+    async function loadBokantajMedia(url, mode) {
         const source = String(url || '');
         if (!source || source.startsWith('blob:') || source.startsWith('data:')) return source;
         if (!source.includes('/v1/media/')) return source;
-        const cached = bokantajMediaCache.get(source);
+        const cacheKey = mode === 'playback' ? source + '\0playback' : source;
+        const cached = bokantajMediaCache.get(cacheKey);
         if (cached) return cached;
         const request = (async () => {
             const token = await bokantajMediaToken();
@@ -3105,16 +3106,20 @@ safeDomReady(() => {
                 const turn = window.LYANN_BOKANTAJ_VIDEO_POLICY && window.LYANN_BOKANTAJ_VIDEO_POLICY.mp4Rotation;
                 bokantajMediaRotation.set(source, turn ? turn(bytes) : 0);
             }
-            const blob = new Blob([bytes], { type: String(headerType || '').split(';')[0] });
-            const typed = typedBokantajMediaBlob(blob, source, headerType);
+            const playback = mode === 'playback' && window.LYANN_BOKANTAJ_VIDEO_POLICY && window.LYANN_BOKANTAJ_VIDEO_POLICY.playbackMime;
+            const mime = playback ? playback(bytes, headerType) : '';
+            const blob = mime
+                ? new Blob([bytes], { type: mime })
+                : new Blob([bytes], { type: String(headerType || '').split(';')[0] });
+            const typed = mime ? blob : typedBokantajMediaBlob(blob, source, headerType);
             if (!typed) throw new Error('media');
             return URL.createObjectURL(typed);
         })();
-        bokantajMediaCache.set(source, request);
+        bokantajMediaCache.set(cacheKey, request);
         try {
             return await request;
         } catch (err) {
-            bokantajMediaCache.delete(source);
+            bokantajMediaCache.delete(cacheKey);
             throw err;
         }
     }
@@ -3445,38 +3450,86 @@ safeDomReady(() => {
         const sound = document.createElement('button');
         sound.type = 'button';
         sound.className = 'bokantaj-video-sound';
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'bokantaj-video-toggle';
+        toggle.setAttribute('aria-label', 'Lecture');
+        toggle.innerHTML = '<i class="ph ph-play" aria-hidden="true"></i>';
         const expand = document.createElement('button');
         expand.type = 'button';
         expand.className = 'bokantaj-video-expand';
         expand.setAttribute('aria-label', 'Ouvrir le lecteur');
         expand.innerHTML = '<i class="ph ph-arrows-out" aria-hidden="true"></i>';
-        overlay.append(sound, expand);
+        const state = document.createElement('span');
+        state.className = 'sr-only';
+        state.setAttribute('role', 'status');
+        overlay.append(toggle, sound, expand, state);
         button.replaceWith(shell);
         if (poster) shell.appendChild(poster);
         shell.append(video, overlay);
         setBokantajFeedSound(bokantajFeedMuted);
         video.dataset.autoplayBound = '1';
+        // The feed observer must not pause this clip before its first frame,
+        // or iOS leaves a blank player and never fires `playing`.
+        video.dataset.holdPause = '1';
         feedVideoObserver?.observe(video);
-        video.src = source;
-        const started = video.play();
-        if (started && typeof started.catch === 'function') started.catch(() => {});
-        // The gesture has already started playback. Measuring the frame only
-        // updates the box; it must not run before play().
-        if (!ratio) videoShapeReady(video);
         const reveal = () => {
             video.classList.remove('is-settling');
             if (poster && poster.parentElement) poster.remove();
         };
-        video.addEventListener('playing', reveal, { once: true });
-        video.addEventListener('error', () => {
+        const showFailure = () => {
             reveal();
+            delete video.dataset.holdPause;
+            state.textContent = 'La vidéo n’a pas pu être chargée.';
             if (!shell.querySelector('.bokantaj-video-error')) {
                 const note = document.createElement('span');
                 note.className = 'bokantaj-video-error';
                 note.textContent = 'La vidéo n’a pas pu être chargée.';
                 shell.appendChild(note);
             }
-        }, { once: true });
+        };
+        const markPlaying = () => {
+            reveal();
+            delete video.dataset.holdPause;
+            toggle.setAttribute('aria-label', 'Pause');
+            toggle.innerHTML = '<i class="ph ph-pause" aria-hidden="true"></i>';
+            state.textContent = 'Lecture en cours';
+        };
+        video.addEventListener('playing', markPlaying);
+        video.addEventListener('pause', () => {
+            if (video.dataset.holdPause === '1') return;
+            toggle.setAttribute('aria-label', 'Lecture');
+            toggle.innerHTML = '<i class="ph ph-play" aria-hidden="true"></i>';
+            state.textContent = 'Lecture en pause';
+        });
+        video.addEventListener('error', showFailure, { once: true });
+        const playClip = () => {
+            const started = video.play();
+            if (started && typeof started.catch === 'function') {
+                started.catch((err) => {
+                    if (err && err.name === 'AbortError') return;
+                    showFailure();
+                });
+            }
+        };
+        const ios = window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'ios';
+        if (ios) {
+            // The tap is the download. WKWebView leaves a white frame when the
+            // media response is Cache-Control: no-store, so iOS plays a local
+            // blob. Web and Android keep a direct URL and Range requests.
+            state.textContent = 'Ouverture de la vidéo…';
+            loadBokantajMedia(source, 'playback').then((local) => {
+                video.classList.remove('is-settling');
+                video.src = local;
+                playClip();
+            }).catch(() => showFailure());
+        } else {
+            video.src = source;
+            playClip();
+        }
+        // The gesture has already started playback. Measuring the frame only
+        // updates the box; it must not run before play().
+        if (!ratio) videoShapeReady(video);
         return video;
     }
 
@@ -3496,7 +3549,27 @@ safeDomReady(() => {
         if (typeof video.webkitRequestFullscreen === 'function') video.webkitRequestFullscreen();
     }
 
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'hidden') return;
+        document.querySelectorAll('video.bokantaj-video').forEach((video) => {
+            if (typeof video.webkitExitFullscreen === 'function') {
+                try { video.webkitExitFullscreen(); } catch (err) { /* already inline */ }
+            }
+            if (!video.paused) video.pause();
+        });
+    });
+
     document.addEventListener('click', async (event) => {
+        const toggle = event.target.closest && event.target.closest('.bokantaj-video-toggle');
+        if (toggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            const clip = toggle.closest('.bokantaj-video-shell')?.querySelector('video');
+            if (!clip) return;
+            if (clip.paused) clip.play().catch(() => {});
+            else clip.pause();
+            return;
+        }
         const sound = event.target.closest && event.target.closest('.bokantaj-video-sound');
         if (sound) {
             event.preventDefault();
@@ -3540,6 +3613,7 @@ safeDomReady(() => {
             }
             return;
         }
+        if (node.dataset.holdPause === '1') return;
         if (node.tagName === 'VIDEO' && !node.paused) node.pause();
     }
 

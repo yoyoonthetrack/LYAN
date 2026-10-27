@@ -201,15 +201,17 @@
 
                     <div class="flash-composer-card bokantaj-composer" id="flashComposerCard">
                         <div class="bokantaj-composer-bar">
-                            <button type="button" class="bokantaj-composer-open" id="bokantajComposerOpen" aria-expanded="false" aria-controls="createFlashForm">
+                            <button type="button" class="bokantaj-composer-open" id="bokantajComposerOpen" aria-label="Ouvrir le compositeur" aria-expanded="false" aria-controls="createFlashForm">
                                 <img id="composerUserAvatar" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22%23FAF7F2%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2248%22%20fill%3D%22%23EBF2ED%22%20stroke%3D%22rgba(74%2C124%2C89%2C0.25)%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%2216%22%20fill%3D%22%234A7C59%22%2F%3E%3Cpath%20d%3D%22M%2022%2084%20C%2022%2066%2C%2034%2058%2C%2050%2058%20C%2066%2058%2C%2078%2066%2C%2078%2084%20Z%22%20fill%3D%22%234A7C59%22%2F%3E%3C%2Fsvg%3E" onerror="window.handleAvatarError(this)" alt="" class="user-avatar-circle">
                                 <span>Partager une idée, une info, un bon plan…</span>
                             </button>
-                            <label class="bokantaj-composer-media" id="btnComposerPhotoQuick" for="flashPhotoInput" aria-label="Photo">
+                            <label class="bokantaj-composer-media" id="btnComposerPhotoQuick" for="flashPhotoInput" role="button" aria-label="Photo">
                                 <i class="ph ph-image" aria-hidden="true"></i>
+                                <span class="sr-only">Photo</span>
                             </label>
-                            <label class="bokantaj-composer-media" id="btnComposerVideoQuick" for="flashVideoInput" aria-label="Vidéo">
+                            <label class="bokantaj-composer-media" id="btnComposerVideoQuick" for="flashVideoInput" role="button" aria-label="Vidéo">
                                 <i class="ph ph-play-circle" aria-hidden="true"></i>
+                                <span class="sr-only">Vidéo</span>
                             </label>
                         </div>
 

@@ -214,7 +214,11 @@
 
     function updatePlaceButton() {
         const label = $('bokantajPlaceTriggerLabel');
-        if (label) label.textContent = savedPlace ? '📍 ' + savedPlace.label : 'Ajouter une localisation';
+        if (label) {
+            label.textContent = savedPlace
+                ? '📍 ' + savedPlace.label + (savedPlace.exact ? ' · position exacte' : ' · quartier')
+                : 'Ajouter une localisation';
+        }
         const trigger = $('bokantajPlaceTrigger');
         if (trigger) trigger.classList.toggle('has-place', !!savedPlace);
     }

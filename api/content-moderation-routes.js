@@ -344,6 +344,51 @@ function ownerIdFromPath(path) {
 
 // RFC 7233 single-range support for iOS/Android Safari seeking. Multi-range
 // requests are rejected instead of allocating arbitrary multipart responses.
+function mediaCacheControl(type) {
+    // AVPlayer on iOS paints a white frame when a video response is no-store.
+    // A short private lifetime lets the player reuse ranges. Images stay uncached
+    // so a later moderation decision is not kept on disk.
+    return String(type || '').toLowerCase().startsWith('video/')
+        ? 'private, max-age=300'
+        : 'private, no-store';
+}
+
+// Forward one Range to Storage. The previous path downloaded the whole object
+// for every two-byte probe, so a 20 MB clip never reached the first frame.
+async function fetchStorageObject({ supabaseAdmin, bucket, path, range, fetchImpl }) {
+    const root = String(supabaseAdmin && supabaseAdmin.supabaseUrl || '').replace(/\/$/, '');
+    const key = supabaseAdmin && supabaseAdmin.supabaseKey;
+    const fetchFn = fetchImpl || (typeof fetch === 'function' ? fetch : null);
+    if (!root || !key || typeof fetchFn !== 'function') return null;
+    const encoded = String(path).split('/').map((part) => encodeURIComponent(part)).join('/');
+    const headers = { Authorization: 'Bearer ' + key, apikey: key };
+    if (range) headers.Range = range;
+    let response;
+    try {
+        response = await fetchFn(root + '/storage/v1/object/' + bucket + '/' + encoded, { headers });
+    } catch (err) {
+        return null;
+    }
+    if (!response) return null;
+    const raw = Buffer.from(await response.arrayBuffer());
+    const type = response.headers && typeof response.headers.get === 'function'
+        ? response.headers.get('content-type')
+        : '';
+    const contentRange = response.headers && typeof response.headers.get === 'function'
+        ? response.headers.get('content-range')
+        : '';
+    return {
+        status: response.status,
+        type: type || '',
+        body: raw,
+        headers: {
+            'Accept-Ranges': 'bytes',
+            'Content-Length': raw.length,
+            ...(contentRange ? { 'Content-Range': contentRange } : {})
+        }
+    };
+}
+
 function sliceMediaRange(buffer, rangeHeader) {
     const size = buffer.length;
     const raw = String(rangeHeader || '').trim();
@@ -396,7 +441,7 @@ async function isApprovedBokantajMediaReference(supabaseAdmin, bucket, path) {
     });
 }
 
-async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucket, path, authorization, range }) {
+async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucket, path, authorization, range, fetchImpl }) {
     if (!path || !MEDIA_BUCKETS.includes(bucket)) return { status: 404, body: null };
     const release = await supabaseAdmin
         .from('public_media_releases')
@@ -430,14 +475,32 @@ async function serveModeratedMedia({ supabaseAdmin, verifyAdminPermission, bucke
         const stillPublished = await isApprovedBokantajMediaReference(supabaseAdmin, bucket, path);
         if (!stillPublished) return { status: 404, body: null };
     }
+    const streamed = await fetchStorageObject({ supabaseAdmin, bucket, path, range, fetchImpl });
+    if (streamed && streamed.status !== 200 && streamed.status !== 206) {
+        return { status: streamed.status, body: null, headers: streamed.headers };
+    }
+    if (streamed && (streamed.status === 200 || streamed.status === 206)) {
+        const type = mediaTypeFromPath(path, streamed.type || 'application/octet-stream');
+        const payload = streamed.status === 200 && range
+            ? sliceMediaRange(streamed.body, range)
+            : { status: streamed.status, body: streamed.body, headers: streamed.headers };
+        return {
+            ...payload,
+            type,
+            headers: { ...(payload.headers || {}), 'Cache-Control': mediaCacheControl(type) }
+        };
+    }
     const downloaded = await supabaseAdmin.storage.from(bucket).download(path);
     if (downloaded.error || !downloaded.data) return { status: 404, body: null };
     const bytes = Buffer.from(await downloaded.data.arrayBuffer());
+    const type = mediaTypeFromPath(path, downloaded.data.type || 'application/octet-stream');
     // The storage object is small (Bokantaj <=10 MiB), and range extraction
     // happens only after the existing moderation access control above.
+    const sliced = sliceMediaRange(bytes, range);
     return {
-        ...sliceMediaRange(bytes, range),
-        type: mediaTypeFromPath(path, downloaded.data.type || 'application/octet-stream')
+        ...sliced,
+        type,
+        headers: { ...(sliced.headers || {}), 'Cache-Control': mediaCacheControl(type) }
     };
 }
 
@@ -446,6 +509,7 @@ module.exports = {
     secretMatches,
     workerAuthorized,
     sliceMediaRange,
+    mediaCacheControl,
     isApprovedBokantajMediaReference,
     serveModeratedMedia
 };

@@ -142,4 +142,6 @@ test('composer location is a map plus two share choices', () => {
     assert.match(html, /id="bokantajPlaceSave" hidden/);
     assert.match(map, /function sharePlace/);
     assert.match(map, /bokantajShareQuarter/);
+    assert.match(map, /position exacte/);
+    assert.match(map, / · quartier/);
 });

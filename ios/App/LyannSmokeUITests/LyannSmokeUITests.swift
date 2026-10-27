@@ -234,31 +234,110 @@ final class LyannSmokeUITests: XCTestCase {
         XCTAssertTrue(basemap && !basemapFailed.exists, "Le fond de carte reste sur « La carte arrive… ».")
 
         app.buttons["Fil"].firstMatch.tap()
+        let poster = app.buttons["Lire la vidéo"].firstMatch
+        if !poster.waitForExistence(timeout: 4) { app.swipeUp() }
+        if poster.waitForExistence(timeout: 6), poster.isHittable {
+            poster.tap()
+            let playing = app.staticTexts["Lecture en cours"].firstMatch
+            let failed = app.staticTexts["La vidéo n’a pas pu être chargée."].firstMatch
+            let started = waitUntil(app, seconds: 25) { playing.exists || failed.exists }
+            note(playing.exists ? "video-playing" : failed.exists ? "video-failed" : "video-no-frame")
+            save(app, "v19-video")
+            if playing.exists {
+                let pause = app.buttons["Pause"].firstMatch
+                if pause.waitForExistence(timeout: 4), pause.isHittable {
+                    pause.tap()
+                    note(app.staticTexts["Lecture en pause"].firstMatch.waitForExistence(timeout: 4) ? "video-paused" : "video-pause-missing")
+                    let resume = app.buttons["Lecture"].firstMatch
+                    if resume.waitForExistence(timeout: 3), resume.isHittable {
+                        resume.tap()
+                        note(playing.waitForExistence(timeout: 4) ? "video-resumed" : "video-resume-missing")
+                    }
+                }
+            }
+            XCTAssertTrue(started && playing.exists, "La vidéo iOS ne quitte pas l’image blanche.")
+        } else {
+            note("video-poster-absent")
+            XCTAssertTrue(false, "L’affiche vidéo est absente.")
+        }
+
+        let composer = app.buttons["Ouvrir le compositeur"].firstMatch
+        if composer.waitForExistence(timeout: 4), composer.isHittable { composer.tap() }
         let photoButton = app.buttons["Photo"].firstMatch
         let photoOther = app.otherElements["Photo"].firstMatch
-        let photo = photoButton.exists ? photoButton : photoOther
-        if photo.waitForExistence(timeout: 4), photo.isHittable {
+        var photo = photoButton.exists ? photoButton : photoOther
+        let photoReady = waitUntil(app, seconds: 6) {
+            photo = photoButton.exists ? photoButton : photoOther
+            return photo.exists && photo.isHittable
+        }
+        if photoReady {
             photo.tap()
+            let library = app.buttons["Photothèque"].firstMatch
             let cancel = app.buttons["Annuler"].firstMatch
-            if cancel.waitForExistence(timeout: 5), cancel.isHittable {
+            if library.waitForExistence(timeout: 5), library.isHittable {
+                note("photo-chooser-open")
+                library.tap()
+                if cancel.waitForExistence(timeout: 6), cancel.isHittable {
+                    note("photo-picker-open")
+                    save(app, "v19-photo")
+                    cancel.tap()
+                    note("photo-picker-cancelled")
+                } else {
+                    note("photo-picker-not-shown")
+                    save(app, "v19-photo")
+                }
+            } else if cancel.waitForExistence(timeout: 2), cancel.isHittable {
                 note("photo-picker-open")
                 cancel.tap()
                 note("photo-picker-cancelled")
+                save(app, "v19-photo")
             } else {
                 note("photo-picker-not-shown")
+                save(app, "v19-photo")
             }
-            save(app, "v19-photo")
         } else {
             note("photo-control-absent")
         }
-        let poster = app.buttons["Lire la vidéo"].firstMatch
-        if poster.waitForExistence(timeout: 6), poster.isHittable {
-            poster.tap()
-            let pause = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "pause")).firstMatch
-            note(pause.waitForExistence(timeout: 6) ? "video-playing" : "video-no-pause")
-            save(app, "v19-video")
+        XCTAssertTrue(app.buttons["Photo"].firstMatch.exists, "Le bouton Photo n’est pas exposé.")
+
+        let place = app.buttons["Ajouter une localisation"].firstMatch
+        if place.waitForExistence(timeout: 4), place.isHittable {
+            place.tap()
+            let locate = app.buttons["Me localiser"].firstMatch
+            if locate.waitForExistence(timeout: 6), locate.isHittable {
+                locate.tap()
+                let searching = app.staticTexts["Recherche de votre position…"].firstMatch
+                _ = waitUntil(app, seconds: 8) { !searching.exists }
+            }
+            let zoom = app.buttons["Zoomer"].firstMatch
+            if zoom.waitForExistence(timeout: 4), zoom.isHittable { zoom.tap(); note("place-zoom") }
+            let quarter = app.buttons["Partager le nom du quartier"].firstMatch
+            if quarter.waitForExistence(timeout: 4), quarter.isHittable {
+                quarter.tap()
+                let shared = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "quartier")).firstMatch
+                note(shared.waitForExistence(timeout: 4) ? "place-quarter" : "place-quarter-missing")
+            } else {
+                note("place-quarter-missing")
+            }
+            save(app, "v19-place")
+            let exactTrigger = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "quartier")).firstMatch
+            if exactTrigger.waitForExistence(timeout: 3), exactTrigger.isHittable { exactTrigger.tap() }
+            let exact = app.buttons["Partager la localisation précise"].firstMatch
+            if exact.waitForExistence(timeout: 4), exact.isHittable {
+                exact.tap()
+                let precise = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "position exacte")).firstMatch
+                note(precise.waitForExistence(timeout: 4) ? "place-exact" : "place-exact-missing")
+            }
+            app.buttons["Fil"].firstMatch.tap()
+            note(app.buttons["Lire la vidéo"].firstMatch.waitForExistence(timeout: 4) ? "place-back-feed" : "place-back-missing")
         } else {
-            note("video-poster-absent")
+            note("place-trigger-absent")
+        }
+        let expand = app.buttons["Ouvrir le lecteur"].firstMatch
+        if expand.waitForExistence(timeout: 3), expand.isHittable {
+            expand.tap()
+            note("video-fullscreen")
+            save(app, "v19-video-full")
         }
     }
 

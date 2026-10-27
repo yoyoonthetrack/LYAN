@@ -281,6 +281,22 @@ function volumeOf(objects) {
     return { files: files.length, bytes };
 }
 
+// WKWebView paints a white frame for a QuickTime URL whose response is
+// Cache-Control: no-store. An avc1 file can be handed to the player as MP4
+// once the member has asked to watch it. HEVC stays QuickTime.
+function playbackMime(bytes, headerType) {
+    const header = String(headerType || '').toLowerCase().split(';')[0].trim();
+    if (header !== 'video/quicktime') return header || 'application/octet-stream';
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+    const limit = Math.min(view.length, 524288);
+    const sample = typeof TextDecoder !== 'undefined'
+        ? new TextDecoder('latin1').decode(view.subarray(0, limit))
+        : '';
+    if (sample.includes('hvc1') || sample.includes('hev1')) return 'video/quicktime';
+    if (sample.includes('avc1')) return 'video/mp4';
+    return 'video/quicktime';
+}
+
 const api = {
     MAX_SECONDS,
     MAX_BYTES,
@@ -309,7 +325,8 @@ const api = {
     isProductionTarget,
     mediaDeletionAllowed,
     selectOrphans,
-    volumeOf
+    volumeOf,
+    playbackMime
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = api;

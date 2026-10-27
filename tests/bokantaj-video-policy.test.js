@@ -184,13 +184,25 @@ test('the card holds the shape of the clip before anything is fetched', () => {
     assert.match(script, /function videoShapeReady/);
     const opener = script.slice(script.indexOf('function openBokantajVideo'), script.indexOf('function openFullPlayer'));
     assert.match(opener, /const started = video\.play\(\)/);
+    assert.match(opener, /getPlatform\(\) === 'ios'/);
+    assert.match(opener, /loadBokantajMedia\(source, 'playback'\)/);
+    assert.match(script, /webkitExitFullscreen/);
+    const preload = script.slice(script.indexOf('async function preloadFeedCard'), script.indexOf('function hydrateHoldMedia'));
+    assert.doesNotMatch(preload, /playback/);
     assert.match(opener, /if \(!ratio\) videoShapeReady\(video\)/);
     assert.ok(opener.indexOf('video.play()') < opener.indexOf('videoShapeReady(video)'));
     assert.doesNotMatch(opener, /await /);
+    assert.match(opener, /dataset\.holdPause = '1'/);
+    assert.match(opener, /Lecture en cours/);
+    assert.match(opener, /aria-label', 'Pause'/);
+    assert.match(script, /if \(node\.dataset\.holdPause === '1'\) return;/);
     assert.match(script, /function playbackFrame/);
     assert.match(script, /bokantaj-video is-settling/);
     assert.match(css, /\.bokantaj-video-poster-image\.is-oriented/);
     assert.match(script, /video\.classList\.add\('has-media-ratio'\)/);
+    const feed = fs.readFileSync(path.join(__dirname, '../feed.html'), 'utf8');
+    assert.match(feed, /id="btnComposerPhotoQuick"[^>]*role="button"/);
+    assert.match(feed, /<span class="sr-only">Photo<\/span>/);
 
     const client = fs.readFileSync(path.join(__dirname, '../api-client.js'), 'utf8');
     assert.match(client, /posterName\(id, posterSize\?\.width, posterSize\?\.height\)/);
@@ -204,6 +216,14 @@ test('the card holds the shape of the clip before anything is fetched', () => {
         fs.readFileSync(path.join(__dirname, '../api/content-moderation-routes.js'), 'utf8'),
         /-poster\(\?:-\\d\+x\\d\+\)\?\\\.jpe\?g\$/
     );
+});
+
+test('an avc1 QuickTime file is played as MP4 and HEVC stays QuickTime', () => {
+    const avc = Buffer.from('ftypqt  avc1');
+    const hevc = Buffer.from('ftypqt  hvc1');
+    assert.equal(policy.playbackMime(avc, 'video/quicktime'), 'video/mp4');
+    assert.equal(policy.playbackMime(hevc, 'video/quicktime'), 'video/quicktime');
+    assert.equal(policy.playbackMime(avc, 'video/mp4'), 'video/mp4');
 });
 
 test('a portrait iPhone matrix is read off the video track', () => {

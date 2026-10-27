@@ -67,3 +67,47 @@ test('range download happens only after moderation visibility allows it', async 
   assert.equal((await serveModeratedMedia(args)).status, 404);
   assert.equal(downloadCount, 1, 'hidden/deleted video must not reach Storage');
 });
+
+test('a video range is forwarded and is not served as no-store', async () => {
+  const { mediaCacheControl } = require('../api/content-moderation-routes');
+  assert.equal(mediaCacheControl('video/quicktime'), 'private, max-age=300');
+  assert.equal(mediaCacheControl('video/mp4'), 'private, max-age=300');
+  assert.equal(mediaCacheControl('image/jpeg'), 'private, no-store');
+  let seenRange = '';
+  let downloads = 0;
+  const owner = '11111111-1111-4111-8111-111111111111';
+  const path = owner + '/clip.mov';
+  const supabaseAdmin = {
+    supabaseUrl: 'https://staging.example.test',
+    supabaseKey: 'test-key',
+    from(table) {
+      if (table === 'public_media_releases') return {
+        select() { return this; }, eq() { return this; },
+        async maybeSingle() { return { data: { status: 'approved', kind: 'video' }, error: null }; }
+      };
+      return {
+        select() { return this; }, eq() { return this; },
+        async limit() { return { data: [{ public_moderation_status: 'approved', human_decision: null, media_urls: ['https://lyann.app/v1/media/bokantaj-media-hold/' + path] }], error: null }; }
+      };
+    },
+    storage: { from() { return { download() { downloads += 1; return Promise.resolve({ data: null, error: new Error('full download') }); } }; } }
+  };
+  const fetchImpl = async (url, options) => {
+    seenRange = options.headers.Range;
+    assert.equal(options.headers.Authorization, 'Bearer test-key');
+    assert.match(url, /\/storage\/v1\/object\/bokantaj-media-hold\//);
+    return {
+      status: 206,
+      headers: { get: (name) => name === 'content-type' ? 'video/quicktime' : name === 'content-range' ? 'bytes 0-1/8' : '' },
+      async arrayBuffer() { return Uint8Array.from([1, 2]).buffer; }
+    };
+  };
+  const result = await serveModeratedMedia({
+    supabaseAdmin, bucket: 'bokantaj-media-hold', path, range: 'bytes=0-1', fetchImpl
+  });
+  assert.equal(seenRange, 'bytes=0-1');
+  assert.equal(downloads, 0);
+  assert.equal(result.status, 206);
+  assert.equal(result.headers['Cache-Control'], 'private, max-age=300');
+  assert.equal(result.type, 'video/quicktime');
+});
