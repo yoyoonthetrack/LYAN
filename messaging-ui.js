@@ -739,11 +739,12 @@
             const threadNeed = supportThread
                 ? null
                 : (options.initialNeed
-                    || ((options.requestId || options.invitationId || options.missionId)
+                    || ((options.requestId || options.invitationId || options.missionId || options.conversationId)
                         ? {
                             requestId: options.requestId || null,
                             invitationId: options.invitationId || null,
                             missionId: options.missionId || null,
+                            conversationId: options.conversationId || null,
                             requesterId: options.requesterId || null,
                             title: options.title || null,
                             consult: options.consult === true

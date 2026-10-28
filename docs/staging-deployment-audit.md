@@ -19,6 +19,8 @@ Cohérence du déploiement Staging : **GO**.
 Notifications push TestFlight, compte autorisé : **GO**. Le 28 octobre 2026 à 3 h 10, heure de Paris, Apple a accepté une notification vers le jeton production de `yoann.danier@gmail.com`. Le texte « Vous avez un nouveau message. » est apparu sur l’écran verrouillé de TestFlight 1.0 (12).
 
 Messagerie sur TestFlight 1.0 (13) : **GO définitif**, confirmé sur l’iPhone physique. Le 28 octobre 2026 à 12 h 15, heure de Paris, QA A a envoyé « Retest navigation 13. ». Le cron Vercel a livré à 12 h 16, statut `sent`, erreur vide, donc HTTP 200. L’identifiant `apns_id` est celui créé par la file et transmis à Apple ; Apple n’en renvoie pas un second. La notification est apparue. Le toucher, application fermée, a ouvert la conversation de QA A. `PUSH_QA_ONLY=true` reste actif. La liste reste les trois comptes QA et ce compte, sur le projet Staging seulement.
+
+Annonce sur TestFlight 1.0 (13) : **GO**, confirmé sur l’iPhone physique. Le 28 octobre 2026 à 12 h 29, heure de Paris, le cron a livré « Une annonce correspond à une de vos compétences. », statut `sent`, erreur vide. Le toucher a ouvert « Annonce QA k7mqp4lyannrc », identifiant `f704bc1c-cd06-4de0-b8a4-2585a46ac028`. Une seule notification, vers ce compte.
 Release candidate : **NO-GO**, pour les blocages déjà écrits dans `docs/rc-final-go-no-go.md`. Les contrôles CI ne suffisent pas à les lever.
 
 ## Routes
@@ -134,10 +136,10 @@ TestFlight 1.0 (12), commit `c35d68e`, a confirmé la réception sur l’écran 
 
 ## Prochains essais, non exécutés sur l’iPhone
 
-Un seul envoi par type, de QA A vers le compte autorisé, après fermeture complète de LYANN. Pas d’envoi groupé. Le Web a déjà ouvert les destinations ci-dessous dans la session QA ; l’iPhone ne les a pas touchées.
+L’annonce est confirmée sur l’iPhone. Il reste Bokantaj et le devis. Un seul envoi, après fermeture complète de LYANN. Pas d’envoi groupé.
 
 | Type | Push APNs | Texte prévu | Destination à confirmer sur l’iPhone | Déjà vu sur le Web |
 | --- | --- | --- | --- | --- |
 | Bokantaj | Non. Ce type n’est pas dans la file APNs | Notification dans l’application | La publication exacte, pas seulement le fil | Le clic ouvre le fil |
-| Annonce | Oui, `OPPORTUNITY` | « Une annonce correspond à une de vos compétences. » | Le détail de cette annonce | Le détail s’ouvre |
-| Devis | Oui, `QUOTE_RECEIVED` | « Vous avez reçu une proposition. » | La conversation du devis, pas un autre dossier | La conversation s’ouvre |
+| Annonce | Oui, `OPPORTUNITY` | « Une annonce correspond à une de vos compétences. » | Confirmé sur l’iPhone : le détail de « Annonce QA k7mqp4lyannrc » | Le détail s’ouvre |
+| Devis | Oui, `QUOTE_RECEIVED` | « Vous avez reçu une proposition. » | NO-GO sur l’iPhone. La notification est arrivée. Le toucher a ouvert l’accueil ou la liste des messages, pas la conversation de QA Author | La conversation s’ouvre dans une session Web |

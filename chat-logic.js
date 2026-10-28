@@ -1452,6 +1452,9 @@ window.__LYANN_CHAT_CORE_OPEN = async function (name, avatar, contactId = name, 
         if (initialNeed.invitationId) currentChatContact.invitationId = initialNeed.invitationId;
         if (initialNeed.missionId) currentChatContact.missionId = initialNeed.missionId;
     }
+    if (initialNeed && initialNeed.conversationId && isUUID(initialNeed.conversationId)) {
+        currentChatContact.conversationId = initialNeed.conversationId;
+    }
     noteDealContextConversation(currentChatContact);
     if (openingDirect) {
         currentChatContact.direct = true;

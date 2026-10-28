@@ -71,6 +71,121 @@ test('a message notification opens the conversation and a quote keeps its pair',
     assert.equal(quote.payload.requestId, undefined);
 });
 
+test('the delivered quote payload opens the quote conversation, not the inbox', () => {
+    const CONV = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    const delivered = policy.planNotificationNavigation({
+        version: 1,
+        scopeSource: 'notification',
+        route: 'messages',
+        contactId: CONTACT,
+        quoteId: QUOTE,
+        conversationId: CONV
+    }, { viewerId: VIEWER });
+    assert.equal(delivered.open, true);
+    assert.equal(delivered.route, 'messages');
+    assert.equal(delivered.payload.contactId, CONTACT);
+    assert.equal(delivered.payload.conversationId, CONV);
+    assert.equal(delivered.payload.quoteId, QUOTE);
+    assert.notEqual(delivered.payload.contactId, null);
+});
+
+test('a quote payload that only carries the quote id stays open for an authorized lookup', () => {
+    const delivered = policy.planNotificationNavigation({
+        version: 1,
+        scopeSource: 'notification',
+        route: 'messages',
+        quoteId: QUOTE
+    }, { viewerId: VIEWER });
+    assert.equal(delivered.open, true);
+    assert.equal(delivered.route, 'messages');
+    assert.equal(delivered.target.code, 'quote_lookup');
+    assert.equal(delivered.target.quoteId, QUOTE);
+    assert.equal(delivered.payload.contactId, null);
+
+    const resolved = policy.resolveQuoteThread({
+        id: QUOTE,
+        requester_id: VIEWER,
+        provider_id: CONTACT,
+        conversation_id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        request_id: REQ
+    }, VIEWER);
+    assert.equal(resolved.ok, true);
+    assert.equal(resolved.contactId, CONTACT);
+    assert.equal(resolved.conversationId, 'ffffffff-ffff-4fff-8fff-ffffffffffff');
+    assert.equal(resolved.requestId, REQ);
+
+    const stranger = policy.resolveQuoteThread({
+        id: QUOTE,
+        requester_id: VIEWER,
+        provider_id: CONTACT,
+        conversation_id: 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+    }, '99999999-9999-4999-8999-999999999999');
+    assert.equal(stranger.ok, false);
+    assert.equal(stranger.code, 'quote_unavailable');
+
+    const missingConversation = policy.resolveQuoteThread({
+        id: QUOTE,
+        requester_id: VIEWER,
+        provider_id: CONTACT
+    }, VIEWER);
+    assert.equal(missingConversation.ok, false);
+    assert.equal(missingConversation.code, 'conversation_unavailable');
+});
+
+test('a cold start restores a quote target with and without the conversation id', () => {
+    const CONV = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    const full = policy.parsePendingPushTarget(policy.serializePendingPushTarget({
+        version: 1,
+        scopeSource: 'notification',
+        route: 'messages',
+        contactId: CONTACT,
+        quoteId: QUOTE,
+        conversationId: CONV
+    }));
+    const fullPlan = policy.planNotificationNavigation(full, { viewerId: VIEWER });
+    assert.equal(fullPlan.payload.conversationId, CONV);
+    assert.equal(fullPlan.payload.contactId, CONTACT);
+    assert.equal(fullPlan.payload.quoteId, QUOTE);
+
+    const quoteOnly = policy.parsePendingPushTarget(policy.serializePendingPushTarget({
+        version: 1,
+        scopeSource: 'notification',
+        route: 'messages',
+        quoteId: QUOTE
+    }));
+    const quotePlan = policy.planNotificationNavigation(quoteOnly, { viewerId: VIEWER });
+    assert.equal(quotePlan.open, true);
+    assert.equal(quotePlan.target.quoteId, QUOTE);
+    assert.equal(quotePlan.route, 'messages');
+});
+
+test('message and announcement navigation stay on their existing targets', () => {
+    const message = policy.planNotificationNavigation({
+        version: 1,
+        scopeSource: 'notification',
+        route: 'messages',
+        type: 'NEW_MESSAGE',
+        contactId: CONTACT
+    }, { viewerId: VIEWER });
+    assert.equal(message.open, true);
+    assert.equal(message.route, 'messages');
+    assert.equal(message.payload.contactId, CONTACT);
+    assert.equal(message.payload.conversationId, undefined);
+    assert.equal(message.payload.quoteId, undefined);
+
+    const announcement = policy.planNotificationNavigation({
+        version: 1,
+        scopeSource: 'notification',
+        route: 'mission',
+        type: 'OPPORTUNITY',
+        requestId: REQ
+    }, { viewerId: VIEWER });
+    assert.equal(announcement.open, true);
+    assert.equal(announcement.route, 'mission');
+    assert.equal(announcement.payload.requestId, REQ);
+    assert.equal(announcement.payload.contactId, undefined);
+});
+
 test('payment navigation stays on the conversation or Finances and carries no amount', () => {
     const conversation = policy.planNotificationNavigation({
         type: 'PAYMENT_FAILED',

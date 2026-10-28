@@ -246,6 +246,7 @@
         let missionId = pickStructuredId(input, 'missionId');
         let milestoneId = pickStructuredId(input, 'milestoneId');
         let postId = pickStructuredId(input, 'postId');
+        let conversationId = pickStructuredId(input, 'conversationId');
         let scopeSource = structured && (requestId || invitationId || missionId || quoteId || milestoneId || contactId)
             ? 'notification'
             : 'legacy';
@@ -325,6 +326,11 @@
             resolution = 'missing';
             navigate = true;
             code = 'pair_only';
+        } else if (quoteId && (type === 'QUOTE_RECEIVED' || route === 'messages' || !route)) {
+            route = 'messages';
+            resolution = 'missing';
+            navigate = true;
+            code = 'quote_lookup';
         } else if (requestId || missionId || invitationId) {
             resolution = 'exact';
             navigate = route === 'messages' || route === 'mission';
@@ -341,6 +347,7 @@
             missionId,
             milestoneId,
             postId,
+            conversationId,
             scopeSource,
             resolution,
             navigate,
@@ -624,6 +631,8 @@
             contactId: target.contactId || null,
             scopeSource: 'notification'
         };
+        if (target.conversationId) payload.conversationId = target.conversationId;
+        if (target.quoteId) payload.quoteId = target.quoteId;
         if (target.resolution === 'exact' || target.resolution === 'unique') {
             if (target.requestId) payload.requestId = target.requestId;
             if (target.invitationId) payload.invitationId = target.invitationId;
@@ -680,6 +689,7 @@
             requestId: target.requestId || '',
             invitationId: target.invitationId || '',
             quoteId: target.quoteId || '',
+            conversationId: target.conversationId || '',
             missionId: target.missionId || '',
             milestoneId: target.milestoneId || '',
             postId: target.postId || '',
@@ -898,6 +908,26 @@
         };
     }
 
+    function resolveQuoteThread(quote, viewerId) {
+        const viewer = asUuid(viewerId);
+        const requester = asUuid(quote && (quote.requester_id || quote.requesterId));
+        const provider = asUuid(quote && (quote.provider_id || quote.providerId));
+        const conversationId = asUuid(quote && (quote.conversation_id || quote.conversationId));
+        const quoteId = asUuid(quote && (quote.id || quote.quoteId));
+        if (!viewer || !requester || !provider || !quoteId) return { ok: false, code: 'quote_unavailable' };
+        if (viewer !== requester && viewer !== provider) return { ok: false, code: 'quote_unavailable' };
+        const contactId = viewer === requester ? provider : requester;
+        if (!contactId || contactId === viewer) return { ok: false, code: 'self' };
+        if (!conversationId) return { ok: false, code: 'conversation_unavailable' };
+        return {
+            ok: true,
+            contactId,
+            conversationId,
+            requestId: asUuid(quote.request_id || quote.requestId),
+            quoteId
+        };
+    }
+
     function notificationUnavailableMessage(target) {
         const route = target && target.route;
         const code = String((target && (target.code || target.resolution)) || '');
@@ -906,6 +936,7 @@
         if (route === 'mission' || code === 'request_closed' || code === 'request_unavailable') {
             return 'Cette annonce n’est plus disponible.';
         }
+        if (code === 'quote_unavailable') return 'Cette proposition n’est plus disponible.';
         if (route === 'messages' || code === 'conversation_unavailable') return 'Cette conversation n’est plus accessible.';
         return 'Ce contenu n’est plus accessible.';
     }
@@ -943,6 +974,7 @@
         shouldSkipForegroundToast,
         routerPayloadFromTarget,
         planNotificationNavigation,
+        resolveQuoteThread,
         notificationUnavailableMessage,
         serializePendingPushTarget,
         parsePendingPushTarget,

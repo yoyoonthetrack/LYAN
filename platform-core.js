@@ -479,6 +479,41 @@ function announceUnavailableNotification(target, code) {
     return message;
 }
 
+async function attachQuoteConversation(plan, sessionUserId) {
+    if (!plan || plan.route !== 'messages' || !plan.target || !plan.target.quoteId) return { status: 'skip' };
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    if (!supabase || !policy || typeof policy.resolveQuoteThread !== 'function') return { status: 'retry' };
+    const quote = await supabase
+        .from('quotes')
+        .select('id,conversation_id,requester_id,provider_id,request_id')
+        .eq('id', plan.target.quoteId)
+        .limit(1);
+    if (quote.error) return { status: 'retry' };
+    const resolved = policy.resolveQuoteThread(quote.data && quote.data[0], sessionUserId);
+    if (!resolved.ok) return { status: 'unavailable', code: resolved.code };
+    const participant = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('conversation_id', resolved.conversationId)
+        .eq('user_id', sessionUserId)
+        .limit(1);
+    if (participant.error) return { status: 'retry' };
+    if (!participant.data || !participant.data.length) return { status: 'unavailable', code: 'conversation_unavailable' };
+    plan.payload = Object.assign({}, plan.payload, {
+        contactId: resolved.contactId,
+        conversationId: resolved.conversationId,
+        quoteId: resolved.quoteId,
+        requestId: resolved.requestId || undefined,
+        scopeSource: 'notification'
+    });
+    plan.target.contactId = resolved.contactId;
+    plan.target.conversationId = resolved.conversationId;
+    if (resolved.requestId) plan.target.requestId = resolved.requestId;
+    plan.target.code = null;
+    return { status: 'ready' };
+}
+
 async function notificationResourceAllowed(plan, sessionUserId, audienceUserId) {
     if (!plan || !plan.open || !plan.target) return false;
     if (plan.target.access && plan.target.access.authorized === true) return false;
@@ -543,6 +578,7 @@ function notificationFlightKey(data) {
         parsed.requestId || '',
         parsed.postId || '',
         parsed.quoteId || '',
+        parsed.conversationId || '',
         parsed.milestoneId || ''
     ].join('|');
 }
@@ -595,6 +631,28 @@ async function openLyannNotificationNow(data, options) {
             return { opened: false, announced: true, message };
         }
         try { await attachVisibleDealRequest(plan, sessionUser); } catch (_) {}
+        const quoteDestination = plan.target && plan.target.quoteId
+            ? await attachQuoteConversation(plan, sessionUser).catch(() => ({ status: 'retry' }))
+            : { status: 'skip' };
+        if (quoteDestination.status === 'retry') {
+            if (options.source !== 'bell') rememberPendingPushTarget(data, sessionUser);
+            return { opened: false, queued: true };
+        }
+        if (quoteDestination.status === 'unavailable') {
+            if (options.source !== 'bell') discardPendingPushNotification();
+            const message = announceUnavailableNotification(plan.target, quoteDestination.code);
+            return { opened: false, announced: true, message };
+        }
+        if (quoteDestination.status === 'ready') {
+            if (currentPushSessionUser() !== sessionUser) return { opened: false };
+            const opened = Boolean(await window.LYANN_ROUTER.go('messages', plan.payload));
+            if (opened) {
+                if (options.source !== 'bell') discardPendingPushNotification();
+            } else if (options.source !== 'bell') {
+                rememberPendingPushTarget(data, sessionUser);
+            }
+            return { opened, route: 'messages' };
+        }
         if (plan.route === 'messages' && plan.target && plan.target.type === 'PAYMENT_FAILED') {
             const conversationAllowed = await notificationResourceAllowed(plan, sessionUser, audienceUserId);
             if (!conversationAllowed) {

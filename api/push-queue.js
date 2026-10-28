@@ -101,6 +101,7 @@ function routeIdsFromTarget(target, fallbackRoute) {
         requestId: (target && target.requestId) || null,
         invitationId: (target && target.invitationId) || null,
         quoteId: (target && target.quoteId) || null,
+        conversationId: (target && target.conversationId) || null,
         missionId: (target && target.missionId) || null,
         milestoneId: (target && target.milestoneId) || null,
         scopeSource: (target && target.scopeSource) || 'legacy'
@@ -120,6 +121,7 @@ function routeFor(event) {
         requestId: event.requestId || event.request_id || null,
         invitationId: event.invitationId || event.invitation_id || null,
         quoteId: event.quoteId || event.quote_id || null,
+        conversationId: event.conversationId || event.conversation_id || null,
         missionId: event.missionId || event.mission_id || null,
         milestoneId: event.milestoneId || event.milestone_id || null
     }, { viewerId: event.recipientId });
@@ -215,7 +217,7 @@ function buildAutomaticPayload(plan) {
         }
     };
     if (route.route) payload.route = route.route;
-    const ids = ['contactId', 'requestId', 'invitationId', 'quoteId', 'missionId', 'milestoneId'];
+    const ids = ['contactId', 'requestId', 'invitationId', 'quoteId', 'conversationId', 'missionId', 'milestoneId'];
     for (const key of ids) {
         const value = route[key];
         if (value && isUuid(value)) payload[key] = String(value);
@@ -359,6 +361,7 @@ async function drainQueue(options) {
                 requestId: row.requestId,
                 invitationId: row.invitationId,
                 quoteId: row.quoteId,
+                conversationId: row.conversationId,
                 missionId: row.missionId,
                 milestoneId: row.milestoneId,
                 recipientId: row.recipientId

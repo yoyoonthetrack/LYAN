@@ -553,7 +553,7 @@ async function handlePushDrain(req, res) {
                     p_limit: limit
                 });
                 if (error) throw error;
-                return (data || []).map((row) => ({
+                const rows = (data || []).map((row) => ({
                     id: row.id,
                     recipientId: row.user_id,
                     title: row.title,
@@ -568,6 +568,24 @@ async function handlePushDrain(req, res) {
                     lockToken: row.lock_token,
                     apnsId: row.apns_id
                 }));
+                const quoteIds = rows
+                    .filter((row) => row.eventType === 'QUOTE_RECEIVED')
+                    .map((row) => String(row.entityId || '').split(':')[1] || '')
+                    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+                if (quoteIds.length) {
+                    const quotes = await supabaseAdmin.from('quotes').select('id,conversation_id,request_id').in('id', quoteIds);
+                    if (quotes.error) throw quotes.error;
+                    const byId = new Map((quotes.data || []).map((quote) => [quote.id, quote]));
+                    rows.forEach((row) => {
+                        if (row.eventType !== 'QUOTE_RECEIVED') return;
+                        const quote = byId.get(String(row.entityId || '').split(':')[1]);
+                        if (!quote) return;
+                        row.quoteId = quote.id;
+                        row.conversationId = quote.conversation_id || null;
+                        if (!row.requestId && quote.request_id) row.requestId = quote.request_id;
+                    });
+                }
+                return rows;
             },
             tokensForUser: async (userId) => {
                 const { data, error } = await supabaseAdmin.from('device_push_tokens')
