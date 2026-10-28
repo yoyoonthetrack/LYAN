@@ -504,7 +504,7 @@ async function handlePushDrain(req, res) {
     }
     const audience = pushAudience(process.env);
     if (!audience.enabled) {
-        return res.json({ success: true, enabled: false, processed: 0, code: 'PUSH_AUTOMATIC_DISABLED' });
+        return res.json({ success: true, enabled: false, processed: 0, code: audience.code || 'PUSH_AUTOMATIC_DISABLED' });
     }
     const config = apnsConfig(process.env);
     if (!config) return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', error: 'APNs n’est pas configuré.' });

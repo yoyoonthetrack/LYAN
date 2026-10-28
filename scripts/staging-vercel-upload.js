@@ -34,7 +34,8 @@ function cronProblems(config) {
     }
     const required = [
         ['/v1/editorial/collect/scheduled', '0 11,16,21 * * *'],
-        ['/v1/internal/moderation/run', '* * * * *']
+        ['/v1/internal/moderation/run', '* * * * *'],
+        ['/v1/notifications/push-drain', '* * * * *']
     ];
     for (const [cronPath, schedule] of required) {
         if (!crons.some((row) => row.path === cronPath && row.schedule === schedule)) {

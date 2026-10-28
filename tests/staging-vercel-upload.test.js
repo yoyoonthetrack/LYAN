@@ -10,7 +10,8 @@ test('the Staging upload keeps the editorial cron and the Apple association', ()
     const uploaded = stagingUploadConfig(root, staging);
     assert.deepEqual(cronProblems(uploaded), []);
     assert.equal(uploaded.functions['api/index.js'].maxDuration, 60);
-    assert.equal(root.crons.some((row) => row.path.includes('editorial')), false);
+    assert.equal(root.crons.some((row) => row.path.includes('editorial') || row.path.includes('push-drain')), false);
+    assert.equal(uploaded.crons.some((row) => row.path === '/v1/notifications/push-drain' && row.schedule === '* * * * *'), true);
     assert.equal(JSON.stringify(root).includes('prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM'), false);
 });
 

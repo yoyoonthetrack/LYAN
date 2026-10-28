@@ -76,6 +76,13 @@ test('the cron caller is refused without a configured secret', () => {
     assert.equal(cronAuthorized('Bearer other', { CRON_SECRET: 'secret' }), false);
     assert.equal(pushAudience({}).enabled, false);
     assert.equal(pushAudience({ PUSH_AUTOMATIC_ENABLED: 'true' }).allowlist, null);
+    assert.equal(pushAudience({ PUSH_AUTOMATIC_ENABLED: 'true', LYANN_RUNTIME: 'staging' }).enabled, false);
+    assert.equal(pushAudience({ PUSH_AUTOMATIC_ENABLED: 'true', LYANN_RUNTIME: 'staging' }).code, 'PUSH_QA_REQUIRED');
+    assert.deepEqual(pushAudience({
+        PUSH_AUTOMATIC_ENABLED: 'true',
+        LYANN_RUNTIME: 'staging',
+        PUSH_QA_USER_IDS: RECIPIENT
+    }).allowlist, [RECIPIENT]);
     assert.deepEqual(pushAudience({
         PUSH_AUTOMATIC_ENABLED: 'true',
         PUSH_QA_ONLY: 'true',

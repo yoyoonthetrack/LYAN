@@ -54,13 +54,16 @@ function cronAuthorized(authorization, env) {
 }
 
 function pushAudience(env) {
-    if (!automaticPushEnabled(env)) return { enabled: false, allowlist: null };
-    if (!env || env.PUSH_QA_ONLY !== 'true') return { enabled: true, allowlist: null };
-    const allowlist = String(env.PUSH_QA_USER_IDS || '')
+    if (!automaticPushEnabled(env)) return { enabled: false, allowlist: null, code: 'PUSH_AUTOMATIC_DISABLED' };
+    const staging = String(env && env.LYANN_RUNTIME || '').toLowerCase() === 'staging';
+    const restricted = staging || Boolean(env && env.PUSH_QA_ONLY === 'true');
+    if (!restricted) return { enabled: true, allowlist: null, code: null };
+    const allowlist = String(env && env.PUSH_QA_USER_IDS || '')
         .split(',')
         .map((value) => value.trim())
         .filter((value) => /^[0-9a-f-]{36}$/i.test(value));
-    return { enabled: true, allowlist };
+    if (!allowlist.length) return { enabled: false, allowlist: [], code: 'PUSH_QA_REQUIRED' };
+    return { enabled: true, allowlist, code: null };
 }
 
 function pushSound(customSound) {
