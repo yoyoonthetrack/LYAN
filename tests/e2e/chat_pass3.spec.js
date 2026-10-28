@@ -114,7 +114,7 @@ test('accepting a quote once does not rebuild the thread', async ({ page }) => {
     description: 'Taille de la haie et évacuation.',
     total_amount: 40,
     version: 1,
-    valid_until: '2026-11-02',
+    valid_until: '2099-11-02',
     status: 'SENT',
     requester_id: USER_ID,
     provider_id: CONTACT_ID,
@@ -140,7 +140,7 @@ test('accepting a quote once does not rebuild the thread', async ({ page }) => {
   await expect(review).toContainText('40 €');
   await expect(review).toContainText('Taille');
   await expect(review).toContainText('Haie de façade');
-  await expect(review).toContainText('02/11/2026');
+  await expect(review).toContainText('02/11/2099');
   expect(await page.evaluate(() => window.__accepts)).toBe(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(review.getByRole('button', { name: 'Signer et accepter le devis' })).toBeVisible();

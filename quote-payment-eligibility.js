@@ -436,8 +436,38 @@
         return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
 
+    function quoteAcceptBlock(quote, userId) {
+        if (!quote || !userId) return 'Ce devis ne peut pas être ouvert.';
+        const providerId = quote.provider_id || quote.helper_id;
+        if (String(providerId) === String(userId) || String(quote.requester_id) !== String(userId)) {
+            return 'Seul le demandeur peut accepter ce devis.';
+        }
+        const status = String(quote.status || '').toUpperCase();
+        if (status !== 'SENT') return 'Ce devis ne peut plus être accepté.';
+        const until = Date.parse(quote.valid_until);
+        if (Number.isFinite(until) && until < Date.now()) return 'Ce devis a expiré.';
+        const requestStatus = String(
+            quote.request_status
+            || (quote.request && quote.request.status)
+            || ''
+        ).toUpperCase();
+        if (requestStatus && requestStatus !== 'OPEN') return 'La demande n’est plus ouverte.';
+        const missionId = quote.mission_id || (quote.mission && quote.mission.id) || '';
+        const missionStatus = String(
+            quote.mission_status
+            || (quote.mission && quote.mission.status)
+            || ''
+        ).toUpperCase();
+        if (missionId && missionStatus !== 'CANCELLED' && missionStatus !== 'CANCELED') {
+            return 'Une mission existe déjà pour ce devis.';
+        }
+        return '';
+    }
+
     /**
      * Detail shown before a recipient can accept. Opening it never accepts.
+     * The button is hidden unless the same gates as accept_request_quote are already false here.
+     * The SQL function remains the authority.
      */
     function quoteReview(quote, userId) {
         if (!quote || !userId) return null;
@@ -455,7 +485,8 @@
         const prestation = String(quote.description || (milestones[0] && milestones[0].title) || '').trim();
         const valid = formatQuoteDate(quote.valid_until);
         const version = Number(quote.version) || 1;
-        const canAccept = role === 'requester' && quote.status === 'SENT';
+        const acceptBlock = quoteAcceptBlock(quote, userId);
+        const canAccept = !acceptBlock;
         return {
             quoteId: quote.id,
             version,
@@ -468,6 +499,7 @@
                 ? 'Valable jusqu’au ' + valid + '. Version ' + version + '.'
                 : 'Aucune date de fin n’est indiquée. Version ' + version + '.',
             canAccept,
+            acceptBlock,
             acceptLabel: canAccept ? 'Signer et accepter le devis' : '',
             declineLabel: canAccept ? 'Refuser' : '',
             acceptsOnOpen: false

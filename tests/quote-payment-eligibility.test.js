@@ -270,7 +270,7 @@ test('a received quote is opened before it can be signed', () => {
         description: 'Taille de la haie',
         total_amount: 40,
         version: 2,
-        valid_until: '2026-11-02T00:00:00Z',
+        valid_until: '2099-11-02T00:00:00Z',
         milestones: [{ id: 'a', title: 'Taille', description: 'Façade', amount: 40, status: 'PENDING', display_order: 1 }]
     });
     const card = missionCard(sent, requester, 'active');
@@ -284,12 +284,28 @@ test('a received quote is opened before it can be signed', () => {
     assert.equal(review.amount, '40 €');
     assert.equal(review.milestones[0].title, 'Taille');
     assert.equal(review.milestones[0].detail, 'Façade');
-    assert.match(review.conditions, /02\/11\/2026/);
+    assert.match(review.conditions, /02\/11\/2099/);
     assert.match(review.conditions, /Version 2/);
     assert.equal(quoteReview(sent, provider).canAccept, false);
     const accepted = quoteReview(Object.assign({}, sent, { status: 'ACCEPTED' }), requester);
     assert.equal(accepted.canAccept, false);
     assert.equal(accepted.acceptLabel, '');
+    for (const status of ['REJECTED', 'DECLINED', 'CANCELLED', 'CANCELED']) {
+        const closed = quoteReview(Object.assign({}, sent, { status }), requester);
+        assert.equal(closed.canAccept, false, status);
+        assert.equal(closed.acceptLabel, '');
+    }
+    const expired = quoteReview(Object.assign({}, sent, { valid_until: '2000-01-01T00:00:00Z' }), requester);
+    assert.equal(expired.canAccept, false);
+    assert.equal(expired.acceptBlock, 'Ce devis a expiré.');
+    const closedRequest = quoteReview(Object.assign({}, sent, { request_status: 'CANCELLED' }), requester);
+    assert.equal(closedRequest.canAccept, false);
+    assert.equal(closedRequest.acceptBlock, 'La demande n’est plus ouverte.');
+    const mission = quoteReview(Object.assign({}, sent, { mission_id: 'mission-live', mission_status: 'AGREED' }), requester);
+    assert.equal(mission.canAccept, false);
+    assert.equal(mission.acceptBlock, 'Une mission existe déjà pour ce devis.');
+    const cancelledMission = quoteReview(Object.assign({}, sent, { mission_id: 'mission-old', mission_status: 'CANCELLED' }), requester);
+    assert.equal(cancelledMission.canAccept, true);
     const source = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
     const viewHandler = source.slice(source.indexOf("if (action.id === 'view')"), source.indexOf("if (action.id === 'accept')"));
     assert.equal(viewHandler.includes('handleAcceptQuote'), false);

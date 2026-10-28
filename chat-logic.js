@@ -1917,7 +1917,15 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
             keepLockedOnSuccess: true,
             execute: async (handle) => {
                 const knownVersion = loadedQuoteForAccept(quoteId, sourceQuote);
+                const reviewGate = knownVersion && window.LYANN_QUOTE_PAYMENT && typeof window.LYANN_QUOTE_PAYMENT.quoteReview === 'function'
+                    ? window.LYANN_QUOTE_PAYMENT.quoteReview(knownVersion, typeof getMyId === 'function' ? getMyId() : null)
+                    : null;
+                if (reviewGate && !reviewGate.canAccept) {
+                    closeQuoteReview();
+                    throw new Error(reviewGate.acceptBlock || 'Ce devis ne peut plus être accepté.');
+                }
                 if (knownVersion && knownVersion.status && String(knownVersion.status).toUpperCase() !== 'SENT') {
+                    closeQuoteReview();
                     throw new Error('Ce devis ne peut plus être accepté.');
                 }
                 const version = knownVersion ? knownVersion.version : null;
@@ -1941,9 +1949,11 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                 }
                 lines.push('');
                 lines.push('La mission démarre ensuite.');
+                suspendQuoteReview();
                 if (window.lyannConfirm) {
                     const ok = await window.lyannConfirm(lines.join('\n'), 'info', 'Signer et accepter le devis');
                     if (!ok) {
+                        restoreQuoteReview();
                         const abort = new Error('__deal_mutation_cancelled__');
                         abort.dealMutationCancelled = true;
                         throw abort;
@@ -1957,6 +1967,7 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                 return window.LYANN_API_CLIENT.acceptRequestQuote(quoteId, acceptance.version);
             },
             apply: async (res) => {
+                closeQuoteReview();
                 const known = timelineQuotes.get(String(quoteId)) || { id: quoteId };
                 known.status = 'ACCEPTED';
                 if (res && res.mission_id) known.mission_id = res.mission_id;
@@ -1983,13 +1994,24 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
         if (outcome && outcome.busy) return;
     } catch (err) {
         if (err && (err.dealMutationCancelled || err.message === '__deal_mutation_cancelled__')) return;
-        if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+        if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) {
+            restoreQuoteReview();
+            return;
+        }
+        const failedQuote = loadedQuoteForAccept(quoteId, sourceQuote);
+        const failedGate = failedQuote && window.LYANN_QUOTE_PAYMENT && typeof window.LYANN_QUOTE_PAYMENT.quoteReview === 'function'
+            ? window.LYANN_QUOTE_PAYMENT.quoteReview(failedQuote, typeof getMyId === 'function' ? getMyId() : null)
+            : null;
+        if (failedGate && failedGate.canAccept) restoreQuoteReview();
+        else closeQuoteReview();
         console.error("Erreur lors de l'acceptation du devis:", err);
         const message = String(err && err.message || '');
         const stale = /changé|version|Rechargez le devis|déjà été créée/i.test(message);
-        const blocked = /ne peut plus être accepté|user_blocked/i.test(message);
+        const blocked = /ne peut plus être accepté|user_blocked|expiré|plus ouverte|mission existe déjà/i.test(message);
         const readable = message && message.length < 180 && !/PGRST|schema cache|function/i.test(message);
-        const shown = blocked ? 'Ce devis ne peut plus être accepté.' : (readable && stale ? message : (stale ? 'Ce devis a changé. Rechargez-le avant de l’accepter.' : 'Le devis n’a pas pu être accepté. Réessayez.'));
+        const shown = readable && (blocked || stale)
+            ? message.replace(/\s*\(date limite:[^)]*\)/i, '.')
+            : (stale ? 'Ce devis a changé. Rechargez-le avant de l’accepter.' : (blocked ? 'Ce devis ne peut plus être accepté.' : 'Le devis n’a pas pu être accepté. Réessayez.'));
         if (window.lyannToast) window.lyannToast(shown, 'warning');
         else chatToast(shown);
     }
@@ -2089,6 +2111,24 @@ window.openPreviousQuoteVersion = function(quoteId) {
 function closeQuoteReview() {
     const overlay = document.getElementById('quoteReviewOverlay');
     if (overlay) overlay.remove();
+}
+
+function suspendQuoteReview() {
+    const overlay = document.getElementById('quoteReviewOverlay');
+    if (!overlay) return false;
+    overlay.dataset.suspended = '1';
+    overlay.style.display = 'none';
+    overlay.setAttribute('aria-hidden', 'true');
+    return true;
+}
+
+function restoreQuoteReview() {
+    const overlay = document.getElementById('quoteReviewOverlay');
+    if (!overlay || overlay.dataset.suspended !== '1') return false;
+    delete overlay.dataset.suspended;
+    overlay.style.display = 'flex';
+    overlay.setAttribute('aria-hidden', 'false');
+    return true;
 }
 
 window.openQuoteReview = function(quoteId) {
@@ -2665,8 +2705,24 @@ function quoteTracePrefix(kind) {
     return 'Devis envoyé';
 }
 
-function threadAlreadySays(box, needle, exceptId) {
-    if (!box || !needle) return false;
+function threadAlreadySays(box, needle, exceptId, identity) {
+    if (!box) return false;
+    if (identity && typeof identity === 'object') {
+        const messageId = String(identity.messageId || exceptId || '');
+        const eventType = String(identity.eventType || '');
+        const quoteId = String(identity.quoteId || '');
+        if (!eventType || !quoteId) return false;
+        const version = identity.version != null && identity.version !== '' ? String(identity.version) : '';
+        const nodes = box.querySelectorAll('[data-message-type="' + CSS.escape(eventType) + '"][data-entity-id="' + CSS.escape(quoteId) + '"]');
+        for (let i = 0; i < nodes.length; i += 1) {
+            const node = nodes[i];
+            if (messageId && String(node.dataset.messageId || '') === messageId) continue;
+            const nodeVersion = node.dataset.quoteVersion || '';
+            if (!version || !nodeVersion || nodeVersion === version) return true;
+        }
+        return false;
+    }
+    if (!needle) return false;
     const nodes = box.querySelectorAll('[data-message-id], .lyann-moment-card, .chat-msg-bubble-wrap');
     for (let i = 0; i < nodes.length; i += 1) {
         const node = nodes[i];
@@ -5216,7 +5272,8 @@ function appendReceivedQuoteAction(card, quote) {
     const review = payment && typeof payment.quoteReview === 'function'
         ? payment.quoteReview(quote, userId)
         : null;
-    if (!review || !review.canAccept) return;
+    if (!review) return;
+    if (!review.canAccept && String(quote.status || '').toUpperCase() !== 'SENT') return;
     const actions = document.createElement('div');
     actions.className = 'chat-timeline-actions';
     const button = document.createElement('button');
@@ -5395,17 +5452,27 @@ function renderTimelineCard(msg) {
     if (type === 'quote_created' || type === 'quote_updated' || type === 'quote_accepted') {
         const box = document.getElementById('chatMessagesContainer');
         const moment = type === 'quote_accepted' ? 'quote-accepted' : 'quote-sent';
-        const quote = timelineQuotes.get(String(msg.entityId || ''));
+        const quote = timelineQuotes.get(String(msg.entityId || msg.entity_id || ''));
         const kind = type === 'quote_accepted' ? 'accepted' : (type === 'quote_updated' ? 'updated' : 'sent');
         const line = quoteTraceText(kind, quote && quote.total_amount);
-        if (threadAlreadySays(box, quoteTracePrefix(kind), msg.id)) return null;
+        const quoteId = String((quote && quote.id) || msg.entityId || msg.entity_id || '');
+        const version = quote && quote.version != null && quote.version !== ''
+            ? quote.version
+            : (msg.metadata && msg.metadata.version != null ? msg.metadata.version : '');
+        if (threadAlreadySays(box, '', msg.id, {
+            messageId: msg.id,
+            eventType: type,
+            quoteId,
+            version
+        })) return null;
         const timeStr = typeof msg.timestamp === 'number' ? chatTimeLabel(msg.timestamp) : '';
         const card = createLyannMomentCard(moment, { id: msg.id, createdAt: msg.createdAt, text: line }, timeStr);
         card.dataset.messageType = type;
-        if (quote && quote.id) {
+        if (quoteId) {
             card.dataset.entityType = 'quote';
-            card.dataset.entityId = String(quote.id);
+            card.dataset.entityId = quoteId;
         }
+        if (version != null && version !== '') card.dataset.quoteVersion = String(version);
         appendReceivedQuoteAction(card, quote);
         return card;
     }
@@ -6237,8 +6304,17 @@ function createThreadBubble(msg, hints) {
         if (msg && msg.id && momentKind === 'bravo') lyannBravoSeen.add(String(msg.id));
         if (momentKind === 'bravo' && !dealFundsReleased()) return null;
         const box = document.getElementById('chatMessagesContainer');
-        if (momentKind === 'quote-sent' && box && box.querySelector('[data-message-type="quote_created"], [data-message-type="quote_updated"]')) return null;
-        if (momentKind === 'quote-accepted' && box && box.querySelector('[data-message-type="quote_accepted"]')) return null;
+        if (momentKind === 'quote-sent' || momentKind === 'quote-accepted') {
+            const entityId = msg && (msg.entityId || msg.entity_id || '');
+            const eventType = momentKind === 'quote-accepted' ? 'quote_accepted' : 'quote_created';
+            const version = msg && (msg.version != null ? msg.version : (msg.metadata && msg.metadata.version));
+            if (threadAlreadySays(box, '', msg && msg.id, {
+                messageId: msg && msg.id,
+                eventType,
+                quoteId: entityId,
+                version: version != null ? version : ''
+            })) return null;
+        }
         if (momentKind === 'paid' && box && box.querySelector('[data-message-type="payment_secured"]')) return null;
         if (momentKind === 'work-done' && box && box.querySelector('[data-message-type="milestone_completed"]')) return null;
         if (momentKind === 'funds' && box && box.querySelector('[data-message-type="funds_released"]')) return null;
