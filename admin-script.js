@@ -3441,6 +3441,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div>
                         <h2 style="margin:0; font-size:1.2rem;">${maisonEsc(maisonName(profile))}</h2>
                         <p class="maison-muted">${maisonEsc(profile.city || '')} ${maisonEsc(profile.territory || '')}</p>
+                        <p class="maison-muted" id="maisonAvatarNote">${profile.avatar_moderation_status === 'pending' ? 'Photo en cours de vérification.' : ''}</p>
                     </div>
                 </div>
                 <form id="maisonProfileForm" class="admin-card" style="padding:12px;">
@@ -3675,6 +3676,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('maisonDraftBtn')?.addEventListener('click', () => publishMaison(true));
         document.getElementById('maisonPublishBtn')?.addEventListener('click', () => publishMaison(false));
         window.LYANN_BOKANTAJ_MAP?.bindComposerPlace?.();
+        if (profile.avatar_moderation_status === 'pending' && desk.dataset.avatarReview !== profile.id) {
+            desk.dataset.avatarReview = profile.id;
+            maisonJson(`/v1/admin/maison/profiles/${profile.id}/avatar/review`, { method: 'POST', body: '{}' })
+                .then((body) => {
+                    const note = document.getElementById('maisonAvatarNote');
+                    if (body && body.needs_human) {
+                        if (note) note.textContent = body.message || 'Cette photo doit être regardée par l’équipe avant d’être publiée.';
+                        return null;
+                    }
+                    return window.openMaisonDesk(profile.id);
+                })
+                .catch(() => {});
+        }
         const placeSummary = document.getElementById('maisonPlaceSummary');
         const writePlaceSummary = (place) => {
             if (!placeSummary) return;

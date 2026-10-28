@@ -1228,7 +1228,7 @@ async function requireMaisonOperator(req) {
 async function loadMaisonProfile(profileId) {
     const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, city, territory, email, bio, professional_status, account_type, created_at')
+        .select('id, first_name, last_name, avatar_url, avatar_pending, avatar_moderation_status, city, territory, email, bio, professional_status, account_type, created_at')
         .eq('id', profileId)
         .maybeSingle();
     if (error) throw error;

@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const { runModerationOnce } = require('./moderation-worker');
+const { runModerationOnce, reviewProfileAvatar } = require('./moderation-worker');
 const {
     MEDIA_BUCKETS,
     PRIVATE_MEDIA_BUCKETS,
@@ -110,6 +110,63 @@ function registerContentModerationRoutes(app, deps) {
             return res.json({ processed: outcomes.length, counts });
         } catch (err) {
             return res.status(503).json({ processed: 0, reason: 'unavailable' });
+        }
+    });
+
+    async function sendAvatarReview(res, userId) {
+        const started = Date.now();
+        const outcome = await reviewProfileAvatar(supabaseAdmin, userId, {
+            apiKey: process.env.OPENAI_API_KEY || process.env.LYANN_AI_API_KEY || ''
+        });
+        const profile = await supabaseAdmin.from('profiles')
+            .select('avatar_url, avatar_pending, avatar_moderation_status')
+            .eq('id', userId)
+            .maybeSingle();
+        const status = profile.data && profile.data.avatar_moderation_status;
+        return res.json({
+            success: true,
+            result: outcome.result,
+            reason: outcome.reason || null,
+            needs_human: !!outcome.needs_human,
+            avatar_url: profile.data && profile.data.avatar_url,
+            avatar_pending: profile.data && profile.data.avatar_pending,
+            avatar_moderation_status: status,
+            review_ms: Date.now() - started,
+            analysis_ms: outcome.analysis_ms || 0,
+            validation_ms: outcome.validation_ms || 0,
+            message: outcome.needs_human
+                ? 'Cette photo doit être regardée par l’équipe avant d’être publiée.'
+                : (status === 'approved' ? 'Photo publiée.' : 'Photo en cours de vérification.')
+        });
+    }
+
+    app.post('/v1/profile/avatar/review', async (req, res) => {
+        const token = bearer(req);
+        if (!token) return res.status(401).json({ success: false, error: 'Authentification requise.' });
+        const user = await supabaseAdmin.auth.getUser(token);
+        if (!user || !user.data || !user.data.user) {
+            return res.status(401).json({ success: false, error: 'Authentification requise.' });
+        }
+        try {
+            return await sendAvatarReview(res, user.data.user.id);
+        } catch (err) {
+            return res.status(503).json({ success: false, error: 'La vérification de la photo n’a pas abouti.' });
+        }
+    });
+
+    app.post('/v1/admin/maison/profiles/:id/avatar/review', async (req, res) => {
+        const authResult = await verifyAdminPermission(req, 'users.manage');
+        if (!authResult.authorized) {
+            return res.status(authResult.status).json({ success: false, error: authResult.error });
+        }
+        const profile = await supabaseAdmin.from('profiles').select('id, account_type').eq('id', req.params.id).maybeSingle();
+        if (!profile.data || profile.data.account_type !== 'seed') {
+            return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        }
+        try {
+            return await sendAvatarReview(res, profile.data.id);
+        } catch (err) {
+            return res.status(503).json({ success: false, error: 'La vérification de la photo n’a pas abouti.' });
         }
     });
 

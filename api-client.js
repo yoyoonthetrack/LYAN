@@ -848,6 +848,7 @@ const LYANN_API_CLIENT = {
 
     async uploadAvatar(userId, file) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const uploadStarted = Date.now();
         const fileExt = file.name ? file.name.split('.').pop() : 'png';
         const filePath = `${userId}/avatar_${Date.now()}.${fileExt}`;
 
@@ -858,14 +859,31 @@ const LYANN_API_CLIENT = {
         if (uploadError) return { error: uploadError };
 
         const submittedUrl = holdMediaUrl('avatars-hold', filePath);
+        const savedAt = Date.now();
         const updated = await this.updateProfile(userId, { avatar_url: submittedUrl });
         if (updated.error) return { error: updated.error };
+        const reviewStarted = Date.now();
+        let review = {};
+        try {
+            const reviewRes = await this.memberHelpdeskRequest('/v1/profile/avatar/review', { method: 'POST', body: {} });
+            review = await reviewRes.json();
+        } catch (_) {
+            review = {};
+        }
+        const status = review.avatar_moderation_status || (updated.data && updated.data.avatar_moderation_status);
+        const avatarUrl = review.avatar_url || (updated.data && updated.data.avatar_url) || '';
         return {
             data: {
-                avatar_url: updated.data && updated.data.avatar_url,
-                avatar_pending: updated.data && updated.data.avatar_pending,
-                avatar_moderation_status: updated.data && updated.data.avatar_moderation_status,
-                submitted_avatar_url: submittedUrl
+                avatar_url: avatarUrl,
+                avatar_pending: Object.prototype.hasOwnProperty.call(review, 'avatar_pending') ? review.avatar_pending : (updated.data && updated.data.avatar_pending),
+                avatar_moderation_status: status,
+                needs_human: !!review.needs_human,
+                message: review.message || '',
+                submitted_avatar_url: submittedUrl,
+                timings: {
+                    upload_ms: savedAt - uploadStarted,
+                    review_ms: review.review_ms || (Date.now() - reviewStarted)
+                }
             }
         };
     },

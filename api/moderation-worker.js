@@ -47,6 +47,12 @@ async function loadSubject(supabaseAdmin, job) {
     return { subject, row: row.data, pendingEdit: pendingEdit || null };
 }
 
+function profileText(job, loaded) {
+    const row = loaded.row || {};
+    if (!loaded.pendingEdit && row.bio_moderation_status === 'approved' && !row.bio_pending) return '';
+    return textOf(job, loaded);
+}
+
 function textOf(job, loaded) {
     const row = loaded.row;
     const payload = loaded.pendingEdit && loaded.pendingEdit.payload;
@@ -55,6 +61,44 @@ function textOf(job, loaded) {
     if (job.subject_type === 'portfolio') return [row.title, row.caption].filter(Boolean).join('\n');
     if (job.subject_type === 'profile') return row.bio_pending || row.bio || '';
     return row.content || '';
+}
+
+function profileFiles(row) {
+    if (row && row.avatar_pending) {
+        const pending = mediaFromStoredUrl(row.avatar_pending);
+        return pending ? [pending] : [];
+    }
+    return urlsFromRow(row);
+}
+
+function avatarIdentity(row) {
+    return String((row && row.avatar_pending) || '') + '\n' + String((row && row.avatar_url) || '');
+}
+
+async function profileStillNeedsReview(supabaseAdmin, row) {
+    if (!row) return false;
+    if (row.avatar_moderation_status === 'pending' || row.bio_moderation_status === 'pending' || row.avatar_pending) return true;
+    const held = urlsFromRow(row).filter((file) => String(file.bucket).endsWith('-hold'));
+    for (const file of held) {
+        const release = await supabaseAdmin.from('public_media_releases')
+            .select('status')
+            .eq('bucket_id', file.bucket)
+            .eq('object_name', file.path)
+            .maybeSingle();
+        if (!release.data || release.data.status === 'pending') return true;
+    }
+    return false;
+}
+
+async function requeueNewerPhoto(supabaseAdmin, job) {
+    await supabaseAdmin.from('moderation_jobs').update({
+        status: 'queued',
+        reason_code: 'newer_photo',
+        available_at: new Date().toISOString(),
+        claimed_at: null,
+        finished_at: null,
+        attempts: Math.max(0, (Number(job.attempts) || 1) - 1)
+    }).eq('id', job.id);
 }
 
 async function finishJob(supabaseAdmin, job, status, reason) {
@@ -155,8 +199,20 @@ async function applyDecision(supabaseAdmin, job, loaded, decision) {
             return 'human_lock';
         }
     }
+    let publishFiles = files;
+    if (outcome === 'approved' && job.subject_type === 'profile') {
+        const fresh = await supabaseAdmin.from('profiles')
+            .select('avatar_url, avatar_pending, avatar_moderation_status, bio_moderation_status')
+            .eq('id', job.subject_id)
+            .maybeSingle();
+        if (fresh.data && avatarIdentity(fresh.data) !== avatarIdentity(loaded.row)) {
+            await requeueNewerPhoto(supabaseAdmin, job);
+            return 'newer_photo';
+        }
+        publishFiles = profileFiles(fresh.data || loaded.row);
+    }
     if (outcome === 'approved') {
-        await markReleases(supabaseAdmin, files, 'approved');
+        await markReleases(supabaseAdmin, publishFiles, 'approved');
         if (loaded.pendingEdit) {
             const payload = loaded.pendingEdit.payload || {};
             const patch = { public_moderation_status: 'approved' };
@@ -188,6 +244,10 @@ async function applyDecision(supabaseAdmin, job, loaded, decision) {
         return 'approved';
     }
     const reason = (decision && decision.reason) || 'unavailable';
+    if (job.subject_type === 'profile' && HUMAN_REASONS.has(String(reason))) {
+        await finishJob(supabaseAdmin, job, 'held', reason);
+        return 'held';
+    }
     if (reason === 'video_unreviewed') {
         await finishJob(supabaseAdmin, job, 'held', reason);
         return 'held';
@@ -226,17 +286,27 @@ async function runModerationOnce({ supabaseAdmin, apiKey, fetchImpl, downloadMed
             outcomes.push({ id: job.id, result: 'human_lock' });
             continue;
         }
-        const liveStatus = loaded.row.public_moderation_status || loaded.row.bio_moderation_status;
-        if (!loaded.pendingEdit && (liveStatus === 'approved' || liveStatus === 'rejected')) {
-            await finishJob(supabaseAdmin, job, 'done', 'already_decided');
-            outcomes.push({ id: job.id, result: 'already_decided' });
-            continue;
+        if (!loaded.pendingEdit && job.subject_type === 'profile') {
+            const needs = await profileStillNeedsReview(supabaseAdmin, loaded.row);
+            if (!needs) {
+                await finishJob(supabaseAdmin, job, 'done', 'already_decided');
+                outcomes.push({ id: job.id, result: 'already_decided' });
+                continue;
+            }
+        } else {
+            const liveStatus = loaded.row.public_moderation_status || loaded.row.bio_moderation_status;
+            if (!loaded.pendingEdit && (liveStatus === 'approved' || liveStatus === 'rejected')) {
+                await finishJob(supabaseAdmin, job, 'done', 'already_decided');
+                outcomes.push({ id: job.id, result: 'already_decided' });
+                continue;
+            }
         }
-        const files = urlsFromRow(loaded.pendingEdit ? { ...loaded.row, ...loaded.pendingEdit.payload } : loaded.row);
+        const source = loaded.pendingEdit ? { ...loaded.row, ...loaded.pendingEdit.payload } : loaded.row;
+        const files = job.subject_type === 'profile' ? profileFiles(source) : urlsFromRow(source);
         let decision;
         try {
             decision = await classifyContent({
-                text: textOf(job, loaded),
+                text: job.subject_type === 'profile' ? profileText(job, loaded) : textOf(job, loaded),
                 media: files,
                 apiKey,
                 fetchImpl: fetchImpl || global.fetch,
@@ -271,8 +341,127 @@ async function runModerationOnce({ supabaseAdmin, apiKey, fetchImpl, downloadMed
     return outcomes;
 }
 
+const HUMAN_REASONS = new Set(['flagged', 'sexual', 'violence', 'self-harm', 'hate', 'harassment', 'illicit']);
+
+async function enqueueProfileReview(supabaseAdmin, userId) {
+    const rpc = await supabaseAdmin.rpc('lyann_enqueue_moderation_job', { p_type: 'profile', p_id: userId });
+    if (!rpc || !rpc.error) return;
+    const existing = await supabaseAdmin.from('moderation_jobs').select('id, status')
+        .eq('subject_type', 'profile').eq('subject_id', userId).maybeSingle();
+    if (existing.data && existing.data.status === 'running') return;
+    const patch = {
+        status: 'queued',
+        attempts: 0,
+        available_at: new Date().toISOString(),
+        reason_code: null,
+        claimed_at: null,
+        finished_at: null
+    };
+    if (existing.data) {
+        await supabaseAdmin.from('moderation_jobs').update(patch).eq('id', existing.data.id);
+        return;
+    }
+    await supabaseAdmin.from('moderation_jobs').insert({
+        subject_type: 'profile',
+        subject_id: userId,
+        ...patch
+    });
+}
+
+async function reviewProfileAvatar(supabaseAdmin, userId, deps) {
+    if (!supabaseAdmin || !userId) return { result: 'missing' };
+    const [existing, profileRes] = await Promise.all([
+        supabaseAdmin.from('moderation_jobs').select('*')
+            .eq('subject_type', 'profile').eq('subject_id', userId).maybeSingle(),
+        supabaseAdmin.from('profiles')
+            .select('avatar_url, avatar_pending, avatar_moderation_status, bio_moderation_status, bio_pending')
+            .eq('id', userId).maybeSingle()
+    ]);
+    const current = existing.data;
+    const profile = profileRes.data;
+    if (!profile) return { result: 'missing' };
+    if (current && current.status === 'held' && HUMAN_REASONS.has(String(current.reason_code || ''))) {
+        return { result: 'held', reason: current.reason_code, needs_human: true };
+    }
+    if (current && current.status === 'running') return { result: 'running', reason: current.reason_code || null };
+    if ((!current || current.status === 'done') && !(await profileStillNeedsReview(supabaseAdmin, profile))) {
+        return { result: 'already_decided', reason: (current && current.reason_code) || null };
+    }
+    await enqueueProfileReview(supabaseAdmin, userId);
+    let claimed = current && await supabaseAdmin.from('moderation_jobs').update({
+        status: 'running',
+        attempts: 1,
+        claimed_at: new Date().toISOString()
+    }).eq('id', current.id).in('status', ['queued', 'retry']).select('*').maybeSingle();
+    if (!claimed || !claimed.data) {
+        const refreshed = await supabaseAdmin.from('moderation_jobs').select('*')
+            .eq('subject_type', 'profile').eq('subject_id', userId).maybeSingle();
+        const job = refreshed.data;
+        if (!job) return { result: 'missing' };
+        if (job.status === 'running') return { result: 'running', reason: job.reason_code || null };
+        if (!['queued', 'retry'].includes(job.status)) return { result: job.status, reason: job.reason_code || null };
+        claimed = await supabaseAdmin.from('moderation_jobs').update({
+            status: 'running',
+            attempts: 1,
+            claimed_at: new Date().toISOString()
+        }).eq('id', job.id).in('status', ['queued', 'retry']).select('*').maybeSingle();
+    }
+    if (!claimed.data) return { result: 'running' };
+    const loaded = await loadSubject(supabaseAdmin, claimed.data);
+    if (!loaded) {
+        await finishJob(supabaseAdmin, claimed.data, 'done', 'missing');
+        return { result: 'missing' };
+    }
+    if (!(await profileStillNeedsReview(supabaseAdmin, loaded.row)) && !loaded.pendingEdit) {
+        await finishJob(supabaseAdmin, claimed.data, 'done', 'already_decided');
+        return { result: 'already_decided' };
+    }
+    const files = profileFiles(loaded.row);
+    let decision;
+    const analysisStarted = Date.now();
+    try {
+        decision = await classifyContent({
+            text: profileText(claimed.data, loaded),
+            media: files,
+            apiKey: deps && deps.apiKey,
+            fetchImpl: (deps && deps.fetchImpl) || global.fetch,
+            inspectVideo: async () => ({ verified: false, reason: 'unreadable' }),
+            downloadMedia: (deps && deps.downloadMedia) || (async (media) => {
+                const images = [];
+                for (const file of normalizeMedia(media)) {
+                    if (containsVideo([file])) continue;
+                    const downloaded = await supabaseAdmin.storage.from(file.bucket).download(file.path);
+                    if (downloaded.error || !downloaded.data) return null;
+                    const bytes = Buffer.from(await downloaded.data.arrayBuffer());
+                    if (!bytes.length || bytes.length > 5 * 1024 * 1024) return null;
+                    const type = downloaded.data.type && downloaded.data.type.startsWith('image/')
+                        ? downloaded.data.type
+                        : 'image/jpeg';
+                    images.push(`data:${type};base64,${bytes.toString('base64')}`);
+                }
+                return images;
+            })
+        });
+    } catch (err) {
+        decision = { decision: 'pending', reason: 'unavailable' };
+    }
+    const analysisMs = Date.now() - analysisStarted;
+    const validationStarted = Date.now();
+    const result = await applyDecision(supabaseAdmin, claimed.data, loaded, decision);
+    const reason = (decision && decision.reason) || null;
+    return {
+        result,
+        reason,
+        needs_human: result === 'held' && HUMAN_REASONS.has(String(reason || '')),
+        analysis_ms: analysisMs,
+        validation_ms: Date.now() - validationStarted
+    };
+}
+
 module.exports = {
     runModerationOnce,
     applyDecision,
-    backoffSeconds
+    backoffSeconds,
+    profileStillNeedsReview,
+    reviewProfileAvatar
 };

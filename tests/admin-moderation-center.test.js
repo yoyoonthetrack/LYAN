@@ -13,7 +13,7 @@ const {
     isUserId,
     authBanDuration
 } = require('../api/admin-moderation-center');
-const { applyDecision } = require('../api/moderation-worker');
+const { applyDecision, profileStillNeedsReview } = require('../api/moderation-worker');
 
 const sql = fs.readFileSync(path.join(__dirname, '..', '73_moderation_center.sql'), 'utf8');
 const serverSrc = fs.readFileSync(path.join(__dirname, '..', 'api/server.js'), 'utf8');
@@ -411,4 +411,94 @@ test('users tab finds a member by exact id beyond the first page', async () => {
     const detail = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(payload) { this.body = payload; } };
     await app.routes['/v1/admin/moderation-center/users/:id']({ params: { id: target } }, detail);
     assert.equal(detail.body.user.id, target);
+});
+
+test('an older profile decision does not publish a newer photo', async () => {
+    const oldUrl = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_old.png';
+    const newUrl = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_new.png';
+    const store = {
+        profiles: [{
+            id: 'user-1',
+            avatar_url: newUrl,
+            avatar_pending: newUrl,
+            avatar_moderation_status: 'pending',
+            bio_moderation_status: 'approved'
+        }],
+        moderation_jobs: [{ id: 'job-1', subject_type: 'profile', subject_id: 'user-1', status: 'running', attempts: 1 }],
+        public_media_releases: [],
+        admin_audit_events: [],
+        content_moderation_queue: []
+    };
+    const loaded = {
+        row: {
+            id: 'user-1',
+            avatar_url: oldUrl,
+            avatar_pending: oldUrl,
+            avatar_moderation_status: 'pending',
+            bio_moderation_status: 'approved'
+        },
+        pendingEdit: null
+    };
+    const result = await applyDecision(createFakeSupabase(store), {
+        id: 'job-1', subject_type: 'profile', subject_id: 'user-1', attempts: 1, max_attempts: 3
+    }, loaded, { decision: 'approved', reason: 'clear' });
+    assert.equal(result, 'newer_photo');
+    assert.equal(store.profiles[0].avatar_moderation_status, 'pending');
+    assert.equal(store.moderation_jobs[0].status, 'queued');
+    assert.equal(store.moderation_jobs[0].reason_code, 'newer_photo');
+    assert.equal(store.moderation_jobs[0].attempts, 0);
+    assert.equal(store.public_media_releases.length, 0);
+});
+
+test('a pending hold release still needs review after the profile status says approved', async () => {
+    const url = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_new.png';
+    const row = {
+        avatar_url: url,
+        avatar_pending: null,
+        avatar_moderation_status: 'approved',
+        bio_moderation_status: 'approved'
+    };
+    const pending = createFakeSupabase({
+        public_media_releases: [{ bucket_id: 'avatars-hold', object_name: 'user-1/avatar_new.png', status: 'pending' }]
+    });
+    assert.equal(await profileStillNeedsReview(pending, row), true);
+    const published = createFakeSupabase({
+        public_media_releases: [{ bucket_id: 'avatars-hold', object_name: 'user-1/avatar_new.png', status: 'approved' }]
+    });
+    assert.equal(await profileStillNeedsReview(published, row), false);
+});
+
+test('a flagged profile photo is held for a person instead of being retried', async () => {
+    const url = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_new.png';
+    const store = {
+        profiles: [{
+            id: 'user-1',
+            avatar_url: url,
+            avatar_pending: url,
+            avatar_moderation_status: 'pending',
+            bio_moderation_status: 'approved'
+        }],
+        moderation_jobs: [{ id: 'job-1', status: 'running', attempts: 1 }],
+        public_media_releases: [],
+        admin_audit_events: [],
+        content_moderation_queue: []
+    };
+    const loaded = { row: store.profiles[0], pendingEdit: null };
+    const result = await applyDecision(createFakeSupabase(store), {
+        id: 'job-1', subject_type: 'profile', subject_id: 'user-1', attempts: 1, max_attempts: 3
+    }, loaded, { decision: 'pending', reason: 'sexual' });
+    assert.equal(result, 'held');
+    assert.equal(store.moderation_jobs[0].status, 'held');
+    assert.equal(store.moderation_jobs[0].reason_code, 'sexual');
+    assert.equal(store.profiles[0].avatar_moderation_status, 'pending');
+});
+
+test('profile photo review is requested as soon as the file is saved', () => {
+    const routes = fs.readFileSync(path.join(__dirname, '..', 'api/content-moderation-routes.js'), 'utf8');
+    const client = fs.readFileSync(path.join(__dirname, '..', 'api-client.js'), 'utf8');
+    assert.match(routes, /\/v1\/profile\/avatar\/review/);
+    assert.match(routes, /reviewProfileAvatar/);
+    assert.match(client, /\/v1\/profile\/avatar\/review/);
+    assert.match(adminSrc, /avatar\/review/);
+    assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'api/moderation-worker.js'), 'utf8'), /Date\.now\(\) > .*approve/);
 });

@@ -12346,13 +12346,21 @@ window.lyannHandleAvatarFileSelected = async function(event) {
             return;
         }
 
-        const res = await window.apiClient.uploadAvatar(userId, file);
+        let photo = file;
+        if (window.LYANN_BOKANTAJ_MEDIA && typeof window.LYANN_BOKANTAJ_MEDIA.preparePhoto === 'function') {
+            try { photo = await window.LYANN_BOKANTAJ_MEDIA.preparePhoto(file); } catch (_) { photo = file; }
+        }
+        const res = await window.apiClient.uploadAvatar(userId, photo);
         if (res.error) {
             if (window.showLyanToast) window.showLyanToast(res.error.message || "Erreur d'upload", "❌");
         } else {
             const avatarPending = res.data && res.data.avatar_moderation_status === 'pending';
+            const needsHuman = res.data && res.data.needs_human;
             if (window.showLyanToast) {
-                window.showLyanToast(avatarPending ? 'Votre photo est en cours de vérification.' : 'Photo de profil mise à jour ✨', avatarPending ? '⏳' : '📸');
+                const message = needsHuman
+                    ? (res.data.message || 'Cette photo doit être regardée par l’équipe avant d’être publiée.')
+                    : (avatarPending ? 'Votre photo est en cours de vérification.' : 'Photo de profil mise à jour ✨');
+                window.showLyanToast(message, needsHuman || avatarPending ? '⏳' : '📸');
             }
             if (typeof window.openPublicMemberProfile === 'function') {
                 window.openPublicMemberProfile(userId);
