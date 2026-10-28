@@ -5,8 +5,8 @@ Branche : `release/lyann-rc-v1-1`
 PR : https://github.com/yoyoonthetrack/LYAN/pull/13 (brouillon)
 Domaine : `https://staging.lyann.app`
 Projet : `lyann-staging-preview` `prj_FHIKUKYa8IwpiitigUma4gTtTF6q`
-Déploiement servi : `dpl_E633F59q5UhSNbHAZifwKFYXxyd8`
-SHA annoncé par `GET /v1/runtime/identity` : `12f7b9f2e071230237fecae04d65c2e58c5f7558`
+Déploiement servi : `dpl_3s5U43QkPhe1R9prL1EeSYAakAh8`
+SHA annoncé par `GET /v1/runtime/identity` : `6270df9efc231f98efe6f8f56eb47b224dcd6e3f`
 Supabase : `tdktfbtqceldlaeqjtow`
 Isolation : `STAGING_ISOLATED`, `production=false`
 Stripe : `stripe_mode=test`
@@ -17,7 +17,7 @@ Le projet Production `lyan` et le domaine `lyann.app` n’ont pas été modifié
 ## Verdict
 
 Cohérence du déploiement Staging : **GO**.
-Notifications push TestFlight : **NO-GO**. La file est enregistrée et authentifiée. Aucun envoi n’a été prouvé sur un iPhone.
+Notifications push TestFlight : **NO-GO**. La clé APNs chargée sur `staging.lyann.app` est acceptée par Apple. Aucun compte QA n’a de jeton production, donc l’envoi automatique n’a pas été allumé et aucun membre n’a été notifié.
 Release candidate : **NO-GO**, pour les blocages déjà écrits dans `docs/rc-final-go-no-go.md`. Les contrôles CI ne suffisent pas à les lever.
 
 ## Routes
@@ -65,11 +65,9 @@ Le chemin est hybride. Un trigger Postgres enfile `push_deliveries` à l’inser
 
 TestFlight 1.0 (12) a `aps-environment` production et déclare l’environnement `production` hors debug. Le jeton QA actif est `sandbox`, mis à jour le 21 octobre 2026. Le seul jeton `production` actif n’appartient pas à un compte QA. Il n’a pas été utilisé. Aucune réception iPhone n’est donc déclarée.
 
-Les quatre variables APNs et `PUSH_AUTOMATIC_ENABLED` sont absentes. `PUSH_QA_ONLY` et `PUSH_QA_USER_IDS` sont présents, en secret, pour les trois comptes QA. Tant que le flag est absent, le drain ne réclame aucune ligne. Si le flag est allumé sans liste QA, le runtime Staging répond `PUSH_QA_REQUIRED` et n’envoie rien.
+Les quatre variables APNs sont présentes en secret sur la cible servie. Une sonde autorisée, vers un jeton qui n’appartient à aucun appareil, a répondu HTTP 400 `BadDeviceToken` : la clé EC est lisible, l’identifiant de clé a la forme attendue, l’équipe est `WLV4WC47U2`, le bundle est `app.lyann.mobile`, et Apple a accepté le jeton fournisseur. `PUSH_AUTOMATIC_ENABLED` reste absent. `PUSH_QA_ONLY` et `PUSH_QA_USER_IDS` restent les secrets des trois comptes QA. Le seul jeton `production` actif n’est pas l’un de ces comptes. Il n’a pas été utilisé.
 
-Pour connecter une clé déjà téléchargée, sans en créer une autre : dans le projet Vercel `lyann-staging-preview`, environnement Production, ajouter `APNS_KEY_ID`, `APNS_TEAM_ID` (`WLV4WC47U2`), `APNS_BUNDLE_ID` (`app.lyann.mobile`) et `APNS_PRIVATE_KEY` (le fichier `.p8`, jamais le projet `lyan`). Puis poser `PUSH_AUTOMATIC_ENABLED=true` et redéployer uniquement Staging. Sur l’iPhone, ouvrir TestFlight 1.0 (12) avec un compte QA, autoriser les notifications, puis envoyer un message depuis un autre compte QA. La preuve reste l’affichage sur l’iPhone.
-
-Si le portail Apple a une clé APNs mais que le fichier `.p8` a disparu, Apple ne le redonne pas. Il faut alors créer une clé APNs neuve dans developer.apple.com, équipe `WLV4WC47U2`, section Keys, et la déposer comme ci-dessus. Le dépôt et le dossier de signature local ne contiennent pas ce fichier.
+Il reste à ouvrir TestFlight 1.0 (12) sur l’iPhone avec un compte QA, à autoriser les notifications, puis à laisser l’application au premier plan quelques secondes. Ensuite seulement : `PUSH_AUTOMATIC_ENABLED=true`, redéploiement Staging, et un seul message depuis l’autre compte QA. La preuve de réception reste l’affichage sur l’iPhone.
 
 ## Médias, échéances, maintenance
 
@@ -93,7 +91,7 @@ Absentes, avec un remplaçant déjà actif : `EDITORIAL_CRON_SECRET` (remplacé 
 
 Absentes, fermeture voulue : `STRIPE_LIVE_ENABLED` sur la cible servie, `PUSH_AUTOMATIC_ENABLED`, `PUSH_CRON_SECRET`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRIVATE_KEY`. `PUSH_QA_ONLY` et `PUSH_QA_USER_IDS` sont présents en secret sur la cible servie. Le nom `STRIPE_LIVE_ENABLED` existe sur la cible Preview. La cible servie ne l’a pas.
 
-`LYANN_SUPABASE_LOCK` est absent de la liste d’environnement de la cible servie. La page servie contient quand même le verrou `tdktfbtqceldlaeqjtow`, repris depuis l’URL Supabase au build. `LYANN_RELEASE_SHA` est injecté au déploiement. Le serveur annonce `12f7b9f`.
+`LYANN_SUPABASE_LOCK` est absent de la liste d’environnement de la cible servie. La page servie contient quand même le verrou `tdktfbtqceldlaeqjtow`, repris depuis l’URL Supabase au build. `LYANN_RELEASE_SHA` est injecté au déploiement. Le serveur annonce `6270df9`.
 
 Google et Apple ne sont pas des variables Vercel. `GET /auth/v1/authorize?provider=google` sur le projet Supabase Staging répond 302. Le même appel Apple, sans paramètres OAuth, répond 400 `validation_failed`. Le fournisseur répond. La configuration OAuth reste dans Supabase Auth.
 
@@ -114,4 +112,4 @@ L’association Apple servie vient de `config/apple-app-site-association.staging
 
 ## Écart avec TestFlight 1.0 (12)
 
-Le binaire iOS est `c35d68e`. Le serveur est `12f7b9f`. L’écart ajouté est le drain de notifications et le verrou QA. Le client, le backend déclaré et le verrou Supabase du paquet sont les mêmes. TestFlight 1.0 (12) reste le binaire. Pas de build 13.
+Le binaire iOS est `c35d68e`. Le serveur est `6270df9`. TestFlight 1.0 (12) reste le binaire. Pas de build 13.
