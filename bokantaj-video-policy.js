@@ -149,6 +149,19 @@ function escapeAttr(value) {
     })[ch]);
 }
 
+function normalizeBokantajPlace(place) {
+    if (place == null || place === false) return null;
+    const lat = Number(place.lat);
+    const lng = Number(place.lng);
+    const label = typeof place.label === 'string' ? place.label.trim() : '';
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)
+        || lat < -90 || lat > 90 || lng < -180 || lng > 180
+        || label.length < 2 || label.length > 90) {
+        return { error: 'Sélectionnez un repère valide sur la carte.' };
+    }
+    return { lat, lng, label };
+}
+
 function mapPinVisible(post, now) {
     if (!post || post.public_moderation_status !== 'approved') return false;
     if (post.map_featured === true || post.map_pin_permanent === true) return true;
@@ -352,6 +365,7 @@ const api = {
     posterRatio,
     posterFor,
     playbackMarkup,
+    normalizeBokantajPlace,
     mapPinVisible,
     pinExpiryEffect,
     inspectMp4,

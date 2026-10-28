@@ -1361,7 +1361,7 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
         }
         const userId = profile.id;
         let [{ data: posts }, { data: requests }, { data: parts }, { data: quotes }, { data: missions }] = await Promise.all([
-            supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+            supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
             supabaseAdmin.from('requests').select('id, title, description, category, location, status, public_moderation_status, created_at').eq('requester_id', userId).order('created_at', { ascending: false }).limit(20),
             supabaseAdmin.from('conversation_participants').select('conversation_id').eq('user_id', userId),
             supabaseAdmin.from('quotes').select('id, status, total_amount, requester_id, provider_id, request_id, request_invitation_id, valid_until, created_at').or(`requester_id.eq.${userId},provider_id.eq.${userId}`).eq('status', 'SENT').order('created_at', { ascending: false }).limit(20),
@@ -1394,7 +1394,7 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
                 });
             } catch (_) {}
             const [refreshedPosts, refreshedReqs, refreshedJobs] = await Promise.all([
-                supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+                supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
                 supabaseAdmin.from('requests').select('id, title, description, category, location, status, public_moderation_status, created_at').eq('requester_id', userId).order('created_at', { ascending: false }).limit(20),
                 subjectIds.length ? supabaseAdmin.from('moderation_jobs').select('subject_type, subject_id, status, reason_code, attempts, updated_at').in('subject_id', subjectIds) : Promise.resolve({ data: [] })
             ]);
@@ -1615,14 +1615,19 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
             : 'info';
         const territory = String(req.body?.territory || profile.territory || 'guadeloupe').trim().toLowerCase();
         const city = String(req.body?.city || profile.city || '').trim() || null;
+        const place = require('../bokantaj-video-policy').normalizeBokantajPlace(req.body?.place || null);
+        if (place && place.error) return res.status(400).json({ success: false, error: place.error });
         const { data, error } = await supabaseAdmin.from('bokantaj_posts').insert({
             author_id: profile.id,
             type: postType,
             content: content || 'Lyann',
             city,
             territory,
-            media_urls: mediaUrls
-        }).select('id').single();
+            media_urls: mediaUrls,
+            place_lat: place ? place.lat : null,
+            place_lng: place ? place.lng : null,
+            place_label: place ? place.label : null
+        }).select('id, author_id, created_at, place_lat, place_lng, place_label').single();
         if (error) throw error;
         const mod = await moderateMaisonSubject('post', data.id);
         await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_BOKANTAJ', profile.id, {
@@ -1648,6 +1653,55 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
         });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Publication impossible.' });
+    }
+});
+
+app.patch('/v1/admin/maison/profiles/:id/bokantaj/:postId/place', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const { data: existing, error: readError } = await supabaseAdmin.from('bokantaj_posts')
+            .select('id, author_id, content, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label')
+            .eq('id', req.params.postId)
+            .maybeSingle();
+        if (readError) throw readError;
+        if (!existing || existing.author_id !== profile.id) {
+            return res.status(404).json({ success: false, error: 'Publication introuvable pour ce profil.' });
+        }
+        const place = require('../bokantaj-video-policy').normalizeBokantajPlace(
+            Object.prototype.hasOwnProperty.call(req.body || {}, 'place') ? req.body.place : null
+        );
+        if (place && place.error) return res.status(400).json({ success: false, error: place.error });
+        const { data, error } = await supabaseAdmin.from('bokantaj_posts').update({
+            place_lat: place ? place.lat : null,
+            place_lng: place ? place.lng : null,
+            place_label: place ? place.label : null
+        }).eq('id', existing.id).eq('author_id', profile.id)
+            .select('id, author_id, content, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label')
+            .single();
+        if (error) throw error;
+        if (Date.parse(data.created_at) !== Date.parse(existing.created_at) || data.content !== existing.content || data.author_id !== existing.author_id) {
+            return res.status(409).json({ success: false, error: 'Le lieu n’a pas pu être modifié sans toucher à la publication.' });
+        }
+        await recordMaisonAudit(authResult.userId, 'MAISON_BOKANTAJ_PLACE', profile.id, {
+            post_id: data.id,
+            place_label: data.place_label || null
+        });
+        return res.json({
+            success: true,
+            post_id: data.id,
+            created_at: data.created_at,
+            place_lat: data.place_lat,
+            place_lng: data.place_lng,
+            place_label: data.place_label,
+            message: data.place_label ? 'Lieu enregistré sur cette publication.' : 'Lieu retiré. La publication reste dans le fil.'
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Lieu impossible à modifier.' });
     }
 });
 

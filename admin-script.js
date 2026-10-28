@@ -3423,6 +3423,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderMaisonDesk(payload) {
         const desk = document.getElementById('maisonDesk');
         if (!desk) return;
+        if (window.__maisonPlaceListener) {
+            window.removeEventListener('lyann-bokantaj-place-change', window.__maisonPlaceListener);
+            window.__maisonPlaceListener = null;
+        }
+        window.LYANN_BOKANTAJ_MAP?.releaseComposerPlace?.();
+        window.LYANN_BOKANTAJ_MAP?.resetComposerPlace?.();
         const profile = payload.profile;
         const quotes = payload.quotes || [];
         const conversations = payload.conversations || [];
@@ -3467,7 +3473,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="bokantaj-preview-body" id="maisonBokantajPreview">Le texte apparaîtra ici avant soumission.</div>
                         <p class="maison-muted" style="margin:8px 0 0;">Tant que la modération n’a pas approuvé, ce post n’est pas visible sur le fil public.</p>
                     </aside>
-                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
+                    <div class="maison-post-fields">
                         <select id="maisonPostType" class="admin-input">
                             <option value="info">Info</option>
                             <option value="dispo">Dispo</option>
@@ -3481,6 +3487,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <option value="reunion"${profile.territory === 'reunion' ? ' selected' : ''}>La Réunion</option>
                         </select>
                     </div>
+                    <div class="bokantaj-place-composer">
+                        <p class="maison-muted" id="maisonPlaceSummary">Aucune localisation. La publication reste dans le fil.</p>
+                        <label class="bokantaj-place-name" for="maisonPlaceSearch">Localisation
+                            <input type="search" id="maisonPlaceSearch" class="admin-input" placeholder="Ville, commune ou quartier" autocomplete="off">
+                        </label>
+                        <ul id="maisonPlaceResults" class="maison-place-results" hidden></ul>
+                        <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter une localisation</span></button>
+                        <div id="bokantajPlacePicker" class="bokantaj-place-picker" hidden>
+                            <div class="bokantaj-picker-map-wrap">
+                                <div id="bokantajPickerMap" class="bokantaj-picker-map" aria-label="Choisir un lieu sur la carte"></div>
+                                <button type="button" id="bokantajLocateMe" class="bokantaj-picker-locate" aria-label="Me localiser"><i class="ph ph-navigation-arrow" aria-hidden="true"></i></button>
+                            </div>
+                            <p class="bokantaj-place-status" id="bokantajPickerStatus" role="status">Touchez la carte, puis choisissez comment la partager.</p>
+                            <label class="bokantaj-place-name" for="bokantajPlaceName">Nom du lieu
+                                <input type="text" id="bokantajPlaceName" maxlength="90" autocomplete="off">
+                            </label>
+                            <div class="bokantaj-place-share" role="group" aria-label="Comment partager ce lieu">
+                                <button type="button" id="bokantajShareQuarter" class="bokantaj-place-share-btn is-quarter">Partager le nom du quartier</button>
+                                <button type="button" id="bokantajShareExact" class="bokantaj-place-share-btn is-exact">Partager la localisation précise</button>
+                            </div>
+                            <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-clear">Retirer le lieu</button>
+                            <button type="button" id="bokantajPickOnMap" hidden aria-pressed="true">Choisir sur la carte</button>
+                            <input type="checkbox" id="bokantajPlaceExact" hidden>
+                            <button type="button" id="bokantajPlaceSave" hidden>Confirmer</button>
+                            <button type="button" id="bokantajPlaceMove" hidden>Déplacer</button>
+                            <div hidden>
+                                <strong id="bokantajPlaceSummaryTitle">Position actuelle</strong>
+                                <span id="bokantajPlaceSummaryMeta"></span>
+                                <span id="bokantajPlaceSummaryPrecision">Les autres verront le quartier, pas votre position exacte.</span>
+                            </div>
+                        </div>
+                    </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                         <label class="admin-btn admin-btn-secondary">Photo<input id="maisonPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
                         <label class="admin-btn admin-btn-secondary">Vidéo<input id="maisonVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden></label>
@@ -3490,7 +3528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button type="button" class="admin-btn admin-btn-secondary" id="maisonDraftBtn">Enregistrer le brouillon</button>
                         <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn"><i class="ph-bold ph-paper-plane-tilt"></i> Soumettre à la modération</button>
                     </div>
-                    ${posts.length ? `<div style="margin-top:12px;">${posts.map((p) => `<div class="admin-card" style="padding:10px;margin-bottom:8px;"><strong>${maisonEsc(p.lifecycle_label || p.moderation_status || 'Statut inconnu')}</strong><p style="margin:6px 0 0;">${maisonEsc((p.content || '').slice(0, 160))}</p>${p.moderation_reason ? `<p class="maison-muted">${maisonEsc(p.moderation_reason)}</p>` : ''}</div>`).join('')}</div>` : ''}
+                    ${posts.length ? `<div style="margin-top:12px;">${posts.map((p) => `<div class="admin-card" style="padding:10px;margin-bottom:8px;"><strong>${maisonEsc(p.lifecycle_label || p.moderation_status || 'Statut inconnu')}</strong><p style="margin:6px 0 0;">${maisonEsc((p.content || '').slice(0, 160))}</p><p class="maison-muted">Lieu : ${maisonEsc(p.place_label || 'aucune localisation')}</p><div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><button type="button" class="admin-btn admin-btn-secondary admin-btn-sm" data-maison-place-edit="${maisonEsc(p.id)}" data-place-lat="${p.place_lat == null ? '' : maisonEsc(p.place_lat)}" data-place-lng="${p.place_lng == null ? '' : maisonEsc(p.place_lng)}" data-place-label="${maisonEsc(p.place_label || '')}">Modifier le lieu</button>${p.place_label ? `<button type="button" class="admin-btn admin-btn-secondary admin-btn-sm" data-maison-place-clear="${maisonEsc(p.id)}">Retirer le lieu</button>` : ''}</div>${p.moderation_reason ? `<p class="maison-muted">${maisonEsc(p.moderation_reason)}</p>` : ''}</div>`).join('')}</div>` : ''}
                 </div>
                 <form id="maisonRequestForm" class="admin-card" style="padding:12px;">
                     <h3 style="margin:0 0 8px; font-size:1rem;">Publier une annonce</h3>
@@ -3605,6 +3643,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (button) button.disabled = true;
                 const photo = photoInput?.files?.[0] ? await readDataUrl(photoInput.files[0]) : '';
                 const video = videoInput?.files?.[0] ? await readDataUrl(videoInput.files[0]) : '';
+                if (desk.dataset.placeEdit) {
+                    if (notice) notice.textContent = 'Terminez ou retirez la modification du lieu avant de publier un nouveau Lyann.';
+                    if (button) button.disabled = false;
+                    return;
+                }
                 const body = await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
                     method: 'POST',
                     body: JSON.stringify({
@@ -3614,6 +3657,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         territory: document.getElementById('maisonPostTerritory')?.value || profile.territory,
                         photo,
                         video,
+                        place: window.LYANN_BOKANTAJ_MAP?.getComposerPlace?.() || null,
                         draft
                     })
                 });
@@ -3630,6 +3674,100 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         document.getElementById('maisonDraftBtn')?.addEventListener('click', () => publishMaison(true));
         document.getElementById('maisonPublishBtn')?.addEventListener('click', () => publishMaison(false));
+        window.LYANN_BOKANTAJ_MAP?.bindComposerPlace?.();
+        const placeSummary = document.getElementById('maisonPlaceSummary');
+        const writePlaceSummary = (place) => {
+            if (!placeSummary) return;
+            const editing = desk.dataset.placeEdit;
+            if (editing) {
+                placeSummary.textContent = place
+                    ? `Modification du lieu : ${place.label}. Confirmez sur la carte.`
+                    : 'Modification du lieu : aucun lieu. Confirmez pour le retirer.';
+                return;
+            }
+            placeSummary.textContent = place
+                ? `Lieu sélectionné : ${place.label}${place.exact ? ' · position exacte' : ' · quartier'}.`
+                : 'Aucune localisation. La publication reste dans le fil.';
+        };
+        window.__maisonPlaceListener = async (event) => {
+            const place = event.detail ? event.detail.place : null;
+            const editing = desk.dataset.placeEdit || '';
+            if (!editing) {
+                writePlaceSummary(place);
+                return;
+            }
+            desk.dataset.placeEdit = '';
+            try {
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj/${editing}/place`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ place })
+                });
+                await window.openMaisonDesk(profile.id);
+            } catch (err) {
+                alert(err.message);
+            }
+        };
+        window.addEventListener('lyann-bokantaj-place-change', window.__maisonPlaceListener);
+        const search = document.getElementById('maisonPlaceSearch');
+        const results = document.getElementById('maisonPlaceResults');
+        const dept = { guadeloupe: '971', martinique: '972', guyane: '973', reunion: '974' }[String(profile.territory || '').toLowerCase()] || '';
+        search?.addEventListener('input', () => {
+            const needle = search.value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            if (!results) return;
+            const geo = window.LYANN_COMMUNE_GEO || {};
+            const found = needle.length < 2 ? [] : Object.entries(geo).filter(([key]) => {
+                const [code, name] = key.split('|');
+                return (!dept || code === dept) && name.includes(needle);
+            }).slice(0, 6);
+            results.hidden = found.length === 0;
+            results.innerHTML = found.map(([key, coords]) => {
+                const raw = key.split('|')[1];
+                const name = raw.replace(/(^|[\s-])([a-z])/g, (all, sep, ch) => sep + ch.toUpperCase());
+                return `<li><button type="button" data-place-lat="${coords[0]}" data-place-lng="${coords[1]}" data-place-name="${maisonEsc(name)}">${maisonEsc(name)}</button></li>`;
+            }).join('');
+        });
+        results?.addEventListener('click', (event) => {
+            const button = event.target.closest('button');
+            if (!button || !window.LYANN_BOKANTAJ_MAP?.focusComposerPlace) return;
+            window.LYANN_BOKANTAJ_MAP.focusComposerPlace({
+                lat: Number(button.dataset.placeLat),
+                lng: Number(button.dataset.placeLng),
+                label: button.dataset.placeName || ''
+            });
+            if (results) results.hidden = true;
+        });
+        const patchPlace = async (postId, place) => {
+            await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj/${postId}/place`, {
+                method: 'PATCH',
+                body: JSON.stringify({ place })
+            });
+            await window.openMaisonDesk(profile.id);
+        };
+        desk.querySelectorAll('[data-maison-place-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+                desk.dataset.placeEdit = button.getAttribute('data-maison-place-edit') || '';
+                const lat = button.getAttribute('data-place-lat');
+                const lng = button.getAttribute('data-place-lng');
+                const label = button.getAttribute('data-place-label') || '';
+                if (lat && lng && label) {
+                    window.LYANN_BOKANTAJ_MAP?.setComposerPlace?.({ lat: Number(lat), lng: Number(lng), label });
+                } else {
+                    window.LYANN_BOKANTAJ_MAP?.setComposerPlace?.(null);
+                }
+                writePlaceSummary(window.LYANN_BOKANTAJ_MAP?.getComposerPlace?.() || null);
+                window.LYANN_BOKANTAJ_MAP?.openComposerPlace?.();
+                document.getElementById('bokantajPlacePicker')?.scrollIntoView({ block: 'nearest' });
+            });
+        });
+        desk.querySelectorAll('[data-maison-place-clear]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                try {
+                    await patchPlace(button.getAttribute('data-maison-place-clear'), null);
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+        });
         desk.querySelectorAll('.maison-reply-btn').forEach((btn) => {
             btn.addEventListener('click', async () => {
                 const card = btn.closest('[data-maison-conv]');

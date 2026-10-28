@@ -449,6 +449,9 @@
         updatePlaceButton();
         togglePicker(false);
         revealComposer();
+        window.dispatchEvent(new CustomEvent('lyann-bokantaj-place-change', {
+            detail: { place: { lat: savedPlace.lat, lng: savedPlace.lng, label: savedPlace.label, exact: savedPlace.exact } }
+        }));
     }
 
     // The picker sits below the writing field. Closing it must bring that
@@ -492,6 +495,87 @@
         refreshPlaceSummary('');
         updatePlaceButton();
         togglePicker(false);
+        window.dispatchEvent(new CustomEvent('lyann-bokantaj-place-change', { detail: { place: null } }));
+    }
+
+    function releaseComposerPlace() {
+        if (pickerMap) {
+            try { pickerMap.remove(); } catch (_) {}
+        }
+        pickerMap = null;
+        pickerMarker = null;
+        pickerZone = null;
+        pickerPoint = null;
+        pickerRaw = null;
+    }
+
+    function bindComposerPlace() {
+        const trigger = $('bokantajPlaceTrigger');
+        if (!trigger || trigger.dataset.lyannPlaceBound === '1') return;
+        trigger.dataset.lyannPlaceBound = '1';
+        trigger.addEventListener('click', () => togglePicker($('bokantajPlacePicker').hidden));
+        $('bokantajLocateMe')?.addEventListener('click', () => locateMe());
+        $('bokantajPickOnMap')?.addEventListener('click', () => {
+            $('bokantajLocateMe')?.setAttribute('aria-pressed', 'false');
+            $('bokantajPickOnMap')?.setAttribute('aria-pressed', 'true');
+            if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Déplacez la carte, puis touchez l’endroit.';
+        });
+        $('bokantajPlaceExact')?.addEventListener('change', () => {
+            if (pickerRaw) setPickerPoint(pickerRaw);
+            else refreshPlaceSummary($('bokantajPlaceName')?.value.trim() || '');
+        });
+        $('bokantajPlaceName')?.addEventListener('input', () => {
+            placeNameAuto = false;
+            refreshPlaceSummary($('bokantajPlaceName').value.trim());
+        });
+        $('bokantajPlaceMove')?.addEventListener('click', () => {
+            if (!pickerMap || !pickerPoint) {
+                if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Touchez d’abord un endroit sur la carte.';
+                return;
+            }
+            pickerMap.setView([pickerPoint.lat, pickerPoint.lng], Math.max(pickerMap.getZoom(), 16));
+            if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Repère placé. Faites-le glisser ou touchez un autre endroit.';
+        });
+        $('bokantajPlaceSave')?.addEventListener('click', savePlace);
+        $('bokantajShareQuarter')?.addEventListener('click', () => sharePlace(false));
+        $('bokantajShareExact')?.addEventListener('click', () => sharePlace(true));
+        $('bokantajPlaceRemove')?.addEventListener('click', resetComposerPlace);
+    }
+
+    function openComposerPlace() {
+        togglePicker(true);
+    }
+
+    function focusComposerPlace(latlng) {
+        togglePicker(true);
+        if (!pickerMap || !validPoint(latlng)) return;
+        pickerMap.setView([Number(latlng.lat), Number(latlng.lng)], 14);
+        setPickerPoint(latlng);
+        const input = $('bokantajPlaceName');
+        if (input && latlng.label) {
+            input.value = String(latlng.label).slice(0, 90);
+            placeNameAuto = false;
+            refreshPlaceSummary(input.value.trim());
+        }
+    }
+
+    function setComposerPlace(place) {
+        if (!place) {
+            savedPlace = null;
+            updatePlaceButton();
+            return;
+        }
+        const lat = Number(place.lat);
+        const lng = Number(place.lng);
+        const label = String(place.label || '').trim();
+        if (!validPoint({ lat, lng }) || label.length < 2) return;
+        savedPlace = {
+            lat,
+            lng,
+            label,
+            exact: place.exact === true || !sharedAsNeighbourhood({ place_lat: lat, place_lng: lng })
+        };
+        updatePlaceButton();
     }
 
     function filteredPosts(posts) {
@@ -940,34 +1024,7 @@
                 place_lng: Number(button.dataset.mapLng)
             });
         });
-        $('bokantajPlaceTrigger').addEventListener('click', () =>
-            togglePicker($('bokantajPlacePicker').hidden));
-        $('bokantajLocateMe')?.addEventListener('click', () => locateMe());
-        $('bokantajPickOnMap')?.addEventListener('click', () => {
-            $('bokantajLocateMe')?.setAttribute('aria-pressed', 'false');
-            $('bokantajPickOnMap')?.setAttribute('aria-pressed', 'true');
-            if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Déplacez la carte, puis touchez l’endroit.';
-        });
-        $('bokantajPlaceExact')?.addEventListener('change', () => {
-            if (pickerRaw) setPickerPoint(pickerRaw);
-            else refreshPlaceSummary($('bokantajPlaceName')?.value.trim() || '');
-        });
-        $('bokantajPlaceName')?.addEventListener('input', () => {
-            placeNameAuto = false;
-            refreshPlaceSummary($('bokantajPlaceName').value.trim());
-        });
-        $('bokantajPlaceMove')?.addEventListener('click', () => {
-            if (!pickerMap || !pickerPoint) {
-                if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Touchez d’abord un endroit sur la carte.';
-                return;
-            }
-            pickerMap.setView([pickerPoint.lat, pickerPoint.lng], Math.max(pickerMap.getZoom(), 16));
-            if ($('bokantajPickerStatus')) $('bokantajPickerStatus').textContent = 'Repère placé. Faites-le glisser ou touchez un autre endroit.';
-        });
-        $('bokantajPlaceSave')?.addEventListener('click', savePlace);
-        $('bokantajShareQuarter')?.addEventListener('click', () => sharePlace(false));
-        $('bokantajShareExact')?.addEventListener('click', () => sharePlace(true));
-        $('bokantajPlaceRemove')?.addEventListener('click', resetComposerPlace);
+        bindComposerPlace();
         window.addEventListener('popstate', () => {
             if ($('bokantajPlacePicker') && !$('bokantajPlacePicker').hidden) togglePicker(false);
         });
@@ -1024,6 +1081,11 @@
         },
         publicCoordinate,
         resetComposerPlace,
+        releaseComposerPlace,
+        bindComposerPlace,
+        openComposerPlace,
+        focusComposerPlace,
+        setComposerPlace,
         showPost,
         switchView,
         setTerritory,
