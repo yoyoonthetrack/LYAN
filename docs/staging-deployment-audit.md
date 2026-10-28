@@ -5,8 +5,7 @@ Branche : `release/lyann-rc-v1-1`
 PR : https://github.com/yoyoonthetrack/LYAN/pull/13 (brouillon)
 Domaine : `https://staging.lyann.app`
 Projet : `lyann-staging-preview` `prj_FHIKUKYa8IwpiitigUma4gTtTF6q`
-Déploiement servi : `dpl_3s5U43QkPhe1R9prL1EeSYAakAh8`
-SHA annoncé par `GET /v1/runtime/identity` : `6270df9efc231f98efe6f8f56eb47b224dcd6e3f`
+SHA annoncé par `GET /v1/runtime/identity` : `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`
 Supabase : `tdktfbtqceldlaeqjtow`
 Isolation : `STAGING_ISOLATED`, `production=false`
 Stripe : `stripe_mode=test`
@@ -17,7 +16,7 @@ Le projet Production `lyan` et le domaine `lyann.app` n’ont pas été modifié
 ## Verdict
 
 Cohérence du déploiement Staging : **GO**.
-Notifications push TestFlight : **NO-GO**. La clé APNs chargée sur `staging.lyann.app` est acceptée par Apple. Aucun compte QA n’a de jeton production, donc l’envoi automatique n’a pas été allumé et aucun membre n’a été notifié.
+Notifications push TestFlight, compte autorisé : **GO**. Le 28 octobre 2026 à 3 h 10, heure de Paris, Apple a accepté une seule notification vers le jeton production de `yoann.danier@gmail.com`. Le texte « Vous avez un nouveau message. » est apparu sur l’écran verrouillé de TestFlight 1.0 (12). Aucun autre utilisateur n’a reçu cet envoi. `PUSH_QA_ONLY=true` reste actif. La liste reste les trois comptes QA et ce compte, sur le projet Staging seulement.
 Release candidate : **NO-GO**, pour les blocages déjà écrits dans `docs/rc-final-go-no-go.md`. Les contrôles CI ne suffisent pas à les lever.
 
 ## Routes
@@ -52,22 +51,35 @@ Vercel enregistre les crons du `vercel.json` contenu dans l’archive envoyée. 
 | --- | --- | --- | --- | --- |
 | Collecte éditoriale | À planifier | `/v1/editorial/collect/scheduled` | `0 11,16,21 * * *` | Oui |
 | Modération et reprise vidéo | À planifier | `/v1/internal/moderation/run` | `* * * * *` | Oui |
-| Drain des notifications | Indispensable sur Vercel. La boucle locale de 8 s ne tourne pas là | `/v1/notifications/push-drain` | `* * * * *` | Oui. L’envoi reste éteint |
+| Drain des notifications | Indispensable sur Vercel. La boucle locale de 8 s ne tourne pas là | `/v1/notifications/push-drain` | `* * * * *` | Oui. L’envoi est limité à la liste autorisée |
 | Nettoyage des médias | Non. Suppression seulement avec `apply=true`, à la demande | `/v1/internal/bokantaj/media-sweep` | — | Non, volontaire |
 | Échéances, jalons, Stripe, abonnements | Non. Webhook ou requête | — | — | Non, volontaire |
 | `lyann_agent_schedules` | Stocké pour l’admin. Aucun exécuteur ne lit ces expressions | — | — | Non |
 
-Les trois crons ont été relus après le déploiement `dpl_E633F59q5UhSNbHAZifwKFYXxyd8` : éditorial `0 11,16,21 * * *`, modération présent, drain `* * * * *`, liste manquante vide. Sans secret, ces routes répondent 401. Avec le secret de cron, le drain répond HTTP 200, `PUSH_AUTOMATIC_DISABLED`, 0 traité. Aucune notification n’est partie. La file compte 0 livraison `pending`, `retry` ou `processing`.
+Les trois crons ont été relus après le déploiement `dpl_E633F59q5UhSNbHAZifwKFYXxyd8` : éditorial `0 11,16,21 * * *`, modération présent, drain `* * * * *`. Sans secret, ces routes répondent 401. Le drain du serveur actuel est allumé et limité à la liste autorisée. La file ouverte, après l’envoi confirmé, est vide.
 
 ## Notifications
 
-Le chemin est hybride. Un trigger Postgres enfile `push_deliveries` à l’insertion d’une notification (`NEW_MESSAGE`, `QUOTE_RECEIVED`, `MISSION_ACCEPTED`, `WORK_TO_VALIDATE`, `PAYOUT_READY`, `PAYMENT_FAILED`, `OPPORTUNITY`). Le claim SQL ignore les lignes expirées, pose un verrou et déduplique. Cinq tentatives au plus, avec un délai croissant. Le serveur Vercel n’exécute pas la boucle locale.
+Le chemin est hybride. Un trigger Postgres enfile `push_deliveries` à l’insertion d’une notification (`NEW_MESSAGE`, `QUOTE_RECEIVED`, `MISSION_ACCEPTED`, `WORK_TO_VALIDATE`, `PAYOUT_READY`, `PAYMENT_FAILED`, `OPPORTUNITY`). Le claim SQL ignore les lignes expirées, pose un verrou et déduplique. Cinq tentatives au plus, avec un délai croissant. Le serveur Vercel n’exécute pas la boucle locale. Sur Staging, le drain n’envoie qu’aux identifiants de `PUSH_QA_USER_IDS`.
 
-TestFlight 1.0 (12) a `aps-environment` production et déclare l’environnement `production` hors debug. Le jeton QA actif est `sandbox`, mis à jour le 21 octobre 2026. Le seul jeton `production` actif n’appartient pas à un compte QA. Il n’a pas été utilisé. Aucune réception iPhone n’est donc déclarée.
+TestFlight 1.0 (12) a `aps-environment` production. Le compte `yoann.danier@gmail.com` est confirmé dans Supabase Staging. Son jeton iOS production est actif. Son jeton sandbox est inactif. Le compte QA A a un jeton sandbox actif et un jeton production inactif. Aucun nouvel envoi n’a été fait vers ce jeton sandbox.
 
-Les quatre variables APNs sont présentes en secret sur la cible servie. Une sonde autorisée, vers un jeton qui n’appartient à aucun appareil, a répondu HTTP 400 `BadDeviceToken` : la clé EC est lisible, l’identifiant de clé a la forme attendue, l’équipe est `WLV4WC47U2`, le bundle est `app.lyann.mobile`, et Apple a accepté le jeton fournisseur. `PUSH_AUTOMATIC_ENABLED` reste absent. `PUSH_QA_ONLY` et `PUSH_QA_USER_IDS` restent les secrets des trois comptes QA. Le seul jeton `production` actif n’est pas l’un de ces comptes. Il n’a pas été utilisé.
+Les quatre variables APNs sont présentes en secret sur la cible servie. Une sonde autorisée, vers un jeton qui n’appartient à aucun appareil, a répondu HTTP 400 `BadDeviceToken` : la clé EC est lisible, l’identifiant de clé a la forme attendue, l’équipe est `WLV4WC47U2`, le bundle est `app.lyann.mobile`, et Apple a accepté le jeton fournisseur. `PUSH_AUTOMATIC_ENABLED=true`. `PUSH_QA_ONLY=true`. `PUSH_QA_USER_IDS` contient les trois comptes QA et le compte confirmé sur l’iPhone. Ces trois réglages sont sur `lyann-staging-preview` seulement. Le projet `lyan` n’a pas cette liste.
 
-Il reste à ouvrir TestFlight 1.0 (12) sur l’iPhone avec un compte QA, à autoriser les notifications, puis à laisser l’application au premier plan quelques secondes. Ensuite seulement : `PUSH_AUTOMATIC_ENABLED=true`, redéploiement Staging, et un seul message depuis l’autre compte QA. La preuve de réception reste l’affichage sur l’iPhone.
+Réception : une seule livraison `sent` vers ce compte, le 28 octobre 2026 à 02:10:35 UTC. Apple a répondu HTTP 200. Le jeton production est resté actif. Aucune livraison `sent` vers un autre compte. L’écran verrouillé a montré LYANN, « Vous avez un nouveau message. ». Aucun build 13.
+
+Navigation au clic, session du compte QA A sur `https://staging.lyann.app`, sans nouvel envoi push :
+
+| Événement | Destination observée |
+| --- | --- |
+| `NEW_MESSAGE` | Conversation. La cloche masque ce type. Le geste qui ouvre est celui de la notification push |
+| `QUOTE_RECEIVED` | Conversation, en-tête affiché. La ligne stockée n’a pas l’identifiant d’annonce |
+| `MISSION_ACCEPTED` | Conversation |
+| `WORK_TO_VALIDATE` | Conversation. La ligne stockée n’a pas l’identifiant d’annonce |
+| `PAYMENT_FAILED` | Conversation quand le contact, le devis et l’annonce sont présents. Finances sinon |
+| `PAYOUT_READY` | Écran Finances, par le geste push |
+| `OPPORTUNITY` | Détail de l’annonce |
+| `BOKANTAJ` | Fil Bokantaj. Le clic depuis l’accueil ouvre le fil, pas une publication précise |
 
 ## Médias, échéances, maintenance
 
@@ -89,9 +101,11 @@ Présentes et utilisées : `SUPABASE_URL`, `LYANN_SUPABASE_URL`, `SUPABASE_ANON_
 
 Absentes, avec un remplaçant déjà actif : `EDITORIAL_CRON_SECRET` (remplacé par `CRON_SECRET`), `LYANN_AI_API_KEY` et `LYANN_EDITORIAL_AI_ENABLED` (chemin direct `OPENAI_API_KEY`).
 
-Absentes, fermeture voulue : `STRIPE_LIVE_ENABLED` sur la cible servie, `PUSH_AUTOMATIC_ENABLED`, `PUSH_CRON_SECRET`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRIVATE_KEY`. `PUSH_QA_ONLY` et `PUSH_QA_USER_IDS` sont présents en secret sur la cible servie. Le nom `STRIPE_LIVE_ENABLED` existe sur la cible Preview. La cible servie ne l’a pas.
+Présentes en secret sur la cible servie, pour le push : `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID`, `APNS_PRIVATE_KEY`, `PUSH_AUTOMATIC_ENABLED`, `PUSH_QA_ONLY`, `PUSH_QA_USER_IDS`. `PUSH_CRON_SECRET` reste absent. Le drain utilise `CRON_SECRET`.
 
-`LYANN_SUPABASE_LOCK` est absent de la liste d’environnement de la cible servie. La page servie contient quand même le verrou `tdktfbtqceldlaeqjtow`, repris depuis l’URL Supabase au build. `LYANN_RELEASE_SHA` est injecté au déploiement. Le serveur annonce `6270df9`.
+Absentes, fermeture voulue : `STRIPE_LIVE_ENABLED` sur la cible servie. Le nom existe sur la cible Preview. La cible servie ne l’a pas.
+
+`LYANN_SUPABASE_LOCK` est absent de la liste d’environnement de la cible servie. La page servie contient quand même le verrou `tdktfbtqceldlaeqjtow`, repris depuis l’URL Supabase au build. `LYANN_RELEASE_SHA` est injecté au déploiement. Le serveur annonce `17e885b`.
 
 Google et Apple ne sont pas des variables Vercel. `GET /auth/v1/authorize?provider=google` sur le projet Supabase Staging répond 302. Le même appel Apple, sans paramètres OAuth, répond 400 `validation_failed`. Le fournisseur répond. La configuration OAuth reste dans Supabase Auth.
 
@@ -108,8 +122,8 @@ L’association Apple servie vient de `config/apple-app-site-association.staging
 - `scripts/verify-staging-release.js` contrôle la configuration locale et, si `LYANN_STAGING_PUBLIC_ORIGIN` vaut `https://staging.lyann.app`, les 13 routes ci-dessus. Il refuse `lyann.app`. Il n’envoie aucun secret et ne crée aucune donnée.
 - Tests : `tests/staging-vercel-upload.test.js` et les assertions ajoutées à `tests/business-workflow.test.js`. 19 tests locaux passés avant le déploiement.
 - Redéploiement du seul projet `lyann-staging-preview`. Contrôle HTTP PASS. Crons relus. `vercel.json` Git revenu à la version Production.
-- Le drain `/v1/notifications/push-drain` est enregistré chaque minute. Sur Staging, l’envoi exige `PUSH_AUTOMATIC_ENABLED` et une liste QA. Les deux sont séparés : la liste est posée, le flag reste absent. 23 tests locaux de file, cron et éditorial sont passés avant ce déploiement.
+- Le drain `/v1/notifications/push-drain` est enregistré chaque minute. Sur Staging, l’envoi exige `PUSH_AUTOMATIC_ENABLED=true` et la liste autorisée. Les deux sont actifs. Un destinataire hors liste est marqué `QA_EXCLUDED` et n’est pas envoyé à Apple.
 
 ## Écart avec TestFlight 1.0 (12)
 
-Le binaire iOS est `c35d68e`. Le serveur est `6270df9`. TestFlight 1.0 (12) reste le binaire. Pas de build 13.
+Le binaire iOS est `c35d68e`. Le serveur est `17e885b`. TestFlight 1.0 (12) reste le binaire. Pas de build 13. La réception push a été confirmée sur ce binaire.
