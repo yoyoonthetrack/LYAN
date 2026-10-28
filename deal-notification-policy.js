@@ -122,6 +122,7 @@
             quoteId: extras.quoteId || null,
             missionId: extras.missionId || null,
             milestoneId: extras.milestoneId || null,
+            postId: extras.postId || null,
             scopeSource: extras.scopeSource || 'legacy',
             resolution: extras.resolution || 'missing',
             navigate: extras.navigate === true,
@@ -165,9 +166,15 @@
             quoteId: null,
             missionId: null,
             milestoneId: null,
+            postId: null,
             scopeSource: parts.length >= 3 ? 'notification' : 'legacy'
         };
 
+        if (type === 'BOKANTAJ' || entityType === 'post' || entityType === 'bokantaj_post') {
+            parsed.postId = first;
+            parsed.scopeSource = first ? 'notification' : 'legacy';
+            return parsed;
+        }
         if (type === 'NEW_MESSAGE' || entityType === 'conversation') {
             parsed.contactId = first;
             return parsed;
@@ -228,7 +235,9 @@
             || input.quoteId
             || input.missionId
             || input.milestoneId
-            || input.invitationId;
+            || input.invitationId
+            || input.postId
+            || input.post_id;
 
         let contactId = pickStructuredId(input, 'contactId');
         let requestId = pickStructuredId(input, 'requestId');
@@ -236,6 +245,7 @@
         let quoteId = pickStructuredId(input, 'quoteId');
         let missionId = pickStructuredId(input, 'missionId');
         let milestoneId = pickStructuredId(input, 'milestoneId');
+        let postId = pickStructuredId(input, 'postId');
         let scopeSource = structured && (requestId || invitationId || missionId || quoteId || milestoneId || contactId)
             ? 'notification'
             : 'legacy';
@@ -250,6 +260,7 @@
         quoteId = quoteId || legacy.quoteId;
         missionId = missionId || legacy.missionId;
         milestoneId = milestoneId || legacy.milestoneId;
+        postId = postId || legacy.postId;
         if (!structured) scopeSource = legacy.scopeSource;
         else if (!requestId && legacy.requestId) scopeSource = 'notification';
 
@@ -281,6 +292,9 @@
         }
         if (type === 'BOKANTAJ' || entityType === 'post' || entityType === 'bokantaj_post') {
             route = 'bokantaj';
+            postId = postId || asUuid(input.entity_id || input.entityId);
+            contactId = null;
+            requestId = null;
         }
         if (!route) route = dealRouteForType(type) || (contactId ? 'messages' : null);
 
@@ -326,6 +340,7 @@
             quoteId,
             missionId,
             milestoneId,
+            postId,
             scopeSource,
             resolution,
             navigate,
@@ -356,6 +371,7 @@
             if (target.milestoneId) checks.push('milestone_visible');
         } else if (route === 'mission') checks.push('auth', 'request_visible');
         else if (route === 'finances') checks.push('auth');
+        else if (route === 'bokantaj') checks.push(target && target.postId ? 'post_visible' : 'feed');
         return {
             authorized: false,
             payloadIsNotAuthorization: true,
@@ -593,8 +609,13 @@
 
     function routerPayloadFromTarget(target) {
         if (!target || !target.route) return { scopeSource: 'notification' };
-        if (target.route === 'finances' || target.route === 'bokantaj') {
+        if (target.route === 'finances') {
             return { scopeSource: 'notification' };
+        }
+        if (target.route === 'bokantaj') {
+            const payload = { scopeSource: 'notification' };
+            if (target.postId) payload.postId = target.postId;
+            return payload;
         }
         if (target.route === 'mission') {
             return { requestId: target.requestId || null, scopeSource: 'notification' };
@@ -661,6 +682,7 @@
             quoteId: target.quoteId || '',
             missionId: target.missionId || '',
             milestoneId: target.milestoneId || '',
+            postId: target.postId || '',
             scopeSource: 'notification'
         });
     }
@@ -876,6 +898,18 @@
         };
     }
 
+    function notificationUnavailableMessage(target) {
+        const route = target && target.route;
+        const code = String((target && (target.code || target.resolution)) || '');
+        if (code === 'session_mismatch') return 'Cette notification ne correspond plus à votre session.';
+        if (route === 'bokantaj' || code === 'post_unavailable') return 'Cette publication n’est plus disponible.';
+        if (route === 'mission' || code === 'request_closed' || code === 'request_unavailable') {
+            return 'Cette annonce n’est plus disponible.';
+        }
+        if (route === 'messages' || code === 'conversation_unavailable') return 'Cette conversation n’est plus accessible.';
+        return 'Ce contenu n’est plus accessible.';
+    }
+
     function paymentFailedTransitionGate(state) {
         const hasProducer = Boolean(state && state.hasDedicatedProducer);
         const skipFailed = Boolean(state && state.skipPaymentFailedNewMessage);
@@ -909,6 +943,7 @@
         shouldSkipForegroundToast,
         routerPayloadFromTarget,
         planNotificationNavigation,
+        notificationUnavailableMessage,
         serializePendingPushTarget,
         parsePendingPushTarget,
         isHumanChatMessage,

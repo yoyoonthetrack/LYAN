@@ -144,11 +144,15 @@ function notificationKind(type) {
     return null;
 }
 
-function openNotificationTarget(notif) {
+async function openNotificationTarget(notif) {
     const entityType = String(notif?.entity_type || '').toLowerCase();
     const entityId = notif?.entity_id ? String(notif.entity_id) : '';
     const nType = String(notif?.type || '');
     if (nType === 'REQUEST_CLOSING') return false;
+    if (typeof window.openLyannNotification === 'function') {
+        const result = await window.openLyannNotification(notif, { source: 'bell' });
+        return Boolean(result && result.opened);
+    }
     const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
     if (policy && typeof policy.planNotificationNavigation === 'function') {
         const plan = policy.planNotificationNavigation(notif, { viewerId: lyannNotificationUserId() });
@@ -171,15 +175,15 @@ function openNotificationTarget(notif) {
             return true;
         }
         if (plan.route === 'bokantaj') {
-            const onFeed = /feed\.html/i.test(window.location.pathname);
+            const onFeed = /(?:^|\/)feed(?:\.html)?\/?$/i.test(window.location.pathname);
+            const postId = plan.payload && plan.payload.postId;
             const card = entityId ? document.getElementById(entityId) : null;
             if (onFeed && card) {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return true;
             }
-            if (!onFeed) {
-                window.LYANN_ROUTER?.go?.('bokantaj');
-                return true;
+            if (window.LYANN_ROUTER) {
+                return Boolean(await window.LYANN_ROUTER.go('bokantaj', plan.payload || { postId }));
             }
             return false;
         }
@@ -213,15 +217,14 @@ function openNotificationTarget(notif) {
         return true;
     }
     if (entityType === 'post' || entityType === 'bokantaj_post' || nType === 'BOKANTAJ') {
-        const onFeed = /feed\.html/i.test(window.location.pathname);
+        const onFeed = /(?:^|\/)feed(?:\.html)?\/?$/i.test(window.location.pathname);
         const card = entityId ? document.getElementById(entityId) : null;
         if (onFeed && card) {
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return true;
         }
-        if (!onFeed) {
-            window.LYANN_ROUTER?.go?.('bokantaj');
-            return true;
+        if (window.LYANN_ROUTER) {
+            return Boolean(await window.LYANN_ROUTER.go('bokantaj', { postId: entityId, scopeSource: 'notification' }));
         }
         return false;
     }
@@ -456,7 +459,7 @@ function renderNotificationsModal() {
             event.preventDefault();
             card.click();
         });
-        card.addEventListener('click', () => {
+        card.addEventListener('click', async () => {
             const notifId = card.getAttribute('data-notif-id');
             const entityType = card.getAttribute('data-entity-type');
             const entityId = card.getAttribute('data-entity-id');
@@ -516,8 +519,11 @@ function renderNotificationsModal() {
                 }
             }
 
-            const opened = openNotificationTarget(notif || { type: nType, entity_type: entityType, entity_id: entityId });
-            if (opened) closeModal();
+            const notifTarget = notif || { type: nType, entity_type: entityType, entity_id: entityId };
+            const result = typeof window.openLyannNotification === 'function'
+                ? await window.openLyannNotification(notifTarget, { source: 'bell' })
+                : { opened: await openNotificationTarget(notifTarget) };
+            if ((result && (result.opened || result.announced)) || document.querySelector('.bokantaj-reveal-miss')) closeModal();
             else renderNotificationsModal();
         });
     });

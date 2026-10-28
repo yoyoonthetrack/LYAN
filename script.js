@@ -9225,6 +9225,9 @@ safeDomReady(() => {
                     if (window.LYANN_PUSH && typeof window.LYANN_PUSH.sync === 'function') {
                         window.LYANN_PUSH.sync();
                     }
+                    if (window.LYANN_PUSH && typeof window.LYANN_PUSH.openPending === 'function') {
+                        window.LYANN_PUSH.openPending();
+                    }
                 } else {
                     await updateHeaderAuthState();
                 }
@@ -9246,6 +9249,12 @@ safeDomReady(() => {
                 authInitializationComplete = true;
                 window.CURRENT_USER_ID = null;
                 window.LYANN_CURRENT_USER = null;
+                if (window.LYANN_PUSH && typeof window.LYANN_PUSH.discard === 'function') {
+                    window.LYANN_PUSH.discard();
+                }
+                try { window.LYANN_MESSAGING?.close?.(); } catch (_) {}
+                window.LYANN_ACTIVE_CHAT_CONTACT = null;
+                try { localStorage.removeItem('lyann_last_active_contact'); } catch (_) {}
                 await updateHeaderAuthState();
                 if (typeof isNativePlatform === 'function' && isNativePlatform()) {
                     const path = window.location.pathname;

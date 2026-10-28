@@ -346,7 +346,34 @@
   register('explorer', (payload = {}) => openExplorer(payload.mode || '', payload));
   register('lyanneurs', (payload = {}) => openExplorer('lyanneurs', payload));
   register('annonces', (payload = {}) => openExplorer('annonces', payload));
-  register('bokantaj', () => hardNavigate('feed.html'));
+  function onBokantajFeed() {
+    const path = window.location.pathname || '';
+    return /(?:^|\/)feed(?:\.html)?\/?$/i.test(path);
+  }
+
+  function notificationPostId(value) {
+    const text = String(value || '').trim();
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text) ? text : '';
+  }
+
+  async function revealBokantajWhenReady(postId) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const reveal = window.LYANN_BOKANTAJ_FEED && window.LYANN_BOKANTAJ_FEED.revealPost;
+      if (typeof reveal === 'function') return reveal(postId);
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+    }
+    return { ok: false, reason: 'unavailable' };
+  }
+
+  register('bokantaj', async (payload = {}) => {
+    const postId = notificationPostId(payload.postId || payload.id);
+    if (onBokantajFeed() && postId) {
+      const revealed = await revealBokantajWhenReady(postId);
+      return Boolean(revealed && revealed.ok);
+    }
+    const target = postId ? `feed.html?post=${encodeURIComponent(postId)}` : 'feed.html';
+    return hardNavigate(target);
+  });
   register('messages', (payload = {}) => {
     if (knownLoggedOut()) return openLoginPrompt();
     const contactId = payload.contactId || payload.id || payload.memberId;
@@ -552,6 +579,11 @@
   function routeFromLocation() {
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
+    const postId = params.get('post');
+    if (!action && postId) {
+      go('bokantaj', { postId, scopeSource: 'notification' });
+      return;
+    }
     if (action === 'messages' || action === 'openchat') {
       const contactId = params.get('contact') || params.get('member') || params.get('chat');
       go('messages', { contactId, name: params.get('name') || undefined });
