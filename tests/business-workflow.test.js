@@ -20,6 +20,9 @@ test('environment check rejects missing, spoofed and production configuration',(
  for(const url of ['',undefined,'https://tdktfbtqceldlaeqjtow.supabase.co.evil.test','https://gzispjfoywklpqatjyop.supabase.co'])assert.equal(staging(url,'preview'),false);
  assert.equal(staging('https://tdktfbtqceldlaeqjtow.supabase.co','production'),false);
  assert.equal(staging('https://tdktfbtqceldlaeqjtow.supabase.co','preview'),true);
+ assert.equal(staging('https://tdktfbtqceldlaeqjtow.supabase.co',{VERCEL_ENV:'production',LYANN_RUNTIME:'staging'}),true);
+ assert.equal(staging('https://gzispjfoywklpqatjyop.supabase.co',{VERCEL_ENV:'production',LYANN_RUNTIME:'staging'}),false);
+ assert.equal(staging('https://tdktfbtqceldlaeqjtow.supabase.co',{VERCEL_ENV:'production',LYANN_RUNTIME:'production'}),false);
 });
 test('document validation checks bytes, size, kind and dates',()=>{
  const base={name:'preuve.pdf',kind:'registration',base64:Buffer.from('%PDF-1.7\nexample').toString('base64')};

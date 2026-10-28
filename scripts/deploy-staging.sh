@@ -36,13 +36,21 @@ restore_vercel_json() {
   fi
 }
 trap restore_vercel_json EXIT
-node << 'JS'
+if ! node << 'JS'
 const fs = require('fs');
-const root = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-const staging = JSON.parse(fs.readFileSync('vercel.staging.json', 'utf8'));
-root.crons = staging.crons;
-fs.writeFileSync('vercel.json', JSON.stringify(root, null, 2) + '\n');
+const { loadUploadConfig, cronProblems } = require('./scripts/staging-vercel-upload');
+const uploaded = loadUploadConfig(process.cwd());
+const problems = cronProblems(uploaded);
+if (problems.length) {
+  console.error(problems.join(' ; '));
+  process.exit(1);
+}
+fs.writeFileSync('vercel.json', JSON.stringify(uploaded, null, 2) + '\n');
 JS
+then
+  restore_vercel_json
+  exit 1
+fi
 
 # --prod promotes the stable domain of lyann-staging-preview, not the project lyan.
 RELEASE_SHA=$(git rev-parse HEAD)
@@ -52,6 +60,7 @@ npx vercel deploy --local-config vercel.staging.json --project "$VERCEL_PROJECT_
   --build-env LYANN_RELEASE_SHA="$RELEASE_SHA" \
   --env LYANN_RELEASE_SHA="$RELEASE_SHA"
 restore_vercel_json
-echo "Contrôle : node scripts/verify-staging-hosted.js"
+echo "Contrôle : node scripts/verify-staging-release.js"
+LYANN_STAGING_PUBLIC_ORIGIN=https://staging.lyann.app node scripts/verify-staging-release.js
 node scripts/verify-staging-editorial-cron.js
 echo "Retour arrière : npx vercel rollback --local-config vercel.staging.json --project ${VERCEL_PROJECT_ID} --scope ${VERCEL_ORG_ID}"

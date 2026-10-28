@@ -7,7 +7,14 @@ const TYPES = ['registration','representation','insurance','decennial','qualific
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 function checked(result) { if (result.error) fail(503,'Service temporairement indisponible.'); return result.data; }
-function staging(url, env) { return url === 'https://tdktfbtqceldlaeqjtow.supabase.co' && env !== 'production'; }
+function staging(url, env) {
+ const runtime = env && typeof env === 'object' ? String(env.LYANN_RUNTIME || '').toLowerCase() : '';
+ const vercelEnv = env && typeof env === 'object' ? env.VERCEL_ENV : env;
+ if (url !== 'https://tdktfbtqceldlaeqjtow.supabase.co') return false;
+ if (runtime === 'production') return false;
+ if (runtime === 'staging') return true;
+ return vercelEnv !== 'production';
+}
 function text(value, max, required = true) {
  if (typeof value !== 'string' || value.trim().length > max || (required && !value.trim())) fail(400,'Champ manquant ou trop long.');
  return value.trim();
@@ -52,7 +59,7 @@ function assertComplete(dossier) {
 function registerBusinessRoutes(app,{supabaseAdmin:db,verifyAdminPermission,env=process.env}) {
  const wrap = (handler) => async(req,res) => {
   res.set('Cache-Control','private, no-store');
-  if(!staging(env.SUPABASE_URL,env.VERCEL_ENV)) return res.status(403).json({error:'Ce parcours est disponible uniquement sur Staging.'});
+  if(!staging(env.SUPABASE_URL,env)) return res.status(403).json({error:'Ce parcours est disponible uniquement sur Staging.'});
   try { await handler(req,res); } catch(e) { res.status(e.status||500).json({error:e.status?e.message:'Impossible de terminer cette opération.'}); }
  };
  async function user(req) {
