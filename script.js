@@ -3426,6 +3426,7 @@ safeDomReady(() => {
         const tone = notice ? notice.tone : 'success';
         if (message && window.NotificationService) window.NotificationService.showToast(tone, message);
     }
+    window.showPublicationNotice = showPublicationNotice;
 
     function formatOwnCreatedPost(row) {
         const author = row.profiles || window.LYANN_CURRENT_USER_PROFILE || {};
@@ -11222,15 +11223,24 @@ safeDomReady(() => {
     if(btnSubmit) {
         btnSubmit.addEventListener('click', async (e) => {
             e.preventDefault();
-            
+            if (btnSubmit.dataset.publishing === '1') return;
+            btnSubmit.dataset.publishing = '1';
+            const releasePublishLock = () => {
+                btnSubmit.dataset.publishing = '';
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Publier mon besoin <i class="ph ph-paper-plane-right"></i>';
+            };
+
             // Check API Client
             if (!window.LYANN_API_CLIENT) {
+                releasePublishLock();
                 alert("Erreur système : API Client indisponible.");
                 return;
             }
 
             const currentUser = await window.LYANN_API_CLIENT.getCurrentUser();
             if (!currentUser) {
+                releasePublishLock();
                 if (window.NotificationService) {
                     window.NotificationService.showToast('warning', "Veuillez vous connecter pour publier votre besoin.");
                 }
@@ -11260,8 +11270,7 @@ safeDomReady(() => {
             const refuse = (message, step) => {
                 if (window.NotificationService) window.NotificationService.showToast('error', message);
                 else alert(message);
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = 'Publier mon besoin <i class="ph ph-paper-plane-right"></i>';
+                releasePublishLock();
                 goToStep(step);
             };
 
@@ -11302,6 +11311,10 @@ safeDomReady(() => {
                 ? '<i class="ph ph-spinner spin"></i> Enregistrement...'
                 : '<i class="ph ph-spinner spin"></i> Publication...';
 
+            let createdRequest = null;
+            let insertedCount = 0;
+            let directId = null;
+            let privateOnly = false;
             try {
                 if (editingId) {
                     const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
@@ -11322,12 +11335,13 @@ safeDomReady(() => {
                     window._lyannEditingRequestId = null;
                     modalRequestHelp.classList.remove('active');
                     document.body.style.overflow = '';
-                    btnSubmit.disabled = false;
-                    btnSubmit.innerHTML = 'PUBLIER';
-                    showPublicationNotice({
-                        status: updated && updated.public_moderation_status,
-                        edited: true
-                    }, 'Annonce mise à jour.');
+                    releasePublishLock();
+                    if (typeof window.showPublicationNotice === 'function') {
+                        window.showPublicationNotice({
+                            status: updated && updated.public_moderation_status,
+                            edited: true
+                        }, 'Annonce mise à jour.');
+                    }
                     if (typeof window.loadBokantajFeedFromSupabase === 'function') window.loadBokantajFeedFromSupabase({ force: true });
                     if (typeof window.loadExplorerResults === 'function') window.loadExplorerResults();
                     if (updated && typeof window.openLyannDetailModal === 'function') window.openLyannDetailModal(editingId, updated);
@@ -11336,10 +11350,10 @@ safeDomReady(() => {
                 const taxonomy = await window.LyanAI.fetchTaxonomyFromDB({ strict: true });
                 const selectedTaxonomy = taxonomy.find(t => t.universe === document.getElementById('wizardDomain')?.value && t.category === categoryText && t.subcategory === subCatText);
                 // Call real Supabase DB API
-                const directId = window._lyannDirectAskContactId;
+                directId = window._lyannDirectAskContactId;
                 const audience = document.querySelector('#wizardDirectAudience input[name="wizardAudience"]:checked')?.value || 'person';
-                const privateOnly = Boolean(directId) && audience !== 'network';
-                const createdRequest = await window.LYANN_API_CLIENT.createRequest({
+                privateOnly = Boolean(directId) && audience !== 'network';
+                createdRequest = await window.LYANN_API_CLIENT.createRequest({
                     title: title,
                     description: desc,
                     category: categoryText,
@@ -11355,7 +11369,18 @@ safeDomReady(() => {
                     visibility: privateOnly ? 'DIRECT' : 'PUBLIC',
                     target_user_id: privateOnly ? directId : null
                 });
+            } catch (err) {
+                console.error("❌ Erreur publication demande Supabase:", err);
+                releasePublishLock();
+                if (window.NotificationService) {
+                    window.NotificationService.showToast('error', "Erreur lors de la publication : " + (err.message || "Erreur serveur"));
+                } else {
+                    alert("Erreur lors de la publication : " + (err.message || "Erreur serveur"));
+                }
+                return;
+            }
 
+            try {
                 window.wizardSelectedPhotos = [];
                 if (typeof window.renderWizardPhotoPreviews === 'function') {
                     window.renderWizardPhotoPreviews();
@@ -11379,8 +11404,6 @@ safeDomReady(() => {
                 if (quoteRadio) quoteRadio.checked = true;
                 window.updateWizardBudgetState();
 
-                // Automatic invitation dispatch to matching candidates or targeted candidate
-                let insertedCount = 0;
                 try {
                     if (directId && createdRequest?.id && window.LYANN_API_CLIENT.bindConversationRequest) {
                         await window.LYANN_API_CLIENT.bindConversationRequest(createdRequest.id, directId, privateOnly ? 'DIRECT' : 'PUBLIC');
@@ -11412,11 +11435,13 @@ safeDomReady(() => {
                 }
 
                 // Show success toast
-                if (window.NotificationService) {
-                    const legacyText = privateOnly
-                        ? 'Demande envoyée uniquement à cette personne.'
-                        : (directId ? 'Demande envoyée à cette personne et publiée dans les Annonces.' : 'Votre besoin a été publié.');
-                    showPublicationNotice({ status: createdRequest && createdRequest.public_moderation_status }, legacyText);
+                const legacyText = privateOnly
+                    ? 'Demande envoyée uniquement à cette personne.'
+                    : (directId ? 'Demande envoyée à cette personne et publiée dans les Annonces.' : 'Votre besoin a été publié.');
+                if (typeof window.showPublicationNotice === 'function') {
+                    window.showPublicationNotice({ status: createdRequest && createdRequest.public_moderation_status }, legacyText);
+                } else if (window.NotificationService) {
+                    window.NotificationService.showToast('success', legacyText);
                 }
                 window._lyannDirectAskContactId = null;
                 window._lyannDirectAskContactName = '';
@@ -11430,17 +11455,12 @@ safeDomReady(() => {
 
                 // ÉCRAN APRÈS PUBLICATION V2 : RÉSUMÉ ET CONFIRMATION BDD
                 await showWizardPostPublishStep(createdRequest, insertedCount);
-
-            } catch (err) {
-                console.error("❌ Erreur publication demande Supabase:", err);
+            } catch (afterErr) {
+                console.error("Annonce enregistrée, confirmation interrompue:", afterErr);
                 if (window.NotificationService) {
-                    window.NotificationService.showToast('error', "Erreur lors de la publication : " + (err.message || "Erreur serveur"));
-                } else {
-                    alert("Erreur lors de la publication : " + (err.message || "Erreur serveur"));
+                    window.NotificationService.showToast('success', 'Votre besoin a été publié.');
                 }
-            } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = 'Publier mon besoin <i class="ph ph-paper-plane-right"></i>';
+                try { await showWizardPostPublishStep(createdRequest, insertedCount); } catch (_) {}
             }
         });
     }
