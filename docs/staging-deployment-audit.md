@@ -16,7 +16,9 @@ Le projet Production `lyan` et le domaine `lyann.app` n’ont pas été modifié
 ## Verdict
 
 Cohérence du déploiement Staging : **GO**.
-Notifications push TestFlight, compte autorisé : **GO**. Le 28 octobre 2026 à 3 h 10, heure de Paris, Apple a accepté une seule notification vers le jeton production de `yoann.danier@gmail.com`. Le texte « Vous avez un nouveau message. » est apparu sur l’écran verrouillé de TestFlight 1.0 (12). Aucun autre utilisateur n’a reçu cet envoi. `PUSH_QA_ONLY=true` reste actif. La liste reste les trois comptes QA et ce compte, sur le projet Staging seulement.
+Notifications push TestFlight, compte autorisé : **GO**. Le 28 octobre 2026 à 3 h 10, heure de Paris, Apple a accepté une notification vers le jeton production de `yoann.danier@gmail.com`. Le texte « Vous avez un nouveau message. » est apparu sur l’écran verrouillé de TestFlight 1.0 (12).
+
+Messagerie sur TestFlight 1.0 (13) : **GO définitif**, confirmé sur l’iPhone physique. Le 28 octobre 2026 à 12 h 15, heure de Paris, QA A a envoyé « Retest navigation 13. ». Le cron Vercel a livré à 12 h 16, statut `sent`, erreur vide, donc HTTP 200. L’identifiant `apns_id` est celui créé par la file et transmis à Apple ; Apple n’en renvoie pas un second. La notification est apparue. Le toucher, application fermée, a ouvert la conversation de QA A. `PUSH_QA_ONLY=true` reste actif. La liste reste les trois comptes QA et ce compte, sur le projet Staging seulement.
 Release candidate : **NO-GO**, pour les blocages déjà écrits dans `docs/rc-final-go-no-go.md`. Les contrôles CI ne suffisent pas à les lever.
 
 ## Routes
@@ -66,13 +68,15 @@ TestFlight 1.0 (12) a `aps-environment` production. Le compte `yoann.danier@gmai
 
 Les quatre variables APNs sont présentes en secret sur la cible servie. Une sonde autorisée, vers un jeton qui n’appartient à aucun appareil, a répondu HTTP 400 `BadDeviceToken` : la clé EC est lisible, l’identifiant de clé a la forme attendue, l’équipe est `WLV4WC47U2`, le bundle est `app.lyann.mobile`, et Apple a accepté le jeton fournisseur. `PUSH_AUTOMATIC_ENABLED=true`. `PUSH_QA_ONLY=true`. `PUSH_QA_USER_IDS` contient les trois comptes QA et le compte confirmé sur l’iPhone. Ces trois réglages sont sur `lyann-staging-preview` seulement. Le projet `lyan` n’a pas cette liste.
 
-Réception : une seule livraison `sent` vers ce compte, le 28 octobre 2026 à 02:10:35 UTC. Apple a répondu HTTP 200. Le jeton production est resté actif. Aucune livraison `sent` vers un autre compte. L’écran verrouillé a montré LYANN, « Vous avez un nouveau message. ». Aucun build 13.
+Réceptions confirmées sur l’iPhone : le 28 octobre 2026 à 02:10:35 UTC, TestFlight 1.0 (12), écran verrouillé ; le 28 octobre 2026 à 11:16:36 UTC, TestFlight 1.0 (13), toucher jusqu’à la conversation de QA A. Les deux livraisons sont `sent`, erreur vide. Le jeton production est resté actif. Aucune livraison `sent` de ces essais vers un autre compte.
+
+Un agent local `app.lyann.staging-api` consommait la file toutes les 8 s avec une liste d’un seul compte et marquait le destinataire `QA_EXCLUDED` avant le cron. Le correctif durable interdit cette boucle tant que `LYANN_ALLOW_LOCAL_PUSH_DRAIN` n’est pas `true`, et le chargeur Staging ne lui transmet plus l’envoi automatique ni le secret du cron. Le cron Vercel reste le seul consommateur. Ce verrou n’est pas encore dans le serveur servi : Vercel ne lance pas cette boucle.
 
 Navigation au clic, session du compte QA A sur `https://staging.lyann.app`, sans nouvel envoi push :
 
 | Événement | Destination observée |
 | --- | --- |
-| `NEW_MESSAGE` | Conversation. La cloche masque ce type. Le geste qui ouvre est celui de la notification push |
+| `NEW_MESSAGE` | Conversation. La cloche masque ce type. Sur TestFlight 1.0 (13), le toucher iPhone a ouvert la conversation de QA A. Les autres lignes de ce tableau restent des vérifications Web |
 | `QUOTE_RECEIVED` | Conversation, en-tête affiché. La ligne stockée n’a pas l’identifiant d’annonce |
 | `MISSION_ACCEPTED` | Conversation |
 | `WORK_TO_VALIDATE` | Conversation. La ligne stockée n’a pas l’identifiant d’annonce |
@@ -124,6 +128,16 @@ L’association Apple servie vient de `config/apple-app-site-association.staging
 - Redéploiement du seul projet `lyann-staging-preview`. Contrôle HTTP PASS. Crons relus. `vercel.json` Git revenu à la version Production.
 - Le drain `/v1/notifications/push-drain` est enregistré chaque minute. Sur Staging, l’envoi exige `PUSH_AUTOMATIC_ENABLED=true` et la liste autorisée. Les deux sont actifs. Un destinataire hors liste est marqué `QA_EXCLUDED` et n’est pas envoyé à Apple.
 
-## Écart avec TestFlight 1.0 (12)
+## Écart avec TestFlight
 
-Le binaire iOS est `c35d68e`. Le serveur est `17e885b`. TestFlight 1.0 (12) reste le binaire. Pas de build 13. La réception push a été confirmée sur ce binaire.
+TestFlight 1.0 (12), commit `c35d68e`, a confirmé la réception sur l’écran verrouillé. TestFlight 1.0 (13), commit `b503cea`, identifiant `ios-mvrjb9kl-92208e`, est installé et a confirmé le toucher jusqu’à la conversation. Le serveur servi reste `b503cea`. Aucun nouveau binaire n’est produit.
+
+## Prochains essais, non exécutés sur l’iPhone
+
+Un seul envoi par type, de QA A vers le compte autorisé, après fermeture complète de LYANN. Pas d’envoi groupé. Le Web a déjà ouvert les destinations ci-dessous dans la session QA ; l’iPhone ne les a pas touchées.
+
+| Type | Push APNs | Texte prévu | Destination à confirmer sur l’iPhone | Déjà vu sur le Web |
+| --- | --- | --- | --- | --- |
+| Bokantaj | Non. Ce type n’est pas dans la file APNs | Notification dans l’application | La publication exacte, pas seulement le fil | Le clic ouvre le fil |
+| Annonce | Oui, `OPPORTUNITY` | « Une annonce correspond à une de vos compétences. » | Le détail de cette annonce | Le détail s’ouvre |
+| Devis | Oui, `QUOTE_RECEIVED` | « Vous avez reçu une proposition. » | La conversation du devis, pas un autre dossier | La conversation s’ouvre |

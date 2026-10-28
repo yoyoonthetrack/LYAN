@@ -4,8 +4,10 @@ Verdict de release : **NO-GO**
 
 Livraison push APNs Staging vers le compte autorisé `yoann.danier@gmail.com`, sur TestFlight 1.0 (12) : **GO**. La notification « Vous avez un nouveau message. » a été lue sur l’écran verrouillé de l’iPhone. `PUSH_QA_ONLY=true` reste en place. La liste autorisée reste les trois comptes QA et ce compte, sur le projet Staging seulement. Le projet Production n’a pas été modifié.
 
+Parcours de notification de messagerie sur iPhone physique, TestFlight 1.0 (13) : **GO définitif**. Le 28 octobre 2026, un message de QA A a affiché la notification sur l’iPhone. Le toucher a ouvert directement la conversation de QA A. Aucun autre type de notification n’est couvert par ce GO.
+
 Tête applicative servie : `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`
-Paquets natifs reconstruits : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`, identifiant `ios-mvqzsf62-86ab71`, TestFlight 1.0 (12). L’archive 1.0 (13) `ios-mvrjb9kl-92208e` est signée et n’est pas téléversée.
+Paquets natifs : TestFlight 1.0 (12) `ios-mvqzsf62-86ab71`, commit `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`. TestFlight 1.0 (13) `ios-mvrjb9kl-92208e`, commit `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`, installé sur l’iPhone. Aucun nouveau binaire n’est reconstruit pour cette confirmation.
 Serveur Staging actuellement servi : déploiement `dpl_CYDUNXnSLjRANrmfb8VZ5YKriQh3`, estampille Git `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`.
 Branche : `release/lyann-rc-v1-1`
 PR : https://github.com/yoyoonthetrack/LYAN/pull/13 (brouillon, base `feature/bokantaj-map-v1`)
@@ -46,7 +48,8 @@ Date : 2026-10-28
 | iPhone | Ouverture, session QA, fil, lecture vidéo | OK | Appareil | Capture après lancement, vidéo Morne-à-l’Eau à l’écran | Le binaire précédent parlait encore à l’ancien hôte | Paquet `ios-mvqglbi4-f14a27` vers `staging.lyann.app` | `f02e6cc` | P1 | Parcours restants non tapés |
 | Staging QA | Messages A et B, relecture, idempotence, refus de C | OK | Comptes QA, base Staging | Une ligne pour le même `client_message_id` (`23505`), B lit A, C lit 0 ligne | Pas de pilotage tactile de l’iPhone : aucun `idb` | — | `7ab9b47` | P1 | Gestes sur l’appareil |
 | Staging QA | Devis créé, modifié à 25, accepté, jalon | OK | Comptes QA, base Staging | Devis `133d61f9` version 2, statut `ACCEPTED`, jalon `PENDING:25`, relu par A | — | — | `7ab9b47` | P1 | Écran iPhone |
-| iPhone TestFlight 1.0 (12) | Notification push d’un message | GO | Écran verrouillé, compte autorisé | Apple a accepté un seul envoi. La notification LYANN « Vous avez un nouveau message. » est apparue sur l’iPhone verrouillé. Aucun autre compte n’a été notifié | Le toucher de cette notification sur l’iPhone n’a pas été refait. Le même geste a été exécuté dans la session Staging du compte QA | — | `17e885b` | P1 clos pour la réception | Confirmation humaine reçue |
+| iPhone TestFlight 1.0 (12) | Notification push d’un message | GO | Écran verrouillé, compte autorisé | Apple a accepté un seul envoi. La notification LYANN « Vous avez un nouveau message. » est apparue sur l’iPhone verrouillé. Aucun autre compte n’a été notifié | Le toucher de cette notification sur le build 12 n’a pas été refait | — | `17e885b` | P1 clos pour la réception | Confirmation humaine reçue |
+| iPhone TestFlight 1.0 (13) | Notification push d’un message, application fermée, puis toucher | GO définitif | iPhone physique, compte autorisé | Message de QA A, 28 octobre 2026 à 12 h 15, heure de Paris. Apple HTTP 200 à 12 h 16. La notification est apparue. Le toucher a ouvert la conversation de QA A | Un agent local vidait la file avant le cron. Il ne peut plus le faire sans `LYANN_ALLOW_LOCAL_PUSH_DRAIN=true` | Verrou local, cron Vercel seul consommateur | `b503cea` pour l’écran, verrou dans le commit de ce rapport | P1 clos pour la messagerie | Confirmation humaine reçue |
 | Staging QA | Clic des autres notifications | OK sur les destinations exercées | Session QA A sur `staging.lyann.app` | Devis, travail à valider, mission acceptée et paiement en échec ouvrent la conversation. Le versement et le paiement sans dossier ouvrent Finances. L’annonce correspondante ouvre le détail. Bokantaj ouvre le fil. Le message n’est pas dans la cloche : le geste push ouvre la conversation | Les lignes anciennes de devis et de travail n’emportent pas l’identifiant d’annonce. Aucun envoi groupé | — | `17e885b` | P2 | Toucher iPhone des autres types non demandé |
 | iPhone | Arrière-plan, coupure réseau, navigation complète | NON TESTÉ | — | Aucun outil de toucher sur l’appareil | `devicectl` lance et photographie, il ne tape pas | — | — | P1 | Gestes sur l’iPhone |
 | Android émulateur | Installation et fil Bokantaj | OK | Émulateur API 36 | APK installé, fil QA visible | Le System UI a bloqué au premier essai, puis le fil s’est affiché | Aucune | `f02e6cc` | P2 | Téléphone Android physique absent |
@@ -64,7 +67,7 @@ Date : 2026-10-28
 
 ## Déploiement Staging
 
-Verdict de cohérence du déploiement : **GO**. La livraison push APNs Staging vers le compte autorisé est **GO** : TestFlight 1.0 (12), écran verrouillé, texte « Vous avez un nouveau message. ». `PUSH_AUTOMATIC_ENABLED=true` et `PUSH_QA_ONLY=true` restent actifs. La liste contient les trois comptes QA et ce compte, uniquement sur `lyann-staging-preview`. La release reste **NO-GO** pour les blocages déjà listés plus bas. Le serveur servi annonce `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`, Supabase `tdktfbtqceldlaeqjtow`, isolation Staging. L’archive iOS 1.0 (13) est prête et n’a pas été envoyée sur TestFlight. Les trois crons restent enregistrés. Le projet `lyan` et `lyann.app` n’ont pas été modifiés.
+Verdict de cohérence du déploiement : **GO**. La livraison push APNs Staging vers le compte autorisé est **GO**. TestFlight 1.0 (12) a montré « Vous avez un nouveau message. » sur l’écran verrouillé. TestFlight 1.0 (13), installé, a en plus ouvert la conversation de QA A au toucher. `PUSH_AUTOMATIC_ENABLED=true` et `PUSH_QA_ONLY=true` restent actifs. La liste contient les trois comptes QA et ce compte, uniquement sur `lyann-staging-preview`. La release reste **NO-GO** pour les blocages déjà listés plus bas. Le serveur servi annonce `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`, Supabase `tdktfbtqceldlaeqjtow`, isolation Staging. Les trois crons restent enregistrés. Le projet `lyan` et `lyann.app` n’ont pas été modifiés.
 
 Le dossier Pro répondait 403 sur le domaine stable parce qu’il lisait `VERCEL_ENV=production`. Il suit maintenant `LYANN_RUNTIME=staging`. `GET /v1/business/rights` sans session répond 401. Les achats Sandbox et les remboursements restent fermés.
 
@@ -88,7 +91,7 @@ Le prochain passage planifié est le 28 octobre 2026 à 07:00, heure de Guadelou
 ## Blocages qui empêchent le GO
 
 1. Le remboursement Stripe Test reste fermé. Le paiement unique autorisé par le grant, `9af9963d-d5a6-40d3-bc8d-fc9fbf2f0175`, n’existe pas sur Staging.
-2. L’iPhone n’a pas été piloté pour les messages, le devis, l’arrière-plan et la coupure réseau. Les achats Sandbox Apple et Google restent NON TESTÉ.
+2. Le toucher d’une notification de message est confirmé sur TestFlight 1.0 (13). Le devis, Bokantaj, les annonces, l’arrière-plan et la coupure réseau ne le sont pas sur l’iPhone. Les achats Sandbox Apple et Google restent NON TESTÉ.
 3. Ce Mac ne peut pas créer l’identité Apple Distribution sans une session du compte développeur. Le trousseau n’a que l’identité de développement, et Xcode n’a pas de compte enregistré. Pas d’archive. L’AAB signé est prêt pour un premier dépôt et n’a pas été envoyé.
 4. Le seul administrateur hors compte personnel est `qa_finance_610q`. Il ne peut pas modérer, suspendre, changer un rôle ni exporter les paiements. La route d’équipe est servie et lui répond 403.
 5. `staging-bokantaj.lyann.app` sert encore `80ceae7c` depuis le projet Production.

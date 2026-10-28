@@ -6718,7 +6718,9 @@ if (require.main === module) {
     const bind = process.env.LYANN_API_BIND || undefined;
     const onListen = () => {
         console.log(`🚀 LYANN DOM API Engine en écoute sur http://${bind || 'localhost'}:${PORT}/v1`);
-        if (process.env.PUSH_AUTOMATIC_ENABLED === 'true' && process.env.PUSH_CRON_SECRET && !process.env.VERCEL) {
+        // The shared Staging queue is drained only by the Vercel cron. A local
+        // process must opt in explicitly, or a restart would claim those rows first.
+        if (process.env.LYANN_ALLOW_LOCAL_PUSH_DRAIN === 'true' && process.env.PUSH_AUTOMATIC_ENABLED === 'true' && process.env.PUSH_CRON_SECRET && !process.env.VERCEL) {
             const http = require('http');
             const secret = process.env.PUSH_CRON_SECRET;
             const tick = () => {

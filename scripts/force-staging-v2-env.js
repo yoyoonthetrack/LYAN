@@ -79,7 +79,9 @@ function applyStaging() {
       'APNS_BUNDLE_ID',
       'APNS_PRIVATE_KEY'
     ];
+    const allowLocalDrain = process.env.LYANN_ALLOW_LOCAL_PUSH_DRAIN === 'true';
     for (const key of pushKeys) {
+      if (!allowLocalDrain && (key === 'PUSH_AUTOMATIC_ENABLED' || key === 'PUSH_CRON_SECRET')) continue;
       if (push[key]) process.env[key] = push[key];
     }
   }
