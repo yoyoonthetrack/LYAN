@@ -6604,6 +6604,34 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                         if (milestoneWrite.error) throw new Error('MILESTONE_WRITE_FAILED');
                     }
 
+                    // A dispute opened in the same second may have been refused before this row was settled;
+                    // Stripe only re-sends it hours later in test mode, so freeze now if the charge is contested.
+                    const settledChargeId = typeof paymentIntent.latest_charge === 'string'
+                        ? paymentIntent.latest_charge
+                        : paymentIntent.latest_charge && paymentIntent.latest_charge.id;
+                    if (funded.preserve_payment !== true && settledChargeId && runtime.stripe) {
+                        let settledCharge = null;
+                        try {
+                            settledCharge = await runtime.stripe.charges.retrieve(settledChargeId);
+                        } catch (_) {
+                            settledCharge = null;
+                        }
+                        if (settledCharge && settledCharge.disputed === true) {
+                            const freezePayment = await supabaseAdmin
+                                .from('payments')
+                                .update({ payment_status: 'DISPUTED' })
+                                .eq('id', payment.id)
+                                .in('payment_status', ['SUCCEEDED', 'PARTIALLY_REFUNDED']);
+                            if (freezePayment.error) throw new Error('DISPUTE_PAYMENT_WRITE_FAILED');
+                            const freezeMilestone = await supabaseAdmin
+                                .from('milestones')
+                                .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
+                                .eq('id', payment.milestone_id)
+                                .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
+                            if (freezeMilestone.error) throw new Error('DISPUTE_MILESTONE_WRITE_FAILED');
+                        }
+                    }
+
                     // Annonce → en cours (hors recherche publique OPEN).
                     try {
                         const { data: fundedMilestone } = await supabaseAdmin

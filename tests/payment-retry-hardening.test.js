@@ -250,3 +250,12 @@ test('no transfer leaves while Stripe reports the charge as disputed, refunded, 
     assert.ok(gate > 0 && gate < transferHelper.indexOf("update({ transfer_status: 'TRANSFER_FAILED' })"));
     assert.ok(gate < transferHelper.indexOf('stripe.transfers.create'));
 });
+
+test('payment_intent.succeeded freezes a charge Stripe already reports as disputed', () => {
+    const freeze = webhookSucceeded.indexOf('settledCharge.disputed === true');
+    assert.ok(freeze > webhookSucceeded.indexOf("status: 'FUNDED'"));
+    assert.ok(freeze < webhookSucceeded.indexOf("status: 'IN_PROGRESS'"));
+    assert.match(webhookSucceeded, /charges\.retrieve\(settledChargeId\)/);
+    assert.match(webhookSucceeded, /\.update\(\{ payment_status: 'DISPUTED' \}\)/);
+    assert.doesNotMatch(webhookSucceeded, /refunds\.create/);
+});
