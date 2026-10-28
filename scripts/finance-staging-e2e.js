@@ -317,6 +317,23 @@ async function main() {
         record('C. litige : paiement préparé', false, disputeIntent.status + ' ' + (disputeIntent.payload.code || ''));
     }
 
+    // ---------- E. Annulation (migration 87) ----------
+    // Without migration 87 the RPC would really cancel the paid QA mission: only run once it is applied.
+    if (process.env.LYANN_FINANCE_EXPECT_M87 === '1') {
+        const { data: directQuote } = await admin.from('quotes').select('mission_id').eq('id', direct.quoteId).single();
+        const paidCancel = await a.client.rpc('cancel_mission_secure', { p_mission_id: directQuote.mission_id, p_reason: RUN + ' annulation après paiement' });
+        const helperCancel = await b.client.rpc('cancel_mission_secure', { p_mission_id: directQuote.mission_id, p_reason: RUN + ' annulation après paiement' });
+        const { data: paidMission } = await admin.from('missions').select('status').eq('id', directQuote.mission_id).single();
+        record('E. mission payée : annulation refusée, orientation Aide LYANN', !!paidCancel.error && /Aide LYANN/.test(paidCancel.error.message) && !!helperCancel.error && paidMission.status === 'AGREED', paidMission.status);
+        const unpaid = await freshDeal(a, b, 'annulation avant paiement', [{ title: 'Taille', description: 'Sans paiement', amount: 20, percentage: 100 }]);
+        await a.client.rpc('accept_request_quote', { p_quote_id: unpaid.quoteId, p_expected_version: unpaid.version });
+        const { data: unpaidQuote } = await admin.from('quotes').select('mission_id').eq('id', unpaid.quoteId).single();
+        const unpaidCancel = await a.client.rpc('cancel_mission_secure', { p_mission_id: unpaidQuote.mission_id, p_reason: RUN + ' annulation avant paiement' });
+        record('E. mission non payée : annulation possible', !unpaidCancel.error, unpaidCancel.error && unpaidCancel.error.message);
+    } else {
+        console.log('NON TESTÉ E. annulation : migration 87 non appliquée (LYANN_FINANCE_EXPECT_M87=1 après application)');
+    }
+
     // ---------- Finances ----------
     const { data: aPayments } = await a.client.from('payments').select('id, created_at, requester_id, provider_id, payment_status, transfer_status, stripe_transfer_id, service_amount_cents, customer_fee_cents, customer_total_cents, provider_fee_cents, provider_net_cents').or('requester_id.eq.' + a.user.id + ',provider_id.eq.' + a.user.id);
     const { data: bPayments } = await b.client.from('payments').select('id, created_at, requester_id, provider_id, payment_status, transfer_status, stripe_transfer_id, service_amount_cents, customer_fee_cents, customer_total_cents, provider_fee_cents, provider_net_cents').or('requester_id.eq.' + b.user.id + ',provider_id.eq.' + b.user.id);

@@ -2,6 +2,8 @@
 -- Status: PROPOSED, not applied. Apply on Staging (tdktfbtqceldlaeqjtow) first.
 -- A paid mission stays AGREED, and migration 28 only checked the mission status: a participant
 -- could cancel after the client paid, leaving secured funds with no refund path.
+-- An abandoned checkout (CREATED, card never confirmed) still allows cancellation: no money moved,
+-- and create-milestone-intent refuses a cancelled mission.
 -- Rollback: re-run section 6 of 28_mission_execution_milestones_migration.sql.
 BEGIN;
 
@@ -57,10 +59,9 @@ BEGIN
           AND (
               m.status IN ('FUNDED', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED')
               OR p.payment_status IN ('REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED')
-              OR (p.payment_status = 'CREATED' AND p.stripe_payment_intent_id IS NOT NULL)
           )
     ) THEN
-        RAISE EXCEPTION 'Un paiement est engagé sur cette mission : l''annulation doit être traitée par l''équipe LYANN.' USING ERRCODE = '22000';
+        RAISE EXCEPTION 'Un paiement est engagé sur cette mission : elle ne peut pas être annulée directement. Contactez l''Aide LYANN depuis le menu pour que l''équipe traite votre demande et la situation des fonds.' USING ERRCODE = '22000';
     END IF;
 
     UPDATE public.missions

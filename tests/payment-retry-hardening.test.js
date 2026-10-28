@@ -208,6 +208,20 @@ test('migration 87 refuses cancellation once a payment is engaged (proposal, app
     assert.match(sql, /CREATE OR REPLACE FUNCTION public\.cancel_mission_secure/);
     assert.match(sql, /m\.status IN \('FUNDED', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'\)/);
     assert.match(sql, /p\.payment_status IN \('REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED'\)/);
+    assert.doesNotMatch(sql, /payment_status = 'CREATED'/);
+    assert.match(sql, /Contactez l''Aide LYANN/);
     assert.ok(sql.indexOf('IF EXISTS') < sql.indexOf("SET status = 'CANCELLED'"));
     assert.match(sql, /REVOKE ALL ON FUNCTION public\.cancel_mission_secure\(uuid, text\) FROM PUBLIC, anon/);
+});
+
+test('a payment confirmed after the mission was cancelled is recorded, flagged and does not reopen the request', () => {
+    assert.match(webhookSucceeded, /PAYMENT_ON_CANCELLED_MISSION/);
+    assert.match(webhookSucceeded, /requestId && !paidAfterCancel/);
+    assert.match(webhookSucceeded, /missionBlocksMoneyStep\(missionRow\)/);
+});
+
+test('a refund made outside LYANN is flagged for an operator instead of passing silently', () => {
+    const refunded = webhook.slice(webhook.indexOf("case 'charge.refunded'"), webhook.indexOf("case 'transfer.reversed'"));
+    assert.match(refunded, /REFUND_OUTSIDE_LYANN/);
+    assert.doesNotMatch(refunded, /refunds\.create/);
 });

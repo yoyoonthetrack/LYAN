@@ -327,7 +327,7 @@ function missionBlocksMoneyStep(mission) {
 
 const MISSION_CANCELLED_BODY = Object.freeze({
     code: 'MISSION_ANNULEE',
-    error: 'Cette mission est annulée. Les fonds déjà sécurisés restent bloqués chez LYANN en attente d’une décision de l’équipe. Aucun versement n’est possible.'
+    error: 'Cette mission est annulée. Les fonds déjà sécurisés restent bloqués chez LYANN et aucun versement n’est possible. Contactez l’Aide LYANN depuis le menu pour que l’équipe traite la situation.'
 });
 
 function alreadyTransferredPayment(milestone, payment) {

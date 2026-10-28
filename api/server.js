@@ -6594,15 +6594,21 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                             .maybeSingle();
                         const quoteRow = fundedMilestone && fundedMilestone.quotes;
                         let requestId = quoteRow && quoteRow.request_id;
-                        if (!requestId && quoteRow && quoteRow.mission_id) {
-                            const { data: missionRow } = await supabaseAdmin
+                        let missionRow = null;
+                        if (quoteRow && quoteRow.mission_id) {
+                            ({ data: missionRow } = await supabaseAdmin
                                 .from('missions')
-                                .select('related_request_id')
+                                .select('related_request_id, status')
                                 .eq('id', quoteRow.mission_id)
-                                .maybeSingle();
-                            requestId = missionRow && missionRow.related_request_id;
+                                .maybeSingle());
+                            if (!requestId) requestId = missionRow && missionRow.related_request_id;
                         }
-                        if (requestId) {
+                        const paidAfterCancel = !!missionRow && missionBlocksMoneyStep(missionRow);
+                        if (paidAfterCancel) {
+                            // A checkout opened before the cancellation was confirmed after it.
+                            console.error('[PAYMENT CORE] PAYMENT_ON_CANCELLED_MISSION', payment.id);
+                        }
+                        if (requestId && !paidAfterCancel) {
                             await supabaseAdmin
                                 .from('requests')
                                 .update({
@@ -6692,6 +6698,10 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     .eq('stripe_charge_id', charge && charge.id)
                     .maybeSingle();
                 const synced = applyChargeRefunded(refundedPayment, charge);
+                if (synced.action === 'observe' && refundedPayment) {
+                    // Refund made outside LYANN (e.g. Dashboard): the row is not rewritten, an operator reconciles it.
+                    console.error('[PAYMENT CORE] REFUND_OUTSIDE_LYANN', refundedPayment.id, charge && charge.amount_refunded);
+                }
                 if (synced.apply && refundedPayment && synced.persist !== false) {
                     await supabaseAdmin
                         .from('payments')
