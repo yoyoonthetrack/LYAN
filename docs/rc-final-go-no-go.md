@@ -2,12 +2,12 @@
 
 Verdict : **NO-GO**
 
-Tête Git et PR : `9c19fdd1094cc57868f1cc8c7c2e7cdf846eb9a7`
-Paquets natifs reconstruits : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`, identifiant `ios-mvqzsf62-86ab71`
-Serveur Staging actuellement servi : déploiement `dpl_8WJbtuRYqd5ZMLnzAhN4sXaP9pbr`, estampille Git `cd0ed3ea16acfc919f5289ede08e0cd87f71c96d` plus le correctif éditorial de ce commit (le déploiement a été fait avant le commit)
+Tête applicative : `cb65a1d882b5181fec9bd23ad072da13cd4e44a0`
+Paquets natifs reconstruits : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`, identifiant `ios-mvqzsf62-86ab71`, TestFlight 1.0 (12)
+Serveur Staging actuellement servi : déploiement `dpl_5PBWPQR2JZNHLPCU3ZqoSxPRZU41`, estampille Git `cb65a1d882b5181fec9bd23ad072da13cd4e44a0`. Le commit de ce document est postérieur et n’est pas celui que le serveur annonce.
 Branche : `release/lyann-rc-v1-1`
 PR : https://github.com/yoyoonthetrack/LYAN/pull/13 (brouillon, base `feature/bokantaj-map-v1`)
-Date : 2026-10-27
+Date : 2026-10-28
 
 ## Identité exécutée
 
@@ -15,8 +15,8 @@ Date : 2026-10-27
 | --- | --- |
 | Web Staging | `https://staging.lyann.app` |
 | Projet Vercel | `lyann-staging-preview` `prj_FHIKUKYa8IwpiitigUma4gTtTF6q` |
-| Déploiement | `dpl_9wzJXx2Xs15EgabjAJHs7SFmQe2B` |
-| Commit servi | `84cff869a7d281ea0ec40fc06f5fde4116a2756f` |
+| Déploiement | `dpl_5PBWPQR2JZNHLPCU3ZqoSxPRZU41` |
+| Commit servi | `cb65a1d882b5181fec9bd23ad072da13cd4e44a0` |
 | Supabase | `tdktfbtqceldlaeqjtow` |
 | Isolation | `STAGING_ISOLATED`, `production=false` |
 | Stripe | `stripe_mode=test` |
@@ -29,7 +29,7 @@ Date : 2026-10-27
 | AAB | `android/app/build/outputs/bundle/release/app-release.aab`, SHA-256 `395d82e82febfdc9e0037a66263e6daa868641a0f961f7cd1e1cc8ec640d96e4`, certificat `CN=LYANN Upload`, `arm64-v8a` présent, hors Play. L’ancien fichier local `11f962e5…` est remplacé. Il n’avait pas été déposé |
 | Keystore | `~/Library/Application Support/lyann-release/upload-keystore.jks`, alias `upload`, hors dépôt, non recréé |
 | Ancien hôte | `https://staging-bokantaj.lyann.app` sert encore `80ceae7c` depuis le projet `lyan`. Les paquets actuels ne l’appellent pas. Les tests et `shared-html-build.js` l’autorisent encore comme ancienne origine Staging |
-| Correspondance | Les paquets embarquent `c35d68e`. Le serveur Staging servi reste `84cff86`. `b77cb67` est le commit du rapport précédent, parent de `c35d68e`. Ce document n’avait pas encore été repris après « Voir le devis » |
+| Correspondance | Les paquets TestFlight 1.0 (12) embarquent `c35d68e` et appellent `https://staging.lyann.app`. Le serveur servi est `cb65a1d`. Aucun client n’a changé dans cet audit, donc aucun paquet natif n’a été reconstruit. Le détail du déploiement est dans `docs/staging-deployment-audit.md` |
 
 ## CI
 
@@ -59,13 +59,19 @@ Date : 2026-10-27
 | Auth, annonces, Lyanneurs, messagerie, abonnements | Parcours complets de cette passe | NON TESTÉ | — | Non rejoués ici | — | — | — | P1 | Comptes QA, plusieurs sessions |
 | Production | Non-déploiement | OK | Contrôle | Projet `lyan` non déployé, `lyann.app` identity 404 | `staging-bokantaj` pointe encore vers ce projet | Non déplacé sans accord | — | P0 si on l’oublie | Décider du domaine |
 
+## Déploiement Staging
+
+Verdict de cohérence du déploiement : **GO**. La release reste **NO-GO** pour les blocages déjà listés plus bas. Le contrôle `node scripts/verify-staging-release.js` sur `https://staging.lyann.app` a répondu PASS après le déploiement `dpl_5PBWPQR2JZNHLPCU3ZqoSxPRZU41` : identité `cb65a1d`, Supabase `tdktfbtqceldlaeqjtow`, Stripe Test, 13 routes critiques, association Apple du callback, webhook sans signature en 400. Les crons enregistrés sont `/v1/editorial/collect/scheduled` (`0 11,16,21 * * *`) et `/v1/internal/moderation/run` (`* * * * *`). Le projet `lyan` et `lyann.app` n’ont pas été modifiés.
+
+Le dossier Pro répondait 403 sur le domaine stable parce qu’il lisait `VERCEL_ENV=production`. Il suit maintenant `LYANN_RUNTIME=staging`. `GET /v1/business/rights` sans session répond 401. Les achats Sandbox et les remboursements restent fermés.
+
 ## Éditorial Bokantaj
 
 Verdict éditorial : **NO-GO** pour une nouvelle publication visible. La collecte automatique est rétablie. Les trois propositions du 27 octobre restent en attente, et aucun compte QA n’a la permission `agents.approve`.
 
 Cause : les trois crons de `vercel.staging.json` partageaient le chemin `/v1/editorial/collect?scheduled=1`. Vercel n’enregistre pas un chemin en double ni un chemin avec une query. Le déploiement Staging ne lançait donc que `/v1/internal/moderation/run`. Le 401 sans secret est le refus normal. La dernière activité réelle avant correction datait du 22 octobre 2026. Les cinq comptes sont des identités de publication `system`, pas des connexions interactives. Leurs publications déjà approuvées n’ont pas été modifiées.
 
-Preuve sur `https://staging.lyann.app`, Supabase `tdktfbtqceldlaeqjtow`, déploiement `dpl_8WJbtuRYqd5ZMLnzAhN4sXaP9pbr` :
+Preuve de la collecte du 27 octobre sur `https://staging.lyann.app`, Supabase `tdktfbtqceldlaeqjtow`, déploiement `dpl_8WJbtuRYqd5ZMLnzAhN4sXaP9pbr`. Le déploiement suivant `dpl_5PBWPQR2JZNHLPCU3ZqoSxPRZU41` a conservé le même cron :
 
 - Cron enregistré : `/v1/editorial/collect/scheduled`, `0 11,16,21 * * *` (07:00, 12:00, 17:00 en Guadeloupe). Le cron de modération reste en place.
 - Appel sans secret : HTTP 401. Les trois comptes QA : HTTP 403 `ADMIN_ACCESS_DENIED` sur la collecte manuelle et sur la suppression.
