@@ -2,9 +2,9 @@
 
 Verdict : **NO-GO**
 
-Tête applicative : `cb65a1d882b5181fec9bd23ad072da13cd4e44a0`
+Tête applicative : `12f7b9f2e071230237fecae04d65c2e58c5f7558`
 Paquets natifs reconstruits : `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`, identifiant `ios-mvqzsf62-86ab71`, TestFlight 1.0 (12)
-Serveur Staging actuellement servi : déploiement `dpl_5PBWPQR2JZNHLPCU3ZqoSxPRZU41`, estampille Git `cb65a1d882b5181fec9bd23ad072da13cd4e44a0`. Le commit de ce document est postérieur et n’est pas celui que le serveur annonce.
+Serveur Staging actuellement servi : déploiement `dpl_E633F59q5UhSNbHAZifwKFYXxyd8`, estampille Git `12f7b9f2e071230237fecae04d65c2e58c5f7558`. Le commit de ce document est postérieur et n’est pas celui que le serveur annonce.
 Branche : `release/lyann-rc-v1-1`
 PR : https://github.com/yoyoonthetrack/LYAN/pull/13 (brouillon, base `feature/bokantaj-map-v1`)
 Date : 2026-10-28
@@ -15,8 +15,8 @@ Date : 2026-10-28
 | --- | --- |
 | Web Staging | `https://staging.lyann.app` |
 | Projet Vercel | `lyann-staging-preview` `prj_FHIKUKYa8IwpiitigUma4gTtTF6q` |
-| Déploiement | `dpl_5PBWPQR2JZNHLPCU3ZqoSxPRZU41` |
-| Commit servi | `cb65a1d882b5181fec9bd23ad072da13cd4e44a0` |
+| Déploiement | `dpl_E633F59q5UhSNbHAZifwKFYXxyd8` |
+| Commit servi | `12f7b9f2e071230237fecae04d65c2e58c5f7558` |
 | Supabase | `tdktfbtqceldlaeqjtow` |
 | Isolation | `STAGING_ISOLATED`, `production=false` |
 | Stripe | `stripe_mode=test` |
@@ -29,7 +29,7 @@ Date : 2026-10-28
 | AAB | `android/app/build/outputs/bundle/release/app-release.aab`, SHA-256 `395d82e82febfdc9e0037a66263e6daa868641a0f961f7cd1e1cc8ec640d96e4`, certificat `CN=LYANN Upload`, `arm64-v8a` présent, hors Play. L’ancien fichier local `11f962e5…` est remplacé. Il n’avait pas été déposé |
 | Keystore | `~/Library/Application Support/lyann-release/upload-keystore.jks`, alias `upload`, hors dépôt, non recréé |
 | Ancien hôte | `https://staging-bokantaj.lyann.app` sert encore `80ceae7c` depuis le projet `lyan`. Les paquets actuels ne l’appellent pas. Les tests et `shared-html-build.js` l’autorisent encore comme ancienne origine Staging |
-| Correspondance | Les paquets TestFlight 1.0 (12) embarquent `c35d68e` et appellent `https://staging.lyann.app`. Le serveur servi est `cb65a1d`. Aucun client n’a changé dans cet audit, donc aucun paquet natif n’a été reconstruit. Le détail du déploiement est dans `docs/staging-deployment-audit.md` |
+| Correspondance | Les paquets TestFlight 1.0 (12) embarquent `c35d68e` et appellent `https://staging.lyann.app`. Le serveur servi est `12f7b9f`. Aucun client n’a changé, donc aucun paquet natif n’a été reconstruit. Le détail est dans `docs/staging-deployment-audit.md` |
 
 ## CI
 
@@ -61,7 +61,7 @@ Date : 2026-10-28
 
 ## Déploiement Staging
 
-Verdict de cohérence du déploiement : **GO**. La release reste **NO-GO** pour les blocages déjà listés plus bas. Le contrôle `node scripts/verify-staging-release.js` sur `https://staging.lyann.app` a répondu PASS après le déploiement `dpl_5PBWPQR2JZNHLPCU3ZqoSxPRZU41` : identité `cb65a1d`, Supabase `tdktfbtqceldlaeqjtow`, Stripe Test, 13 routes critiques, association Apple du callback, webhook sans signature en 400. Les crons enregistrés sont `/v1/editorial/collect/scheduled` (`0 11,16,21 * * *`) et `/v1/internal/moderation/run` (`* * * * *`). Le projet `lyan` et `lyann.app` n’ont pas été modifiés.
+Verdict de cohérence du déploiement : **GO**. Les notifications TestFlight restent **NO-GO** : la file est planifiée, l’envoi APNs n’a pas de clé et aucun iPhone QA n’a reçu de notification. La release reste **NO-GO** pour les blocages déjà listés plus bas. Le contrôle `node scripts/verify-staging-release.js` sur `https://staging.lyann.app` a répondu PASS après le déploiement `dpl_E633F59q5UhSNbHAZifwKFYXxyd8` : identité `12f7b9f`, Supabase `tdktfbtqceldlaeqjtow`, Stripe Test, 13 routes critiques, association Apple du callback, webhook sans signature en 400. Les crons enregistrés sont la collecte éditoriale (`0 11,16,21 * * *`), la modération (`* * * * *`) et le drain des notifications (`* * * * *`). Un appel autorisé du drain répond `PUSH_AUTOMATIC_DISABLED`, 0 envoi. Le projet `lyan` et `lyann.app` n’ont pas été modifiés.
 
 Le dossier Pro répondait 403 sur le domaine stable parce qu’il lisait `VERCEL_ENV=production`. Il suit maintenant `LYANN_RUNTIME=staging`. `GET /v1/business/rights` sans session répond 401. Les achats Sandbox et les remboursements restent fermés.
 
