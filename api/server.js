@@ -107,7 +107,7 @@ const {
     testSendAllowed,
     validDeviceRegistration
 } = require('./apns');
-const { apnsConfig, sendApns } = require('./apns-send');
+const { apnsConfig, describeApnsKey, sendApns } = require('./apns-send');
 const { automaticPushEnabled, cronAuthorized, drainQueue, pushAudience } = require('./push-queue');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 if (process.env.LYANN_DOTENV_PATH) {
@@ -501,6 +501,27 @@ app.post('/v1/notifications/devices/deactivate', async (req, res) => {
 async function handlePushDrain(req, res) {
     if (!cronAuthorized(req.headers.authorization || req.headers.Authorization, process.env)) {
         return res.status(401).json({ code: 'PUSH_CRON_UNAUTHORIZED', error: 'Appel non autorisé.' });
+    }
+    if (String(req.query.probe || '') === 'key') {
+        const described = describeApnsKey(process.env);
+        if (!described.configured || !described.pem_ec || !described.kid_matches) {
+            return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', ...described, apple_reason: null });
+        }
+        const result = await Promise.race([
+            sendApns({
+                config: apnsConfig(process.env),
+                deviceToken: '0'.repeat(64),
+                environment: 'production',
+                payload: { aps: { 'content-available': 1 } }
+            }),
+            new Promise((resolve) => setTimeout(() => resolve({ status: 0, reason: 'TIMEOUT', code: 'TIMEOUT' }), 8000))
+        ]);
+        return res.json({
+            code: 'APNS_KEY_PROBE',
+            ...described,
+            apple_status: result.status,
+            apple_reason: result.reason || result.code
+        });
     }
     const audience = pushAudience(process.env);
     if (!audience.enabled) {

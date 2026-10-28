@@ -17,6 +17,31 @@ function apnsConfig(env = process.env) {
     };
 }
 
+function describeApnsKey(env = process.env) {
+    const config = apnsConfig(env);
+    const empty = { configured: false, pem_ec: false, key_id_shape: false, kid_matches: false, team_ok: false, bundle_ok: false };
+    if (!config) return empty;
+    let pemEc = false;
+    try {
+        pemEc = crypto.createPrivateKey(config.privateKey).asymmetricKeyType === 'ec';
+    } catch (_) {}
+    let kidMatches = false;
+    try {
+        resetApnsJwtCache();
+        const jwt = apnsAuthorization(config);
+        const header = JSON.parse(Buffer.from(jwt.split('.')[0], 'base64url').toString('utf8'));
+        kidMatches = header.alg === 'ES256' && header.kid === config.keyId;
+    } catch (_) {}
+    return {
+        configured: true,
+        pem_ec: pemEc,
+        key_id_shape: /^[A-Za-z0-9]{10}$/.test(config.keyId),
+        kid_matches: kidMatches,
+        team_ok: config.teamId === 'WLV4WC47U2',
+        bundle_ok: config.bundleId === 'app.lyann.mobile'
+    };
+}
+
 const P256_N = BigInt('0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551');
 
 let cachedJwt = { value: '', at: 0, identity: '' };
@@ -127,4 +152,4 @@ function sendApns({ config, deviceToken, environment, payload, apnsId }) {
     });
 }
 
-module.exports = { apnsConfig, apnsAuthorization, resetApnsJwtCache, sendApns };
+module.exports = { apnsConfig, describeApnsKey, apnsAuthorization, resetApnsJwtCache, sendApns };
