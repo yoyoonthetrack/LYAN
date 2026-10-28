@@ -502,6 +502,18 @@ async function handlePushDrain(req, res) {
     if (!cronAuthorized(req.headers.authorization || req.headers.Authorization, process.env)) {
         return res.status(401).json({ code: 'PUSH_CRON_UNAUTHORIZED', error: 'Appel non autorisé.' });
     }
+    if (String(req.query.probe || '') === 'audience') {
+        const audience = pushAudience(process.env);
+        const user = String(req.query.user || '');
+        const allowlist = Array.isArray(audience.allowlist) ? audience.allowlist : null;
+        return res.json({
+            code: 'PUSH_AUDIENCE_PROBE',
+            enabled: audience.enabled,
+            restricted: Boolean(allowlist),
+            count: allowlist ? allowlist.length : null,
+            included: Boolean(allowlist && allowlist.includes(user))
+        });
+    }
     if (String(req.query.probe || '') === 'key') {
         const described = describeApnsKey(process.env);
         if (!described.configured || !described.pem_ec || !described.kid_matches) {
