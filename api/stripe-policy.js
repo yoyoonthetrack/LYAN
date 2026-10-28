@@ -325,6 +325,26 @@ function missionBlocksMoneyStep(mission) {
     return !mission || status === 'CANCELLED' || status === 'CANCELED';
 }
 
+function disputeArrivedBeforeSettlement(payment) {
+    return !!payment && ['CREATED', 'REQUIRES_ACTION', 'PROCESSING'].includes(String(payment.payment_status || '').toUpperCase());
+}
+
+function fundedChargeTransferDecision(charge, expectedCents) {
+    if (!charge || charge.status !== 'succeeded' || charge.paid !== true) {
+        return { ok: false, code: 'CHARGE_A_VERIFIER', error: 'Le paiement client n’a pas pu être vérifié chez Stripe. Aucun transfert n’a été créé.' };
+    }
+    if (charge.disputed === true) {
+        return { ok: false, code: 'DISPUTED', error: 'Versement interdit pendant un litige.' };
+    }
+    if (Number(charge.amount_refunded || 0) > 0 || charge.refunded === true) {
+        return { ok: false, code: 'REFUND_BLOCKS_TRANSFER', error: 'Remboursement en cours ou déjà effectué.' };
+    }
+    if (Number(charge.amount) !== Number(expectedCents)) {
+        return { ok: false, code: 'AMOUNT_MISMATCH', error: 'Le montant encaissé ne correspond pas au paiement. Aucun transfert n’a été créé.' };
+    }
+    return { ok: true };
+}
+
 const MISSION_CANCELLED_BODY = Object.freeze({
     code: 'MISSION_ANNULEE',
     error: 'Cette mission est annulée. Les fonds déjà sécurisés restent bloqués chez LYANN et aucun versement n’est possible. Contactez l’Aide LYANN depuis le menu pour que l’équipe traite la situation.'
@@ -2551,6 +2571,8 @@ module.exports = {
     paymentIntentIdempotencyKey,
     existingMilestoneTransferDecision,
     missionBlocksMoneyStep,
+    disputeArrivedBeforeSettlement,
+    fundedChargeTransferDecision,
     MISSION_CANCELLED_BODY,
     legacyPaymentColumns,
     quoteFullyReleased,

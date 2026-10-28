@@ -31,6 +31,8 @@ const {
     paymentIntentIdempotencyKey,
     existingMilestoneTransferDecision,
     missionBlocksMoneyStep,
+    disputeArrivedBeforeSettlement,
+    fundedChargeTransferDecision,
     MISSION_CANCELLED_BODY,
     legacyPaymentColumns,
     quoteFullyReleased,
@@ -5497,6 +5499,23 @@ async function retryMilestoneTransfer(milestoneId) {
         };
     }
 
+    // The dispute webhook can be delayed or arrive before the payment one: ask Stripe directly.
+    let fundedCharge = null;
+    try {
+        if (payment.stripe_charge_id) {
+            fundedCharge = await transferRuntime.stripe.charges.retrieve(payment.stripe_charge_id);
+        } else if (payment.stripe_payment_intent_id) {
+            const fundedIntent = await transferRuntime.stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id, { expand: ['latest_charge'] });
+            fundedCharge = fundedIntent && typeof fundedIntent.latest_charge === 'object' ? fundedIntent.latest_charge : null;
+        }
+    } catch (_) {
+        fundedCharge = null;
+    }
+    const chargeGate = fundedChargeTransferDecision(fundedCharge, payment.customer_total_cents);
+    if (!chargeGate.ok) {
+        return { success: false, mutated: false, code: chargeGate.code, error: chargeGate.error };
+    }
+
     // 3. Fetch Provider Profile for Stripe Account ID
     const providerId = payment.provider_id || quote.provider_id;
     const loadedProvider = await loadConnectProfile(providerId, transferRuntime.inspected && transferRuntime.inspected.mode);
@@ -6768,7 +6787,12 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 } else {
                     break;
                 }
-                const { data: disputedPayment } = await disputedQuery.maybeSingle();
+                const { data: disputedPayment, error: disputedReadErr } = await disputedQuery.maybeSingle();
+                if (disputedReadErr) throw new Error('PAYMENT_READ_FAILED');
+                if (disputeArrivedBeforeSettlement(disputedPayment)) {
+                    // Stripe retries this event; by then payment_intent.succeeded has settled the row.
+                    throw new Error('DISPUTE_BEFORE_PAYMENT_SETTLED');
+                }
                 const frozen = event.type === 'charge.dispute.updated'
                     ? applyChargeDisputeUpdated(disputedPayment)
                     : applyChargeDisputeCreated(disputedPayment);

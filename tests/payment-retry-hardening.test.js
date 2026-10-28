@@ -225,3 +225,28 @@ test('a refund made outside LYANN is flagged for an operator instead of passing 
     assert.match(refunded, /REFUND_OUTSIDE_LYANN/);
     assert.doesNotMatch(refunded, /refunds\.create/);
 });
+
+test('a dispute that arrives before the payment is settled is retried, never dropped', () => {
+    const { disputeArrivedBeforeSettlement } = require('../api/stripe-policy');
+    for (const status of ['CREATED', 'REQUIRES_ACTION', 'PROCESSING']) assert.equal(disputeArrivedBeforeSettlement({ payment_status: status }), true);
+    for (const status of ['SUCCEEDED', 'DISPUTED', 'REFUNDED', 'FAILED']) assert.equal(disputeArrivedBeforeSettlement({ payment_status: status }), false);
+    assert.equal(disputeArrivedBeforeSettlement(null), false);
+    const dispute = webhook.slice(webhook.indexOf("case 'charge.dispute.created'"), webhook.indexOf("case 'charge.dispute.closed'"));
+    assert.ok(dispute.indexOf('DISPUTE_BEFORE_PAYMENT_SETTLED') < dispute.indexOf(".update({ payment_status: 'DISPUTED' })"));
+    assert.match(dispute, /PAYMENT_READ_FAILED/);
+    assert.match(webhook, /\.delete\(\)\.eq\('stripe_event_id', event\.id\)/);
+});
+
+test('no transfer leaves while Stripe reports the charge as disputed, refunded, unpaid or for another amount', () => {
+    const { fundedChargeTransferDecision } = require('../api/stripe-policy');
+    const charge = { status: 'succeeded', paid: true, disputed: false, refunded: false, amount_refunded: 0, amount: 2649 };
+    assert.deepEqual(fundedChargeTransferDecision(charge, 2649), { ok: true });
+    assert.equal(fundedChargeTransferDecision({ ...charge, disputed: true }, 2649).code, 'DISPUTED');
+    assert.equal(fundedChargeTransferDecision({ ...charge, amount_refunded: 100 }, 2649).code, 'REFUND_BLOCKS_TRANSFER');
+    assert.equal(fundedChargeTransferDecision({ ...charge, amount: 2600 }, 2649).code, 'AMOUNT_MISMATCH');
+    assert.equal(fundedChargeTransferDecision({ ...charge, status: 'pending' }, 2649).code, 'CHARGE_A_VERIFIER');
+    assert.equal(fundedChargeTransferDecision(null, 2649).code, 'CHARGE_A_VERIFIER');
+    const gate = transferHelper.indexOf('fundedChargeTransferDecision(');
+    assert.ok(gate > 0 && gate < transferHelper.indexOf("update({ transfer_status: 'TRANSFER_FAILED' })"));
+    assert.ok(gate < transferHelper.indexOf('stripe.transfers.create'));
+});

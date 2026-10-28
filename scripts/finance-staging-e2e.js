@@ -308,8 +308,14 @@ async function main() {
             const replay = await postEvent(stripe, 'charge.dispute.created', disputeObj.value, hook.id);
             record('C. litige rejoué : doublon', replay.status === 200 && replay.body.duplicate === true, JSON.stringify(replay.body));
         }
+        // Whatever the webhook order, a contested charge must never reach the Lyanneur.
+        await api(b.token, '/v1/milestones/submit-completion', { milestone_id: disputeMs.id });
+        const disputedRelease = await api(a.token, '/v1/milestones/release-payment', { milestone_id: disputeMs.id });
+        const disputedTransfers = (await stripe.transfers.list({ limit: 100 })).data.filter((t) => t.metadata && t.metadata.milestone_id === disputeMs.id);
+        record('C. aucun versement sur un paiement contesté', disputedRelease.status !== 200 && disputedTransfers.length === 0, disputedRelease.status + ':' + (disputedRelease.payload.code || '') + ' transfers=' + disputedTransfers.length);
+        // Without local replays, Stripe re-sends a dispute that arrived before the payment was settled.
         const frozen = await waitFor(async () => ({ rows: await paymentRows(admin, disputeMs.id), ms: (await milestonesOf(admin, disputeDeal.quoteId))[0] }),
-            (v) => v.rows[0] && v.rows[0].payment_status === 'DISPUTED' && v.ms.status === 'DISPUTED', 90000);
+            (v) => v.rows[0] && v.rows[0].payment_status === 'DISPUTED' && v.ms.status === 'DISPUTED', HOOK ? 90000 : 900000);
         record('C. litige Stripe → paiement et jalon DISPUTED, aucun remboursement auto', frozen.ok && !frozen.value.rows[0].stripe_transfer_id, frozen.value && (frozen.value.rows[0] || {}).payment_status + '/' + (frozen.value.ms || {}).status);
         const { data: hookRows } = await admin.from('stripe_webhook_events').select('event_type,status').eq('event_type', 'charge.dispute.created');
         record('C. événement litige enregistré traité (pas de boucle 500)', (hookRows || []).some((r) => r.status === 'processed'), (hookRows || []).map((r) => r.status).join(','));
