@@ -248,7 +248,7 @@ function createSupabaseStore(admin) {
                 return data || null;
             }
             if (milestoneId) {
-                const { data } = await admin.from('payments').select('*').eq('milestone_id', milestoneId).maybeSingle();
+                const { data } = await admin.from('payments').select('*').eq('milestone_id', milestoneId).not('payment_status', 'in', '(FAILED,CANCELLED)').maybeSingle();
                 return data || null;
             }
             return null;

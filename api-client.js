@@ -2432,7 +2432,7 @@ const LYANN_API_CLIENT = {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
-                    // E5: safe client retry key (Lyann-test / code paths). Server also uses pi_milestone_<id>.
+                    // E5: safe client retry key. The server keys Stripe per payment row and reuses an open intent.
                     'Idempotency-Key': 'create-milestone-intent:' + String(milestoneId)
                 },
                 body: JSON.stringify({ milestone_id: milestoneId })

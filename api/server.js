@@ -27,6 +27,11 @@ const {
     calculateMilestonePricing,
     paymentAmountSnapshot,
     resumePaymentDecision,
+    failedIntentRetryDecision,
+    paymentIntentIdempotencyKey,
+    existingMilestoneTransferDecision,
+    missionBlocksMoneyStep,
+    MISSION_CANCELLED_BODY,
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,
@@ -342,6 +347,17 @@ if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
 }
 
 const PAYMENT_AMOUNT_COLUMNS = 'id, payment_status, transfer_status, stripe_payment_intent_id, stripe_transfer_id, service_amount_cents, customer_fee_cents, customer_total_cents, provider_fee_cents, provider_net_cents, lyann_revenue_cents';
+
+// A milestone keeps its declined or cancelled attempts as history. The money row is the other one;
+// more than one of those makes .single() fail, which blocks the operation.
+function milestoneMoneyPayment(milestoneId) {
+    return supabaseAdmin
+        .from('payments')
+        .select('*')
+        .eq('milestone_id', milestoneId)
+        .not('payment_status', 'in', '(FAILED,CANCELLED)')
+        .single();
+}
 
 const MEMBERS_DB = [
     { id: 200, name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau PRO", city: "Baie-Mahault", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "5.0", avatar: "jocelyn-cabort.png", badge: "PRO VÉRIFIÉ", kycVerified: true },
@@ -4831,16 +4847,42 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
         }
 
         // 5. New payments use the current tariff. An existing row keeps the cents already stored.
-        const financials = calculateMilestonePricing(milestone.amount);
-        const stripeIdempotencyKey = `pi_milestone_${milestone.id}`;
+        let financials;
+        try {
+            financials = calculateMilestonePricing(milestone.amount);
+        } catch (amountErr) {
+            return res.status(409).json({
+                code: 'MONTANT_INVALIDE',
+                error: 'Le montant de cette Partie ne peut pas être encaissé tel quel. Aucun paiement n’a été créé.'
+            });
+        }
+        const stripe = payRuntime.stripe;
+        const intentMetadata = (paymentId) => ({
+            payment_id: paymentId,
+            milestone_id: milestone.id,
+            quote_id: quote.id,
+            mission_id: mission.id,
+            requester_id: mission.requester_id,
+            provider_id: quote.provider_id
+        });
+        const inProgress = () => res.status(409).json({
+            code: 'PAIEMENT_EN_PREPARATION',
+            error: 'Un paiement est déjà en cours de préparation pour cette Partie. Patientez quelques secondes puis rouvrez le paiement. Aucun second paiement n’a été créé.'
+        });
 
         // 6. Idempotency Check & Recoverable State Analysis (V1.1)
-        const { data: existingPayment } = await supabaseAdmin
+        const { data: existingPayment, error: existingErr } = await supabaseAdmin
             .from('payments')
             .select(PAYMENT_AMOUNT_COLUMNS)
             .eq('milestone_id', milestone_id)
             .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'])
             .maybeSingle();
+        if (existingErr) {
+            return res.status(409).json({
+                code: 'PAIEMENT_A_VERIFIER',
+                error: 'L’état du paiement de cette Partie doit être vérifié. Aucun paiement n’a été créé.'
+            });
+        }
 
         const paymentDecision = resumePaymentDecision(existingPayment);
         if (paymentDecision.action === 'refuse') {
@@ -4852,25 +4894,13 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
 
         if (paymentDecision.action === 'reuse') {
             const frozen = paymentAmountSnapshot(existingPayment);
-            if (process.env.STRIPE_SECRET_KEY) {
-                const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                const intent = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id);
-                return res.json({
-                    success: true,
-                    recovered: true,
-                    payment_id: existingPayment.id,
-                    payment_intent_id: intent.id,
-                    client_secret: intent.client_secret,
-                    amounts: frozen
-                });
-            }
+            const intent = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id);
             return res.json({
                 success: true,
                 recovered: true,
-                mode: 'stripe_test_mock',
                 payment_id: existingPayment.id,
-                payment_intent_id: existingPayment.stripe_payment_intent_id,
-                client_secret: `${existingPayment.stripe_payment_intent_id}_secret_test`,
+                payment_intent_id: intent.id,
+                client_secret: intent.client_secret,
                 amounts: frozen
             });
         }
@@ -4883,49 +4913,85 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                     code: "PAIEMENT_MONTANT_FIGE"
                 });
             }
-            if (process.env.STRIPE_SECRET_KEY) {
-                const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                const paymentIntent = await stripe.paymentIntents.create({
-                    amount: frozen.customer_total_cents,
-                    currency: 'eur',
-                    automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
-                    metadata: {
-                        payment_id: existingPayment.id,
-                        milestone_id: milestone.id,
-                        quote_id: quote.id,
-                        mission_id: mission.id,
-                        requester_id: mission.requester_id,
-                        provider_id: quote.provider_id
-                    }
-                }, {
-                    idempotencyKey: stripeIdempotencyKey
-                });
-                await supabaseAdmin
-                    .from('payments')
-                    .update({ stripe_payment_intent_id: paymentIntent.id })
-                    .eq('id', existingPayment.id);
-                return res.json({
-                    success: true,
-                    recovered_orphan: true,
-                    payment_id: existingPayment.id,
-                    payment_intent_id: paymentIntent.id,
-                    client_secret: paymentIntent.client_secret,
-                    amounts: frozen
-                });
-            }
-            const mockIntentId = `pi_test_${existingPayment.id}`;
-            await supabaseAdmin
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: frozen.customer_total_cents,
+                currency: 'eur',
+                automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+                metadata: intentMetadata(existingPayment.id)
+            }, {
+                idempotencyKey: paymentIntentIdempotencyKey(milestone.id, existingPayment.id)
+            });
+            const attached = await supabaseAdmin
                 .from('payments')
-                .update({ stripe_payment_intent_id: mockIntentId })
-                .eq('id', existingPayment.id);
+                .update({ stripe_payment_intent_id: paymentIntent.id })
+                .eq('id', existingPayment.id)
+                .is('stripe_payment_intent_id', null)
+                .select('id')
+                .maybeSingle();
+            if (attached.error || !attached.data) return inProgress();
             return res.json({
                 success: true,
                 recovered_orphan: true,
-                mode: 'stripe_test_mock',
                 payment_id: existingPayment.id,
-                payment_intent_id: mockIntentId,
-                client_secret: `${mockIntentId}_secret_test`,
+                payment_intent_id: paymentIntent.id,
+                client_secret: paymentIntent.client_secret,
                 amounts: frozen
+            });
+        }
+
+        // 6b. A declined card or failed 3DS leaves the same PaymentIntent open: retry on it.
+        const { data: failedRows, error: failedErr } = await supabaseAdmin
+            .from('payments')
+            .select(PAYMENT_AMOUNT_COLUMNS)
+            .eq('milestone_id', milestone_id)
+            .in('payment_status', ['FAILED', 'CANCELLED'])
+            .not('stripe_payment_intent_id', 'is', null)
+            .order('created_at', { ascending: false });
+        if (failedErr) {
+            return res.status(409).json({
+                code: 'PAIEMENT_A_VERIFIER',
+                error: 'L’état du paiement de cette Partie doit être vérifié. Aucun paiement n’a été créé.'
+            });
+        }
+        let retryRow = null;
+        let retryIntent = null;
+        for (const row of failedRows || []) {
+            const intent = await stripe.paymentIntents.retrieve(row.stripe_payment_intent_id);
+            const retry = failedIntentRetryDecision(row, intent, milestone.id);
+            if (retry.action === 'wait') {
+                return res.status(409).json({
+                    code: retry.code,
+                    error: 'Un paiement précédent est encore en cours de confirmation par la banque. Aucun second paiement n’a été créé.'
+                });
+            }
+            if (retry.action === 'block') {
+                return res.status(409).json({
+                    code: retry.code,
+                    error: 'Le paiement précédent de cette Partie doit être vérifié. Aucun second paiement n’a été créé.'
+                });
+            }
+            if (retry.action === 'reuse' && !retryRow) {
+                retryRow = row;
+                retryIntent = intent;
+            }
+        }
+        if (retryRow) {
+            const reopened = await supabaseAdmin
+                .from('payments')
+                .update({ payment_status: 'CREATED' })
+                .eq('id', retryRow.id)
+                .in('payment_status', ['FAILED', 'CANCELLED'])
+                .eq('stripe_payment_intent_id', retryIntent.id)
+                .select('id')
+                .maybeSingle();
+            if (reopened.error || !reopened.data) return inProgress();
+            return res.json({
+                success: true,
+                recovered_failed: true,
+                payment_id: retryRow.id,
+                payment_intent_id: retryIntent.id,
+                client_secret: retryIntent.client_secret,
+                amounts: paymentAmountSnapshot(retryRow)
             });
         }
 
@@ -4966,82 +5032,66 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                     .from('payments')
                     .select(PAYMENT_AMOUNT_COLUMNS)
                     .eq('milestone_id', milestone_id)
-                    .single();
+                    .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED'])
+                    .maybeSingle();
 
-                if (concPayment && concPayment.stripe_payment_intent_id) {
-                    const frozen = paymentAmountSnapshot(concPayment);
-                    if (process.env.STRIPE_SECRET_KEY) {
-                        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                        const intent = await stripe.paymentIntents.retrieve(concPayment.stripe_payment_intent_id);
-                        return res.json({
-                            success: true,
-                            concurrency_recovered: true,
-                            payment_id: concPayment.id,
-                            payment_intent_id: intent.id,
-                            client_secret: intent.client_secret,
-                            amounts: frozen
-                        });
-                    }
+                const concDecision = resumePaymentDecision(concPayment);
+                if (concDecision.action === 'refuse') {
+                    return res.status(409).json({
+                        error: "Le paiement de cette Partie est déjà sécurisé.",
+                        code: concDecision.code
+                    });
                 }
-
-                return res.status(409).json({
-                    error: "Le paiement de cette Partie est déjà sécurisé.",
-                    code: "PAIEMENT_DEJA_SECURISE"
-                });
+                if (concDecision.action === 'reuse') {
+                    const intent = await stripe.paymentIntents.retrieve(concPayment.stripe_payment_intent_id);
+                    return res.json({
+                        success: true,
+                        concurrency_recovered: true,
+                        payment_id: concPayment.id,
+                        payment_intent_id: intent.id,
+                        client_secret: intent.client_secret,
+                        amounts: paymentAmountSnapshot(concPayment)
+                    });
+                }
+                return inProgress();
             }
             console.error("Erreur insertion payment:", insertErr);
             return res.status(500).json({ error: "Erreur lors de l'enregistrement du paiement." });
         }
 
-        // 8. Create Stripe PaymentIntent on Platform Account (Separate Charges & Transfers with Deterministic Idempotency Key)
-        if (process.env.STRIPE_SECRET_KEY) {
-            const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-            const paymentIntent = await stripe.paymentIntents.create({
-                amount: Number(financials.customer_total_cents),
-                currency: 'eur',
-                automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
-                metadata: {
-                    payment_id: paymentRecord.id,
-                    milestone_id: milestone.id,
-                    quote_id: quote.id,
-                    mission_id: mission.id,
-                    requester_id: mission.requester_id,
-                    provider_id: quote.provider_id
-                }
-            }, {
-                idempotencyKey: stripeIdempotencyKey
-            });
+        // 8. Create Stripe PaymentIntent on Platform Account (Separate Charges & Transfers).
+        // The key is per payment row: a retry of this row returns the same intent.
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Number(financials.customer_total_cents),
+            currency: 'eur',
+            automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+            metadata: intentMetadata(paymentRecord.id)
+        }, {
+            idempotencyKey: paymentIntentIdempotencyKey(milestone.id, paymentRecord.id)
+        });
 
-            // Update stripe_payment_intent_id in public.payments
-            await supabaseAdmin
-                .from('payments')
-                .update({ stripe_payment_intent_id: paymentIntent.id })
-                .eq('id', paymentRecord.id);
-
-            return res.json({
-                success: true,
-                payment_id: paymentRecord.id,
-                payment_intent_id: paymentIntent.id,
-                client_secret: paymentIntent.client_secret,
-                amounts: paymentAmountSnapshot(financials)
-            });
-        } else {
-            // Test Mode Fallback if STRIPE_SECRET_KEY is not defined in non-prod
-            const mockIntentId = `pi_test_${Date.now()}`;
-            await supabaseAdmin
-                .from('payments')
-                .update({ stripe_payment_intent_id: mockIntentId })
-                .eq('id', paymentRecord.id);
-
-            return res.json({
-                success: true,
-                mode: 'stripe_test_mock',
-                payment_id: paymentRecord.id,
-                payment_intent_id: mockIntentId,
-                client_secret: `${mockIntentId}_secret_test`,
-                amounts: paymentAmountSnapshot(financials)
+        const linked = await supabaseAdmin
+            .from('payments')
+            .update({ stripe_payment_intent_id: paymentIntent.id })
+            .eq('id', paymentRecord.id)
+            .is('stripe_payment_intent_id', null)
+            .select('id')
+            .maybeSingle();
+        if (linked.error || !linked.data) {
+            // Without the stored id the webhook could not fund this milestone: never hand out the secret.
+            return res.status(503).json({
+                code: 'PAIEMENT_NON_ENREGISTRE',
+                error: 'Le paiement n’a pas pu être enregistré. Rouvrez le paiement dans quelques secondes. Aucun montant n’a été débité.'
             });
         }
+
+        return res.json({
+            success: true,
+            payment_id: paymentRecord.id,
+            payment_intent_id: paymentIntent.id,
+            client_secret: paymentIntent.client_secret,
+            amounts: paymentAmountSnapshot(financials)
+        });
 
     } catch (e) {
         console.error("Erreur serveur create-milestone-intent:", e);
@@ -5107,6 +5157,9 @@ app.post('/v1/milestones/start-work', async (req, res) => {
         const assignedHelperId = mission.helper_id || quote.provider_id;
         if (!canDeclareWorkDone(authUid, assignedHelperId)) {
             return res.status(403).json({ error: "Seul le Lyanneur assigné à la mission peut démarrer les travaux." });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
         }
 
         // 5. Idempotent Transition Check
@@ -5213,6 +5266,9 @@ app.post('/v1/milestones/submit-completion', async (req, res) => {
         const assignedHelperId = mission.helper_id || quote.provider_id;
         if (!canDeclareWorkDone(authUid, assignedHelperId)) {
             return res.status(403).json({ error: "Seul le Lyanneur assigné à la mission peut déclarer la prestation terminée." });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
         }
 
         // 5. Idempotent Transition Check
@@ -5346,12 +5402,20 @@ async function retryMilestoneTransfer(milestoneId) {
         return { success: false, error: "Devis introuvable.", code: "QUOTE_NOT_FOUND" };
     }
 
+    const { data: transferMission, error: transferMissionErr } = await supabaseAdmin
+        .from('missions')
+        .select('status')
+        .eq('id', quote.mission_id)
+        .maybeSingle();
+    if (transferMissionErr) {
+        return { success: false, mutated: false, code: 'MISSION_A_VERIFIER', error: 'La mission n’a pas pu être vérifiée. Aucun versement n’a été créé.' };
+    }
+    if (missionBlocksMoneyStep(transferMission)) {
+        return { success: false, mutated: false, ...MISSION_CANCELLED_BODY };
+    }
+
     // 2. Fetch payment record
-    const { data: payment, error: pErr } = await supabaseAdmin
-        .from('payments')
-        .select('*')
-        .eq('milestone_id', milestoneId)
-        .single();
+    const { data: payment, error: pErr } = await milestoneMoneyPayment(milestoneId);
 
     if (pErr || !payment) {
         return { success: false, error: "Paiement introuvable.", code: "PAYMENT_NOT_FOUND" };
@@ -5423,9 +5487,18 @@ async function retryMilestoneTransfer(milestoneId) {
         return { success: false, error: `Statut de transfert invalide (${payment.transfer_status}).`, code: lockPlan.code };
     }
 
+    const transferRuntime = stripeRuntime();
+    if (!transferRuntime.stripe) {
+        return {
+            success: false,
+            code: 'STRIPE_UNAVAILABLE',
+            mutated: false,
+            error: 'Stripe est indisponible. Aucun transfert n’a été créé.'
+        };
+    }
+
     // 3. Fetch Provider Profile for Stripe Account ID
     const providerId = payment.provider_id || quote.provider_id;
-    const transferRuntime = stripeRuntime();
     const loadedProvider = await loadConnectProfile(providerId, transferRuntime.inspected && transferRuntime.inspected.mode);
     const providerProfile = loadedProvider && loadedProvider.profile;
 
@@ -5434,7 +5507,8 @@ async function retryMilestoneTransfer(milestoneId) {
         await supabaseAdmin
             .from('payments')
             .update({ transfer_status: 'TRANSFER_FAILED' })
-            .eq('id', payment.id);
+            .eq('id', payment.id)
+            .is('stripe_transfer_id', null);
 
         return {
             success: true,
@@ -5447,8 +5521,8 @@ async function retryMilestoneTransfer(milestoneId) {
     const stripeAccountId = providerProfile.stripe_account_id;
 
     // 4. Verify Stripe Connect Eligibility Server-Side
-    if (process.env.STRIPE_SECRET_KEY) {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    {
+        const stripe = transferRuntime.stripe;
         try {
             const account = await stripe.v2.core.accounts.retrieve(stripeAccountId, {
                 include: ['configuration.recipient']
@@ -5459,7 +5533,8 @@ async function retryMilestoneTransfer(milestoneId) {
                 await supabaseAdmin
                     .from('payments')
                     .update({ transfer_status: 'TRANSFER_FAILED' })
-                    .eq('id', payment.id);
+                    .eq('id', payment.id)
+                    .is('stripe_transfer_id', null);
 
                 return {
                     success: true,
@@ -5473,7 +5548,8 @@ async function retryMilestoneTransfer(milestoneId) {
             await supabaseAdmin
                 .from('payments')
                 .update({ transfer_status: 'TRANSFER_FAILED' })
-                .eq('id', payment.id);
+                .eq('id', payment.id)
+                .is('stripe_transfer_id', null);
 
             return {
                 success: true,
@@ -5509,165 +5585,144 @@ async function retryMilestoneTransfer(milestoneId) {
     // 6. Execute Stripe Transfer (Separate Charges & Transfers with Deterministic Idempotency Key)
     const stripeIdempotencyKey = transferIdempotencyKey(milestone.id);
     const transferAmountCents = Number(payment.provider_net_cents);
-
-    if (process.env.STRIPE_SECRET_KEY) {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-        try {
-            const transferParams = {
-                amount: transferAmountCents,
-                currency: 'eur',
-                destination: stripeAccountId,
-                description: `Versement Partie LYANN ${milestone.id}`,
-                metadata: {
-                    milestone_id: milestone.id,
-                    payment_id: payment.id,
-                    mission_id: payment.mission_id,
-                    provider_id: providerId
-                }
-            };
-            const sourceChargeId = stripeChargeId(payment.stripe_charge_id);
-            if (sourceChargeId) transferParams.source_transaction = sourceChargeId;
-            let intentLivemode = null;
-            try {
-                const intent = payment.stripe_payment_intent_id
-                    ? await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
-                    : null;
-                intentLivemode = intent ? intent.livemode : null;
-            } catch (_) {
-                intentLivemode = null;
-            }
-            const modeCheck = transferModeMatches(
-                intentLivemode,
-                String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? 'live' : 'test'
-            );
-            const createGate = liveTransferDecision(process.env);
-            if (!createGate.ok || !modeCheck.ok) {
-                if (lockedPayment.transfer_status === 'TRANSFER_PROCESSING') {
-                    await supabaseAdmin
-                        .from('payments')
-                        .update({ transfer_status: lockPlan.revertTo })
-                        .eq('id', payment.id)
-                        .eq('transfer_status', 'TRANSFER_PROCESSING')
-                        .is('stripe_transfer_id', null);
-                }
-                return {
-                    success: false,
-                    code: !createGate.ok ? createGate.code : modeCheck.code,
-                    mutated: false,
-                    error: 'Aucun transfert n’a été créé.'
-                };
-            }
-            const transferDecision = evaluateTransfer({
-                payment,
-                milestone,
-                providerAccountId: stripeAccountId,
-                destinationAccountId: stripeAccountId
-            });
-            if (!transferDecision.ok) {
-                await supabaseAdmin
-                    .from('payments')
-                    .update({ transfer_status: lockPlan.revertTo })
-                    .eq('id', payment.id);
-                return { success: false, error: "Versement refusé.", code: transferDecision.code };
-            }
-            const transfer = await stripe.transfers.create(transferParams, {
-                idempotencyKey: stripeIdempotencyKey
-            });
-
-            // 7. Update Payment & Milestone on Transfer Success
-            const nowIso = new Date().toISOString();
-            await supabaseAdmin
-                .from('payments')
-                .update({
-                    stripe_transfer_id: transfer.id,
-                    transfer_status: 'TRANSFERRED',
-                    released_at: nowIso
-                })
-                .eq('id', payment.id);
-
-            await supabaseAdmin
-                .from('milestones')
-                .update({
-                    status: 'RELEASED',
-                    updated_at: nowIso
-                })
-                .eq('id', milestone.id);
-
-            console.log(`🎉 [LYANN TRANSFER] Transfert réussi ${transfer.id} pour Partie ${milestone.id}. Montant: ${transferAmountCents} cents.`);
-
-            await closeRequestWhenQuoteIsSettled(quote);
-            return {
-                success: true,
-                status: "RELEASED",
-                transfer_id: transfer.id,
-                message: "Versement autorisé et libéré."
-            };
-        } catch (trErr) {
-            console.error("❌ Erreur Stripe Transfer:", trErr);
-            const recovered = trErr && (trErr.transfer || (trErr.raw && trErr.raw.transfer));
-            const failure = stripeTransferFailureAction(recovered && recovered.id ? recovered : null);
-            if (failure.action === 'complete') {
-                const nowIso = new Date().toISOString();
-                await supabaseAdmin
-                    .from('payments')
-                    .update({
-                        stripe_transfer_id: failure.transferId,
-                        transfer_status: 'TRANSFERRED',
-                        released_at: nowIso
-                    })
-                    .eq('id', payment.id);
-                await supabaseAdmin
-                    .from('milestones')
-                    .update({ status: 'RELEASED', updated_at: nowIso })
-                    .eq('id', milestone.id);
-                await closeRequestWhenQuoteIsSettled(quote);
-                return {
-                    success: true,
-                    status: "RELEASED",
-                    transfer_id: failure.transferId,
-                    message: "Versement autorisé et libéré."
-                };
-            }
-            await supabaseAdmin
-                .from('payments')
-                .update({ transfer_status: failure.nextStatus })
-                .eq('id', payment.id);
-
-            return {
-                success: false,
-                status: "TRANSFER_FAILED",
-                error: `Erreur Stripe lors du transfert: ${trErr.message}`
-            };
-        }
-    } else {
-        // Test Mode Mock Fallback when process.env.STRIPE_SECRET_KEY is not defined in non-prod test environments
-        const mockTransferId = `tr_test_${Date.now()}`;
+    const stripe = transferRuntime.stripe;
+    const releaseRecorded = async (transferId) => {
         const nowIso = new Date().toISOString();
-
-        await supabaseAdmin
+        const paymentWrite = await supabaseAdmin
             .from('payments')
             .update({
-                stripe_transfer_id: mockTransferId,
+                stripe_transfer_id: transferId,
                 transfer_status: 'TRANSFERRED',
                 released_at: nowIso
             })
             .eq('id', payment.id);
-
+        if (paymentWrite.error) {
+            // TRANSFER_PROCESSING stays: the next attempt finds this transfer instead of creating one.
+            console.error('[LYANN TRANSFER] transfer created, DB sync pending', String(paymentWrite.error.message || '').slice(0, 80));
+            return {
+                success: false,
+                code: 'TRANSFER_DB_SYNC_PENDING',
+                status: 'TRANSFER_PROCESSING',
+                transfer_id: transferId,
+                error: 'Le versement Stripe est créé mais son enregistrement doit être repris. Aucun second versement ne sera créé.'
+            };
+        }
         await supabaseAdmin
             .from('milestones')
-            .update({
-                status: 'RELEASED',
-                updated_at: nowIso
-            })
+            .update({ status: 'RELEASED', updated_at: nowIso })
             .eq('id', milestone.id);
-
         await closeRequestWhenQuoteIsSettled(quote);
         return {
             success: true,
-            mode: 'stripe_test_mock',
             status: "RELEASED",
-            transfer_id: mockTransferId,
-            message: "Versement autorisé et libéré (mode test)."
+            transfer_id: transferId,
+            message: "Versement autorisé et libéré."
+        };
+    };
+
+    try {
+        const transferParams = {
+            amount: transferAmountCents,
+            currency: 'eur',
+            destination: stripeAccountId,
+            description: `Versement Partie LYANN ${milestone.id}`,
+            metadata: {
+                milestone_id: milestone.id,
+                payment_id: payment.id,
+                mission_id: payment.mission_id,
+                provider_id: providerId
+            }
+        };
+        const sourceChargeId = stripeChargeId(payment.stripe_charge_id);
+        if (sourceChargeId) transferParams.source_transaction = sourceChargeId;
+        let intentLivemode = null;
+        try {
+            const intent = payment.stripe_payment_intent_id
+                ? await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
+                : null;
+            intentLivemode = intent ? intent.livemode : null;
+        } catch (_) {
+            intentLivemode = null;
+        }
+        const modeCheck = transferModeMatches(
+            intentLivemode,
+            String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? 'live' : 'test'
+        );
+        const createGate = liveTransferDecision(process.env);
+        if (!createGate.ok || !modeCheck.ok) {
+            if (lockedPayment.transfer_status === 'TRANSFER_PROCESSING') {
+                await supabaseAdmin
+                    .from('payments')
+                    .update({ transfer_status: lockPlan.revertTo })
+                    .eq('id', payment.id)
+                    .eq('transfer_status', 'TRANSFER_PROCESSING')
+                    .is('stripe_transfer_id', null);
+            }
+            return {
+                success: false,
+                code: !createGate.ok ? createGate.code : modeCheck.code,
+                mutated: false,
+                error: 'Aucun transfert n’a été créé.'
+            };
+        }
+        const transferDecision = evaluateTransfer({
+            payment,
+            milestone,
+            providerAccountId: stripeAccountId,
+            destinationAccountId: stripeAccountId
+        });
+        if (!transferDecision.ok) {
+            await supabaseAdmin
+                .from('payments')
+                .update({ transfer_status: lockPlan.revertTo })
+                .eq('id', payment.id)
+                .is('stripe_transfer_id', null);
+            return { success: false, error: "Versement refusé.", code: transferDecision.code };
+        }
+
+        const paidSince = Math.floor(new Date(payment.created_at || payment.funded_at || 0).getTime() / 1000);
+        const listParams = { destination: stripeAccountId, limit: 100 };
+        if (paidSince > 0) listParams.created = { gte: paidSince - 3600 };
+        const earlier = [];
+        for await (const row of stripe.transfers.list(listParams)) {
+            earlier.push(row);
+            if (earlier.length >= 1000) break;
+        }
+        const previous = existingMilestoneTransferDecision(earlier, milestone.id, transferAmountCents, stripeAccountId);
+        if (previous.action === 'complete') {
+            return releaseRecorded(previous.transferId);
+        }
+        if (previous.action === 'block' || earlier.length >= 1000) {
+            return {
+                success: false,
+                code: previous.code || 'TRANSFER_TO_VERIFY',
+                status: 'TRANSFER_PROCESSING',
+                error: 'Un versement existant doit être vérifié avant toute nouvelle tentative. Aucun versement n’a été créé.'
+            };
+        }
+
+        const transfer = await stripe.transfers.create(transferParams, {
+            idempotencyKey: stripeIdempotencyKey
+        });
+        console.log(`🎉 [LYANN TRANSFER] Transfert réussi ${transfer.id} pour Partie ${milestone.id}. Montant: ${transferAmountCents} cents.`);
+        return releaseRecorded(transfer.id);
+    } catch (trErr) {
+        console.error("❌ Erreur Stripe Transfer:", trErr && trErr.type, String(trErr && trErr.message || '').slice(0, 120));
+        const recovered = trErr && (trErr.transfer || (trErr.raw && trErr.raw.transfer));
+        const failure = stripeTransferFailureAction(recovered && recovered.id ? recovered : null);
+        if (failure.action === 'complete') {
+            return releaseRecorded(failure.transferId);
+        }
+        await supabaseAdmin
+            .from('payments')
+            .update({ transfer_status: failure.nextStatus })
+            .eq('id', payment.id)
+            .is('stripe_transfer_id', null);
+
+        return {
+            success: false,
+            status: "TRANSFER_FAILED",
+            error: `Erreur Stripe lors du transfert: ${trErr.message}`
         };
     }
 }
@@ -5729,12 +5784,11 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
         if (!canValidateRelease(authUid, mission.requester_id)) {
             return res.status(403).json({ error: "Seul le demandeur (client) peut valider la Partie." });
         }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json({ ...MISSION_CANCELLED_BODY, mutated: false });
+        }
 
-        const { data: payment, error: pErr } = await supabaseAdmin
-            .from('payments')
-            .select('*')
-            .eq('milestone_id', milestone_id)
-            .single();
+        const { data: payment, error: pErr } = await milestoneMoneyPayment(milestone_id);
 
         if (pErr || !payment) {
             return res.status(404).json({ error: "Enregistrement de paiement introuvable pour cette Partie." });
@@ -5928,11 +5982,7 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
             return res.status(400).json({ error: "Mission associée introuvable." });
         }
 
-        const { data: payment, error: pErr } = await supabaseAdmin
-            .from('payments')
-            .select('*')
-            .eq('milestone_id', milestone_id)
-            .single();
+        const { data: payment, error: pErr } = await milestoneMoneyPayment(milestone_id);
 
         const dispute = raiseDisputeDecision({
             authUid,
@@ -6235,7 +6285,7 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
         if (!mission) {
             return res.status(400).json({ error: 'Mission associée introuvable.' });
         }
-        const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestoneId).maybeSingle();
+        const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestoneId).not('payment_status', 'in', '(FAILED,CANCELLED)').maybeSingle();
         const grant = loadPreTransferRefundGrant();
         const facts = grantFactsFromPayment(payment, {
             requesterId: mission.requester_id,
@@ -6460,16 +6510,55 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 const paymentIntent = event.data.object;
                 console.log(`✅ [STRIPE WEBHOOK] PaymentIntent réussi: ${paymentIntent.id}`);
 
-                const { data: payment } = await supabaseAdmin
+                const byIntent = await supabaseAdmin
                     .from('payments')
                     .select('*')
                     .eq('stripe_payment_intent_id', paymentIntent.id)
                     .maybeSingle();
+                if (byIntent.error) throw new Error('PAYMENT_READ_FAILED');
+                let payment = byIntent.data;
+                const metadataPaymentId = paymentIntent.metadata && paymentIntent.metadata.payment_id;
+                if (!payment && metadataPaymentId) {
+                    // The intent id may not have been stored before the customer paid.
+                    const byMetadata = await supabaseAdmin
+                        .from('payments')
+                        .select('*')
+                        .eq('id', metadataPaymentId)
+                        .maybeSingle();
+                    if (byMetadata.error) throw new Error('PAYMENT_READ_FAILED');
+                    const candidate = byMetadata.data;
+                    if (candidate && candidate.stripe_payment_intent_id && candidate.stripe_payment_intent_id !== paymentIntent.id) {
+                        throw new Error('PAYMENT_INTENT_MISMATCH');
+                    }
+                    if (candidate && !candidate.stripe_payment_intent_id) {
+                        const linkIntent = await supabaseAdmin
+                            .from('payments')
+                            .update({ stripe_payment_intent_id: paymentIntent.id })
+                            .eq('id', candidate.id)
+                            .is('stripe_payment_intent_id', null);
+                        if (linkIntent.error) throw new Error('PAYMENT_WRITE_FAILED');
+                        payment = { ...candidate, stripe_payment_intent_id: paymentIntent.id };
+                    }
+                }
 
                 if (payment) {
                     const funded = applyPaymentSucceeded(payment, paymentIntent);
                     if (!funded.ok) {
                         throw new Error(funded.code);
+                    }
+                    if (!funded.idempotent) {
+                        const settledSibling = await supabaseAdmin
+                            .from('payments')
+                            .select('id')
+                            .eq('milestone_id', payment.milestone_id)
+                            .neq('id', payment.id)
+                            .in('payment_status', ['SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'])
+                            .limit(1);
+                        if (settledSibling.error) throw new Error('PAYMENT_READ_FAILED');
+                        if ((settledSibling.data || []).length) {
+                            // Two charges for one milestone: no automatic refund, an operator decides.
+                            throw new Error('DUPLICATE_MILESTONE_CHARGE');
+                        }
                     }
                     if (funded.preserve_payment !== true && funded.apply !== false) {
                         const paymentUpdate = {
@@ -6478,13 +6567,14 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                             stripe_charge_id: funded.stripe_charge_id
                         };
                         if (!funded.preserve_transfer) paymentUpdate.transfer_status = funded.transfer_status;
-                        await supabaseAdmin
+                        const paymentWrite = await supabaseAdmin
                             .from('payments')
                             .update(paymentUpdate)
                             .eq('id', payment.id);
+                        if (paymentWrite.error) throw new Error('PAYMENT_WRITE_FAILED');
                     }
                     if (funded.milestone_status === 'FUNDED') {
-                        await supabaseAdmin
+                        const milestoneWrite = await supabaseAdmin
                             .from('milestones')
                             .update({
                                 status: 'FUNDED',
@@ -6492,6 +6582,7 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                             })
                             .eq('id', payment.milestone_id)
                             .in('status', ['PENDING', 'IN_PROGRESS', 'FUNDED']);
+                        if (milestoneWrite.error) throw new Error('MILESTONE_WRITE_FAILED');
                     }
 
                     // Annonce → en cours (hors recherche publique OPEN).
@@ -6583,11 +6674,12 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     .maybeSingle();
                 const failed = applyPaymentFailed(existingFailed);
                 if (failed.apply) {
-                    await supabaseAdmin
+                    const failedWrite = await supabaseAdmin
                         .from('payments')
                         .update({ payment_status: 'FAILED' })
                         .eq('id', existingFailed.id)
                         .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING']);
+                    if (failedWrite.error) throw new Error('PAYMENT_WRITE_FAILED');
                 }
                 break;
             }
@@ -6671,20 +6763,21 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     ? applyChargeDisputeUpdated(disputedPayment)
                     : applyChargeDisputeCreated(disputedPayment);
                 if (frozen.apply && disputedPayment) {
-                    await supabaseAdmin
+                    const disputeWrite = await supabaseAdmin
                         .from('payments')
                         .update({ payment_status: 'DISPUTED' })
                         .eq('id', disputedPayment.id)
                         .in('payment_status', ['SUCCEEDED', 'PARTIALLY_REFUNDED']);
+                    if (disputeWrite.error) throw new Error('DISPUTE_PAYMENT_WRITE_FAILED');
                     if (disputedPayment.milestone_id) {
-                        await supabaseAdmin
+                        const milestoneWrite = await supabaseAdmin
                             .from('milestones')
                             .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
                             .eq('id', disputedPayment.milestone_id)
                             .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
+                        if (milestoneWrite.error) throw new Error('DISPUTE_MILESTONE_WRITE_FAILED');
                     }
                 }
-                void chargeId;
                 break;
             }
 
@@ -6768,7 +6861,7 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
         }
         return res.json({ received: true });
     } catch (handlerErr) {
-        console.error('Erreur traitement Webhook Stripe');
+        console.error('Erreur traitement Webhook Stripe', event && event.type, String(handlerErr && handlerErr.message || '').slice(0, 80));
         if (event && event.id) {
             await supabaseAdmin.from('stripe_webhook_events').delete().eq('stripe_event_id', event.id);
         }

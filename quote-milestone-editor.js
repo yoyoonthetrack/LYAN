@@ -166,6 +166,9 @@
             if (row.amountCents < 0 || row.percent < 0) {
                 return { ok: false, message: 'Les montants et pourcentages ne peuvent pas être négatifs.' };
             }
+            if (row.amountCents === 0) {
+                return { ok: false, message: 'Chaque paiement par étape doit avoir un montant supérieur à 0 €. Retirez l’étape vide ou affectez-lui un montant.' };
+            }
         }
         const allocated = state.rows.reduce((sum, row) => sum + row.amountCents, 0);
         if (allocated !== totalCents) {

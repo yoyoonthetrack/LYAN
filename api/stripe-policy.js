@@ -301,6 +301,35 @@ function stripeTransferFailureAction(recoveredTransfer) {
     return { action: 'fail', nextStatus: 'TRANSFER_FAILED' };
 }
 
+// Stripe forgets idempotency keys after 24 hours. Before any transfer, look for one already
+// made for this milestone so a late retry can never pay the Lyanneur twice.
+function existingMilestoneTransferDecision(transfers, milestoneId, amountCents, destination) {
+    const mine = (transfers || []).filter((transfer) => transfer
+        && transfer.metadata
+        && String(transfer.metadata.milestone_id || '') === String(milestoneId || ''));
+    if (!mine.length) return { action: 'create' };
+    if (mine.length > 1) return { action: 'block', code: 'TRANSFER_TO_VERIFY' };
+    const transfer = mine[0];
+    const sameTarget = String(transfer.destination || '') === String(destination || '')
+        && Number(transfer.amount) === Number(amountCents)
+        && !transfer.reversed
+        && !(Number(transfer.amount_reversed) > 0);
+    if (!sameTarget) return { action: 'block', code: 'TRANSFER_TO_VERIFY' };
+    return { action: 'complete', transferId: transfer.id };
+}
+
+// cancel_mission_secure only checks the AGREED status, and a paid mission stays AGREED.
+// Work, validation and transfers stop on a cancelled mission; the secured funds wait for an operator.
+function missionBlocksMoneyStep(mission) {
+    const status = String((mission && mission.status) || '').toUpperCase();
+    return !mission || status === 'CANCELLED' || status === 'CANCELED';
+}
+
+const MISSION_CANCELLED_BODY = Object.freeze({
+    code: 'MISSION_ANNULEE',
+    error: 'Cette mission est annulée. Les fonds déjà sécurisés restent bloqués chez LYANN en attente d’une décision de l’équipe. Aucun versement n’est possible.'
+});
+
 function alreadyTransferredPayment(milestone, payment) {
     const transferId = payment && payment.stripe_transfer_id;
     if (!transferId) return false;
@@ -2317,10 +2346,17 @@ const SETTLED_PAYMENT_STATUSES = new Set(['SUCCEEDED', 'PARTIALLY_REFUNDED', 'DI
 
 function serviceCentsFromAmount(amount) {
     const numStr = String(amount == null ? '' : amount).trim();
+    if (!/^\d+(\.\d+)?$/.test(numStr)) {
+        throw new Error('Montant de la partie illisible.');
+    }
     const parts = numStr.split('.');
+    const decimals = parts[1] || '';
+    // A sub-cent amount would be charged truncated: refuse instead of rounding money silently.
+    if (/[1-9]/.test(decimals.slice(2))) {
+        throw new Error('Le montant de la partie dépasse le centime.');
+    }
     const euros = BigInt(parts[0] || '0');
-    const centsPart = (parts[1] || '').padEnd(2, '0').slice(0, 2);
-    const cents = BigInt(centsPart || '0');
+    const cents = BigInt(decimals.padEnd(2, '0').slice(0, 2) || '0');
     return euros * 100n + cents;
 }
 
@@ -2374,6 +2410,33 @@ function resumePaymentDecision(payment) {
         return { action: 'attach', code: 'ORPHAN_CREATED' };
     }
     return { action: 'refuse', code: 'PAIEMENT_DEJA_SECURISE' };
+}
+
+// Stripe keeps a declined or 3DS-failed PaymentIntent open (requires_payment_method).
+// A retry must confirm that same intent: a second intent would leave two confirmable
+// charges for one milestone.
+const REUSABLE_INTENT_STATUSES = new Set(['requires_payment_method', 'requires_confirmation', 'requires_action']);
+const CONFIRMING_INTENT_STATUSES = new Set(['processing', 'requires_capture', 'succeeded']);
+
+function failedIntentRetryDecision(payment, intent, milestoneId) {
+    if (!payment || !intent) return { action: 'block', code: 'PAIEMENT_A_VERIFIER' };
+    if (intent.livemode === true) return { action: 'block', code: 'STRIPE_MODE_MISMATCH' };
+    const status = String(intent.status || '');
+    if (CONFIRMING_INTENT_STATUSES.has(status)) return { action: 'wait', code: 'PAIEMENT_EN_CONFIRMATION' };
+    if (status === 'canceled') return { action: 'create', code: 'PREVIOUS_INTENT_CANCELED' };
+    if (!REUSABLE_INTENT_STATUSES.has(status)) return { action: 'block', code: 'PAIEMENT_A_VERIFIER' };
+    const metadataMilestone = intent.metadata && intent.metadata.milestone_id;
+    if (metadataMilestone && String(metadataMilestone) !== String(milestoneId)) {
+        return { action: 'block', code: 'PAIEMENT_A_VERIFIER' };
+    }
+    const sameAmount = Number(intent.amount) === Number(payment.customer_total_cents)
+        && String(intent.currency || '').toLowerCase() === 'eur';
+    if (!sameAmount) return { action: 'block', code: 'AMOUNT_MISMATCH' };
+    return { action: 'reuse', code: 'FAILED_INTENT_RETRY' };
+}
+
+function paymentIntentIdempotencyKey(milestoneId, paymentId) {
+    return 'pi_milestone_' + String(milestoneId || '') + '_' + String(paymentId || '');
 }
 
 function legacyPaymentColumns(financials) {
@@ -2484,6 +2547,11 @@ module.exports = {
     calculateMilestonePricing,
     paymentAmountSnapshot,
     resumePaymentDecision,
+    failedIntentRetryDecision,
+    paymentIntentIdempotencyKey,
+    existingMilestoneTransferDecision,
+    missionBlocksMoneyStep,
+    MISSION_CANCELLED_BODY,
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,

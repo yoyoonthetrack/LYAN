@@ -275,6 +275,8 @@
         };
     }
 
+    const NO_MONEY_PAYMENT_STATUSES = new Set(['FAILED', 'CANCELLED', 'CANCELED']);
+
     // Phase 7 — one account. A payment is a gain or an expense, never both, never a net "available" balance.
     function ledgerLines(userId, payments) {
         const me = String(userId || '');
@@ -282,6 +284,8 @@
         const lines = [];
         (payments || []).forEach((pay) => {
             if (!pay || !pay.id || seen.has(String(pay.id))) return;
+            // A declined or cancelled attempt moved no money: neither a gain nor an expense.
+            if (NO_MONEY_PAYMENT_STATUSES.has(String(pay.payment_status || '').toUpperCase())) return;
             const isGain = String(pay.provider_id || '') === me;
             const isExpense = String(pay.requester_id || '') === me;
             if (!isGain && !isExpense) return;
@@ -332,7 +336,9 @@
         if (!steps.length) return dossierMoney(userId, payments);
         return steps.map((milestone) => {
             const name = milestone.title || 'Paiement par étape';
-            const pay = payments.find((item) => item && String(item.milestone_id) === String(milestone.id)) || null;
+            const pay = payments.find((item) => item
+                && String(item.milestone_id) === String(milestone.id)
+                && !NO_MONEY_PAYMENT_STATUSES.has(String(item.payment_status || '').toUpperCase())) || null;
             const status = String(milestone.status || '').toUpperCase();
             if (!pay) {
                 const amount = euroAmount(milestone.amount);
