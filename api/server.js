@@ -6037,8 +6037,11 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
                     code: "ALREADY_VALIDATED"
                 });
             }
-            if (dispute.code === 'MILESTONE_NOT_COMPLETED') {
-                return res.status(400).json({ error: `Un litige ne peut être ouvert que sur une Partie réalisée (statut actuel: ${milestone.status}).` });
+            if (dispute.code === 'MILESTONE_NOT_REPORTABLE') {
+                return res.status(400).json({
+                    error: 'Ce signalement n’est possible que lorsque le paiement est sécurisé et pas encore versé.',
+                    code: 'MILESTONE_NOT_REPORTABLE'
+                });
             }
             return res.status(400).json({ error: "Le statut du paiement ne permet pas l'ouverture d'un litige." });
         }
@@ -6070,7 +6073,7 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
                 updated_at: nowIso
             })
             .eq('id', milestone.id)
-            .eq('status', 'COMPLETED');
+            .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
 
         console.log(`⚠️ [DISPUTE RAISED] Litige ouvert par le client sur Partie ${milestone.id}. Raison: ${reason}`);
 

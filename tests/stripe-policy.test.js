@@ -901,6 +901,8 @@ test('A B and C cannot refund or dispute another user’s payment', () => {
     assert.equal(refundAccessDecision({ authUid: B, requesterId: A, payment, milestone }).http, 403);
     assert.equal(refundAccessDecision({ authUid: C, requesterId: A, payment, milestone }).exposePayment, false);
     const completed = { status: 'COMPLETED' };
+    assert.equal(raiseDisputeDecision({ authUid: A, requesterId: A, milestone: { status: 'FUNDED' }, payment }).action, 'freeze');
+    assert.equal(raiseDisputeDecision({ authUid: A, requesterId: A, milestone: { status: 'IN_PROGRESS' }, payment }).action, 'freeze');
     assert.equal(raiseDisputeDecision({ authUid: A, requesterId: A, milestone: completed, payment }).action, 'freeze');
     assert.equal(raiseDisputeDecision({ authUid: B, requesterId: A, milestone: completed, payment }).http, 403);
     assert.equal(raiseDisputeDecision({ authUid: C, requesterId: A, milestone: completed, payment }).freeze, false);

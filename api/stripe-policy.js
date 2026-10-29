@@ -2011,8 +2011,8 @@ function raiseDisputeDecision({ authUid, requesterId, milestone, payment }) {
     if (milestone.status === 'DISPUTED' || payment.payment_status === 'DISPUTED') {
         return { action: 'already', http: 200, freeze: true, idempotent: true };
     }
-    if (milestone.status !== 'COMPLETED') {
-        return { action: 'reject', http: 400, code: 'MILESTONE_NOT_COMPLETED', freeze: false };
+    if (!['FUNDED', 'IN_PROGRESS', 'COMPLETED'].includes(String(milestone.status || ''))) {
+        return { action: 'reject', http: 400, code: 'MILESTONE_NOT_REPORTABLE', freeze: false };
     }
     if (payment.client_validated_at) {
         return { action: 'reject', http: 400, code: 'ALREADY_VALIDATED', freeze: false };

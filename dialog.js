@@ -35,7 +35,7 @@ const LYANN_TECHNICAL_ERROR = /(violates|constraint|duplicate key|null value|syn
 
 window.lyannSanitizeUserMessage = function(message) {
     const text = String(message == null ? '' : message);
-    if (/n['’]est plus ouvert aux propositions|statut actuel:\s*[A-Z_]+/i.test(text)) {
+    if (/n['’]est plus ouvert aux propositions/i.test(text) && !/litige|signalement/i.test(text)) {
         return 'Cette demande n’accepte plus de nouvelles propositions pour le moment.';
     }
     if (!LYANN_TECHNICAL_ERROR.test(text)) return text;

@@ -3418,6 +3418,9 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
             notifyActionUnavailable(err);
             return;
         }
+        if (typeof window.showToast === 'function') {
+            window.showToast('Signalement enregistré. Les fonds restent gelés le temps de la médiation.', 'success');
+        }
         refreshOpenBusinessCards();
         return;
     }
