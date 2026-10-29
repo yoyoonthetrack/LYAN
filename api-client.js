@@ -2447,6 +2447,97 @@ const LYANN_API_CLIENT = {
         }
     },
 
+    async refundUntransferredMilestone(milestoneId) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await lyannBackendFetch('/v1/payments/refund-untransferred', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Remboursement impossible.", code: data.code } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
+    async requestMilestoneCancel(milestoneId) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await lyannBackendFetch('/v1/milestones/request-cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Demande d’annulation impossible.", code: data.code } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
+    async decideMilestoneCancel(milestoneId, accept) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await lyannBackendFetch('/v1/milestones/decide-cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId, accept: accept === true })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Réponse d’annulation impossible.", code: data.code } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
+    async requestHasEngagedMoney(requestId) {
+        if (!this.supabase || !requestId) return false;
+        const { data: quotes } = await this.supabase.from('quotes').select('id').eq('request_id', requestId);
+        const quoteIds = (quotes || []).map((row) => row.id);
+        if (!quoteIds.length) return false;
+        const { data: milestones } = await this.supabase.from('milestones').select('id,status').in('quote_id', quoteIds);
+        const rows = milestones || [];
+        if (rows.some((row) => ['FUNDED', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'].includes(String(row.status || '').toUpperCase()))) {
+            return true;
+        }
+        const milestoneIds = rows.map((row) => row.id);
+        if (!milestoneIds.length) return false;
+        const { data: payments } = await this.supabase.from('payments').select('payment_status').in('milestone_id', milestoneIds);
+        return (payments || []).some((row) => ['REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED'].includes(String(row.payment_status || '').toUpperCase()));
+    },
+
     async startMilestoneWork(milestoneId) {
         const sessionRes = await this.getSession();
         const token = sessionRes?.data?.session?.access_token;

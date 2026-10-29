@@ -6081,6 +6081,132 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
     }
 });
 
+async function loadMilestoneDeal(milestoneId) {
+    const { data: milestone } = await supabaseAdmin.from('milestones').select('*, quotes(*)').eq('id', milestoneId).maybeSingle();
+    if (!milestone) return { error: { http: 404, body: { error: 'Étape introuvable.' } } };
+    const quote = milestone.quotes;
+    if (!quote) return { error: { http: 400, body: { error: 'Devis introuvable.' } } };
+    const { data: mission } = await supabaseAdmin.from('missions').select('*').eq('id', quote.mission_id).maybeSingle();
+    if (!mission) return { error: { http: 400, body: { error: 'Mission introuvable.' } } };
+    return { milestone, quote, mission };
+}
+
+app.post('/v1/milestones/request-cancel', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const milestoneId = req.body && req.body.milestone_id;
+        if (!milestoneId) return res.status(400).json({ error: 'Le paramètre milestone_id est obligatoire.' });
+        const loaded = await loadMilestoneDeal(milestoneId);
+        if (loaded.error) return res.status(loaded.error.http).json(loaded.error.body);
+        const { milestone, mission } = loaded;
+        if (String(mission.requester_id) !== String(user.id)) {
+            return res.status(403).json({ error: 'Seul le demandeur peut demander l’annulation.' });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
+        }
+        if (milestone.status !== 'IN_PROGRESS') {
+            return res.status(409).json({
+                error: milestone.status === 'FUNDED'
+                    ? 'Cette étape n’a pas encore commencé. Annulez pour récupérer vos fonds.'
+                    : 'Cette étape ne peut plus être annulée ainsi.',
+                code: 'BUSINESS_POLICY_REQUIRED'
+            });
+        }
+        if (String(milestone.cancellation_status || '') === 'REQUESTED') {
+            return res.json({ success: true, idempotent: true, cancellation_status: 'REQUESTED' });
+        }
+        const nowIso = new Date().toISOString();
+        const { data: updated, error } = await supabaseAdmin.from('milestones').update({
+            cancellation_status: 'REQUESTED',
+            cancellation_requested_at: nowIso,
+            updated_at: nowIso
+        }).eq('id', milestone.id).eq('status', 'IN_PROGRESS').select('id,cancellation_status').maybeSingle();
+        if (error || !updated) {
+            return res.status(409).json({ error: 'La demande d’annulation n’a pas abouti.' });
+        }
+        return res.json({ success: true, cancellation_status: 'REQUESTED' });
+    } catch (e) {
+        return res.status(500).json({ error: 'Demande d’annulation impossible.' });
+    }
+});
+
+app.post('/v1/milestones/decide-cancel', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const milestoneId = req.body && req.body.milestone_id;
+        const accept = req.body && req.body.accept === true;
+        if (!milestoneId) return res.status(400).json({ error: 'Le paramètre milestone_id est obligatoire.' });
+        const loaded = await loadMilestoneDeal(milestoneId);
+        if (loaded.error) return res.status(loaded.error.http).json(loaded.error.body);
+        const { milestone, quote, mission } = loaded;
+        const assignedHelperId = mission.helper_id || quote.provider_id;
+        if (!canDeclareWorkDone(user.id, assignedHelperId)) {
+            return res.status(403).json({ error: 'Seul le Lyanneur peut répondre à l’annulation.' });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
+        }
+        if (String(milestone.cancellation_status || '') !== 'REQUESTED') {
+            return res.status(409).json({ error: 'Aucune demande d’annulation en attente.', code: 'NO_CANCEL_REQUEST' });
+        }
+        const nowIso = new Date().toISOString();
+        const nextStatus = accept ? 'ACCEPTED' : 'REFUSED';
+        const { data: updated, error } = await supabaseAdmin.from('milestones').update({
+            cancellation_status: nextStatus,
+            cancellation_decided_at: nowIso,
+            updated_at: nowIso
+        }).eq('id', milestone.id).eq('cancellation_status', 'REQUESTED').select('id,cancellation_status,status').maybeSingle();
+        if (error || !updated) {
+            return res.status(409).json({ error: 'La réponse n’a pas abouti.' });
+        }
+        if (!accept) {
+            return res.json({ success: true, cancellation_status: 'REFUSED' });
+        }
+        milestone.cancellation_status = 'ACCEPTED';
+        const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestone.id).not('payment_status', 'in', '(FAILED,CANCELLED)').maybeSingle();
+        const grant = loadPreTransferRefundGrant();
+        const facts = grantFactsFromPayment(payment, {
+            requesterId: mission.requester_id,
+            env: process.env,
+            livemode: String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_'),
+            stripeAccount: String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_')
+                ? STRIPE_TEST_PLATFORM_ACCOUNT
+                : null
+        });
+        const prepared = preparePreTransferRefund({
+            authUid: mission.requester_id,
+            requesterId: mission.requester_id,
+            payment,
+            milestone,
+            mission,
+            body: { milestone_id: milestone.id },
+            livemode: facts.livemode,
+            grantActive: grant.active === true,
+            grantEvaluation: evaluatePreTransferRefundGrant(grant, facts),
+            providerConsented: true
+        });
+        if (prepared.execute !== true) {
+            return res.json({
+                success: true,
+                cancellation_status: 'ACCEPTED',
+                refunded: false,
+                code: prepared.code || 'EXECUTION_DISABLED'
+            });
+        }
+        return res.json({
+            success: true,
+            cancellation_status: 'ACCEPTED',
+            refunded: false,
+            code: 'REFUND_PENDING_REQUESTER'
+        });
+    } catch (e) {
+        return res.status(500).json({ error: 'Réponse d’annulation impossible.' });
+    }
+});
+
 // 7. LEGACY SECURE PROVIDER TRANSFER (@deprecated)
 app.post('/v1/payments/validate-and-transfer', async (req, res) => {
     return res.status(410).json({ success: false, code: 'LEGACY_ENDPOINT_DISABLED', error: 'Cette route historique est désactivée.' });
@@ -6325,7 +6451,8 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
             query: req.query,
             livemode: facts.livemode,
             grantActive: grant.active === true,
-            grantEvaluation: evaluatePreTransferRefundGrant(grant, facts)
+            grantEvaluation: evaluatePreTransferRefundGrant(grant, facts),
+            providerConsented: String(milestone.cancellation_status || '') === 'ACCEPTED'
         });
         if (prepared.code === 'FORBIDDEN') {
             return res.status(403).json({ error: 'Seul le demandeur peut annuler ce paiement.', code: prepared.code });
@@ -6395,7 +6522,9 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
             locked = reserved.data;
         }
 
-        const amountCents = refundAmountFromPayment(payment);
+        const amountCents = Number.isFinite(Number(prepared.amount_cents))
+            ? Number(prepared.amount_cents)
+            : refundAmountFromPayment(payment);
         if (!Number.isFinite(amountCents) || amountCents <= 0) {
             return res.status(409).json({ code: 'AMOUNT_UNAVAILABLE', error: 'Montant remboursable introuvable.' });
         }

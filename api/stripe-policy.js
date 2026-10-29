@@ -513,6 +513,45 @@ function refundAmountFromPayment(payment) {
     return Number(payment && payment.customer_total_cents);
 }
 
+function customerFeeRefundPolicy(env = process.env) {
+    const raw = String((env && env.LYANN_CUSTOMER_FEE_REFUND) || '').trim().toLowerCase();
+    if (!raw) return { ok: false, code: 'FEE_POLICY_UNDECIDED', includeCustomerFee: null };
+    if (raw === 'refund') return { ok: true, code: 'FEE_REFUNDED', includeCustomerFee: true };
+    if (raw === 'retain') return { ok: true, code: 'FEE_RETAINED', includeCustomerFee: false };
+    return { ok: false, code: 'FEE_POLICY_INVALID', includeCustomerFee: null };
+}
+
+function optionARefundBreakdown(payment) {
+    const service = Number(payment && payment.service_amount_cents);
+    const fee = Number(payment && payment.customer_fee_cents);
+    const total = Number(payment && payment.customer_total_cents);
+    const captured = Number.isFinite(total) ? total : null;
+    return {
+        service_cents: Number.isFinite(service) ? service : null,
+        customer_fee_cents: Number.isFinite(fee) ? fee : null,
+        customer_total_cents: captured,
+        consistent: Number.isFinite(service) && Number.isFinite(fee) && Number.isFinite(total) && total === service + fee
+    };
+}
+
+function optionARefundAmountCents(payment, env = process.env) {
+    const policy = customerFeeRefundPolicy(env);
+    const breakdown = optionARefundBreakdown(payment);
+    if (!policy.ok) {
+        return { ok: false, code: policy.code, amount_cents: null, breakdown, policy };
+    }
+    if (!breakdown.consistent) {
+        return { ok: false, code: 'AMOUNT_UNAVAILABLE', amount_cents: null, breakdown, policy };
+    }
+    return {
+        ok: true,
+        code: policy.code,
+        amount_cents: policy.includeCustomerFee ? breakdown.customer_total_cents : breakdown.service_cents,
+        breakdown,
+        policy
+    };
+}
+
 function planRefundLock(payment, milestone) {
     if (!payment) return { action: 'reject', code: 'PAYMENT_NOT_FOUND', createRefund: false };
     const realRefund = payment.stripe_refund_id && !isRefundReservation(payment.stripe_refund_id);
@@ -582,7 +621,7 @@ function preTransferRefundClientOverride(body, extra) {
     return { ok: true };
 }
 
-function classifyPreTransferRefundBusiness({ payment, milestone, mission }) {
+function classifyPreTransferRefundBusiness({ payment, milestone, mission, providerConsented }) {
     const lock = planRefundLock(payment, milestone);
     if (lock.action === 'already') {
         return { auto: false, decision: 'IDEMPOTENT', code: 'ALREADY_REFUNDED' };
@@ -595,6 +634,9 @@ function classifyPreTransferRefundBusiness({ payment, milestone, mission }) {
     }
     const status = milestone && milestone.status;
     if (status === 'IN_PROGRESS') {
+        if (providerConsented === true) {
+            return { auto: true, decision: 'AUTO_ELIGIBLE', code: 'AUTO_ELIGIBLE' };
+        }
         return { auto: false, decision: 'NEEDS_PROVIDER_OR_ADMIN', code: 'BUSINESS_POLICY_REQUIRED' };
     }
     if (status === 'COMPLETED') {
@@ -619,7 +661,8 @@ function preparePreTransferRefund({
     env = process.env,
     listedRefunds,
     grantActive,
-    grantEvaluation
+    grantEvaluation,
+    providerConsented
 }) {
     const override = preTransferRefundClientOverride(body, { headers, query });
     if (!override.ok) {
@@ -651,7 +694,7 @@ function preparePreTransferRefund({
         return { http: 409, execute: false, createRefund: false, persist: false, code: access.code };
     }
     if (access.action === 'acquire') {
-        const business = classifyPreTransferRefundBusiness({ payment, milestone, mission });
+        const business = classifyPreTransferRefundBusiness({ payment, milestone, mission, providerConsented });
         if (business.auto !== true) {
             return { http: 409, execute: false, createRefund: false, persist: false, code: business.code };
         }
@@ -705,6 +748,51 @@ function preparePreTransferRefund({
             payment_intent: payment.stripe_payment_intent_id,
             idempotency_key: refundIdempotencyKey(payment.id)
         };
+    }
+    const testAuto = String((env && env.STRIPE_TEST_AUTO_REFUND) || '') === 'true' && livemode !== true;
+    if (testAuto) {
+        const feePolicy = customerFeeRefundPolicy(env);
+        if (!feePolicy.ok) {
+            return {
+                http: 409,
+                execute: false,
+                createRefund: false,
+                persist: false,
+                code: feePolicy.code,
+                amount_cents,
+                payment_intent: payment.stripe_payment_intent_id,
+                breakdown: optionARefundBreakdown(payment)
+            };
+        }
+        const priced = optionARefundAmountCents(payment, env);
+        if (!priced.ok) {
+            return {
+                http: 409,
+                execute: false,
+                createRefund: false,
+                persist: false,
+                code: priced.code,
+                amount_cents,
+                payment_intent: payment.stripe_payment_intent_id,
+                breakdown: priced.breakdown
+            };
+        }
+        const business = classifyPreTransferRefundBusiness({ payment, milestone, mission, providerConsented });
+        if (business.auto === true) {
+            return {
+                http: 200,
+                execute: true,
+                createRefund: access.action === 'acquire' || access.action === 'resume',
+                persist: true,
+                code: 'READY',
+                action: access.action,
+                amount_cents: priced.amount_cents,
+                payment_intent: payment.stripe_payment_intent_id,
+                idempotency_key: refundIdempotencyKey(payment.id),
+                breakdown: priced.breakdown,
+                fee_policy: priced.policy.code
+            };
+        }
     }
     return {
         http: 409,
@@ -2176,6 +2264,8 @@ function paymentWritePaths() {
         '/v1/milestones/release-payment',
         '/v1/milestones/claim-transfer',
         '/v1/milestones/raise-dispute',
+        '/v1/milestones/request-cancel',
+        '/v1/milestones/decide-cancel',
         '/v1/payments/webhook',
         '/v1/webhooks/stripe',
         '/payments/webhook',
@@ -2692,6 +2782,9 @@ module.exports = {
     preTransferRefundClientOverride,
     preparePreTransferRefund,
     classifyPreTransferRefundBusiness,
+    customerFeeRefundPolicy,
+    optionARefundBreakdown,
+    optionARefundAmountCents,
     admitPreTransferRefundDispatch,
     classifyStripeDbGap,
     financialAuditEvent,

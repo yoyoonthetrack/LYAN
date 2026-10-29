@@ -191,6 +191,19 @@
         return (Math.round(value * 100) / 100).toLocaleString('fr-FR') + ' €';
     }
 
+    function refundCancelLabel(quote, milestone) {
+        const pay = ((quote && quote.payments) || []).find((row) => {
+            return row && String(row.milestone_id) === String(milestone && milestone.id)
+                && String(row.payment_status || '').toUpperCase() === 'SUCCEEDED';
+        });
+        const cents = pay && Number(pay.customer_total_cents);
+        if (Number.isFinite(cents) && cents > 0) {
+            return 'Annuler et récupérer ' + (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+        }
+        const amount = euros(milestone && milestone.amount);
+        return amount ? ('Annuler et récupérer ' + amount) : 'Annuler et récupérer mes fonds';
+    }
+
     function actorCopy(actorToAct, role) {
         if (!actorToAct) return { actorLabel: '', waitingLabel: '' };
         if (actorToAct === role) {
@@ -306,11 +319,23 @@
                             : 'Vous pouvez maintenant sécuriser le paiement.';
                     }
                 } else if (phase === 'prestation') {
-                    status = 'Paiement sécurisé';
-                    actorToAct = 'provider';
-                    context = role === 'provider'
-                        ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
-                        : 'Paiement sécurisé. L’argent est mis en sécurité par LYANN et n’est pas encore versé au Lyanneur. La mission peut commencer. Quand elle sera terminée, vous la validerez dans ce même chat pour libérer les fonds.';
+                    const started = milestones.some((milestone) => milestone && milestone.status === 'IN_PROGRESS');
+                    const cancelAsked = milestones.some((milestone) => String(milestone && milestone.cancellation_status || '').toUpperCase() === 'REQUESTED');
+                    status = cancelAsked ? 'Annulation demandée' : 'Paiement sécurisé';
+                    actorToAct = cancelAsked ? 'provider' : (started ? 'provider' : 'provider');
+                    if (cancelAsked && role === 'requester') {
+                        context = 'Annulation envoyée. Le Lyanneur doit accepter le remboursement ou continuer la mission.';
+                    } else if (cancelAsked) {
+                        context = 'Le demandeur veut annuler. Accepter rembourse les fonds. Continuer garde la mission.';
+                    } else if (!started && role === 'requester') {
+                        context = 'Paiement sécurisé. Le Lyanneur n’a pas encore commencé : vous pouvez annuler et récupérer vos fonds.';
+                    } else if (!started) {
+                        context = 'Le paiement est sécurisé. Touchez J’ai commencé quand vous démarrez : le demandeur ne pourra plus se rembourser tout seul.';
+                    } else {
+                        context = role === 'provider'
+                            ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
+                            : 'Le Lyanneur a commencé. L’argent reste chez LYANN. Une annulation a besoin de son accord.';
+                    }
                 } else if (phase === 'validation') {
                     const transferPending = milestones.some((milestone) => milestone && milestone.status === 'VALIDATED')
                         && !milestones.some((milestone) => milestone && milestone.status === 'COMPLETED');
@@ -336,11 +361,48 @@
                 if (!payoutWait && !paymentInFlight) {
                     milestones.forEach((milestone) => {
                         const step = milestonePhase(quote, milestone);
+                        const cancel = String(milestone.cancellation_status || '').toUpperCase();
                         if (step === 'paiement' && role === 'requester' && milestone.status === 'PENDING' && !milestoneSettled(quote, milestone)) {
                             actions.push({ id: 'pay', label: 'Sécuriser le paiement', milestoneId: milestone.id });
                         }
-                        if (step === 'prestation' && role === 'provider') {
-                            actions.push({ id: 'done', label: 'Déclarer la prestation terminée', milestoneId: milestone.id });
+                        if (step === 'prestation' && milestone.status === 'FUNDED') {
+                            if (role === 'provider') {
+                                actions.push({ id: 'start', label: 'J’ai commencé', milestoneId: milestone.id });
+                            }
+                            if (role === 'requester') {
+                                actions.push({
+                                    id: 'refund',
+                                    label: refundCancelLabel(quote, milestone),
+                                    milestoneId: milestone.id,
+                                    tone: 'secondary',
+                                    confirm: true
+                                });
+                            }
+                        }
+                        if (step === 'prestation' && milestone.status === 'IN_PROGRESS') {
+                            if (cancel === 'REQUESTED') {
+                                if (role === 'provider') {
+                                    actions.push({ id: 'accept_cancel', label: 'Accepter le remboursement', milestoneId: milestone.id, confirm: true });
+                                    actions.push({ id: 'refuse_cancel', label: 'Je continue', milestoneId: milestone.id, tone: 'secondary' });
+                                }
+                            } else if (cancel === 'ACCEPTED' && role === 'requester') {
+                                actions.push({
+                                    id: 'refund',
+                                    label: refundCancelLabel(quote, milestone),
+                                    milestoneId: milestone.id,
+                                    confirm: true
+                                });
+                            } else if (role === 'provider' && cancel !== 'ACCEPTED') {
+                                actions.push({ id: 'done', label: 'Déclarer la prestation terminée', milestoneId: milestone.id });
+                            } else if (role === 'requester' && cancel !== 'REFUSED' && cancel !== 'ACCEPTED') {
+                                actions.push({
+                                    id: 'request_cancel',
+                                    label: 'Demander l’annulation',
+                                    milestoneId: milestone.id,
+                                    tone: 'secondary',
+                                    confirm: true
+                                });
+                            }
                         }
                         if (step === 'validation' && role === 'requester' && milestone.status === 'COMPLETED') {
                             actions.push({ id: 'release', label: 'Valider et libérer le paiement', milestoneId: milestone.id, confirm: true });
@@ -354,6 +416,12 @@
                     if (firstAction.id === 'pay') {
                         status = 'Devis accepté';
                         context = 'Sécurisez le paiement du prochain paiement par étape.';
+                    } else if (firstAction.id === 'start') {
+                        status = 'Paiement sécurisé';
+                        context = 'Le paiement est sécurisé. Touchez J’ai commencé quand vous démarrez : le demandeur ne pourra plus se rembourser tout seul.';
+                    } else if (firstAction.id === 'accept_cancel') {
+                        status = 'Annulation demandée';
+                        context = 'Le demandeur veut annuler. Accepter rembourse les fonds. Continuer garde la mission.';
                     } else if (firstAction.id === 'done') {
                         status = 'Paiement sécurisé';
                         context = role === 'provider'
@@ -363,6 +431,14 @@
                         status = 'Prestation à valider';
                         context = 'Le Lyanneur a déclaré la prestation terminée. Vérifiez le travail avant de confirmer.';
                     }
+                } else if (actions.some((action) => action.id === 'refund')) {
+                    actorToAct = 'requester';
+                    status = 'Paiement sécurisé';
+                    context = role === 'requester'
+                        ? 'Le Lyanneur n’a pas encore commencé. Vous pouvez annuler et récupérer vos fonds.'
+                        : 'Le demandeur peut encore annuler tant que vous n’avez pas touché J’ai commencé.';
+                } else if (actions.some((action) => action.id === 'request_cancel')) {
+                    context = 'Le Lyanneur a commencé. Une annulation a besoin de son accord.';
                 }
             }
         } else if (phase === 'paiement' && payoutBlocked) {

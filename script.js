@@ -7198,6 +7198,22 @@ safeDomReady(() => {
         if (!requestId || !allowed.includes(status)) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
         if (!client?.updateRequest) return;
+        if ((status === 'CLOSED' || status === 'COMPLETED') && typeof client.requestHasEngagedMoney === 'function') {
+            try {
+                const engaged = await client.requestHasEngagedMoney(requestId);
+                if (engaged) {
+                    const message = 'Cette annonce a un paiement sécurisé. Ouvrez le dossier dans le chat pour annuler et récupérer les fonds.';
+                    if (window.NotificationService) window.NotificationService.showToast('warning', message);
+                    else if (window.lyannAlert) window.lyannAlert(message);
+                    if (typeof window.switchActivityTab === 'function') {
+                        const session = window.LYANN_AUTH_STATE?.getSnapshot?.();
+                        const userId = session?.userId || window.CURRENT_USER_ID;
+                        if (userId) await window.switchActivityTab('requests', userId);
+                    }
+                    return;
+                }
+            } catch (_) {}
+        }
         try {
             await client.updateRequest(requestId, { status });
             const labels = {
@@ -7224,6 +7240,17 @@ safeDomReady(() => {
             : window.confirm('Vous êtes sûr de vouloir supprimer votre lyann ?');
         if (!confirmed) return;
         const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (client && typeof client.requestHasEngagedMoney === 'function') {
+            try {
+                const engaged = await client.requestHasEngagedMoney(requestId);
+                if (engaged) {
+                    const message = 'Impossible de supprimer une annonce avec un paiement sécurisé. Ouvrez le dossier pour annuler.';
+                    if (window.NotificationService) window.NotificationService.showToast('warning', message);
+                    else if (window.lyannAlert) window.lyannAlert(message);
+                    return;
+                }
+            } catch (_) {}
+        }
         if (!client || typeof client.deleteRequest !== 'function') {
             if (window.NotificationService) window.NotificationService.showToast('warning', "Impossible de supprimer l'annonce pour le moment.");
             return;

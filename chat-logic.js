@@ -2817,6 +2817,30 @@ function patchOpenMilestoneStatus(milestoneId, status) {
     return changed;
 }
 
+function patchOpenMilestoneCancel(milestoneId, cancellationStatus) {
+    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
+    if (!milestoneId) return false;
+    const next = String(cancellationStatus || '').toUpperCase();
+    let changed = false;
+    const visit = (quote) => {
+        (quote && quote.milestones || []).forEach((milestone) => {
+            if (!milestone || String(milestone.id) !== String(milestoneId)) return;
+            if (String(milestone.cancellation_status || '').toUpperCase() === next) return;
+            milestone.cancellation_status = next || null;
+            changed = true;
+        });
+    };
+    if (contact) {
+        (contact.dossiers || []).forEach((dossier) => (dossier && dossier.quotes || []).forEach(visit));
+        if (contact.activeDossier) (contact.activeDossier.quotes || []).forEach(visit);
+    }
+    if (changed && contact && typeof syncLiveDealActions === 'function') {
+        const quotes = (contact.activeDossier && contact.activeDossier.quotes) || [];
+        syncLiveDealActions(quotes);
+    }
+    return changed;
+}
+
 async function resolveChatMilestoneId(preferredId, statuses, scope) {
     resolveChatMilestoneId.lastMatch = null;
     const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
@@ -3116,6 +3140,168 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                         window.showToast((result && result.data && result.data.message) || 'Prestation déclarée réalisée, en attente de validation.', 'success');
                     }
                     await traceMomentLine('Prestation déclarée terminée.');
+                    invalidateActiveQuoteContext();
+                    await refreshOpenBusinessCards();
+                }
+            });
+        } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+            notifyActionUnavailable(err);
+        }
+        return;
+    }
+
+    else if (actionId === 'START_WORK') {
+        const preferred = extraData.milestoneId || (mission && mission.milestoneId);
+        const lockKey = preferred || (mission && mission.id) || 'start';
+        if (dealMutationGuard && dealMutationGuard.isBusy('start', lockKey)) return;
+        try {
+            await runDealMutation('start', lockKey, {
+                execute: async (handle) => {
+                    let milestoneId = await resolveChatMilestoneId(preferred, ['FUNDED'], milestoneScope);
+                    if (!milestoneId) milestoneId = milestoneFromContact(['FUNDED']);
+                    if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.startMilestoneWork !== 'function') {
+                        throw new Error('Le démarrage n’est pas encore prêt. Rouvrez le dossier, puis réessayez.');
+                    }
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    const result = await window.LYANN_API_CLIENT.startMilestoneWork(milestoneId);
+                    if (result && result.error) throw result.error;
+                    patchOpenMilestoneStatus(milestoneId, 'IN_PROGRESS');
+                    return result;
+                },
+                apply: async (result) => {
+                    if (typeof window.showToast === 'function') {
+                        window.showToast((result && result.data && result.data.message) || 'C’est noté : la prestation a commencé.', 'success');
+                    }
+                    invalidateActiveQuoteContext();
+                    await refreshOpenBusinessCards();
+                }
+            });
+        } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+            notifyActionUnavailable(err);
+        }
+        return;
+    }
+
+    else if (actionId === 'REFUND_MILESTONE') {
+        const preferred = extraData.milestoneId || (mission && mission.milestoneId);
+        const lockKey = preferred || (mission && mission.id) || 'refund';
+        if (dealMutationGuard && dealMutationGuard.isBusy('refund', lockKey)) return;
+        try {
+            await runDealMutation('refund', lockKey, {
+                execute: async (handle) => {
+                    let milestoneId = await resolveChatMilestoneId(preferred, ['FUNDED', 'IN_PROGRESS'], milestoneScope);
+                    if (!milestoneId) milestoneId = milestoneFromContact(['FUNDED', 'IN_PROGRESS']);
+                    if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.refundUntransferredMilestone !== 'function') {
+                        throw new Error('Le remboursement n’est pas encore prêt. Rouvrez le dossier, puis réessayez.');
+                    }
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    const result = await window.LYANN_API_CLIENT.refundUntransferredMilestone(milestoneId);
+                    if (result && result.error) throw result.error;
+                    if (result && result.data && (result.data.success || result.data.idempotent)) {
+                        patchOpenMilestoneStatus(milestoneId, 'CANCELLED');
+                    }
+                    return result;
+                },
+                apply: async (result) => {
+                    const code = result && result.data && result.data.code;
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(
+                            code === 'EXECUTION_DISABLED'
+                                ? 'Annulation enregistrée. Le remboursement automatique n’est pas encore ouvert.'
+                                : 'Remboursement envoyé. Les fonds reviennent sur votre moyen de paiement.',
+                            code === 'EXECUTION_DISABLED' ? 'warning' : 'success'
+                        );
+                    }
+                    invalidateActiveQuoteContext();
+                    await refreshOpenBusinessCards();
+                }
+            });
+        } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+            notifyActionUnavailable(err);
+        }
+        return;
+    }
+
+    else if (actionId === 'REQUEST_CANCEL') {
+        const preferred = extraData.milestoneId || (mission && mission.milestoneId);
+        const lockKey = preferred || (mission && mission.id) || 'request_cancel';
+        if (dealMutationGuard && dealMutationGuard.isBusy('request_cancel', lockKey)) return;
+        try {
+            await runDealMutation('request_cancel', lockKey, {
+                execute: async (handle) => {
+                    let milestoneId = await resolveChatMilestoneId(preferred, ['IN_PROGRESS'], milestoneScope);
+                    if (!milestoneId) milestoneId = milestoneFromContact(['IN_PROGRESS']);
+                    if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.requestMilestoneCancel !== 'function') {
+                        throw new Error('La demande d’annulation n’est pas encore prête.');
+                    }
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    const result = await window.LYANN_API_CLIENT.requestMilestoneCancel(milestoneId);
+                    if (result && result.error) throw result.error;
+                    patchOpenMilestoneCancel(milestoneId, 'REQUESTED');
+                    return result;
+                },
+                apply: async () => {
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Demande envoyée. Le Lyanneur doit accepter pour que les fonds reviennent.', 'success');
+                    }
+                    invalidateActiveQuoteContext();
+                    await refreshOpenBusinessCards();
+                }
+            });
+        } catch (err) {
+            if (err && (err.dealMutationStale || err.message === '__deal_mutation_stale__')) return;
+            notifyActionUnavailable(err);
+        }
+        return;
+    }
+
+    else if (actionId === 'ACCEPT_CANCEL' || actionId === 'REFUSE_CANCEL') {
+        const preferred = extraData.milestoneId || (mission && mission.milestoneId);
+        const accept = actionId === 'ACCEPT_CANCEL';
+        const lockKey = preferred || (mission && mission.id) || 'decide_cancel';
+        if (dealMutationGuard && dealMutationGuard.isBusy('decide_cancel', lockKey)) return;
+        try {
+            await runDealMutation('decide_cancel', lockKey, {
+                execute: async (handle) => {
+                    let milestoneId = await resolveChatMilestoneId(preferred, ['IN_PROGRESS'], milestoneScope);
+                    if (!milestoneId) milestoneId = milestoneFromContact(['IN_PROGRESS']);
+                    if (!milestoneId || !window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.decideMilestoneCancel !== 'function') {
+                        throw new Error('La réponse n’est pas encore prête.');
+                    }
+                    if (dealMutationGuard && !dealMutationGuard.shouldApply(handle)) {
+                        const stale = new Error('__deal_mutation_stale__');
+                        stale.dealMutationStale = true;
+                        throw stale;
+                    }
+                    const result = await window.LYANN_API_CLIENT.decideMilestoneCancel(milestoneId, accept);
+                    if (result && result.error) throw result.error;
+                    patchOpenMilestoneCancel(milestoneId, accept ? 'ACCEPTED' : 'REFUSED');
+                    return result;
+                },
+                apply: async () => {
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(
+                            accept
+                                ? 'Remboursement accepté. Le demandeur peut récupérer ses fonds.'
+                                : 'Mission poursuivie. Les fonds restent sécurisés.',
+                            'success'
+                        );
+                    }
                     invalidateActiveQuoteContext();
                     await refreshOpenBusinessCards();
                 }
@@ -4302,7 +4488,13 @@ function runBannerDealAction(button, row, copy) {
         start(() => handleChatAction(payload.action || 'PAY_MISSION', payload));
         return;
     }
-    const chatAction = actionId === 'done' ? 'MARK_DONE' : 'CONFIRM_DONE';
+    const chatAction = actionId === 'done' ? 'MARK_DONE'
+        : actionId === 'start' ? 'START_WORK'
+        : actionId === 'refund' ? 'REFUND_MILESTONE'
+        : actionId === 'request_cancel' ? 'REQUEST_CANCEL'
+        : actionId === 'accept_cancel' ? 'ACCEPT_CANCEL'
+        : actionId === 'refuse_cancel' ? 'REFUSE_CANCEL'
+        : 'CONFIRM_DONE';
     const run = () => handleChatAction(chatAction, {
         id: quote.mission_id,
         milestoneId: copy.milestoneId,
@@ -4311,7 +4503,14 @@ function runBannerDealAction(button, row, copy) {
         title: quote.description
     });
     if (copy.confirm && typeof window.lyannConfirm === 'function') {
-        window.lyannConfirm('Valider le travail et libérer le paiement ? Cette action est définitive.').then((ok) => {
+        const confirmCopy = actionId === 'refund'
+            ? 'Annuler cette étape et récupérer les fonds ? Ils reviendront sur votre moyen de paiement.'
+            : actionId === 'request_cancel'
+                ? 'Demander l’annulation ? Le Lyanneur devra accepter pour que les fonds reviennent.'
+                : actionId === 'accept_cancel'
+                    ? 'Accepter l’annulation ? Les fonds pourront être rendus au demandeur. Vous ne serez pas payé pour cette étape.'
+                    : 'Valider le travail et libérer le paiement ? Cette action est définitive.';
+        window.lyannConfirm(confirmCopy).then((ok) => {
             if (ok) start(run);
         });
         return;
@@ -4745,7 +4944,15 @@ function bindMissionAction(parent, quote, action) {
             })).catch(() => {});
             return;
         }
-        const run = () => handleChatAction(action.id === 'pay' ? 'PAY_MISSION' : action.id === 'done' ? 'MARK_DONE' : 'CONFIRM_DONE', {
+        const chatAction = action.id === 'pay' ? 'PAY_MISSION'
+            : action.id === 'done' ? 'MARK_DONE'
+            : action.id === 'start' ? 'START_WORK'
+            : action.id === 'refund' ? 'REFUND_MILESTONE'
+            : action.id === 'request_cancel' ? 'REQUEST_CANCEL'
+            : action.id === 'accept_cancel' ? 'ACCEPT_CANCEL'
+            : action.id === 'refuse_cancel' ? 'REFUSE_CANCEL'
+            : 'CONFIRM_DONE';
+        const run = () => handleChatAction(chatAction, {
             id: quote.mission_id,
             milestoneId: action.milestoneId,
             requestId: quote.request_id || quote.requestId || null,
@@ -4761,7 +4968,14 @@ function bindMissionAction(parent, quote, action) {
             return;
         }
         if (action.confirm && window.lyannConfirm) {
-            window.lyannConfirm('Valider le travail et libérer le paiement ? Cette action est définitive.').then((ok) => {
+            const confirmCopy = action.id === 'refund'
+                ? 'Annuler cette étape et récupérer les fonds ? Ils reviendront sur votre moyen de paiement.'
+                : action.id === 'request_cancel'
+                    ? 'Demander l’annulation ? Le Lyanneur devra accepter pour que les fonds reviennent.'
+                    : action.id === 'accept_cancel'
+                        ? 'Accepter l’annulation ? Les fonds pourront être rendus au demandeur. Vous ne serez pas payé pour cette étape.'
+                        : 'Valider le travail et libérer le paiement ? Cette action est définitive.';
+            window.lyannConfirm(confirmCopy).then((ok) => {
                 if (!ok) return;
                 setButtonBusy(button, true);
                 Promise.resolve(run()).finally(() => {
