@@ -521,16 +521,33 @@ function customerFeeRefundPolicy(env = process.env) {
     return { ok: false, code: 'FEE_POLICY_INVALID', includeCustomerFee: null };
 }
 
+function wholeCents(value) {
+    if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) return null;
+    return value;
+}
+
 function optionARefundBreakdown(payment) {
-    const service = Number(payment && payment.service_amount_cents);
-    const fee = Number(payment && payment.customer_fee_cents);
-    const total = Number(payment && payment.customer_total_cents);
-    const captured = Number.isFinite(total) ? total : null;
+    const service = wholeCents(Number(payment && payment.service_amount_cents));
+    const fee = wholeCents(Number(payment && payment.customer_fee_cents));
+    const total = wholeCents(Number(payment && payment.customer_total_cents));
+    const refundedTotal = wholeCents(Number(payment && payment.amount_refunded_cents) || 0);
+    const refundedFee = wholeCents(Number(payment && payment.customer_fee_refunded_cents) || 0);
+    const consistent = service != null && fee != null && total != null && refundedTotal != null && refundedFee != null
+        && total === service + fee
+        && refundedFee <= fee
+        && refundedTotal >= refundedFee
+        && refundedTotal <= total;
+    const refundedService = consistent ? refundedTotal - refundedFee : null;
     return {
-        service_cents: Number.isFinite(service) ? service : null,
-        customer_fee_cents: Number.isFinite(fee) ? fee : null,
-        customer_total_cents: captured,
-        consistent: Number.isFinite(service) && Number.isFinite(fee) && Number.isFinite(total) && total === service + fee
+        service_cents: service,
+        customer_fee_cents: fee,
+        customer_total_cents: total,
+        refunded_total_cents: refundedTotal,
+        refunded_fee_cents: refundedFee,
+        refunded_service_cents: refundedService,
+        remaining_service_cents: consistent ? service - refundedService : null,
+        remaining_total_cents: consistent ? total - refundedTotal : null,
+        consistent
     };
 }
 
@@ -543,10 +560,20 @@ function optionARefundAmountCents(payment, env = process.env) {
     if (!breakdown.consistent) {
         return { ok: false, code: 'AMOUNT_UNAVAILABLE', amount_cents: null, breakdown, policy };
     }
+    const wanted = policy.includeCustomerFee ? breakdown.remaining_total_cents : breakdown.remaining_service_cents;
+    if (wanted == null || wanted < 0) {
+        return { ok: false, code: 'AMOUNT_UNAVAILABLE', amount_cents: null, breakdown, policy };
+    }
+    if (wanted === 0) {
+        return { ok: false, code: 'ALREADY_REFUNDED', amount_cents: 0, breakdown, policy };
+    }
+    if (wanted > breakdown.remaining_total_cents) {
+        return { ok: false, code: 'AMOUNT_EXCEEDS_REFUNDABLE', amount_cents: null, breakdown, policy };
+    }
     return {
         ok: true,
         code: policy.code,
-        amount_cents: policy.includeCustomerFee ? breakdown.customer_total_cents : breakdown.service_cents,
+        amount_cents: wanted,
         breakdown,
         policy
     };

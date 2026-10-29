@@ -248,6 +248,12 @@ test('6.15 business classification does not invent auto-refund for started work'
     assert.equal(testAutoReady.execute, true);
     assert.equal(testAutoReady.code, 'READY');
     assert.equal(testAutoReady.amount_cents, 4349);
+    const testAutoRetain = prepare({
+        env: { STRIPE_TEST_AUTO_REFUND: 'true', LYANN_CUSTOMER_FEE_REFUND: 'retain' },
+        livemode: false
+    });
+    assert.equal(testAutoRetain.amount_cents, 4200);
+    assert.equal(testAutoRetain.fee_policy, 'FEE_RETAINED');
     assert.equal(classifyPreTransferRefundBusiness({
         payment: PAY,
         milestone: { status: 'COMPLETED' },

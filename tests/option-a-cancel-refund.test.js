@@ -62,19 +62,40 @@ function prepare(overrides) {
     }, overrides || {}));
 }
 
-test('9,49 € is 8,00 € service + 1,49 € customer fee; fee policy stays undecided', () => {
+test('retain refunds 8,00 € service and keeps 1,49 € LYANN fee', () => {
     const breakdown = optionARefundBreakdown(payment8());
-    assert.deepEqual(breakdown, {
-        service_cents: 800,
-        customer_fee_cents: 149,
-        customer_total_cents: 949,
-        consistent: true
-    });
-    assert.equal(customerFeeRefundPolicy({}).ok, false);
+    assert.equal(breakdown.service_cents, 800);
+    assert.equal(breakdown.customer_fee_cents, 149);
+    assert.equal(breakdown.customer_total_cents, 949);
+    assert.equal(breakdown.remaining_service_cents, 800);
+    assert.equal(breakdown.consistent, true);
     assert.equal(customerFeeRefundPolicy({}).code, 'FEE_POLICY_UNDECIDED');
     assert.equal(optionARefundAmountCents(payment8(), {}).code, 'FEE_POLICY_UNDECIDED');
     assert.equal(optionARefundAmountCents(payment8(), { LYANN_CUSTOMER_FEE_REFUND: 'refund' }).amount_cents, 949);
-    assert.equal(optionARefundAmountCents(payment8(), { LYANN_CUSTOMER_FEE_REFUND: 'retain' }).amount_cents, 800);
+    const retain = optionARefundAmountCents(payment8(), { LYANN_CUSTOMER_FEE_REFUND: 'retain' });
+    assert.equal(retain.ok, true);
+    assert.equal(retain.amount_cents, 800);
+    assert.equal(optionARefundAmountCents({
+        ...payment8(),
+        service_amount_cents: 800.5
+    }, { LYANN_CUSTOMER_FEE_REFUND: 'retain' }).code, 'AMOUNT_UNAVAILABLE');
+    assert.equal(optionARefundAmountCents({
+        ...payment8(),
+        amount_refunded_cents: 800,
+        customer_fee_refunded_cents: 0
+    }, { LYANN_CUSTOMER_FEE_REFUND: 'retain' }).code, 'ALREADY_REFUNDED');
+    const twoJalons = [
+        optionARefundAmountCents(payment8(), { LYANN_CUSTOMER_FEE_REFUND: 'retain' }),
+        optionARefundAmountCents({
+            ...payment8(),
+            id: 'pay-12',
+            milestone_id: 'milestone-2',
+            service_amount_cents: 1200,
+            customer_fee_cents: 149,
+            customer_total_cents: 1349
+        }, { LYANN_CUSTOMER_FEE_REFUND: 'retain' })
+    ];
+    assert.deepEqual(twoJalons.map((row) => row.amount_cents), [800, 1200]);
 });
 
 test('auto-refund execution stays off without commercial fee policy', () => {
@@ -125,7 +146,12 @@ test('provider consent after start makes the refund eligible, still not executed
 test('dossier CTAs follow option A without hiding report after a refusal', () => {
     const funded = quote();
     assert.equal(missionCard(funded, requester, 'active').actions[0].id, 'refund');
-    assert.match(missionCard(funded, requester, 'active').actions[0].label, /9,49/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].label, /8,00/);
+    assert.doesNotMatch(missionCard(funded, requester, 'active').actions[0].label, /9,49/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /Prestation remboursée : 8,00/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /non remboursés : 1,49/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /Total payé : 9,49/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /n’est pas encore effectué/);
     assert.equal(missionCard(funded, provider, 'active').actions[0].id, 'start');
 
     const started = quote({ milestones: [{ id: 'milestone-1', title: 'Prestation', status: 'IN_PROGRESS', amount: 8 }] });
@@ -168,4 +194,50 @@ test('migration 88 is additive to 87 and blocks closing a paid request', () => {
     assert.match(server, /\/v1\/milestones\/decide-cancel/);
     const activity = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
     assert.match(activity, /requestHasEngagedMoney/);
+    const chat = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
+    assert.match(chat, /confirmCopy/);
+    assert.doesNotMatch(chat, /refunds\.create/);
+    const policy = fs.readFileSync(path.join(__dirname, '../api/stripe-policy.js'), 'utf8');
+    assert.match(policy, /STRIPE_TEST_AUTO_REFUND/);
+    assert.match(policy, /remaining_service_cents/);
+});
+
+test('abandoned, failed and in-flight payments stay off the retain refund path', () => {
+    assert.equal(prepare({
+        payment: Object.assign(payment8(), { payment_status: 'FAILED', stripe_payment_intent_id: 'pi_fail' })
+    }).code, 'NOT_FUNDED');
+    assert.equal(prepare({
+        payment: Object.assign(payment8(), { payment_status: 'CREATED' })
+    }).code, 'NOT_FUNDED');
+    const created = quote({
+        payments: [{ ...payment8(), payment_status: 'CREATED' }],
+        milestones: [{ id: 'milestone-1', title: 'Prestation', status: 'PENDING', amount: 8 }]
+    });
+    assert.equal(missionCard(created, requester, 'active').actions.some((action) => action.id === 'refund'), false);
+    const mixed = quote({
+        milestones: [
+            { id: 'milestone-1', title: 'Acompte', status: 'IN_PROGRESS', amount: 8 },
+            { id: 'milestone-2', title: 'Solde', status: 'PENDING', amount: 12 }
+        ],
+        payments: [payment8()]
+    });
+    const providerCard = missionCard(mixed, provider, 'active');
+    assert.equal(providerCard.actions[0].id, 'done');
+    const requesterCard = missionCard(mixed, requester, 'active');
+    assert.equal(requesterCard.actions.some((action) => action.id === 'refund'), false);
+    assert.equal(requesterCard.actions[0].id, 'request_cancel');
+});
+
+test('execution stays disabled even when retain and test auto-refund are both set', () => {
+    const prepared = prepare({
+        env: { LYANN_CUSTOMER_FEE_REFUND: 'retain', STRIPE_TEST_AUTO_REFUND: 'false' }
+    });
+    assert.equal(prepared.execute, false);
+    assert.equal(prepared.code, 'EXECUTION_DISABLED');
+    const wouldReady = prepare({
+        env: { LYANN_CUSTOMER_FEE_REFUND: 'retain', STRIPE_TEST_AUTO_REFUND: 'true' }
+    });
+    assert.equal(wouldReady.execute, true);
+    assert.equal(wouldReady.amount_cents, 800);
+    assert.equal(wouldReady.fee_policy, 'FEE_RETAINED');
 });

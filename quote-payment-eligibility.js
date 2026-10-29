@@ -191,17 +191,46 @@
         return (Math.round(value * 100) / 100).toLocaleString('fr-FR') + ' €';
     }
 
-    function refundCancelLabel(quote, milestone) {
-        const pay = ((quote && quote.payments) || []).find((row) => {
+    function centsLabel(cents) {
+        if (!Number.isFinite(cents) || !Number.isInteger(cents) || cents < 0) return '';
+        return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    }
+
+    function succeededPaymentForMilestone(quote, milestone) {
+        return ((quote && quote.payments) || []).find((row) => {
             return row && String(row.milestone_id) === String(milestone && milestone.id)
                 && String(row.payment_status || '').toUpperCase() === 'SUCCEEDED';
-        });
-        const cents = pay && Number(pay.customer_total_cents);
-        if (Number.isFinite(cents) && cents > 0) {
-            return 'Annuler et récupérer ' + (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-        }
-        const amount = euros(milestone && milestone.amount);
-        return amount ? ('Annuler et récupérer ' + amount) : 'Annuler et récupérer mes fonds';
+        }) || null;
+    }
+
+    function retainRefundView(quote, milestone) {
+        const pay = succeededPaymentForMilestone(quote, milestone);
+        if (!pay) return null;
+        const service = Number(pay.service_amount_cents);
+        const fee = Number(pay.customer_fee_cents);
+        const total = Number(pay.customer_total_cents);
+        const refundedTotal = Number(pay.amount_refunded_cents) || 0;
+        const refundedFee = Number(pay.customer_fee_refunded_cents) || 0;
+        if (![service, fee, total, refundedTotal, refundedFee].every((value) => Number.isInteger(value) && value >= 0)) return null;
+        if (total !== service + fee || refundedFee > fee || refundedTotal < refundedFee || refundedTotal > total) return null;
+        const refundedService = refundedTotal - refundedFee;
+        const remainingService = service - refundedService;
+        const remainingTotal = total - refundedTotal;
+        if (remainingService <= 0 || remainingService > remainingTotal) return null;
+        const refundLabel = centsLabel(remainingService);
+        const feeLabel = centsLabel(fee);
+        const paidLabel = centsLabel(total);
+        return {
+            amount_cents: remainingService,
+            label: 'Annuler et récupérer ' + refundLabel,
+            confirmCopy: [
+                'Prestation remboursée : ' + refundLabel + '.',
+                'Frais de service LYANN non remboursés : ' + feeLabel + '.',
+                'Total payé : ' + paidLabel + '.',
+                'Montant restitué : ' + refundLabel + '.',
+                'Le remboursement n’est pas encore effectué.'
+            ].join('\n')
+        };
     }
 
     function actorCopy(actorToAct, role) {
@@ -370,13 +399,17 @@
                                 actions.push({ id: 'start', label: 'J’ai commencé', milestoneId: milestone.id });
                             }
                             if (role === 'requester') {
-                                actions.push({
-                                    id: 'refund',
-                                    label: refundCancelLabel(quote, milestone),
-                                    milestoneId: milestone.id,
-                                    tone: 'secondary',
-                                    confirm: true
-                                });
+                                const refundView = retainRefundView(quote, milestone);
+                                if (refundView) {
+                                    actions.push({
+                                        id: 'refund',
+                                        label: refundView.label,
+                                        milestoneId: milestone.id,
+                                        tone: 'secondary',
+                                        confirm: true,
+                                        confirmCopy: refundView.confirmCopy
+                                    });
+                                }
                             }
                         }
                         if (step === 'prestation' && milestone.status === 'IN_PROGRESS') {
@@ -386,12 +419,16 @@
                                     actions.push({ id: 'refuse_cancel', label: 'Je continue', milestoneId: milestone.id, tone: 'secondary' });
                                 }
                             } else if (cancel === 'ACCEPTED' && role === 'requester') {
-                                actions.push({
-                                    id: 'refund',
-                                    label: refundCancelLabel(quote, milestone),
-                                    milestoneId: milestone.id,
-                                    confirm: true
-                                });
+                                const refundView = retainRefundView(quote, milestone);
+                                if (refundView) {
+                                    actions.push({
+                                        id: 'refund',
+                                        label: refundView.label,
+                                        milestoneId: milestone.id,
+                                        confirm: true,
+                                        confirmCopy: refundView.confirmCopy
+                                    });
+                                }
                             } else if (role === 'provider' && cancel !== 'ACCEPTED') {
                                 actions.push({ id: 'done', label: 'Déclarer la prestation terminée', milestoneId: milestone.id });
                             } else if (role === 'requester' && cancel !== 'REFUSED' && cancel !== 'ACCEPTED') {
@@ -772,6 +809,7 @@
         providerFundsSecuredNote,
         quoteSettled,
         dealRecap,
+        retainRefundView,
         PAYMENT_ROUTE
     };
 });

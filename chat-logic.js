@@ -4449,7 +4449,8 @@ function pendingActionCopy(row, userId) {
         label: (action && action.label) || 'Voir le dossier',
         dealAction: action && action.id ? action.id : '',
         milestoneId: action && action.milestoneId ? action.milestoneId : '',
-        confirm: !!(action && action.confirm)
+        confirm: !!(action && action.confirm),
+        confirmCopy: action && action.confirmCopy ? action.confirmCopy : ''
     };
 }
 
@@ -4504,7 +4505,7 @@ function runBannerDealAction(button, row, copy) {
     });
     if (copy.confirm && typeof window.lyannConfirm === 'function') {
         const confirmCopy = actionId === 'refund'
-            ? 'Annuler cette étape et récupérer les fonds ? Ils reviendront sur votre moyen de paiement.'
+            ? (copy.confirmCopy || 'Annuler cette étape ? Seule la prestation sera remboursée. Les frais LYANN restent acquis. Le remboursement n’est pas encore effectué.')
             : actionId === 'request_cancel'
                 ? 'Demander l’annulation ? Le Lyanneur devra accepter pour que les fonds reviennent.'
                 : actionId === 'accept_cancel'
@@ -4969,7 +4970,7 @@ function bindMissionAction(parent, quote, action) {
         }
         if (action.confirm && window.lyannConfirm) {
             const confirmCopy = action.id === 'refund'
-                ? 'Annuler cette étape et récupérer les fonds ? Ils reviendront sur votre moyen de paiement.'
+                ? (action.confirmCopy || 'Annuler cette étape ? Seule la prestation sera remboursée. Les frais LYANN restent acquis. Le remboursement n’est pas encore effectué.')
                 : action.id === 'request_cancel'
                     ? 'Demander l’annulation ? Le Lyanneur devra accepter pour que les fonds reviennent.'
                     : action.id === 'accept_cancel'

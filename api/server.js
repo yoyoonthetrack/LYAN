@@ -74,6 +74,8 @@ const {
     applyChargeDisputeClosed,
     applyAccountUpdated,
     preparePreTransferRefund,
+    preTransferRefundExecutionEnabled,
+    customerFeeRefundPolicy,
     admitPreTransferRefundDispatch,
     webhookEventWriteRow,
     webhookEventLegacyPayloadRow,
@@ -462,10 +464,14 @@ app.get('/v1/payments/config', (req, res) => {
             stripe_mode: inspected.mode
         });
     }
+    const feePolicy = customerFeeRefundPolicy(process.env);
     res.json({
         publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
         stripeReady: inspected.allowsSecretUse && inspected.allowsPublishableUse,
-        stripe_mode: inspected.mode
+        stripe_mode: inspected.mode,
+        customer_fee_refund: feePolicy.ok ? (feePolicy.includeCustomerFee ? 'refund' : 'retain') : feePolicy.code,
+        auto_refund_enabled: preTransferRefundExecutionEnabled() === true
+            && String(process.env.STRIPE_TEST_AUTO_REFUND || '') === 'true'
     });
 });
 

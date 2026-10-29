@@ -235,7 +235,15 @@ test('one mission card replaces the stack and keeps a single primary action', ()
     assert.equal(pay.status, 'Devis accepté');
     assert.equal(pay.actions.length, 1);
     assert.equal(pay.actions[0].label, 'Sécuriser le paiement');
-    const funded = quote();
+    const funded = quote({
+        payments: [{
+            milestone_id: 'milestone-1',
+            payment_status: 'SUCCEEDED',
+            service_amount_cents: 1000,
+            customer_fee_cents: 149,
+            customer_total_cents: 1149
+        }]
+    });
     funded.milestones[0].status = 'FUNDED';
     const doing = missionCard(funded, provider, 'active');
     assert.equal(doing.status, 'Paiement sécurisé');
