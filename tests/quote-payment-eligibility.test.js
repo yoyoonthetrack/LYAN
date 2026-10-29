@@ -257,7 +257,7 @@ test('one mission card replaces the stack and keeps a single primary action', ()
     assert.equal(missionCard(started, provider, 'active').actions[0].id, 'done');
     assert.equal(missionCard(started, requester, 'active').actions[0].id, 'request_cancel');
     started.milestones[0].cancellation_status = 'REQUESTED';
-    assert.equal(missionCard(started, provider, 'active').actions[0].id, 'accept_cancel');
+    assert.deepEqual(missionCard(started, provider, 'active').actions.map((action) => action.id), ['accept_cancel', 'refuse_cancel']);
     assert.equal(missionCard(started, requester, 'active').actions.length, 0);
     const done = quote();
     done.milestones[0].status = 'COMPLETED';

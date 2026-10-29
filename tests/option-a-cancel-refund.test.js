@@ -161,7 +161,11 @@ test('dossier CTAs follow option A without hiding report after a refusal', () =>
     const asked = quote({
         milestones: [{ id: 'milestone-1', title: 'Prestation', status: 'IN_PROGRESS', amount: 8, cancellation_status: 'REQUESTED' }]
     });
-    assert.equal(missionCard(asked, provider, 'active').actions[0].id, 'accept_cancel');
+    const askedProvider = missionCard(asked, provider, 'active');
+    assert.deepEqual(askedProvider.actions.map((action) => action.id), ['accept_cancel', 'refuse_cancel']);
+    assert.equal(askedProvider.primaryAction.id, 'accept_cancel');
+    assert.equal(askedProvider.secondaryActions[0].id, 'refuse_cancel');
+    assert.equal(askedProvider.secondaryActions[0].label, 'Je continue');
     assert.equal(missionCard(asked, requester, 'active').actions.length, 0);
 
     const refused = quote({

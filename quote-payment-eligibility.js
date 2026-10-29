@@ -489,10 +489,18 @@
                 : 'Votre validation est confirmée. Le paiement a été libéré.';
         }
 
-        // At most one primary deal action in the header; extra milestone actions stay in details.
+        // One jalon family in the header. Paired actions for that same
+        // milestone stay together (accept + continue). Later jalons stay in details.
         const headerActions = [];
         actions.forEach((action) => {
-            if (!action.milestoneId || !headerActions.some((item) => item.milestoneId)) headerActions.push(action);
+            if (!action.milestoneId) {
+                headerActions.push(action);
+                return;
+            }
+            const headerMilestone = headerActions.find((item) => item.milestoneId);
+            if (!headerMilestone || headerMilestone.milestoneId === action.milestoneId) {
+                headerActions.push(action);
+            }
         });
         const primaryAction = headerActions.find((action) => action.tone !== 'secondary') || null;
         const secondaryActions = headerActions.filter((action) => action !== primaryAction);

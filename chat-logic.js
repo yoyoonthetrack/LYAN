@@ -3297,9 +3297,9 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     if (typeof window.showToast === 'function') {
                         window.showToast(
                             accept
-                                ? 'Remboursement accepté. Le demandeur peut récupérer ses fonds.'
+                                ? 'Annulation acceptée. Le remboursement n’est pas encore effectué.'
                                 : 'Mission poursuivie. Les fonds restent sécurisés.',
-                            'success'
+                            accept ? 'warning' : 'success'
                         );
                     }
                     invalidateActiveQuoteContext();

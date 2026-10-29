@@ -21,7 +21,10 @@ fi
 export LYANN_RUNTIME=staging
 export LYANN_STAGING_PREFLIGHT_STRICT=1
 export LYANN_VERCEL_CLI_DEPLOY=1
-node scripts/staging-preflight.js
+# Preflight reads process.env. A developer shell often has no Supabase URL, or
+# leftover Production values from .env.local. Load Staging V2 first; the
+# isolation check still refuses anything other than tdktfbtqceldlaeqjtow.
+node -r ./scripts/force-staging-v2-env.js scripts/staging-preflight.js
 
 # Vercel enregistre les crons du fichier vercel.json envoyé, pas ceux de
 # --local-config. On y copie uniquement les crons Staging le temps de l'envoi,
