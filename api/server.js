@@ -53,6 +53,7 @@ const {
     stripeRefundFailureAction,
     isRefundReservation,
     raiseDisputeDecision,
+    disputeDraftRow,
     stripeChargeId,
     applyPaymentRequiresAction,
     applyPaymentProcessing,
@@ -6021,12 +6022,83 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
         if (dispute.action === 'not_found' || pErr || !payment) {
             return res.status(404).json({ error: "Paiement introuvable pour cette Partie." });
         }
+        const providerId = payment.provider_id || quote.provider_id || mission.helper_id || mission.provider_id || null;
+        const reportText = String(reason || '').trim();
+        const metaReason = payment.metadata && typeof payment.metadata === 'object'
+            ? String(payment.metadata.dispute_reason || '').trim()
+            : '';
+
+        async function findActiveAdminDispute() {
+            const { data: rows } = await supabaseAdmin
+                .from('disputes')
+                .select('id, status')
+                .eq('milestone_id', milestone.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+            const closed = new Set([
+                'RESOLVED_CLIENT', 'RESOLVED_PROVIDER', 'RESOLVED_PARTIAL', 'CANCELLED',
+                'RESOLVED_REFUND', 'RESOLVED_PAYOUT', 'CLOSED'
+            ]);
+            return (rows || []).find((row) => row?.id && !closed.has(String(row.status || '').toUpperCase())) || null;
+        }
+
+        async function ensureAdminDisputeRow(sourceReason, { idempotent }) {
+            const existing = await findActiveAdminDispute();
+            if (existing?.id) {
+                return { disputeId: existing.id, created: false, idempotent: true };
+            }
+            if (!providerId) {
+                console.error('[raise-dispute] admin dispute missing provider_id', milestone.id);
+                return { disputeId: null, created: false, error: 'PROVIDER_MISSING' };
+            }
+            const draft = disputeDraftRow({
+                missionId: mission.id,
+                milestoneId: milestone.id,
+                paymentId: payment.id,
+                requesterId: mission.requester_id,
+                providerId,
+                reason: sourceReason || metaReason || 'Signalement client',
+                description: sourceReason || metaReason || null,
+                frozenAmountCents: payment.customer_total_cents
+            });
+            const inserted = await supabaseAdmin
+                .from('disputes')
+                .insert(draft)
+                .select('id')
+                .maybeSingle();
+            if (inserted.error) {
+                // Unique active-dispute index: another request won the race.
+                const raced = await findActiveAdminDispute();
+                if (raced?.id) {
+                    return { disputeId: raced.id, created: false, idempotent: true };
+                }
+                console.error('[raise-dispute] disputes insert failed', inserted.error.code || '', inserted.error.message || inserted.error);
+                return { disputeId: null, created: false, error: inserted.error };
+            }
+            if (inserted.data?.id) {
+                await supabaseAdmin.from('dispute_events').insert({
+                    dispute_id: inserted.data.id,
+                    actor_id: authUid,
+                    event_type: 'DISPUTE_OPENED',
+                    metadata: {
+                        source: 'raise-dispute',
+                        milestone_id: milestone.id,
+                        payment_id: payment.id,
+                        idempotent: !!idempotent
+                    }
+                });
+            }
+            return { disputeId: inserted.data?.id || null, created: true, idempotent: !!idempotent };
+        }
+
         if (dispute.action === 'already') {
+            const adminRow = await ensureAdminDisputeRow(reportText, { idempotent: true });
             return res.json({
                 success: true,
                 idempotent: true,
                 status: 'DISPUTED',
                 milestone_id: milestone.id,
+                dispute_id: adminRow.disputeId || null,
                 message: "Signalement de litige déjà enregistré. Le versement reste gelé."
             });
         }
@@ -6051,8 +6123,8 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
         // reason in logs and payment metadata when that column exists later.
         const freezePayload = { payment_status: 'DISPUTED' };
         const meta = payment.metadata && typeof payment.metadata === 'object' ? Object.assign({}, payment.metadata) : {};
-        if (reason) {
-            meta.dispute_reason = String(reason).slice(0, 2000);
+        if (reportText) {
+            meta.dispute_reason = reportText.slice(0, 2000);
             meta.dispute_reported_at = nowIso;
             freezePayload.metadata = meta;
         }
@@ -6088,12 +6160,18 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
             .eq('id', milestone.id)
             .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
 
+        const adminRow = await ensureAdminDisputeRow(reportText, { idempotent: false });
+        if (!adminRow.disputeId) {
+            console.error('[raise-dispute] freeze ok but admin dispute missing', milestone.id, adminRow.error || '');
+        }
+
         console.log(`⚠️ [DISPUTE RAISED] Litige ouvert par le client sur Partie ${milestone.id}. Raison: ${reason}`);
 
         return res.json({
             success: true,
             status: "DISPUTED",
             milestone_id: milestone.id,
+            dispute_id: adminRow.disputeId || null,
             message: "Signalement de litige enregistré. Le versement est gelé en attente de médiation."
         });
 

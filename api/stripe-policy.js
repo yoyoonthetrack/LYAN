@@ -2023,14 +2023,41 @@ function raiseDisputeDecision({ authUid, requesterId, milestone, payment }) {
     return { action: 'freeze', http: 200, freeze: true };
 }
 
-function disputeDraftRow({ milestoneId, paymentId, requesterId, reason }) {
+function disputeDraftRow({
+    missionId,
+    milestoneId,
+    paymentId,
+    requesterId,
+    providerId,
+    reason,
+    description,
+    frozenAmountCents,
+    disputeNumber
+}) {
+    const message = String(reason || description || '').trim().slice(0, 2000);
+    const text = message || 'Signalement client';
+    const cents = Number(frozenAmountCents);
+    const frozen = Number.isFinite(cents) && cents >= 0
+        ? Number((Math.trunc(cents) / 100).toFixed(2))
+        : 0;
+    const number = String(disputeNumber || '').trim()
+        || ('DSP-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1e6).toString(36).toUpperCase());
     return {
+        // Staging still carries the legacy schema.sql columns (required) plus
+        // migration 11 party columns used by the admin Litiges desk.
+        dispute_number: number,
+        frozen_amount: frozen,
+        initiator_id: requesterId || null,
+        mission_id: missionId || null,
         milestone_id: milestoneId || null,
         payment_id: paymentId || null,
-        opened_by: requesterId || null,
-        reason: reason || null,
+        requester_id: requesterId || null,
+        provider_id: providerId || null,
         status: 'OPEN',
-        resolution: null
+        reason: text,
+        description: description != null && String(description).trim()
+            ? String(description).trim().slice(0, 4000)
+            : (message || null)
     };
 }
 

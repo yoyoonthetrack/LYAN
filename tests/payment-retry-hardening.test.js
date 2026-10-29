@@ -132,6 +132,15 @@ test('release, transfer and dispute read the money row, not a declined attempt',
     assert.match(transferHelper, /milestoneMoneyPayment\(milestoneId\)/);
 });
 
+test('raise-dispute writes an OPEN row into disputes for the admin Litiges desk', () => {
+    const dispute = server.slice(server.indexOf("app.post('/v1/milestones/raise-dispute'"), server.indexOf("app.post('/v1/payments/validate-and-transfer'"));
+    assert.match(dispute, /disputeDraftRow\(/);
+    assert.match(dispute, /\.from\('disputes'\)\s*\n\s*\.insert\(draft\)/);
+    assert.match(dispute, /\.from\('dispute_events'\)\.insert\(/);
+    assert.match(dispute, /DISPUTE_OPENED/);
+    assert.match(dispute, /ensureAdminDisputeRow/);
+});
+
 test('a transfer is looked up in Stripe before it is created and never mocked', () => {
     assert.doesNotMatch(transferHelper, /stripe_test_mock|tr_test_/);
     assert.match(transferHelper, /STRIPE_UNAVAILABLE/);

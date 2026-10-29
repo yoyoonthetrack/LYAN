@@ -948,12 +948,24 @@ test('a dispute freezes transfer and admin resolution stays a proposal', () => {
     }).code, 'DISPUTED');
     assert.equal(evaluateRefund(payment, { status: 'DISPUTED' }).code, 'DISPUTED');
     const draft = disputeDraftRow({
+        missionId: 'mis1',
         milestoneId: 'm1',
         paymentId: 'p1',
         requesterId: 'A',
-        reason: 'qa'
+        providerId: 'B',
+        reason: 'qa',
+        frozenAmountCents: 1549,
+        disputeNumber: 'DSP-TEST-1'
     });
     assert.equal(draft.status, 'OPEN');
+    assert.equal(draft.mission_id, 'mis1');
+    assert.equal(draft.provider_id, 'B');
+    assert.equal(draft.reason, 'qa');
+    assert.equal(draft.initiator_id, 'A');
+    assert.equal(draft.dispute_number, 'DSP-TEST-1');
+    assert.equal(draft.frozen_amount, 15.49);
+    assert.equal(draft.opened_by, undefined);
+    assert.equal(draft.resolution, undefined);
     assert.equal(resolveDisputeDecision({ adminOk: false, action: 'refund_untransferred', payment }).http, 403);
     assert.equal(resolveDisputeDecision({
         adminOk: true,
