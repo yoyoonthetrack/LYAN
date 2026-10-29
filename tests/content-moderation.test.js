@@ -63,6 +63,17 @@ test('an intermediate or flagged score waits, and a failed response never publis
     assert.equal(moderation.decideModeration({ flagged: false }).decision, 'pending');
 });
 
+test('a video is retried when the safety checker is not configured', async () => {
+    const decision = await moderation.classifyContent({
+        text: 'Regarde cette réparation.',
+        media: [{ bucket: 'bokantaj-media', path: 'user/clip.mp4' }],
+        apiKey: '',
+        fetchImpl: async () => { throw new Error('Le vérificateur absent ne doit pas être appelé.'); }
+    });
+    assert.equal(decision.decision, 'pending');
+    assert.equal(decision.reason, 'unconfigured');
+});
+
 test('videos stay pending even when the accompanying text is acceptable', async () => {
     let called = 0;
     const decision = await moderation.classifyContent({

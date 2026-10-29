@@ -261,6 +261,9 @@ body.feed-page #composerUserAvatar {
 body.feed-page .bokantaj-composer-media {
     width: 44px;
     height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 0;
     border-radius: 14px;
     border: 1px solid #eadfcd;
     background: #faf7f2;
@@ -345,12 +348,36 @@ body.feed-page .btn-publish-flash {
 body.feed-page .bokantaj-sort-bar {
     display: flex;
     align-items: stretch;
+    flex-wrap: wrap;
     gap: 4px;
     margin: 0 0 12px;
     padding: 0 2px 0;
     border-bottom: 1px solid #eadfcd;
-    overflow-x: auto;
+    overflow: visible;
     scrollbar-width: none;
+}
+body.feed-page .bokantaj-territory-filter {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 6px;
+    color: #3d5144;
+    font-size: 0.82rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+body.feed-page .bokantaj-territory-filter select {
+    min-height: 36px;
+    max-width: 9.2rem;
+    border: 1px solid #e2ddcc;
+    border-radius: 999px;
+    background: #fffdf8;
+    color: #24352a;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 750;
+    padding: 4px 28px 4px 12px;
 }
 body.feed-page .bokantaj-sort-tab,
 body.feed-page .bokantaj-sort-filters {
@@ -493,102 +520,262 @@ body.feed-page .bokantaj-location-actions {
     font-weight: 800;
 }
 #bokantajFilterSheetModal #btnResetBokantajSheetFilters { flex: 1; }
-body.feed-page .bokantaj-header-art {
-    display: block;
+/* ==========================================================================
+   CLEAN VECTOR UNIVERSE BANNERS (Bokantaj, Annonces, Lyanneurs)
+   ========================================================================== */
+.lyann-universe-banner {
+    position: relative;
     width: 100%;
-    height: auto;
-    border-radius: 18px;
-    filter: none;
+    overflow: hidden;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
 }
-@media (max-width: 767px) {
-    body.feed-page .bokantaj-header-art {
-        border-radius: 16px;
+
+/* Visibility based on page & mode */
+body.feed-page .banner-bokantaj {
+    display: flex;
+}
+body[data-explorer-mode="annonces"] .banner-annonces {
+    display: flex;
+}
+body[data-explorer-mode="lyanneurs"] .banner-lyanneurs {
+    display: flex;
+}
+
+/* Background themes */
+.banner-bokantaj,
+.banner-annonces {
+    background-color: #FCF6E6;
+}
+.banner-lyanneurs {
+    background-color: #D9EBDB;
+}
+
+/* Watermarks background */
+.banner-watermarks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+}
+.banner-watermarks .wm-icon {
+    position: absolute;
+    display: block;
+    opacity: 0.92;
+}
+
+/* Bokantaj Watermark Positions */
+.banner-bokantaj .wm-star-1 { top: 12px; left: 420px; width: 44px; height: 44px; }
+.banner-bokantaj .wm-star-2 { top: 58px; left: 385px; width: 26px; height: 26px; }
+.banner-bokantaj .wm-cocktail { top: 90px; left: 410px; width: 36px; height: 36px; }
+.banner-bokantaj .wm-play { top: 125px; left: 450px; width: 62px; height: 50px; }
+.banner-bokantaj .wm-camera { top: 110px; left: 620px; width: 68px; height: 54px; }
+.banner-bokantaj .wm-news { top: 32px; left: 580px; width: 75px; height: 38px; }
+.banner-bokantaj .wm-cloud { top: 8px; right: 280px; width: 72px; height: 36px; }
+
+/* Annonces Watermark Positions */
+.banner-annonces .wm-bubble-1 { top: 35px; left: 480px; width: 50px; height: 40px; }
+.banner-annonces .wm-bubble-2 { top: 115px; left: 540px; width: 64px; height: 52px; }
+.banner-annonces .wm-search { top: 48px; left: 620px; width: 36px; height: 36px; }
+.banner-annonces .wm-cloud-annonces { top: -6px; right: 180px; width: 110px; height: 50px; }
+
+/* Lyanneurs Watermark Positions */
+.banner-lyanneurs .wm-roller { top: 42px; left: 510px; width: 42px; height: 42px; }
+.banner-lyanneurs .wm-screwdriver { top: 75px; left: 620px; width: 38px; height: 38px; }
+.banner-lyanneurs .wm-drill { top: 135px; left: 550px; width: 42px; height: 34px; }
+
+/* Left Content */
+.banner-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding-left: 36px;
+    padding-right: 20px;
+    max-width: 560px;
+}
+
+.banner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px 4px 9px;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+.badge-bokantaj {
+    background-color: #EA5A47;
+    color: #FFFFFF;
+}
+.badge-annonces {
+    background-color: #F8C63D;
+    color: #FFFFFF;
+}
+.badge-annonces .badge-bubble {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 2px;
+}
+.badge-lyanneurs {
+    background-color: #287A4B;
+    color: #FFFFFF;
+}
+
+.banner-title {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 3.15rem;
+    font-weight: 700;
+    color: #1F4A2C;
+    line-height: 1.28;
+    margin: 2px 0 4px;
+    letter-spacing: 0.01em;
+    padding-bottom: 0.08em;
+    overflow: visible;
+}
+
+.banner-subtitle {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: #3E5144;
+    line-height: 1.35;
+    margin: 0;
+    max-width: 440px;
+}
+
+/* Right Illustration */
+.banner-illustration {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    pointer-events: none;
+}
+.banner-illustration img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+    object-position: right bottom;
+    display: block;
+}
+
+/* Old static image classes remain completely hidden */
+.bokantaj-header-art,
+.annonces-header-art,
+.lyanneurs-header-art,
+.bokantaj-header-native,
+.annonces-header-native,
+.lyanneurs-header-native,
+.bokantaj-header-desktop,
+.annonces-header-desktop,
+.lyanneurs-header-desktop {
+    display: none !important;
+}
+
+/* Desktop sizing (min-width: 1024px) */
+@media (min-width: 1024px) {
+    body:not(.is-native-app).feed-page .feed-hero-section.lyann-universe-header {
+        padding: calc(70px + env(safe-area-inset-top, 0px)) 0 4px;
+    }
+    body:not(.is-native-app)[data-explorer-mode="annonces"] .explorer-page.lyann-universe,
+    body:not(.is-native-app)[data-explorer-mode="lyanneurs"] .explorer-page.lyann-universe {
+        max-width: 1240px;
+        padding-top: calc(70px + env(safe-area-inset-top, 0px));
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+    .lyann-universe-banner {
+        height: 236px;
+        border-radius: 0;
     }
 }
+
+/* Mobile & Tablet sizing (< 1024px) */
+@media (max-width: 1023px) {
+    body:not(.is-native-app).feed-page .feed-hero-section.lyann-universe-header {
+        padding: calc(70px + env(safe-area-inset-top, 0px)) 0 4px;
+    }
+    body:not(.is-native-app)[data-explorer-mode="annonces"] .explorer-page.lyann-universe,
+    body:not(.is-native-app)[data-explorer-mode="lyanneurs"] .explorer-page.lyann-universe {
+        padding-top: calc(70px + env(safe-area-inset-top, 0px));
+    }
+    .lyann-universe-banner {
+        width: 100vw;
+        max-width: 100vw;
+        margin-left: calc(50% - 50vw);
+        height: 156px;
+        min-height: 156px;
+        border-radius: 0;
+    }
+    .banner-content {
+        padding-left: 18px;
+        padding-right: 6px;
+        max-width: 65%;
+    }
+    .banner-badge {
+        padding: 3px 8px;
+        font-size: 0.62rem;
+        margin-bottom: 3px;
+    }
+    .banner-title {
+        font-size: clamp(1.85rem, 6.2vw, 2.35rem);
+        margin: 2px 0 3px;
+    }
+    .banner-subtitle {
+        font-size: clamp(0.76rem, 2.7vw, 0.88rem);
+        line-height: 1.25;
+        max-width: 260px;
+    }
+    .banner-illustration {
+        max-width: 48%;
+    }
+    .banner-illustration img {
+        max-width: 100%;
+    }
+    .banner-watermarks {
+        display: none;
+    }
+}
+
+/* Native app adjustments */
 body.is-native-app.feed-page .feed-hero-section.lyann-universe-header > .container {
     padding-left: 0 !important;
     padding-right: 0 !important;
     max-width: none;
     width: 100%;
 }
-body.is-native-app.feed-page .bokantaj-header-art {
-    width: 100%;
-    border-radius: 0;
-}
-.annonces-header-art,
-.lyanneurs-header-art { display: none; }
-body[data-explorer-mode="annonces"] .annonces-header-art,
-body[data-explorer-mode="lyanneurs"] .lyanneurs-header-art {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-radius: 18px;
-}
-body[data-explorer-mode="annonces"] .lyann-universe-frame,
-body[data-explorer-mode="lyanneurs"] .lyann-universe-frame { display: none; }
-body[data-explorer-mode="annonces"] .lyann-universe-copy,
-body[data-explorer-mode="lyanneurs"] .lyann-universe-copy {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-@media (max-width: 767px) {
-    body[data-explorer-mode="annonces"] .annonces-header-art,
-    body[data-explorer-mode="lyanneurs"] .lyanneurs-header-art {
-        width: 100vw;
-        max-width: 100vw;
-        margin-left: calc(50% - 50vw);
-        border-radius: 0;
-    }
-}
-body.is-native-app[data-explorer-mode="annonces"] .annonces-header-art,
-body.is-native-app[data-explorer-mode="lyanneurs"] .lyanneurs-header-art {
+body.is-native-app .lyann-universe-banner {
     width: 100vw;
     max-width: 100vw;
     margin-left: calc(50% - 50vw);
+    height: 156px;
+    min-height: 156px;
     border-radius: 0;
 }
-body[data-explorer-mode="lyanneurs"] .explorer-page .lyann-pills {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    mask-image: none;
-    -webkit-mask-image: none;
-    gap: 6px;
-    padding: 0 2px 2px;
+body.is-native-app.feed-page .feed-main-section {
+    position: relative;
+    z-index: 1;
+    margin-top: -50px;
 }
-body[data-explorer-mode="lyanneurs"] .lyann-pill {
-    min-height: 32px;
-    padding: 4px 10px;
-    font-size: 0.78rem;
-}
-@media (max-width: 767px) {
-    .explorer-page .explorer-tools { margin: 8px 0 0 !important; }
-    .explorer-page .explorer-results-heading { margin: 2px 0 8px !important; }
-    .explorer-page .explorer-active-filters:empty { display: none; }
-}
-body.is-native-app .explorer-page .explorer-tools { margin: 8px 0 0 !important; }
-body.is-native-app .explorer-page .explorer-results-heading { margin: 2px 0 8px !important; }
-.bokantaj-header-desktop,
-.annonces-header-desktop,
-.lyanneurs-header-desktop { display: none; }
-@media (min-width: 1024px) {
-    body:not(.is-native-app).feed-page .bokantaj-header-art { display: none; }
-    body:not(.is-native-app).feed-page .bokantaj-header-desktop,
-    body:not(.is-native-app)[data-explorer-mode="annonces"] .annonces-header-desktop,
-    body:not(.is-native-app)[data-explorer-mode="lyanneurs"] .lyanneurs-header-desktop {
-        display: block;
-        width: 100%;
-        height: auto;
-        border-radius: 28px;
-    }
-    body:not(.is-native-app)[data-explorer-mode="annonces"] .annonces-header-art,
-    body:not(.is-native-app)[data-explorer-mode="lyanneurs"] .lyanneurs-header-art { display: none; }
+body.is-native-app[data-explorer-mode="annonces"] #explorerPanel,
+body.is-native-app[data-explorer-mode="lyanneurs"] #explorerPanel {
+    position: relative;
+    z-index: 1;
+    margin-top: -14px;
 }
 #bokantajFilterSheetModal.mobile-bottom-sheet {
     align-items: flex-end !important;

@@ -48,6 +48,36 @@
     return created >= clock - days * 24 * 60 * 60 * 1000;
   }
 
+  function territoryKeyFromLabel(value) {
+    const text = fold(value);
+    if (!text) return '';
+    if (text.includes('martinique') || text.includes('972')) return 'martinique';
+    if (text.includes('guyane') || text.includes('973')) return 'guyane';
+    if (text.includes('reunion') || text.includes('974')) return 'reunion';
+    if (text.includes('saint martin') || text.includes('st martin') || text.includes('978')) return 'saint-martin';
+    if (text.includes('guadeloupe') || text.includes('971')) return 'guadeloupe';
+    return '';
+  }
+
+  // The publication's own territory wins. The author's territory is the
+  // fallback, because many posts never stored one. A city name that mentions
+  // two islands must not pull the post out of its real territory.
+  function postTerritoryKey(post) {
+    const explicit = territoryKeyFromLabel(post && post.territory);
+    if (explicit) return explicit;
+    const author = territoryKeyFromLabel(post && (post.author_territory || post.authorTerritory));
+    if (author) return author;
+    const place = territoryKeyFromLabel([post && post.city, post && post.location, post && post.author_city].filter(Boolean).join(' '));
+    if (place) return place;
+    if (post && post.territoryKey) return String(post.territoryKey);
+    return 'guadeloupe';
+  }
+
+  function postMatchesTerritory(post, key) {
+    if (!key || key === 'all') return true;
+    return postTerritoryKey(post) === key;
+  }
+
   function communeMatches(post, label) {
     const commune = fold(String(label || '').split('·')[0]);
     if (!commune) return false;
@@ -101,6 +131,9 @@
     TYPE_ALIASES,
     postMatchesTypes,
     postWithinPeriod,
+    territoryKeyFromLabel,
+    postTerritoryKey,
+    postMatchesTerritory,
     communeMatches,
     formatDistanceKm,
     sortPosts

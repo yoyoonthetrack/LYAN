@@ -57,7 +57,9 @@ const PRODUCTION_FINANCIAL_ROUTES = new Set([
     '/v1/milestones/submit-completion',
     '/v1/milestones/release-payment',
     '/v1/milestones/claim-transfer',
-    '/v1/milestones/raise-dispute'
+    '/v1/milestones/raise-dispute',
+    '/v1/milestones/request-cancel',
+    '/v1/milestones/decide-cancel'
 ]);
 
 function normalizePathValue(value) {

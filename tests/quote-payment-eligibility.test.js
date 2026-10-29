@@ -15,6 +15,7 @@ const {
     nextFundingAction,
     providerFundsSecuredNote,
     missionCard,
+    quoteReview,
     missionBoard,
     dealRecap,
     quoteSettled,
@@ -221,7 +222,8 @@ test('successive quotes keep one active card and do not mix two missions', () =>
 test('one mission card replaces the stack and keeps a single primary action', () => {
     const sent = missionCard(quote({ status: 'SENT', total_amount: 100, description: 'Haie' }), requester, 'active');
     assert.equal(sent.status, 'Devis reçu');
-    assert.deepEqual(sent.actions.map((action) => action.label), ['Accepter le devis', 'Refuser']);
+    assert.deepEqual(sent.actions.map((action) => action.label), ['Voir le devis']);
+    assert.equal(sent.actions.some((action) => action.id === 'accept'), false);
     const waiting = missionCard(quote({ status: 'SENT' }), provider, 'none');
     assert.equal(waiting.status, 'Devis envoyé');
     assert.equal(waiting.actions.length, 0);
@@ -233,12 +235,30 @@ test('one mission card replaces the stack and keeps a single primary action', ()
     assert.equal(pay.status, 'Devis accepté');
     assert.equal(pay.actions.length, 1);
     assert.equal(pay.actions[0].label, 'Sécuriser le paiement');
-    const funded = quote();
+    const funded = quote({
+        payments: [{
+            milestone_id: 'milestone-1',
+            payment_status: 'SUCCEEDED',
+            service_amount_cents: 1000,
+            customer_fee_cents: 149,
+            customer_total_cents: 1149
+        }]
+    });
     funded.milestones[0].status = 'FUNDED';
     const doing = missionCard(funded, provider, 'active');
     assert.equal(doing.status, 'Paiement sécurisé');
-    assert.equal(doing.actions[0].label, 'Déclarer la prestation terminée');
-    assert.equal(missionCard(funded, requester, 'active').actions.length, 0);
+    assert.equal(doing.actions[0].id, 'start');
+    assert.equal(doing.actions[0].label, 'J’ai commencé');
+    const fundedRequester = missionCard(funded, requester, 'active');
+    assert.equal(fundedRequester.actions[0].id, 'refund');
+    assert.match(fundedRequester.actions[0].label, /Annuler et récupérer/);
+    const started = quote();
+    started.milestones[0].status = 'IN_PROGRESS';
+    assert.equal(missionCard(started, provider, 'active').actions[0].id, 'done');
+    assert.equal(missionCard(started, requester, 'active').actions[0].id, 'request_cancel');
+    started.milestones[0].cancellation_status = 'REQUESTED';
+    assert.deepEqual(missionCard(started, provider, 'active').actions.map((action) => action.id), ['accept_cancel', 'refuse_cancel']);
+    assert.equal(missionCard(started, requester, 'active').actions.length, 0);
     const done = quote();
     done.milestones[0].status = 'COMPLETED';
     const check = missionCard(done, requester, 'active');
@@ -259,6 +279,56 @@ test('one mission card replaces the stack and keeps a single primary action', ()
     const mixed = missionCard(two, provider, 'active');
     assert.equal(mixed.actions.length, 1);
     assert.equal(mixed.details.find((line) => line.id === 'b').action, null);
+});
+
+test('a received quote is opened before it can be signed', () => {
+    const sent = quote({
+        status: 'SENT',
+        mission_id: null,
+        description: 'Taille de la haie',
+        total_amount: 40,
+        version: 2,
+        valid_until: '2099-11-02T00:00:00Z',
+        milestones: [{ id: 'a', title: 'Taille', description: 'Façade', amount: 40, status: 'PENDING', display_order: 1 }]
+    });
+    const card = missionCard(sent, requester, 'active');
+    assert.deepEqual(card.actions.map((action) => action.id), ['view']);
+    assert.equal(card.primaryAction.label, 'Voir le devis');
+    const review = quoteReview(sent, requester);
+    assert.equal(review.acceptsOnOpen, false);
+    assert.equal(review.canAccept, true);
+    assert.equal(review.acceptLabel, 'Signer et accepter le devis');
+    assert.equal(review.prestation, 'Taille de la haie');
+    assert.equal(review.amount, '40 €');
+    assert.equal(review.milestones[0].title, 'Taille');
+    assert.equal(review.milestones[0].detail, 'Façade');
+    assert.match(review.conditions, /02\/11\/2099/);
+    assert.match(review.conditions, /Version 2/);
+    assert.equal(quoteReview(sent, provider).canAccept, false);
+    const accepted = quoteReview(Object.assign({}, sent, { status: 'ACCEPTED' }), requester);
+    assert.equal(accepted.canAccept, false);
+    assert.equal(accepted.acceptLabel, '');
+    for (const status of ['REJECTED', 'DECLINED', 'CANCELLED', 'CANCELED']) {
+        const closed = quoteReview(Object.assign({}, sent, { status }), requester);
+        assert.equal(closed.canAccept, false, status);
+        assert.equal(closed.acceptLabel, '');
+    }
+    const expired = quoteReview(Object.assign({}, sent, { valid_until: '2000-01-01T00:00:00Z' }), requester);
+    assert.equal(expired.canAccept, false);
+    assert.equal(expired.acceptBlock, 'Ce devis a expiré.');
+    const closedRequest = quoteReview(Object.assign({}, sent, { request_status: 'CANCELLED' }), requester);
+    assert.equal(closedRequest.canAccept, false);
+    assert.equal(closedRequest.acceptBlock, 'La demande n’est plus ouverte.');
+    const mission = quoteReview(Object.assign({}, sent, { mission_id: 'mission-live', mission_status: 'AGREED' }), requester);
+    assert.equal(mission.canAccept, false);
+    assert.equal(mission.acceptBlock, 'Une mission existe déjà pour ce devis.');
+    const cancelledMission = quoteReview(Object.assign({}, sent, { mission_id: 'mission-old', mission_status: 'CANCELLED' }), requester);
+    assert.equal(cancelledMission.canAccept, true);
+    const source = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
+    const viewHandler = source.slice(source.indexOf("if (action.id === 'view')"), source.indexOf("if (action.id === 'accept')"));
+    assert.equal(viewHandler.includes('handleAcceptQuote'), false);
+    assert.match(source, /window\.openQuoteReview = function/);
+    assert.match(source, /Signer et accepter le devis/);
 });
 
 test('secured funds tell the Lyanneur to meet the requester by name', () => {

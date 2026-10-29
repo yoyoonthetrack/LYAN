@@ -54,13 +54,16 @@ function cronAuthorized(authorization, env) {
 }
 
 function pushAudience(env) {
-    if (!automaticPushEnabled(env)) return { enabled: false, allowlist: null };
-    if (!env || env.PUSH_QA_ONLY !== 'true') return { enabled: true, allowlist: null };
-    const allowlist = String(env.PUSH_QA_USER_IDS || '')
+    if (!automaticPushEnabled(env)) return { enabled: false, allowlist: null, code: 'PUSH_AUTOMATIC_DISABLED' };
+    const staging = String(env && env.LYANN_RUNTIME || '').toLowerCase() === 'staging';
+    const restricted = staging || Boolean(env && env.PUSH_QA_ONLY === 'true');
+    if (!restricted) return { enabled: true, allowlist: null, code: null };
+    const allowlist = String(env && env.PUSH_QA_USER_IDS || '')
         .split(',')
         .map((value) => value.trim())
         .filter((value) => /^[0-9a-f-]{36}$/i.test(value));
-    return { enabled: true, allowlist };
+    if (!allowlist.length) return { enabled: false, allowlist: [], code: 'PUSH_QA_REQUIRED' };
+    return { enabled: true, allowlist, code: null };
 }
 
 function pushSound(customSound) {
@@ -98,6 +101,7 @@ function routeIdsFromTarget(target, fallbackRoute) {
         requestId: (target && target.requestId) || null,
         invitationId: (target && target.invitationId) || null,
         quoteId: (target && target.quoteId) || null,
+        conversationId: (target && target.conversationId) || null,
         missionId: (target && target.missionId) || null,
         milestoneId: (target && target.milestoneId) || null,
         scopeSource: (target && target.scopeSource) || 'legacy'
@@ -117,6 +121,7 @@ function routeFor(event) {
         requestId: event.requestId || event.request_id || null,
         invitationId: event.invitationId || event.invitation_id || null,
         quoteId: event.quoteId || event.quote_id || null,
+        conversationId: event.conversationId || event.conversation_id || null,
         missionId: event.missionId || event.mission_id || null,
         milestoneId: event.milestoneId || event.milestone_id || null
     }, { viewerId: event.recipientId });
@@ -212,7 +217,7 @@ function buildAutomaticPayload(plan) {
         }
     };
     if (route.route) payload.route = route.route;
-    const ids = ['contactId', 'requestId', 'invitationId', 'quoteId', 'missionId', 'milestoneId'];
+    const ids = ['contactId', 'requestId', 'invitationId', 'quoteId', 'conversationId', 'missionId', 'milestoneId'];
     for (const key of ids) {
         const value = route[key];
         if (value && isUuid(value)) payload[key] = String(value);
@@ -356,6 +361,7 @@ async function drainQueue(options) {
                 requestId: row.requestId,
                 invitationId: row.invitationId,
                 quoteId: row.quoteId,
+                conversationId: row.conversationId,
                 missionId: row.missionId,
                 milestoneId: row.milestoneId,
                 recipientId: row.recipientId

@@ -42,7 +42,7 @@ const acceptedQuote = {
 test('6.33 business gates stay on missionCard and dossierActionIds', () => {
     const requesterPending = payment.missionCard(pendingQuote, 'A', 'active');
     const providerPending = payment.missionCard(pendingQuote, 'B', 'active');
-    assert.equal(requesterPending.primaryAction && requesterPending.primaryAction.id, 'accept');
+    assert.equal(requesterPending.primaryAction && requesterPending.primaryAction.id, 'view');
     assert.equal((providerPending.actions || []).some((action) => action.id === 'accept'), false);
     assert.equal(payment.quoteNeedsViewerAction(pendingQuote, 'A', 'active'), true);
     assert.equal(payment.quoteNeedsViewerAction(pendingQuote, 'B', 'active'), false);

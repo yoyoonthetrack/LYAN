@@ -301,6 +301,55 @@ function stripeTransferFailureAction(recoveredTransfer) {
     return { action: 'fail', nextStatus: 'TRANSFER_FAILED' };
 }
 
+// Stripe forgets idempotency keys after 24 hours. Before any transfer, look for one already
+// made for this milestone so a late retry can never pay the Lyanneur twice.
+function existingMilestoneTransferDecision(transfers, milestoneId, amountCents, destination) {
+    const mine = (transfers || []).filter((transfer) => transfer
+        && transfer.metadata
+        && String(transfer.metadata.milestone_id || '') === String(milestoneId || ''));
+    if (!mine.length) return { action: 'create' };
+    if (mine.length > 1) return { action: 'block', code: 'TRANSFER_TO_VERIFY' };
+    const transfer = mine[0];
+    const sameTarget = String(transfer.destination || '') === String(destination || '')
+        && Number(transfer.amount) === Number(amountCents)
+        && !transfer.reversed
+        && !(Number(transfer.amount_reversed) > 0);
+    if (!sameTarget) return { action: 'block', code: 'TRANSFER_TO_VERIFY' };
+    return { action: 'complete', transferId: transfer.id };
+}
+
+// cancel_mission_secure only checks the AGREED status, and a paid mission stays AGREED.
+// Work, validation and transfers stop on a cancelled mission; the secured funds wait for an operator.
+function missionBlocksMoneyStep(mission) {
+    const status = String((mission && mission.status) || '').toUpperCase();
+    return !mission || status === 'CANCELLED' || status === 'CANCELED';
+}
+
+function disputeArrivedBeforeSettlement(payment) {
+    return !!payment && ['CREATED', 'REQUIRES_ACTION', 'PROCESSING'].includes(String(payment.payment_status || '').toUpperCase());
+}
+
+function fundedChargeTransferDecision(charge, expectedCents) {
+    if (!charge || charge.status !== 'succeeded' || charge.paid !== true) {
+        return { ok: false, code: 'CHARGE_A_VERIFIER', error: 'Le paiement client n’a pas pu être vérifié chez Stripe. Aucun transfert n’a été créé.' };
+    }
+    if (charge.disputed === true) {
+        return { ok: false, code: 'DISPUTED', error: 'Versement interdit pendant un litige.' };
+    }
+    if (Number(charge.amount_refunded || 0) > 0 || charge.refunded === true) {
+        return { ok: false, code: 'REFUND_BLOCKS_TRANSFER', error: 'Remboursement en cours ou déjà effectué.' };
+    }
+    if (Number(charge.amount) !== Number(expectedCents)) {
+        return { ok: false, code: 'AMOUNT_MISMATCH', error: 'Le montant encaissé ne correspond pas au paiement. Aucun transfert n’a été créé.' };
+    }
+    return { ok: true };
+}
+
+const MISSION_CANCELLED_BODY = Object.freeze({
+    code: 'MISSION_ANNULEE',
+    error: 'Cette mission est annulée. Les fonds déjà sécurisés restent bloqués chez LYANN et aucun versement n’est possible. Contactez l’Aide LYANN depuis le menu pour que l’équipe traite la situation.'
+});
+
 function alreadyTransferredPayment(milestone, payment) {
     const transferId = payment && payment.stripe_transfer_id;
     if (!transferId) return false;
@@ -464,6 +513,72 @@ function refundAmountFromPayment(payment) {
     return Number(payment && payment.customer_total_cents);
 }
 
+function customerFeeRefundPolicy(env = process.env) {
+    const raw = String((env && env.LYANN_CUSTOMER_FEE_REFUND) || '').trim().toLowerCase();
+    if (!raw) return { ok: false, code: 'FEE_POLICY_UNDECIDED', includeCustomerFee: null };
+    if (raw === 'refund') return { ok: true, code: 'FEE_REFUNDED', includeCustomerFee: true };
+    if (raw === 'retain') return { ok: true, code: 'FEE_RETAINED', includeCustomerFee: false };
+    return { ok: false, code: 'FEE_POLICY_INVALID', includeCustomerFee: null };
+}
+
+function wholeCents(value) {
+    if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) return null;
+    return value;
+}
+
+function optionARefundBreakdown(payment) {
+    const service = wholeCents(Number(payment && payment.service_amount_cents));
+    const fee = wholeCents(Number(payment && payment.customer_fee_cents));
+    const total = wholeCents(Number(payment && payment.customer_total_cents));
+    const refundedTotal = wholeCents(Number(payment && payment.amount_refunded_cents) || 0);
+    const refundedFee = wholeCents(Number(payment && payment.customer_fee_refunded_cents) || 0);
+    const consistent = service != null && fee != null && total != null && refundedTotal != null && refundedFee != null
+        && total === service + fee
+        && refundedFee <= fee
+        && refundedTotal >= refundedFee
+        && refundedTotal <= total;
+    const refundedService = consistent ? refundedTotal - refundedFee : null;
+    return {
+        service_cents: service,
+        customer_fee_cents: fee,
+        customer_total_cents: total,
+        refunded_total_cents: refundedTotal,
+        refunded_fee_cents: refundedFee,
+        refunded_service_cents: refundedService,
+        remaining_service_cents: consistent ? service - refundedService : null,
+        remaining_total_cents: consistent ? total - refundedTotal : null,
+        consistent
+    };
+}
+
+function optionARefundAmountCents(payment, env = process.env) {
+    const policy = customerFeeRefundPolicy(env);
+    const breakdown = optionARefundBreakdown(payment);
+    if (!policy.ok) {
+        return { ok: false, code: policy.code, amount_cents: null, breakdown, policy };
+    }
+    if (!breakdown.consistent) {
+        return { ok: false, code: 'AMOUNT_UNAVAILABLE', amount_cents: null, breakdown, policy };
+    }
+    const wanted = policy.includeCustomerFee ? breakdown.remaining_total_cents : breakdown.remaining_service_cents;
+    if (wanted == null || wanted < 0) {
+        return { ok: false, code: 'AMOUNT_UNAVAILABLE', amount_cents: null, breakdown, policy };
+    }
+    if (wanted === 0) {
+        return { ok: false, code: 'ALREADY_REFUNDED', amount_cents: 0, breakdown, policy };
+    }
+    if (wanted > breakdown.remaining_total_cents) {
+        return { ok: false, code: 'AMOUNT_EXCEEDS_REFUNDABLE', amount_cents: null, breakdown, policy };
+    }
+    return {
+        ok: true,
+        code: policy.code,
+        amount_cents: wanted,
+        breakdown,
+        policy
+    };
+}
+
 function planRefundLock(payment, milestone) {
     if (!payment) return { action: 'reject', code: 'PAYMENT_NOT_FOUND', createRefund: false };
     const realRefund = payment.stripe_refund_id && !isRefundReservation(payment.stripe_refund_id);
@@ -533,7 +648,7 @@ function preTransferRefundClientOverride(body, extra) {
     return { ok: true };
 }
 
-function classifyPreTransferRefundBusiness({ payment, milestone, mission }) {
+function classifyPreTransferRefundBusiness({ payment, milestone, mission, providerConsented }) {
     const lock = planRefundLock(payment, milestone);
     if (lock.action === 'already') {
         return { auto: false, decision: 'IDEMPOTENT', code: 'ALREADY_REFUNDED' };
@@ -546,6 +661,9 @@ function classifyPreTransferRefundBusiness({ payment, milestone, mission }) {
     }
     const status = milestone && milestone.status;
     if (status === 'IN_PROGRESS') {
+        if (providerConsented === true) {
+            return { auto: true, decision: 'AUTO_ELIGIBLE', code: 'AUTO_ELIGIBLE' };
+        }
         return { auto: false, decision: 'NEEDS_PROVIDER_OR_ADMIN', code: 'BUSINESS_POLICY_REQUIRED' };
     }
     if (status === 'COMPLETED') {
@@ -570,7 +688,8 @@ function preparePreTransferRefund({
     env = process.env,
     listedRefunds,
     grantActive,
-    grantEvaluation
+    grantEvaluation,
+    providerConsented
 }) {
     const override = preTransferRefundClientOverride(body, { headers, query });
     if (!override.ok) {
@@ -602,7 +721,7 @@ function preparePreTransferRefund({
         return { http: 409, execute: false, createRefund: false, persist: false, code: access.code };
     }
     if (access.action === 'acquire') {
-        const business = classifyPreTransferRefundBusiness({ payment, milestone, mission });
+        const business = classifyPreTransferRefundBusiness({ payment, milestone, mission, providerConsented });
         if (business.auto !== true) {
             return { http: 409, execute: false, createRefund: false, persist: false, code: business.code };
         }
@@ -656,6 +775,51 @@ function preparePreTransferRefund({
             payment_intent: payment.stripe_payment_intent_id,
             idempotency_key: refundIdempotencyKey(payment.id)
         };
+    }
+    const testAuto = String((env && env.STRIPE_TEST_AUTO_REFUND) || '') === 'true' && livemode !== true;
+    if (testAuto) {
+        const feePolicy = customerFeeRefundPolicy(env);
+        if (!feePolicy.ok) {
+            return {
+                http: 409,
+                execute: false,
+                createRefund: false,
+                persist: false,
+                code: feePolicy.code,
+                amount_cents,
+                payment_intent: payment.stripe_payment_intent_id,
+                breakdown: optionARefundBreakdown(payment)
+            };
+        }
+        const priced = optionARefundAmountCents(payment, env);
+        if (!priced.ok) {
+            return {
+                http: 409,
+                execute: false,
+                createRefund: false,
+                persist: false,
+                code: priced.code,
+                amount_cents,
+                payment_intent: payment.stripe_payment_intent_id,
+                breakdown: priced.breakdown
+            };
+        }
+        const business = classifyPreTransferRefundBusiness({ payment, milestone, mission, providerConsented });
+        if (business.auto === true) {
+            return {
+                http: 200,
+                execute: true,
+                createRefund: access.action === 'acquire' || access.action === 'resume',
+                persist: true,
+                code: 'READY',
+                action: access.action,
+                amount_cents: priced.amount_cents,
+                payment_intent: payment.stripe_payment_intent_id,
+                idempotency_key: refundIdempotencyKey(payment.id),
+                breakdown: priced.breakdown,
+                fee_policy: priced.policy.code
+            };
+        }
     }
     return {
         http: 409,
@@ -1847,8 +2011,8 @@ function raiseDisputeDecision({ authUid, requesterId, milestone, payment }) {
     if (milestone.status === 'DISPUTED' || payment.payment_status === 'DISPUTED') {
         return { action: 'already', http: 200, freeze: true, idempotent: true };
     }
-    if (milestone.status !== 'COMPLETED') {
-        return { action: 'reject', http: 400, code: 'MILESTONE_NOT_COMPLETED', freeze: false };
+    if (!['FUNDED', 'IN_PROGRESS', 'COMPLETED'].includes(String(milestone.status || ''))) {
+        return { action: 'reject', http: 400, code: 'MILESTONE_NOT_REPORTABLE', freeze: false };
     }
     if (payment.client_validated_at) {
         return { action: 'reject', http: 400, code: 'ALREADY_VALIDATED', freeze: false };
@@ -1859,14 +2023,41 @@ function raiseDisputeDecision({ authUid, requesterId, milestone, payment }) {
     return { action: 'freeze', http: 200, freeze: true };
 }
 
-function disputeDraftRow({ milestoneId, paymentId, requesterId, reason }) {
+function disputeDraftRow({
+    missionId,
+    milestoneId,
+    paymentId,
+    requesterId,
+    providerId,
+    reason,
+    description,
+    frozenAmountCents,
+    disputeNumber
+}) {
+    const message = String(reason || description || '').trim().slice(0, 2000);
+    const text = message || 'Signalement client';
+    const cents = Number(frozenAmountCents);
+    const frozen = Number.isFinite(cents) && cents >= 0
+        ? Number((Math.trunc(cents) / 100).toFixed(2))
+        : 0;
+    const number = String(disputeNumber || '').trim()
+        || ('DSP-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1e6).toString(36).toUpperCase());
     return {
+        // Staging still carries the legacy schema.sql columns (required) plus
+        // migration 11 party columns used by the admin Litiges desk.
+        dispute_number: number,
+        frozen_amount: frozen,
+        initiator_id: requesterId || null,
+        mission_id: missionId || null,
         milestone_id: milestoneId || null,
         payment_id: paymentId || null,
-        opened_by: requesterId || null,
-        reason: reason || null,
+        requester_id: requesterId || null,
+        provider_id: providerId || null,
         status: 'OPEN',
-        resolution: null
+        reason: text,
+        description: description != null && String(description).trim()
+            ? String(description).trim().slice(0, 4000)
+            : (message || null)
     };
 }
 
@@ -2127,6 +2318,8 @@ function paymentWritePaths() {
         '/v1/milestones/release-payment',
         '/v1/milestones/claim-transfer',
         '/v1/milestones/raise-dispute',
+        '/v1/milestones/request-cancel',
+        '/v1/milestones/decide-cancel',
         '/v1/payments/webhook',
         '/v1/webhooks/stripe',
         '/payments/webhook',
@@ -2317,10 +2510,17 @@ const SETTLED_PAYMENT_STATUSES = new Set(['SUCCEEDED', 'PARTIALLY_REFUNDED', 'DI
 
 function serviceCentsFromAmount(amount) {
     const numStr = String(amount == null ? '' : amount).trim();
+    if (!/^\d+(\.\d+)?$/.test(numStr)) {
+        throw new Error('Montant de la partie illisible.');
+    }
     const parts = numStr.split('.');
+    const decimals = parts[1] || '';
+    // A sub-cent amount would be charged truncated: refuse instead of rounding money silently.
+    if (/[1-9]/.test(decimals.slice(2))) {
+        throw new Error('Le montant de la partie dépasse le centime.');
+    }
     const euros = BigInt(parts[0] || '0');
-    const centsPart = (parts[1] || '').padEnd(2, '0').slice(0, 2);
-    const cents = BigInt(centsPart || '0');
+    const cents = BigInt(decimals.padEnd(2, '0').slice(0, 2) || '0');
     return euros * 100n + cents;
 }
 
@@ -2374,6 +2574,33 @@ function resumePaymentDecision(payment) {
         return { action: 'attach', code: 'ORPHAN_CREATED' };
     }
     return { action: 'refuse', code: 'PAIEMENT_DEJA_SECURISE' };
+}
+
+// Stripe keeps a declined or 3DS-failed PaymentIntent open (requires_payment_method).
+// A retry must confirm that same intent: a second intent would leave two confirmable
+// charges for one milestone.
+const REUSABLE_INTENT_STATUSES = new Set(['requires_payment_method', 'requires_confirmation', 'requires_action']);
+const CONFIRMING_INTENT_STATUSES = new Set(['processing', 'requires_capture', 'succeeded']);
+
+function failedIntentRetryDecision(payment, intent, milestoneId) {
+    if (!payment || !intent) return { action: 'block', code: 'PAIEMENT_A_VERIFIER' };
+    if (intent.livemode === true) return { action: 'block', code: 'STRIPE_MODE_MISMATCH' };
+    const status = String(intent.status || '');
+    if (CONFIRMING_INTENT_STATUSES.has(status)) return { action: 'wait', code: 'PAIEMENT_EN_CONFIRMATION' };
+    if (status === 'canceled') return { action: 'create', code: 'PREVIOUS_INTENT_CANCELED' };
+    if (!REUSABLE_INTENT_STATUSES.has(status)) return { action: 'block', code: 'PAIEMENT_A_VERIFIER' };
+    const metadataMilestone = intent.metadata && intent.metadata.milestone_id;
+    if (metadataMilestone && String(metadataMilestone) !== String(milestoneId)) {
+        return { action: 'block', code: 'PAIEMENT_A_VERIFIER' };
+    }
+    const sameAmount = Number(intent.amount) === Number(payment.customer_total_cents)
+        && String(intent.currency || '').toLowerCase() === 'eur';
+    if (!sameAmount) return { action: 'block', code: 'AMOUNT_MISMATCH' };
+    return { action: 'reuse', code: 'FAILED_INTENT_RETRY' };
+}
+
+function paymentIntentIdempotencyKey(milestoneId, paymentId) {
+    return 'pi_milestone_' + String(milestoneId || '') + '_' + String(paymentId || '');
 }
 
 function legacyPaymentColumns(financials) {
@@ -2484,6 +2711,13 @@ module.exports = {
     calculateMilestonePricing,
     paymentAmountSnapshot,
     resumePaymentDecision,
+    failedIntentRetryDecision,
+    paymentIntentIdempotencyKey,
+    existingMilestoneTransferDecision,
+    missionBlocksMoneyStep,
+    disputeArrivedBeforeSettlement,
+    fundedChargeTransferDecision,
+    MISSION_CANCELLED_BODY,
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,
@@ -2602,6 +2836,9 @@ module.exports = {
     preTransferRefundClientOverride,
     preparePreTransferRefund,
     classifyPreTransferRefundBusiness,
+    customerFeeRefundPolicy,
+    optionARefundBreakdown,
+    optionARefundAmountCents,
     admitPreTransferRefundDispatch,
     classifyStripeDbGap,
     financialAuditEvent,

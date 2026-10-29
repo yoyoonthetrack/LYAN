@@ -14,7 +14,7 @@ const {
     TEST_TITLE,
     TEST_BODY
 } = require('../api/apns');
-const { apnsConfig, apnsAuthorization, resetApnsJwtCache } = require('../api/apns-send');
+const { apnsConfig, describeApnsKey, apnsAuthorization, resetApnsJwtCache } = require('../api/apns-send');
 
 test('the test alert uses the custom sound and no payment data', () => {
     const payload = buildTestPayload();
@@ -54,6 +54,29 @@ test('device registration rejects a foreign or malformed token', () => {
         apns_environment: 'production'
     }).ok, false);
     assert.equal(maskToken('a'.repeat(64)).includes('a'.repeat(20)), false);
+});
+
+test('the key description confirms the id without exposing the key', () => {
+    const { privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+    const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+    const described = describeApnsKey({
+        APNS_PRIVATE_KEY: pem,
+        APNS_KEY_ID: 'KEYID12345',
+        APNS_TEAM_ID: 'WLV4WC47U2',
+        APNS_BUNDLE_ID: 'app.lyann.mobile'
+    });
+    assert.equal(described.configured, true);
+    assert.equal(described.pem_ec, true);
+    assert.equal(described.kid_matches, true);
+    assert.equal(described.team_ok, true);
+    assert.equal(described.bundle_ok, true);
+    assert.equal(JSON.stringify(described).includes('BEGIN'), false);
+    assert.equal(describeApnsKey({
+        APNS_PRIVATE_KEY: 'not-a-key',
+        APNS_KEY_ID: 'KEYID12345',
+        APNS_TEAM_ID: 'WLV4WC47U2',
+        APNS_BUNDLE_ID: 'app.lyann.mobile'
+    }).pem_ec, false);
 });
 
 test('an unregistered device is deactivated and a missing key does not send', () => {

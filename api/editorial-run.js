@@ -15,6 +15,7 @@ const {
     reviewEditorialText,
     assertHumanApproval,
     editorialPassSlot,
+    nextEditorialPass,
     guadeloupeDayStart
 } = require('./editorial-engine');
 const { runModerationOnce } = require('./moderation-worker');
@@ -64,14 +65,46 @@ function providerConfig(env = process.env) {
     };
 }
 
-async function fetchText(url) {
-    const response = await fetch(url, {
-        headers: { 'user-agent': 'LYANN-Editorial/1.0 (+https://staging.lyann.app)' },
-        redirect: 'follow',
-        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
-    });
-    if (!response.ok) throw new Error(`Source indisponible (${response.status})`);
-    return response.text();
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchText(url, attempt = 0) {
+    try {
+        const response = await fetch(url, {
+            headers: { 'user-agent': 'LYANN-Editorial/1.0 (+https://staging.lyann.app)' },
+            redirect: 'follow',
+            signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+        });
+        if (!response.ok) {
+            const error = new Error(`Source indisponible (${response.status})`);
+            error.status = response.status;
+            throw error;
+        }
+        return await response.text();
+    } catch (error) {
+        const status = Number(error.status) || 0;
+        const retryable = status === 429 || status >= 500 || status === 0;
+        if (attempt < 1 && retryable) {
+            await sleep(500);
+            return fetchText(url, attempt + 1);
+        }
+        throw error;
+    }
+}
+
+function summarizeEditorialRun({ created = [], skipped = [], diagnoses = [], startedAt, finishedAt, slot }) {
+    const duplicateReasons = new Set(['doublon']);
+    const neutralReasons = new Set(['doublon', 'absent', 'plafond du jour', 'passage déjà traité', 'Rien à proposer', 'erreur de collecte', 'SUSPENDED', 'PAUSED', 'ACTIVE']);
+    return {
+        slot: slot || null,
+        found: diagnoses.reduce((sum, row) => sum + Number(row.count || 0), 0),
+        created: created.length,
+        duplicates: skipped.filter((row) => duplicateReasons.has(row.reason)).length,
+        errors: diagnoses.filter((row) => row.status === 'inaccessible' || row.status === 'flux invalide').length,
+        rejected: skipped.filter((row) => row.reason && !neutralReasons.has(row.reason)).length,
+        duration_ms: Math.max(0, new Date(finishedAt).getTime() - new Date(startedAt).getTime())
+    };
 }
 
 async function completeOnce(config, messages, fetchImpl) {
@@ -194,11 +227,11 @@ async function recordEditorialNote(supabase, agent, slot, outcome, detail) {
         .filter('metadata->>outcome', 'eq', outcome)
         .limit(1);
     if (existing && existing.length) return existing[0].id;
-    const nothing = outcome === 'nothing_to_propose';
+    const nothing = outcome === 'nothing_to_propose' || outcome === 'pass_started';
     const { data, error } = await supabase.from('lyann_agent_tasks').insert({
         agent_id: agent.id,
-        title: nothing ? 'Rien à proposer' : 'Erreur de collecte',
-        instruction: nothing ? 'Rien à proposer' : String(detail || 'Collecte impossible.'),
+        title: outcome === 'pass_started' ? 'Passage en cours' : (outcome === 'nothing_to_propose' ? 'Rien à proposer' : 'Erreur de collecte'),
+        instruction: outcome === 'pass_started' ? 'Passage réservé' : (nothing ? 'Rien à proposer' : String(detail || 'Collecte impossible.')),
         task_type: 'POST_CREATION',
         status: nothing ? 'CANCELLED' : 'FAILED',
         requires_approval: false,
@@ -225,7 +258,9 @@ async function collectEditorial(supabase, options = {}) {
     const diagnoses = [];
     const slot = options.scheduled ? editorialPassSlot(options.now) : null;
     const dayStart = guadeloupeDayStart(options.now);
-    const runAt = new Date().toISOString();
+    const startedAt = new Date();
+    const runAt = startedAt.toISOString();
+    const perBot = {};
     for (const bot of EDITORIAL_BOTS) {
         if (options.onlySlug && options.onlySlug !== bot.slug) continue;
         const agent = (agents || []).find((row) => row.agent_name === bot.name);
@@ -233,6 +268,7 @@ async function collectEditorial(supabase, options = {}) {
             skipped.push({ bot: bot.name, slug: bot.slug, reason: 'absent' });
             continue;
         }
+        perBot[bot.slug] = { name: bot.name, agentId: agent.id, found: 0, created: 0, duplicates: 0, errors: 0, rejected: 0 };
         const { count: todayCount } = await supabase
             .from('lyann_agent_tasks')
             .select('id', { count: 'exact', head: true })
@@ -255,6 +291,7 @@ async function collectEditorial(supabase, options = {}) {
                 skipped.push({ bot: bot.name, slug: bot.slug, reason: 'passage déjà traité', slot });
                 continue;
             }
+            await recordEditorialNote(supabase, agent, slot, 'pass_started', 'Passage réservé');
         }
         const allAgentIds = (agents || []).map((row) => row.id);
         const seen = await existingSourceUrls(supabase, allAgentIds);
@@ -264,6 +301,10 @@ async function collectEditorial(supabase, options = {}) {
         for (const source of sources) {
             const found = await itemsFromSource(source, fetchText);
             diagnoses.push({ bot: bot.name, slug: bot.slug, source: source.name, status: found.status, url: source.url, count: (found.items || []).length });
+            if (perBot[bot.slug]) {
+                perBot[bot.slug].found += (found.items || []).length;
+                if (found.status === 'inaccessible' || found.status === 'flux invalide') perBot[bot.slug].errors += 1;
+            }
             if (found.status === 'veille manuelle' || !found.items.length) continue;
             for (const item of found.items.slice(0, 5)) {
                 let article = item;
@@ -277,7 +318,17 @@ async function collectEditorial(supabase, options = {}) {
                     if (!article.summary || !article.publishedAt) continue;
                 }
                 if (!article.url || seen.has(article.url)) {
-                    if (article.url && seen.has(article.url)) skipped.push({ bot: bot.name, slug: bot.slug, reason: 'doublon', url: article.url });
+                    if (article.url && seen.has(article.url)) {
+                        skipped.push({ bot: bot.name, slug: bot.slug, reason: 'doublon', url: article.url });
+                        if (perBot[bot.slug]) perBot[bot.slug].duplicates += 1;
+                    }
+                    continue;
+                }
+                const freshSeen = await existingSourceUrls(supabase, allAgentIds);
+                if (freshSeen.has(article.url)) {
+                    seen.add(article.url);
+                    skipped.push({ bot: bot.name, slug: bot.slug, reason: 'doublon', url: article.url });
+                    if (perBot[bot.slug]) perBot[bot.slug].duplicates += 1;
                     continue;
                 }
                 const draft = draftFromSource({ ...article, sourceName: source.name, territory: source.territory }, bot);
@@ -323,6 +374,7 @@ async function collectEditorial(supabase, options = {}) {
                 }).select('id').single();
                 if (insertError) throw insertError;
                 seen.add(article.url);
+                if (perBot[bot.slug]) perBot[bot.slug].created += 1;
                 created.push({
                     bot: bot.name,
                     slug: bot.slug,
@@ -366,7 +418,29 @@ async function collectEditorial(supabase, options = {}) {
             });
         }
     }
-    return { created, skipped, diagnoses, slot, scheduled: Boolean(options.scheduled), collectedAt: runAt };
+    const finishedAt = new Date().toISOString();
+    const metrics = summarizeEditorialRun({ created, skipped, diagnoses, startedAt, finishedAt, slot });
+    for (const bot of EDITORIAL_BOTS) {
+        const row = perBot[bot.slug];
+        if (!row) continue;
+        await supabase.from('lyann_agent_activity').insert({
+            agent_id: row.agentId,
+            event_type: 'EDITORIAL_RUN',
+            description: `Passage ${slot || 'manuel'} : ${row.created} proposition(s), ${row.found} trouvé(s), ${row.duplicates} doublon(s), ${row.errors} erreur(s).`,
+            metadata: {
+                slot,
+                found: row.found,
+                created: row.created,
+                duplicates: row.duplicates,
+                errors: row.errors,
+                rejected: skipped.filter((item) => item.slug === bot.slug && item.reason && !['doublon', 'absent', 'plafond du jour', 'passage déjà traité', 'Rien à proposer', 'erreur de collecte'].includes(item.reason)).length,
+                duration_ms: metrics.duration_ms,
+                scheduled: Boolean(options.scheduled)
+            }
+        });
+        await supabase.from('lyann_agents').update({ last_activity_at: finishedAt, updated_at: finishedAt }).eq('id', row.agentId);
+    }
+    return { created, skipped, diagnoses, metrics, slot, scheduled: Boolean(options.scheduled), collectedAt: runAt };
 }
 
 async function moderateEditorialPost(supabase, postId) {
@@ -476,4 +550,42 @@ async function publishEditorialTask(supabase, task, editorText, approver) {
     return post.id;
 }
 
-module.exports = { collectEditorial, publishEditorialTask, providerConfig, oidcClaims };
+async function editorialDeskExtras(supabase) {
+    const names = EDITORIAL_BOTS.map((bot) => bot.name);
+    const { data: agents, error } = await supabase.from('lyann_agents').select('id, agent_name').in('agent_name', names);
+    if (error) throw error;
+    const nameOf = {};
+    (agents || []).forEach((row) => { nameOf[row.id] = row.agent_name; });
+    const ids = Object.keys(nameOf);
+    const { data: history, error: historyError } = ids.length
+        ? await supabase.from('lyann_agent_activity').select('agent_id, event_type, description, metadata, created_at').in('agent_id', ids).order('created_at', { ascending: false }).limit(40)
+        : { data: [] };
+    if (historyError) throw historyError;
+    const rows = (history || []).map((row) => ({ ...row, agent_name: nameOf[row.agent_id] || '' }));
+    const runs = rows.filter((row) => row.event_type === 'EDITORIAL_RUN');
+    const durations = runs.map((row) => Number(row.metadata && row.metadata.duration_ms)).filter((value) => Number.isFinite(value) && value >= 0);
+    const lastSuccess = rows.find((row) => row.event_type === 'EDITORIAL_COLLECTED' || row.event_type === 'EDITORIAL_PUBLISHED');
+    const schedule = require('../config/editorial-schedule.json');
+    const cfg = providerConfig();
+    const next = nextEditorialPass();
+    return {
+        history: rows,
+        environment: 'staging',
+        collectionAllowed: !String(process.env.SUPABASE_URL || '').includes(PRODUCTION_SUPABASE_REF),
+        aiProvider: cfg && cfg.error ? { configured: false, error: cfg.error } : { configured: true, mode: cfg.mode, model: cfg.model },
+        schedule: {
+            enabled: schedule.enabled !== false,
+            passes: (schedule.passes || []).map((pass) => pass.local),
+            next
+        },
+        metrics: {
+            lastCollectAt: rows[0] ? rows[0].created_at : null,
+            lastSuccessAt: lastSuccess ? lastSuccess.created_at : null,
+            averageDurationMs: durations.length ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : null,
+            lastRun: runs[0] && runs[0].metadata ? runs[0].metadata : null,
+            nextPassLabel: next.label
+        }
+    };
+}
+
+module.exports = { collectEditorial, publishEditorialTask, providerConfig, oidcClaims, summarizeEditorialRun, editorialDeskExtras, fetchText };

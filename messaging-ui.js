@@ -544,6 +544,8 @@
     let inboxScrollTop = 0;
     let threadHistoryPushed = false;
     let threadBackLock = 0;
+    // Set when the thread was opened from a listing rather than from the inbox.
+    let threadOrigin = null;
 
     function captureInboxScroll() {
         const list = document.getElementById('chatContactsList');
@@ -690,6 +692,8 @@
             return openList();
         }
 
+        threadOrigin = options.origin === 'explorer' ? 'explorer' : null;
+
         if (typeof window.armDealRecapOpenBump === 'function') window.armDealRecapOpenBump(contactId);
         else if (typeof armDealRecapOpenBump === 'function') armDealRecapOpenBump(contactId);
 
@@ -735,11 +739,12 @@
             const threadNeed = supportThread
                 ? null
                 : (options.initialNeed
-                    || ((options.requestId || options.invitationId || options.missionId)
+                    || ((options.requestId || options.invitationId || options.missionId || options.conversationId)
                         ? {
                             requestId: options.requestId || null,
                             invitationId: options.invitationId || null,
                             missionId: options.missionId || null,
+                            conversationId: options.conversationId || null,
                             requesterId: options.requesterId || null,
                             title: options.title || null,
                             consult: options.consult === true
@@ -779,6 +784,15 @@
         return mode === 'conversation' ? openConversation(options) : openInbox();
     }
 
+    // A thread reached from the Lyanneurs or Annonces listing belongs to that
+    // listing, not to the inbox: leaving it puts the member back where they were.
+    // The surface manager restores the page scroll position on close.
+    function leaveThread() {
+        if (threadOrigin !== 'explorer') return openList({ restore: true });
+        threadOrigin = null;
+        return close();
+    }
+
     function backToList(event) {
         event?.preventDefault?.();
         event?.stopPropagation?.();
@@ -787,7 +801,7 @@
         threadBackLock = now;
         const pushed = threadHistoryPushed;
         threadHistoryPushed = false;
-        const shown = openList({ restore: true });
+        const shown = leaveThread();
         if (pushed) history.back();
         return shown;
     }
@@ -795,6 +809,7 @@
     function close(event) {
         event?.preventDefault?.();
         event?.stopPropagation?.();
+        threadOrigin = null;
         hideAllChildSurfaces();
         document.body.classList.remove('chat-list-open', 'chat-conversation-open');
         return setShellVisible(false);
@@ -938,7 +953,7 @@
             if (!threadHistoryPushed) return;
             threadHistoryPushed = false;
             threadBackLock = Date.now();
-            if (document.body.classList.contains('chat-conversation-open')) openList({ restore: true });
+            if (document.body.classList.contains('chat-conversation-open')) leaveThread();
         });
         const threadSurface = document.getElementById('chatModal');
         let edgeStart = null;

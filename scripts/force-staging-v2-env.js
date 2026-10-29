@@ -63,6 +63,8 @@ function applyStaging() {
   }
   process.env.LYANN_E2E_ALLOW_WRITES = '1';
   process.env.LYANN_E2E_WRITE_PROJECT_REF = STAGING_REF;
+  process.env.LYANN_CUSTOMER_FEE_REFUND = 'retain';
+  if (process.env.STRIPE_TEST_AUTO_REFUND !== 'true') process.env.STRIPE_TEST_AUTO_REFUND = 'false';
   if (!process.env.LYANN_API_BIND) process.env.LYANN_API_BIND = '0.0.0.0';
   delete process.env.VERCEL_ENV;
   const pushFile = path.join(__dirname, '..', '.env.push.local');
@@ -79,7 +81,9 @@ function applyStaging() {
       'APNS_BUNDLE_ID',
       'APNS_PRIVATE_KEY'
     ];
+    const allowLocalDrain = process.env.LYANN_ALLOW_LOCAL_PUSH_DRAIN === 'true';
     for (const key of pushKeys) {
+      if (!allowLocalDrain && (key === 'PUSH_AUTOMATIC_ENABLED' || key === 'PUSH_CRON_SECRET')) continue;
       if (push[key]) process.env[key] = push[key];
     }
   }

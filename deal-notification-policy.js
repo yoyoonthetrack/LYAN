@@ -122,6 +122,7 @@
             quoteId: extras.quoteId || null,
             missionId: extras.missionId || null,
             milestoneId: extras.milestoneId || null,
+            postId: extras.postId || null,
             scopeSource: extras.scopeSource || 'legacy',
             resolution: extras.resolution || 'missing',
             navigate: extras.navigate === true,
@@ -165,9 +166,15 @@
             quoteId: null,
             missionId: null,
             milestoneId: null,
+            postId: null,
             scopeSource: parts.length >= 3 ? 'notification' : 'legacy'
         };
 
+        if (type === 'BOKANTAJ' || entityType === 'post' || entityType === 'bokantaj_post') {
+            parsed.postId = first;
+            parsed.scopeSource = first ? 'notification' : 'legacy';
+            return parsed;
+        }
         if (type === 'NEW_MESSAGE' || entityType === 'conversation') {
             parsed.contactId = first;
             return parsed;
@@ -228,7 +235,9 @@
             || input.quoteId
             || input.missionId
             || input.milestoneId
-            || input.invitationId;
+            || input.invitationId
+            || input.postId
+            || input.post_id;
 
         let contactId = pickStructuredId(input, 'contactId');
         let requestId = pickStructuredId(input, 'requestId');
@@ -236,6 +245,8 @@
         let quoteId = pickStructuredId(input, 'quoteId');
         let missionId = pickStructuredId(input, 'missionId');
         let milestoneId = pickStructuredId(input, 'milestoneId');
+        let postId = pickStructuredId(input, 'postId');
+        let conversationId = pickStructuredId(input, 'conversationId');
         let scopeSource = structured && (requestId || invitationId || missionId || quoteId || milestoneId || contactId)
             ? 'notification'
             : 'legacy';
@@ -250,6 +261,7 @@
         quoteId = quoteId || legacy.quoteId;
         missionId = missionId || legacy.missionId;
         milestoneId = milestoneId || legacy.milestoneId;
+        postId = postId || legacy.postId;
         if (!structured) scopeSource = legacy.scopeSource;
         else if (!requestId && legacy.requestId) scopeSource = 'notification';
 
@@ -281,6 +293,9 @@
         }
         if (type === 'BOKANTAJ' || entityType === 'post' || entityType === 'bokantaj_post') {
             route = 'bokantaj';
+            postId = postId || asUuid(input.entity_id || input.entityId);
+            contactId = null;
+            requestId = null;
         }
         if (!route) route = dealRouteForType(type) || (contactId ? 'messages' : null);
 
@@ -311,6 +326,11 @@
             resolution = 'missing';
             navigate = true;
             code = 'pair_only';
+        } else if (quoteId && (type === 'QUOTE_RECEIVED' || route === 'messages' || !route)) {
+            route = 'messages';
+            resolution = 'missing';
+            navigate = true;
+            code = 'quote_lookup';
         } else if (requestId || missionId || invitationId) {
             resolution = 'exact';
             navigate = route === 'messages' || route === 'mission';
@@ -326,6 +346,8 @@
             quoteId,
             missionId,
             milestoneId,
+            postId,
+            conversationId,
             scopeSource,
             resolution,
             navigate,
@@ -356,6 +378,7 @@
             if (target.milestoneId) checks.push('milestone_visible');
         } else if (route === 'mission') checks.push('auth', 'request_visible');
         else if (route === 'finances') checks.push('auth');
+        else if (route === 'bokantaj') checks.push(target && target.postId ? 'post_visible' : 'feed');
         return {
             authorized: false,
             payloadIsNotAuthorization: true,
@@ -593,8 +616,13 @@
 
     function routerPayloadFromTarget(target) {
         if (!target || !target.route) return { scopeSource: 'notification' };
-        if (target.route === 'finances' || target.route === 'bokantaj') {
+        if (target.route === 'finances') {
             return { scopeSource: 'notification' };
+        }
+        if (target.route === 'bokantaj') {
+            const payload = { scopeSource: 'notification' };
+            if (target.postId) payload.postId = target.postId;
+            return payload;
         }
         if (target.route === 'mission') {
             return { requestId: target.requestId || null, scopeSource: 'notification' };
@@ -603,6 +631,8 @@
             contactId: target.contactId || null,
             scopeSource: 'notification'
         };
+        if (target.conversationId) payload.conversationId = target.conversationId;
+        if (target.quoteId) payload.quoteId = target.quoteId;
         if (target.resolution === 'exact' || target.resolution === 'unique') {
             if (target.requestId) payload.requestId = target.requestId;
             if (target.invitationId) payload.invitationId = target.invitationId;
@@ -659,8 +689,10 @@
             requestId: target.requestId || '',
             invitationId: target.invitationId || '',
             quoteId: target.quoteId || '',
+            conversationId: target.conversationId || '',
             missionId: target.missionId || '',
             milestoneId: target.milestoneId || '',
+            postId: target.postId || '',
             scopeSource: 'notification'
         });
     }
@@ -876,6 +908,39 @@
         };
     }
 
+    function resolveQuoteThread(quote, viewerId) {
+        const viewer = asUuid(viewerId);
+        const requester = asUuid(quote && (quote.requester_id || quote.requesterId));
+        const provider = asUuid(quote && (quote.provider_id || quote.providerId));
+        const conversationId = asUuid(quote && (quote.conversation_id || quote.conversationId));
+        const quoteId = asUuid(quote && (quote.id || quote.quoteId));
+        if (!viewer || !requester || !provider || !quoteId) return { ok: false, code: 'quote_unavailable' };
+        if (viewer !== requester && viewer !== provider) return { ok: false, code: 'quote_unavailable' };
+        const contactId = viewer === requester ? provider : requester;
+        if (!contactId || contactId === viewer) return { ok: false, code: 'self' };
+        if (!conversationId) return { ok: false, code: 'conversation_unavailable' };
+        return {
+            ok: true,
+            contactId,
+            conversationId,
+            requestId: asUuid(quote.request_id || quote.requestId),
+            quoteId
+        };
+    }
+
+    function notificationUnavailableMessage(target) {
+        const route = target && target.route;
+        const code = String((target && (target.code || target.resolution)) || '');
+        if (code === 'session_mismatch') return 'Cette notification ne correspond plus à votre session.';
+        if (route === 'bokantaj' || code === 'post_unavailable') return 'Cette publication n’est plus disponible.';
+        if (route === 'mission' || code === 'request_closed' || code === 'request_unavailable') {
+            return 'Cette annonce n’est plus disponible.';
+        }
+        if (code === 'quote_unavailable') return 'Cette proposition n’est plus disponible.';
+        if (route === 'messages' || code === 'conversation_unavailable') return 'Cette conversation n’est plus accessible.';
+        return 'Ce contenu n’est plus accessible.';
+    }
+
     function paymentFailedTransitionGate(state) {
         const hasProducer = Boolean(state && state.hasDedicatedProducer);
         const skipFailed = Boolean(state && state.skipPaymentFailedNewMessage);
@@ -909,6 +974,8 @@
         shouldSkipForegroundToast,
         routerPayloadFromTarget,
         planNotificationNavigation,
+        resolveQuoteThread,
+        notificationUnavailableMessage,
         serializePendingPushTarget,
         parsePendingPushTarget,
         isHumanChatMessage,

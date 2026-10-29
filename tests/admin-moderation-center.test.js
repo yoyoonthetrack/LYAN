@@ -13,7 +13,7 @@ const {
     isUserId,
     authBanDuration
 } = require('../api/admin-moderation-center');
-const { applyDecision } = require('../api/moderation-worker');
+const { applyDecision, profileStillNeedsReview } = require('../api/moderation-worker');
 
 const sql = fs.readFileSync(path.join(__dirname, '..', '73_moderation_center.sql'), 'utf8');
 const serverSrc = fs.readFileSync(path.join(__dirname, '..', 'api/server.js'), 'utf8');
@@ -45,6 +45,7 @@ function createFakeSupabase(store) {
             limit() { return query; },
             range(from, to) { query._from = from; query._to = to; return query; },
             update(payload) { query._op = 'update'; query._payload = payload; return query; },
+            upsert(payload) { query._op = 'upsert'; query._payload = payload; return query; },
             insert(payload) {
                 const rows = Array.isArray(payload) ? payload : [payload];
                 store[table] = (store[table] || []).concat(rows);
@@ -62,6 +63,11 @@ function createFakeSupabase(store) {
             if (query._op === 'update') {
                 store.writes.push({ table, op: 'update', payload: query._payload, filters: query._filters });
                 rows.forEach((row) => Object.assign(row, query._payload));
+            }
+            if (query._op === 'upsert') {
+                const rowsToWrite = Array.isArray(query._payload) ? query._payload : [query._payload];
+                store[table] = (store[table] || []).concat(rowsToWrite);
+                store.writes.push({ table, op: 'upsert', payload: query._payload });
             }
             const count = rows.length;
             if (query._from != null) rows = rows.slice(query._from, (query._to || query._from) + 1);
@@ -107,6 +113,43 @@ test('SQL keeps human lock above an automatic approve', () => {
     assert.match(rollback, /DROP FUNCTION IF EXISTS public.lyann_account_is_restricted/);
     assert.match(sql, /account_sanctions/);
     assert.doesNotMatch(sql, /gzispjfoywklpqatjyop/);
+});
+
+test('a checked video is published and an unchecked video stays held', async () => {
+    const store = {
+        bokantaj_posts: [{
+            id: 'clip-1',
+            content: 'Drums',
+            public_moderation_status: 'pending',
+            media_urls: ['https://staging.lyann.app/v1/media/bokantaj-media-hold/clip.mp4'],
+            human_moderation_lock: false
+        }],
+        moderation_jobs: [{ id: 'job-video', attempts: 1, max_attempts: 3 }],
+        admin_audit_events: [],
+        public_media_releases: []
+    };
+    const published = await applyDecision(createFakeSupabase(store), {
+        id: 'job-video',
+        subject_type: 'post',
+        subject_id: 'clip-1',
+        attempts: 1,
+        max_attempts: 3
+    }, { row: store.bokantaj_posts[0], pendingEdit: null }, { decision: 'approved', reason: 'video_checked' });
+    assert.equal(published, 'approved');
+    assert.equal(store.bokantaj_posts[0].public_moderation_status, 'approved');
+    assert.equal(store.moderation_jobs[0].status, 'done');
+
+    store.bokantaj_posts[0].public_moderation_status = 'pending';
+    const held = await applyDecision(createFakeSupabase(store), {
+        id: 'job-video',
+        subject_type: 'post',
+        subject_id: 'clip-1',
+        attempts: 1,
+        max_attempts: 3
+    }, { row: store.bokantaj_posts[0], pendingEdit: null }, { decision: 'approved', reason: 'clear' });
+    assert.equal(held, 'held');
+    assert.equal(store.bokantaj_posts[0].public_moderation_status, 'pending');
+    assert.equal(store.moderation_jobs[0].reason_code, 'video_unreviewed');
 });
 
 test('hiding a visible post locks it and an IA approve cannot win', async () => {
@@ -368,4 +411,94 @@ test('users tab finds a member by exact id beyond the first page', async () => {
     const detail = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(payload) { this.body = payload; } };
     await app.routes['/v1/admin/moderation-center/users/:id']({ params: { id: target } }, detail);
     assert.equal(detail.body.user.id, target);
+});
+
+test('an older profile decision does not publish a newer photo', async () => {
+    const oldUrl = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_old.png';
+    const newUrl = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_new.png';
+    const store = {
+        profiles: [{
+            id: 'user-1',
+            avatar_url: newUrl,
+            avatar_pending: newUrl,
+            avatar_moderation_status: 'pending',
+            bio_moderation_status: 'approved'
+        }],
+        moderation_jobs: [{ id: 'job-1', subject_type: 'profile', subject_id: 'user-1', status: 'running', attempts: 1 }],
+        public_media_releases: [],
+        admin_audit_events: [],
+        content_moderation_queue: []
+    };
+    const loaded = {
+        row: {
+            id: 'user-1',
+            avatar_url: oldUrl,
+            avatar_pending: oldUrl,
+            avatar_moderation_status: 'pending',
+            bio_moderation_status: 'approved'
+        },
+        pendingEdit: null
+    };
+    const result = await applyDecision(createFakeSupabase(store), {
+        id: 'job-1', subject_type: 'profile', subject_id: 'user-1', attempts: 1, max_attempts: 3
+    }, loaded, { decision: 'approved', reason: 'clear' });
+    assert.equal(result, 'newer_photo');
+    assert.equal(store.profiles[0].avatar_moderation_status, 'pending');
+    assert.equal(store.moderation_jobs[0].status, 'queued');
+    assert.equal(store.moderation_jobs[0].reason_code, 'newer_photo');
+    assert.equal(store.moderation_jobs[0].attempts, 0);
+    assert.equal(store.public_media_releases.length, 0);
+});
+
+test('a pending hold release still needs review after the profile status says approved', async () => {
+    const url = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_new.png';
+    const row = {
+        avatar_url: url,
+        avatar_pending: null,
+        avatar_moderation_status: 'approved',
+        bio_moderation_status: 'approved'
+    };
+    const pending = createFakeSupabase({
+        public_media_releases: [{ bucket_id: 'avatars-hold', object_name: 'user-1/avatar_new.png', status: 'pending' }]
+    });
+    assert.equal(await profileStillNeedsReview(pending, row), true);
+    const published = createFakeSupabase({
+        public_media_releases: [{ bucket_id: 'avatars-hold', object_name: 'user-1/avatar_new.png', status: 'approved' }]
+    });
+    assert.equal(await profileStillNeedsReview(published, row), false);
+});
+
+test('a flagged profile photo is held for a person instead of being retried', async () => {
+    const url = 'https://staging.lyann.app/v1/media/avatars-hold/user-1/avatar_new.png';
+    const store = {
+        profiles: [{
+            id: 'user-1',
+            avatar_url: url,
+            avatar_pending: url,
+            avatar_moderation_status: 'pending',
+            bio_moderation_status: 'approved'
+        }],
+        moderation_jobs: [{ id: 'job-1', status: 'running', attempts: 1 }],
+        public_media_releases: [],
+        admin_audit_events: [],
+        content_moderation_queue: []
+    };
+    const loaded = { row: store.profiles[0], pendingEdit: null };
+    const result = await applyDecision(createFakeSupabase(store), {
+        id: 'job-1', subject_type: 'profile', subject_id: 'user-1', attempts: 1, max_attempts: 3
+    }, loaded, { decision: 'pending', reason: 'sexual' });
+    assert.equal(result, 'held');
+    assert.equal(store.moderation_jobs[0].status, 'held');
+    assert.equal(store.moderation_jobs[0].reason_code, 'sexual');
+    assert.equal(store.profiles[0].avatar_moderation_status, 'pending');
+});
+
+test('profile photo review is requested as soon as the file is saved', () => {
+    const routes = fs.readFileSync(path.join(__dirname, '..', 'api/content-moderation-routes.js'), 'utf8');
+    const client = fs.readFileSync(path.join(__dirname, '..', 'api-client.js'), 'utf8');
+    assert.match(routes, /\/v1\/profile\/avatar\/review/);
+    assert.match(routes, /reviewProfileAvatar/);
+    assert.match(client, /\/v1\/profile\/avatar\/review/);
+    assert.match(adminSrc, /avatar\/review/);
+    assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'api/moderation-worker.js'), 'utf8'), /Date\.now\(\) > .*approve/);
 });

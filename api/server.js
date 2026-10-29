@@ -27,6 +27,13 @@ const {
     calculateMilestonePricing,
     paymentAmountSnapshot,
     resumePaymentDecision,
+    failedIntentRetryDecision,
+    paymentIntentIdempotencyKey,
+    existingMilestoneTransferDecision,
+    missionBlocksMoneyStep,
+    disputeArrivedBeforeSettlement,
+    fundedChargeTransferDecision,
+    MISSION_CANCELLED_BODY,
     legacyPaymentColumns,
     quoteFullyReleased,
     providerCanBePaid,
@@ -46,6 +53,7 @@ const {
     stripeRefundFailureAction,
     isRefundReservation,
     raiseDisputeDecision,
+    disputeDraftRow,
     stripeChargeId,
     applyPaymentRequiresAction,
     applyPaymentProcessing,
@@ -67,6 +75,8 @@ const {
     applyChargeDisputeClosed,
     applyAccountUpdated,
     preparePreTransferRefund,
+    preTransferRefundExecutionEnabled,
+    customerFeeRefundPolicy,
     admitPreTransferRefundDispatch,
     webhookEventWriteRow,
     webhookEventLegacyPayloadRow,
@@ -107,7 +117,7 @@ const {
     testSendAllowed,
     validDeviceRegistration
 } = require('./apns');
-const { apnsConfig, sendApns } = require('./apns-send');
+const { apnsConfig, describeApnsKey, sendApns } = require('./apns-send');
 const { automaticPushEnabled, cronAuthorized, drainQueue, pushAudience } = require('./push-queue');
 const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-build');
 if (process.env.LYANN_DOTENV_PATH) {
@@ -124,7 +134,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
     origin: (origin, callback) => callback(null, true),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Platform-Client', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Platform-Client', 'Accept', 'Range'],
+    exposedHeaders: ['Content-Range', 'Accept-Ranges', 'Content-Length'],
     credentials: true
 }));
 
@@ -342,6 +353,17 @@ if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
 
 const PAYMENT_AMOUNT_COLUMNS = 'id, payment_status, transfer_status, stripe_payment_intent_id, stripe_transfer_id, service_amount_cents, customer_fee_cents, customer_total_cents, provider_fee_cents, provider_net_cents, lyann_revenue_cents';
 
+// A milestone keeps its declined or cancelled attempts as history. The money row is the other one;
+// more than one of those makes .single() fail, which blocks the operation.
+function milestoneMoneyPayment(milestoneId) {
+    return supabaseAdmin
+        .from('payments')
+        .select('*')
+        .eq('milestone_id', milestoneId)
+        .not('payment_status', 'in', '(FAILED,CANCELLED)')
+        .single();
+}
+
 const MEMBERS_DB = [
     { id: 200, name: "Jocelyn Cabort", age: 52, role: "Plomberie & Fuites d'eau PRO", city: "Baie-Mahault", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "5.0", avatar: "jocelyn-cabort.png", badge: "PRO VÉRIFIÉ", kycVerified: true },
     { id: 201, name: "Hugues Zami", age: 45, role: "Climatisation & Électricité PRO", city: "Les Abymes", locationName: "Guadeloupe (971)", territoryKey: "guadeloupe", rating: "4.9", avatar: "hugues-zami.png", badge: "PRO VÉRIFIÉ", kycVerified: true },
@@ -443,10 +465,14 @@ app.get('/v1/payments/config', (req, res) => {
             stripe_mode: inspected.mode
         });
     }
+    const feePolicy = customerFeeRefundPolicy(process.env);
     res.json({
         publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
         stripeReady: inspected.allowsSecretUse && inspected.allowsPublishableUse,
-        stripe_mode: inspected.mode
+        stripe_mode: inspected.mode,
+        customer_fee_refund: feePolicy.ok ? (feePolicy.includeCustomerFee ? 'refund' : 'retain') : feePolicy.code,
+        auto_refund_enabled: preTransferRefundExecutionEnabled() === true
+            && String(process.env.STRIPE_TEST_AUTO_REFUND || '') === 'true'
     });
 });
 
@@ -501,9 +527,42 @@ async function handlePushDrain(req, res) {
     if (!cronAuthorized(req.headers.authorization || req.headers.Authorization, process.env)) {
         return res.status(401).json({ code: 'PUSH_CRON_UNAUTHORIZED', error: 'Appel non autorisé.' });
     }
+    if (String(req.query.probe || '') === 'audience') {
+        const audience = pushAudience(process.env);
+        const user = String(req.query.user || '');
+        const allowlist = Array.isArray(audience.allowlist) ? audience.allowlist : null;
+        return res.json({
+            code: 'PUSH_AUDIENCE_PROBE',
+            enabled: audience.enabled,
+            restricted: Boolean(allowlist),
+            count: allowlist ? allowlist.length : null,
+            included: Boolean(allowlist && allowlist.includes(user))
+        });
+    }
+    if (String(req.query.probe || '') === 'key') {
+        const described = describeApnsKey(process.env);
+        if (!described.configured || !described.pem_ec || !described.kid_matches) {
+            return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', ...described, apple_reason: null });
+        }
+        const result = await Promise.race([
+            sendApns({
+                config: apnsConfig(process.env),
+                deviceToken: '0'.repeat(64),
+                environment: 'production',
+                payload: { aps: { 'content-available': 1 } }
+            }),
+            new Promise((resolve) => setTimeout(() => resolve({ status: 0, reason: 'TIMEOUT', code: 'TIMEOUT' }), 8000))
+        ]);
+        return res.json({
+            code: 'APNS_KEY_PROBE',
+            ...described,
+            apple_status: result.status,
+            apple_reason: result.reason || result.code
+        });
+    }
     const audience = pushAudience(process.env);
     if (!audience.enabled) {
-        return res.json({ success: true, enabled: false, processed: 0, code: 'PUSH_AUTOMATIC_DISABLED' });
+        return res.json({ success: true, enabled: false, processed: 0, code: audience.code || 'PUSH_AUTOMATIC_DISABLED' });
     }
     const config = apnsConfig(process.env);
     if (!config) return res.status(503).json({ code: 'APNS_NOT_CONFIGURED', error: 'APNs n’est pas configuré.' });
@@ -519,7 +578,7 @@ async function handlePushDrain(req, res) {
                     p_limit: limit
                 });
                 if (error) throw error;
-                return (data || []).map((row) => ({
+                const rows = (data || []).map((row) => ({
                     id: row.id,
                     recipientId: row.user_id,
                     title: row.title,
@@ -534,6 +593,24 @@ async function handlePushDrain(req, res) {
                     lockToken: row.lock_token,
                     apnsId: row.apns_id
                 }));
+                const quoteIds = rows
+                    .filter((row) => row.eventType === 'QUOTE_RECEIVED')
+                    .map((row) => String(row.entityId || '').split(':')[1] || '')
+                    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+                if (quoteIds.length) {
+                    const quotes = await supabaseAdmin.from('quotes').select('id,conversation_id,request_id').in('id', quoteIds);
+                    if (quotes.error) throw quotes.error;
+                    const byId = new Map((quotes.data || []).map((quote) => [quote.id, quote]));
+                    rows.forEach((row) => {
+                        if (row.eventType !== 'QUOTE_RECEIVED') return;
+                        const quote = byId.get(String(row.entityId || '').split(':')[1]);
+                        if (!quote) return;
+                        row.quoteId = quote.id;
+                        row.conversationId = quote.conversation_id || null;
+                        if (!row.requestId && quote.request_id) row.requestId = quote.request_id;
+                    });
+                }
+                return rows;
             },
             tokensForUser: async (userId) => {
                 const { data, error } = await supabaseAdmin.from('device_push_tokens')
@@ -1015,6 +1092,8 @@ app.post('/v1/auth/continue-signup', async (req, res) => {
 });
 
 // Account deletion starts inside the app, as required for App Store review.
+const { deleteMemberAccount } = require('./account-deletion');
+
 app.post('/v1/auth/delete-account', async (req, res) => {
     const authHeader = req.headers.authorization || req.headers.Authorization || '';
     const token = String(authHeader).replace(/^Bearer\s+/i, '').trim();
@@ -1030,17 +1109,13 @@ app.post('/v1/auth/delete-account', async (req, res) => {
             return res.status(401).json({ error: 'Session expirée. Reconnecte-toi, puis réessaie.' });
         }
         const userId = data.user.id;
-        await supabaseAdmin.from('profiles').update({
-            first_name: 'Compte',
-            last_name: 'supprimé',
-            avatar_url: null
-        }).eq('id', userId);
-        const deleted = await supabaseAdmin.auth.admin.deleteUser(userId);
-        if (deleted.error) {
-            await supabaseAdmin.auth.admin.updateUserById(userId, { ban_duration: '876000h' });
-            return res.json({ ok: true, closed: true });
-        }
-        return res.json({ ok: true });
+        const outcome = await deleteMemberAccount(supabaseAdmin, userId, token);
+        return res.json({
+            ok: outcome.ok === true,
+            closed: outcome.closed === true,
+            sessions: outcome.sessions,
+            retained: outcome.retained
+        });
     } catch (err) {
         console.error('[delete-account]', err);
         return res.status(500).json({ error: 'La suppression n’a pas abouti. Réessaie, ou écris à contact@lyann.app.' });
@@ -1178,7 +1253,7 @@ async function requireMaisonOperator(req) {
 async function loadMaisonProfile(profileId) {
     const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('id, first_name, last_name, avatar_url, city, territory, email, bio, professional_status, account_type, created_at')
+        .select('id, first_name, last_name, avatar_url, avatar_pending, avatar_moderation_status, city, territory, email, bio, professional_status, account_type, created_at')
         .eq('id', profileId)
         .maybeSingle();
     if (error) throw error;
@@ -1311,7 +1386,7 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
         }
         const userId = profile.id;
         let [{ data: posts }, { data: requests }, { data: parts }, { data: quotes }, { data: missions }] = await Promise.all([
-            supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+            supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
             supabaseAdmin.from('requests').select('id, title, description, category, location, status, public_moderation_status, created_at').eq('requester_id', userId).order('created_at', { ascending: false }).limit(20),
             supabaseAdmin.from('conversation_participants').select('conversation_id').eq('user_id', userId),
             supabaseAdmin.from('quotes').select('id, status, total_amount, requester_id, provider_id, request_id, request_invitation_id, valid_until, created_at').or(`requester_id.eq.${userId},provider_id.eq.${userId}`).eq('status', 'SENT').order('created_at', { ascending: false }).limit(20),
@@ -1344,7 +1419,7 @@ app.get('/v1/admin/maison/profiles/:id/desk', async (req, res) => {
                 });
             } catch (_) {}
             const [refreshedPosts, refreshedReqs, refreshedJobs] = await Promise.all([
-                supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+                supabaseAdmin.from('bokantaj_posts').select('id, content, type, city, territory, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label').eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
                 supabaseAdmin.from('requests').select('id, title, description, category, location, status, public_moderation_status, created_at').eq('requester_id', userId).order('created_at', { ascending: false }).limit(20),
                 subjectIds.length ? supabaseAdmin.from('moderation_jobs').select('subject_type, subject_id, status, reason_code, attempts, updated_at').in('subject_id', subjectIds) : Promise.resolve({ data: [] })
             ]);
@@ -1565,14 +1640,19 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
             : 'info';
         const territory = String(req.body?.territory || profile.territory || 'guadeloupe').trim().toLowerCase();
         const city = String(req.body?.city || profile.city || '').trim() || null;
+        const place = require('../bokantaj-video-policy').normalizeBokantajPlace(req.body?.place || null);
+        if (place && place.error) return res.status(400).json({ success: false, error: place.error });
         const { data, error } = await supabaseAdmin.from('bokantaj_posts').insert({
             author_id: profile.id,
             type: postType,
             content: content || 'Lyann',
             city,
             territory,
-            media_urls: mediaUrls
-        }).select('id').single();
+            media_urls: mediaUrls,
+            place_lat: place ? place.lat : null,
+            place_lng: place ? place.lng : null,
+            place_label: place ? place.label : null
+        }).select('id, author_id, created_at, place_lat, place_lng, place_label').single();
         if (error) throw error;
         const mod = await moderateMaisonSubject('post', data.id);
         await recordMaisonAudit(authResult.userId, 'MAISON_PUBLISH_BOKANTAJ', profile.id, {
@@ -1598,6 +1678,55 @@ app.post('/v1/admin/maison/profiles/:id/bokantaj', async (req, res) => {
         });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Publication impossible.' });
+    }
+});
+
+app.patch('/v1/admin/maison/profiles/:id/bokantaj/:postId/place', async (req, res) => {
+    const authResult = await requireMaisonOperator(req);
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    try {
+        const profile = await loadMaisonProfile(req.params.id);
+        if (!profile) return res.status(404).json({ success: false, error: 'Profil maison introuvable.' });
+        const { data: existing, error: readError } = await supabaseAdmin.from('bokantaj_posts')
+            .select('id, author_id, content, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label')
+            .eq('id', req.params.postId)
+            .maybeSingle();
+        if (readError) throw readError;
+        if (!existing || existing.author_id !== profile.id) {
+            return res.status(404).json({ success: false, error: 'Publication introuvable pour ce profil.' });
+        }
+        const place = require('../bokantaj-video-policy').normalizeBokantajPlace(
+            Object.prototype.hasOwnProperty.call(req.body || {}, 'place') ? req.body.place : null
+        );
+        if (place && place.error) return res.status(400).json({ success: false, error: place.error });
+        const { data, error } = await supabaseAdmin.from('bokantaj_posts').update({
+            place_lat: place ? place.lat : null,
+            place_lng: place ? place.lng : null,
+            place_label: place ? place.label : null
+        }).eq('id', existing.id).eq('author_id', profile.id)
+            .select('id, author_id, content, media_urls, public_moderation_status, created_at, place_lat, place_lng, place_label')
+            .single();
+        if (error) throw error;
+        if (Date.parse(data.created_at) !== Date.parse(existing.created_at) || data.content !== existing.content || data.author_id !== existing.author_id) {
+            return res.status(409).json({ success: false, error: 'Le lieu n’a pas pu être modifié sans toucher à la publication.' });
+        }
+        await recordMaisonAudit(authResult.userId, 'MAISON_BOKANTAJ_PLACE', profile.id, {
+            post_id: data.id,
+            place_label: data.place_label || null
+        });
+        return res.json({
+            success: true,
+            post_id: data.id,
+            created_at: data.created_at,
+            place_lat: data.place_lat,
+            place_lng: data.place_lng,
+            place_label: data.place_label,
+            message: data.place_label ? 'Lieu enregistré sur cette publication.' : 'Lieu retiré. La publication reste dans le fil.'
+        });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Lieu impossible à modifier.' });
     }
 });
 
@@ -1703,7 +1832,7 @@ async function actOnMaisonQuote(req, res, action) {
     }
 }
 
-const { collectEditorial, publishEditorialTask, providerConfig } = require('./editorial-run');
+const { collectEditorial, publishEditorialTask, providerConfig, editorialDeskExtras } = require('./editorial-run');
 const { EDITORIAL_BOTS, EDITORIAL_BADGE, reviewEditorialText } = require('./editorial-engine');
 
 function editorialAuthorized(req) {
@@ -1714,7 +1843,7 @@ function editorialAuthorized(req) {
     return require('crypto').timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
 }
 
-app.all('/v1/editorial/collect', async (req, res) => {
+async function runScheduledEditorialCollect(req, res, scheduled) {
     if (!isVerifiedStagingUrl(process.env.SUPABASE_URL)) {
         return res.status(403).json({ success: false, error: 'Collecte éditoriale interdite sur Production.' });
     }
@@ -1723,16 +1852,18 @@ app.all('/v1/editorial/collect', async (req, res) => {
     }
     try {
         const schedule = require('./../config/editorial-schedule.json');
-        const asked = String(req.query.scheduled || '') === '1';
-        if (asked && schedule.enabled === false) {
+        if (scheduled && schedule.enabled === false) {
             return res.json({ success: true, skipped: 'schedule-disabled', created: [], skippedRows: [] });
         }
-        const report = await collectEditorial(supabaseAdmin, { scheduled: asked && schedule.enabled !== false });
+        const report = await collectEditorial(supabaseAdmin, { scheduled: scheduled && schedule.enabled !== false });
         return res.json({ success: true, ...report });
     } catch (e) {
         return res.status(500).json({ success: false, error: e.message || 'Collecte impossible.' });
     }
-});
+}
+
+app.all('/v1/editorial/collect', (req, res) => runScheduledEditorialCollect(req, res, String(req.query.scheduled || '') === '1'));
+app.all('/v1/editorial/collect/scheduled', (req, res) => runScheduledEditorialCollect(req, res, true));
 
 app.post('/v1/admin/editorial/collect', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
@@ -1776,7 +1907,13 @@ app.get('/v1/admin/editorial/bots', async (req, res) => {
             profile: (profiles || []).find((profile) => profile.id === agent.linked_profile_id) || null
         };
     });
-    return res.json({ success: true, bots });
+    let extras = {};
+    try {
+        extras = await editorialDeskExtras(supabaseAdmin);
+    } catch (extraError) {
+        extras = { history: [], metrics: null, extraError: extraError.message };
+    }
+    return res.json({ success: true, bots, ...extras });
 });
 
 app.get('/v1/admin/editorial/proposals', async (req, res) => {
@@ -1886,17 +2023,23 @@ app.post('/v1/admin/editorial/proposals/:id/revise', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'agents.approve');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
     const next = String(req.body?.content || '').trim();
+    const allowedTerritories = ['guadeloupe', 'martinique', 'guyane', 'reunion'];
+    const territory = allowedTerritories.includes(req.body?.territory) ? req.body.territory : '';
     if (!next) return res.status(400).json({ success: false, error: 'Le texte corrigé est vide.' });
     const { data: task, error } = await supabaseAdmin.from('lyann_agent_tasks').select('instruction, metadata, approval_status').eq('id', req.params.id).maybeSingle();
     if (error) return res.status(500).json({ success: false, error: error.message });
     if (!task || task.approval_status !== 'PENDING') return res.status(409).json({ success: false, error: 'Ce brouillon n’est plus modifiable.' });
     const now = new Date().toISOString();
     const revisions = Array.isArray(task.metadata && task.metadata.revisions) ? task.metadata.revisions.slice() : [];
-    revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next });
+    revisions.push({ at: now, by: authResult.userId, previous: task.instruction, next, territory: territory || (task.metadata && task.metadata.territory) || null });
     const { error: updateError } = await supabaseAdmin.from('lyann_agent_tasks').update({
         instruction: next,
         updated_at: now,
-        metadata: Object.assign({}, task.metadata, { revisions })
+        metadata: Object.assign({}, task.metadata, {
+            revisions,
+            territory: territory || (task.metadata && task.metadata.territory) || null,
+            category: (task.metadata && task.metadata.slug) || null
+        })
     }).eq('id', req.params.id);
     if (updateError) return res.status(500).json({ success: false, error: updateError.message });
     return res.json({ success: true });
@@ -1939,6 +2082,12 @@ app.post('/v1/admin/editorial/bots/:id/status', async (req, res) => {
     const status = req.body?.status === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE';
     const { error } = await supabaseAdmin.from('lyann_agents').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
     if (error) return res.status(500).json({ success: false, error: error.message });
+    await supabaseAdmin.from('lyann_agent_activity').insert({
+        agent_id: req.params.id,
+        event_type: status === 'SUSPENDED' ? 'EDITORIAL_SUSPENDED' : 'EDITORIAL_RESUMED',
+        description: status === 'SUSPENDED' ? 'Agent suspendu par un administrateur.' : 'Agent réactivé par un administrateur.',
+        metadata: { by: authResult.userId, status }
+    });
     return res.json({ success: true, status });
 });
 
@@ -1966,6 +2115,8 @@ const { registerAdminModerationCenter } = require('./admin-moderation-center');
 registerAdminModerationCenter(app, { supabaseAdmin, verifyAdminPermission, recordAudit: recordMaisonAudit });
 const { registerAdminOperations, registerMemberHelpdesk } = require('./admin-operations');
 registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission });
+const { registerAdminOpsDesk, handleOpsResource } = require('./admin-ops-desk');
+registerAdminOpsDesk(app, { supabaseAdmin, verifyAdminPermission });
 registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser });
 
 function adminProfileName(profile) {
@@ -2135,6 +2286,12 @@ app.get('/v1/admin/ops', async (req, res) => {
         }
 
         if (resource === 'payments' || resource === 'payouts' || resource === 'invoices') {
+            if (resource === 'invoices') {
+                const business = await handleOpsResource(supabaseAdmin, 'business-invoices', limit);
+                if (business && business.rows && business.rows.length) {
+                    return res.json({ success: true, source: 'lyann_business_invoices', rows: business.rows });
+                }
+            }
             const rows = await adminSafeSelect(
                 'payments',
                 'id, mission_id, requester_id, provider_id, customer_total_cents, customer_fee_cents, lyann_revenue_cents, provider_net_cents, payment_status, transfer_status, stripe_payment_intent_id, stripe_transfer_id, created_at',
@@ -2146,15 +2303,17 @@ app.get('/v1/admin/ops', async (req, res) => {
                 formatted = formatted.filter((row) => ['TRANSFERRED', 'TRANSFER_PROCESSING', 'PENDING_VALIDATION'].includes(row.transfer_status));
             }
             if (resource === 'invoices') {
-                formatted = formatted.filter((row) => row.payment_status === 'SUCCEEDED');
+                formatted = formatted
+                    .filter((row) => row.payment_status === 'SUCCEEDED')
+                    .map((row) => ({ ...row, source: 'payments_succeeded', invoice_label: 'Paiement encaissé (pas de PDF facture)' }));
             }
-            return res.json({ success: true, rows: formatted });
+            return res.json({ success: true, source: resource === 'invoices' ? 'payments_succeeded' : resource, rows: formatted });
         }
 
         if (resource === 'disputes') {
             const rows = await adminSafeSelect(
                 'disputes',
-                'id, mission_id, status, reason, description, requester_id, provider_id, created_at',
+                'id, dispute_number, mission_id, milestone_id, payment_id, status, reason, description, frozen_amount, requester_id, provider_id, resolution_type, resolution_note, created_at',
                 (q) => q.order('created_at', { ascending: false }).limit(limit)
             );
             const profiles = await adminMapProfiles(rows.flatMap((row) => [row.requester_id, row.provider_id]));
@@ -2329,6 +2488,18 @@ app.get('/v1/admin/ops', async (req, res) => {
             return res.json({ success: true, counts });
         }
 
+        if (resource === 'feature-flags') {
+            const rows = await adminSafeSelect(
+                'feature_flags',
+                'id, key, name, description, enabled, target_audience, updated_at',
+                (q) => q.order('key', { ascending: true }).limit(limit)
+            );
+            return res.json({ success: true, rows });
+        }
+
+        const desk = await handleOpsResource(supabaseAdmin, resource, limit);
+        if (desk) return res.json(desk);
+
         return res.status(400).json({ success: false, error: 'Ressource admin inconnue.' });
     } catch (e) {
         console.error('Admin ops error:', e);
@@ -2379,6 +2550,118 @@ app.post('/v1/admin/ops/users/:id/kyc', async (req, res) => {
     }
 });
 
+
+app.post('/v1/admin/ops/team', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'team.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const userId = String(req.body?.user_id || '').trim();
+    const roleCode = String(req.body?.role_code || '').toUpperCase();
+    const allowed = ['SUPPORT', 'MODERATION', 'FINANCE', 'ADMIN'];
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+        return res.status(400).json({ success: false, error: 'Compte cible invalide.' });
+    }
+    if (!allowed.includes(roleCode)) {
+        return res.status(400).json({ success: false, error: 'Rôle non autorisé. OWNER et SUPER_ADMIN ne se donnent pas ici.' });
+    }
+    if (userId === authResult.userId) {
+        return res.status(403).json({ success: false, error: 'Un administrateur ne s’ajoute pas lui-même.' });
+    }
+    try {
+        const profile = await supabaseAdmin.from('profiles').select('id').eq('id', userId).maybeSingle();
+        if (profile.error) return res.status(503).json({ success: false, error: profile.error.message });
+        if (!profile.data) return res.status(404).json({ success: false, error: 'Compte introuvable.' });
+        const role = await supabaseAdmin.from('admin_roles').select('id').eq('code', roleCode).maybeSingle();
+        if (role.error || !role.data) return res.status(400).json({ success: false, error: 'Rôle introuvable.' });
+        const existing = await supabaseAdmin.from('admin_members').select('id, status').eq('user_id', userId).maybeSingle();
+        if (existing.error) return res.status(503).json({ success: false, error: existing.error.message });
+        if (existing.data && existing.data.status === 'ACTIVE') {
+            return res.status(409).json({ success: false, error: 'Ce compte est déjà administrateur.' });
+        }
+        const saved = existing.data
+            ? await supabaseAdmin.from('admin_members').update({
+                role_id: role.data.id,
+                status: 'ACTIVE',
+                updated_at: new Date().toISOString()
+            }).eq('id', existing.data.id).select('id, user_id, status').single()
+            : await supabaseAdmin.from('admin_members').insert({
+                user_id: userId,
+                role_id: role.data.id,
+                status: 'ACTIVE',
+                created_by: authResult.userId
+            }).select('id, user_id, status').single();
+        if (saved.error || !saved.data) return res.status(500).json({ success: false, error: saved.error && saved.error.message || 'Ajout impossible.' });
+        await recordMaisonAudit(authResult.userId, 'TEAM_MEMBER_ADDED', userId, { role: roleCode });
+        return res.json({ success: true, row: saved.data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Ajout impossible.' });
+    }
+});
+
+app.patch('/v1/admin/ops/team/:id', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'team.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const status = String(req.body?.status || '').toUpperCase();
+    if (!['ACTIVE', 'SUSPENDED', 'INACTIVE'].includes(status)) {
+        return res.status(400).json({ success: false, error: 'Statut d’équipe invalide.' });
+    }
+    try {
+        const member = await supabaseAdmin
+            .from('admin_members')
+            .select('id, user_id, status, admin_roles!role_id(code)')
+            .eq('id', req.params.id)
+            .maybeSingle();
+        if (member.error) return res.status(503).json({ success: false, error: member.error.message });
+        if (!member.data) return res.status(404).json({ success: false, error: 'Membre introuvable.' });
+        const code = member.data.admin_roles && member.data.admin_roles.code;
+        if (code === 'OWNER' || code === 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, error: 'Ce rôle ne se modifie pas ici.' });
+        }
+        if (member.data.user_id === authResult.userId) {
+            return res.status(403).json({ success: false, error: 'Un administrateur ne change pas son propre statut.' });
+        }
+        const saved = await supabaseAdmin
+            .from('admin_members')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', member.data.id)
+            .select('id, user_id, status')
+            .single();
+        if (saved.error || !saved.data) return res.status(500).json({ success: false, error: saved.error && saved.error.message || 'Mise à jour impossible.' });
+        await recordMaisonAudit(authResult.userId, 'TEAM_MEMBER_STATUS', member.data.user_id, { status });
+        return res.json({ success: true, row: saved.data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Mise à jour impossible.' });
+    }
+});
+
+app.post('/v1/admin/ops/users/:id/role', async (req, res) => {
+    const authResult = await verifyAdminPermission(req, 'users.manage');
+    if (!authResult.authorized) {
+        return res.status(authResult.status).json({ success: false, error: authResult.error });
+    }
+    const allowed = ['USER', 'SUPPORT', 'FINANCE', 'MODERATION', 'EMPLOYEE', 'ADMIN'];
+    const role = String(req.body?.role || '').toUpperCase();
+    if (!allowed.includes(role)) {
+        return res.status(400).json({ success: false, error: 'Rôle non autorisé par cette opération.' });
+    }
+    try {
+        const { data, error } = await supabaseAdmin
+            .from('profiles')
+            .update({ role, updated_at: new Date().toISOString() })
+            .eq('id', req.params.id)
+            .select('id, role')
+            .maybeSingle();
+        if (error) return res.status(500).json({ success: false, error: error.message });
+        if (!data) return res.status(404).json({ success: false, error: 'Profil introuvable.' });
+        await recordMaisonAudit(authResult.userId, 'ROLE_UPDATED', req.params.id, { role });
+        return res.json({ success: true, row: data });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Impossible de modifier le rôle.' });
+    }
+});
 
 app.post('/v1/admin/ops/users/:id/status', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'users.manage');
@@ -4586,16 +4869,42 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
         }
 
         // 5. New payments use the current tariff. An existing row keeps the cents already stored.
-        const financials = calculateMilestonePricing(milestone.amount);
-        const stripeIdempotencyKey = `pi_milestone_${milestone.id}`;
+        let financials;
+        try {
+            financials = calculateMilestonePricing(milestone.amount);
+        } catch (amountErr) {
+            return res.status(409).json({
+                code: 'MONTANT_INVALIDE',
+                error: 'Le montant de cette Partie ne peut pas être encaissé tel quel. Aucun paiement n’a été créé.'
+            });
+        }
+        const stripe = payRuntime.stripe;
+        const intentMetadata = (paymentId) => ({
+            payment_id: paymentId,
+            milestone_id: milestone.id,
+            quote_id: quote.id,
+            mission_id: mission.id,
+            requester_id: mission.requester_id,
+            provider_id: quote.provider_id
+        });
+        const inProgress = () => res.status(409).json({
+            code: 'PAIEMENT_EN_PREPARATION',
+            error: 'Un paiement est déjà en cours de préparation pour cette Partie. Patientez quelques secondes puis rouvrez le paiement. Aucun second paiement n’a été créé.'
+        });
 
         // 6. Idempotency Check & Recoverable State Analysis (V1.1)
-        const { data: existingPayment } = await supabaseAdmin
+        const { data: existingPayment, error: existingErr } = await supabaseAdmin
             .from('payments')
             .select(PAYMENT_AMOUNT_COLUMNS)
             .eq('milestone_id', milestone_id)
             .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'])
             .maybeSingle();
+        if (existingErr) {
+            return res.status(409).json({
+                code: 'PAIEMENT_A_VERIFIER',
+                error: 'L’état du paiement de cette Partie doit être vérifié. Aucun paiement n’a été créé.'
+            });
+        }
 
         const paymentDecision = resumePaymentDecision(existingPayment);
         if (paymentDecision.action === 'refuse') {
@@ -4607,25 +4916,13 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
 
         if (paymentDecision.action === 'reuse') {
             const frozen = paymentAmountSnapshot(existingPayment);
-            if (process.env.STRIPE_SECRET_KEY) {
-                const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                const intent = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id);
-                return res.json({
-                    success: true,
-                    recovered: true,
-                    payment_id: existingPayment.id,
-                    payment_intent_id: intent.id,
-                    client_secret: intent.client_secret,
-                    amounts: frozen
-                });
-            }
+            const intent = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id);
             return res.json({
                 success: true,
                 recovered: true,
-                mode: 'stripe_test_mock',
                 payment_id: existingPayment.id,
-                payment_intent_id: existingPayment.stripe_payment_intent_id,
-                client_secret: `${existingPayment.stripe_payment_intent_id}_secret_test`,
+                payment_intent_id: intent.id,
+                client_secret: intent.client_secret,
                 amounts: frozen
             });
         }
@@ -4638,49 +4935,85 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                     code: "PAIEMENT_MONTANT_FIGE"
                 });
             }
-            if (process.env.STRIPE_SECRET_KEY) {
-                const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                const paymentIntent = await stripe.paymentIntents.create({
-                    amount: frozen.customer_total_cents,
-                    currency: 'eur',
-                    automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
-                    metadata: {
-                        payment_id: existingPayment.id,
-                        milestone_id: milestone.id,
-                        quote_id: quote.id,
-                        mission_id: mission.id,
-                        requester_id: mission.requester_id,
-                        provider_id: quote.provider_id
-                    }
-                }, {
-                    idempotencyKey: stripeIdempotencyKey
-                });
-                await supabaseAdmin
-                    .from('payments')
-                    .update({ stripe_payment_intent_id: paymentIntent.id })
-                    .eq('id', existingPayment.id);
-                return res.json({
-                    success: true,
-                    recovered_orphan: true,
-                    payment_id: existingPayment.id,
-                    payment_intent_id: paymentIntent.id,
-                    client_secret: paymentIntent.client_secret,
-                    amounts: frozen
-                });
-            }
-            const mockIntentId = `pi_test_${existingPayment.id}`;
-            await supabaseAdmin
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: frozen.customer_total_cents,
+                currency: 'eur',
+                automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+                metadata: intentMetadata(existingPayment.id)
+            }, {
+                idempotencyKey: paymentIntentIdempotencyKey(milestone.id, existingPayment.id)
+            });
+            const attached = await supabaseAdmin
                 .from('payments')
-                .update({ stripe_payment_intent_id: mockIntentId })
-                .eq('id', existingPayment.id);
+                .update({ stripe_payment_intent_id: paymentIntent.id })
+                .eq('id', existingPayment.id)
+                .is('stripe_payment_intent_id', null)
+                .select('id')
+                .maybeSingle();
+            if (attached.error || !attached.data) return inProgress();
             return res.json({
                 success: true,
                 recovered_orphan: true,
-                mode: 'stripe_test_mock',
                 payment_id: existingPayment.id,
-                payment_intent_id: mockIntentId,
-                client_secret: `${mockIntentId}_secret_test`,
+                payment_intent_id: paymentIntent.id,
+                client_secret: paymentIntent.client_secret,
                 amounts: frozen
+            });
+        }
+
+        // 6b. A declined card or failed 3DS leaves the same PaymentIntent open: retry on it.
+        const { data: failedRows, error: failedErr } = await supabaseAdmin
+            .from('payments')
+            .select(PAYMENT_AMOUNT_COLUMNS)
+            .eq('milestone_id', milestone_id)
+            .in('payment_status', ['FAILED', 'CANCELLED'])
+            .not('stripe_payment_intent_id', 'is', null)
+            .order('created_at', { ascending: false });
+        if (failedErr) {
+            return res.status(409).json({
+                code: 'PAIEMENT_A_VERIFIER',
+                error: 'L’état du paiement de cette Partie doit être vérifié. Aucun paiement n’a été créé.'
+            });
+        }
+        let retryRow = null;
+        let retryIntent = null;
+        for (const row of failedRows || []) {
+            const intent = await stripe.paymentIntents.retrieve(row.stripe_payment_intent_id);
+            const retry = failedIntentRetryDecision(row, intent, milestone.id);
+            if (retry.action === 'wait') {
+                return res.status(409).json({
+                    code: retry.code,
+                    error: 'Un paiement précédent est encore en cours de confirmation par la banque. Aucun second paiement n’a été créé.'
+                });
+            }
+            if (retry.action === 'block') {
+                return res.status(409).json({
+                    code: retry.code,
+                    error: 'Le paiement précédent de cette Partie doit être vérifié. Aucun second paiement n’a été créé.'
+                });
+            }
+            if (retry.action === 'reuse' && !retryRow) {
+                retryRow = row;
+                retryIntent = intent;
+            }
+        }
+        if (retryRow) {
+            const reopened = await supabaseAdmin
+                .from('payments')
+                .update({ payment_status: 'CREATED' })
+                .eq('id', retryRow.id)
+                .in('payment_status', ['FAILED', 'CANCELLED'])
+                .eq('stripe_payment_intent_id', retryIntent.id)
+                .select('id')
+                .maybeSingle();
+            if (reopened.error || !reopened.data) return inProgress();
+            return res.json({
+                success: true,
+                recovered_failed: true,
+                payment_id: retryRow.id,
+                payment_intent_id: retryIntent.id,
+                client_secret: retryIntent.client_secret,
+                amounts: paymentAmountSnapshot(retryRow)
             });
         }
 
@@ -4721,82 +5054,66 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
                     .from('payments')
                     .select(PAYMENT_AMOUNT_COLUMNS)
                     .eq('milestone_id', milestone_id)
-                    .single();
+                    .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED'])
+                    .maybeSingle();
 
-                if (concPayment && concPayment.stripe_payment_intent_id) {
-                    const frozen = paymentAmountSnapshot(concPayment);
-                    if (process.env.STRIPE_SECRET_KEY) {
-                        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-                        const intent = await stripe.paymentIntents.retrieve(concPayment.stripe_payment_intent_id);
-                        return res.json({
-                            success: true,
-                            concurrency_recovered: true,
-                            payment_id: concPayment.id,
-                            payment_intent_id: intent.id,
-                            client_secret: intent.client_secret,
-                            amounts: frozen
-                        });
-                    }
+                const concDecision = resumePaymentDecision(concPayment);
+                if (concDecision.action === 'refuse') {
+                    return res.status(409).json({
+                        error: "Le paiement de cette Partie est déjà sécurisé.",
+                        code: concDecision.code
+                    });
                 }
-
-                return res.status(409).json({
-                    error: "Le paiement de cette Partie est déjà sécurisé.",
-                    code: "PAIEMENT_DEJA_SECURISE"
-                });
+                if (concDecision.action === 'reuse') {
+                    const intent = await stripe.paymentIntents.retrieve(concPayment.stripe_payment_intent_id);
+                    return res.json({
+                        success: true,
+                        concurrency_recovered: true,
+                        payment_id: concPayment.id,
+                        payment_intent_id: intent.id,
+                        client_secret: intent.client_secret,
+                        amounts: paymentAmountSnapshot(concPayment)
+                    });
+                }
+                return inProgress();
             }
             console.error("Erreur insertion payment:", insertErr);
             return res.status(500).json({ error: "Erreur lors de l'enregistrement du paiement." });
         }
 
-        // 8. Create Stripe PaymentIntent on Platform Account (Separate Charges & Transfers with Deterministic Idempotency Key)
-        if (process.env.STRIPE_SECRET_KEY) {
-            const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-            const paymentIntent = await stripe.paymentIntents.create({
-                amount: Number(financials.customer_total_cents),
-                currency: 'eur',
-                automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
-                metadata: {
-                    payment_id: paymentRecord.id,
-                    milestone_id: milestone.id,
-                    quote_id: quote.id,
-                    mission_id: mission.id,
-                    requester_id: mission.requester_id,
-                    provider_id: quote.provider_id
-                }
-            }, {
-                idempotencyKey: stripeIdempotencyKey
-            });
+        // 8. Create Stripe PaymentIntent on Platform Account (Separate Charges & Transfers).
+        // The key is per payment row: a retry of this row returns the same intent.
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Number(financials.customer_total_cents),
+            currency: 'eur',
+            automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+            metadata: intentMetadata(paymentRecord.id)
+        }, {
+            idempotencyKey: paymentIntentIdempotencyKey(milestone.id, paymentRecord.id)
+        });
 
-            // Update stripe_payment_intent_id in public.payments
-            await supabaseAdmin
-                .from('payments')
-                .update({ stripe_payment_intent_id: paymentIntent.id })
-                .eq('id', paymentRecord.id);
-
-            return res.json({
-                success: true,
-                payment_id: paymentRecord.id,
-                payment_intent_id: paymentIntent.id,
-                client_secret: paymentIntent.client_secret,
-                amounts: paymentAmountSnapshot(financials)
-            });
-        } else {
-            // Test Mode Fallback if STRIPE_SECRET_KEY is not defined in non-prod
-            const mockIntentId = `pi_test_${Date.now()}`;
-            await supabaseAdmin
-                .from('payments')
-                .update({ stripe_payment_intent_id: mockIntentId })
-                .eq('id', paymentRecord.id);
-
-            return res.json({
-                success: true,
-                mode: 'stripe_test_mock',
-                payment_id: paymentRecord.id,
-                payment_intent_id: mockIntentId,
-                client_secret: `${mockIntentId}_secret_test`,
-                amounts: paymentAmountSnapshot(financials)
+        const linked = await supabaseAdmin
+            .from('payments')
+            .update({ stripe_payment_intent_id: paymentIntent.id })
+            .eq('id', paymentRecord.id)
+            .is('stripe_payment_intent_id', null)
+            .select('id')
+            .maybeSingle();
+        if (linked.error || !linked.data) {
+            // Without the stored id the webhook could not fund this milestone: never hand out the secret.
+            return res.status(503).json({
+                code: 'PAIEMENT_NON_ENREGISTRE',
+                error: 'Le paiement n’a pas pu être enregistré. Rouvrez le paiement dans quelques secondes. Aucun montant n’a été débité.'
             });
         }
+
+        return res.json({
+            success: true,
+            payment_id: paymentRecord.id,
+            payment_intent_id: paymentIntent.id,
+            client_secret: paymentIntent.client_secret,
+            amounts: paymentAmountSnapshot(financials)
+        });
 
     } catch (e) {
         console.error("Erreur serveur create-milestone-intent:", e);
@@ -4862,6 +5179,9 @@ app.post('/v1/milestones/start-work', async (req, res) => {
         const assignedHelperId = mission.helper_id || quote.provider_id;
         if (!canDeclareWorkDone(authUid, assignedHelperId)) {
             return res.status(403).json({ error: "Seul le Lyanneur assigné à la mission peut démarrer les travaux." });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
         }
 
         // 5. Idempotent Transition Check
@@ -4968,6 +5288,9 @@ app.post('/v1/milestones/submit-completion', async (req, res) => {
         const assignedHelperId = mission.helper_id || quote.provider_id;
         if (!canDeclareWorkDone(authUid, assignedHelperId)) {
             return res.status(403).json({ error: "Seul le Lyanneur assigné à la mission peut déclarer la prestation terminée." });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
         }
 
         // 5. Idempotent Transition Check
@@ -5101,12 +5424,20 @@ async function retryMilestoneTransfer(milestoneId) {
         return { success: false, error: "Devis introuvable.", code: "QUOTE_NOT_FOUND" };
     }
 
+    const { data: transferMission, error: transferMissionErr } = await supabaseAdmin
+        .from('missions')
+        .select('status')
+        .eq('id', quote.mission_id)
+        .maybeSingle();
+    if (transferMissionErr) {
+        return { success: false, mutated: false, code: 'MISSION_A_VERIFIER', error: 'La mission n’a pas pu être vérifiée. Aucun versement n’a été créé.' };
+    }
+    if (missionBlocksMoneyStep(transferMission)) {
+        return { success: false, mutated: false, ...MISSION_CANCELLED_BODY };
+    }
+
     // 2. Fetch payment record
-    const { data: payment, error: pErr } = await supabaseAdmin
-        .from('payments')
-        .select('*')
-        .eq('milestone_id', milestoneId)
-        .single();
+    const { data: payment, error: pErr } = await milestoneMoneyPayment(milestoneId);
 
     if (pErr || !payment) {
         return { success: false, error: "Paiement introuvable.", code: "PAYMENT_NOT_FOUND" };
@@ -5178,9 +5509,35 @@ async function retryMilestoneTransfer(milestoneId) {
         return { success: false, error: `Statut de transfert invalide (${payment.transfer_status}).`, code: lockPlan.code };
     }
 
+    const transferRuntime = stripeRuntime();
+    if (!transferRuntime.stripe) {
+        return {
+            success: false,
+            code: 'STRIPE_UNAVAILABLE',
+            mutated: false,
+            error: 'Stripe est indisponible. Aucun transfert n’a été créé.'
+        };
+    }
+
+    // The dispute webhook can be delayed or arrive before the payment one: ask Stripe directly.
+    let fundedCharge = null;
+    try {
+        if (payment.stripe_charge_id) {
+            fundedCharge = await transferRuntime.stripe.charges.retrieve(payment.stripe_charge_id);
+        } else if (payment.stripe_payment_intent_id) {
+            const fundedIntent = await transferRuntime.stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id, { expand: ['latest_charge'] });
+            fundedCharge = fundedIntent && typeof fundedIntent.latest_charge === 'object' ? fundedIntent.latest_charge : null;
+        }
+    } catch (_) {
+        fundedCharge = null;
+    }
+    const chargeGate = fundedChargeTransferDecision(fundedCharge, payment.customer_total_cents);
+    if (!chargeGate.ok) {
+        return { success: false, mutated: false, code: chargeGate.code, error: chargeGate.error };
+    }
+
     // 3. Fetch Provider Profile for Stripe Account ID
     const providerId = payment.provider_id || quote.provider_id;
-    const transferRuntime = stripeRuntime();
     const loadedProvider = await loadConnectProfile(providerId, transferRuntime.inspected && transferRuntime.inspected.mode);
     const providerProfile = loadedProvider && loadedProvider.profile;
 
@@ -5189,7 +5546,8 @@ async function retryMilestoneTransfer(milestoneId) {
         await supabaseAdmin
             .from('payments')
             .update({ transfer_status: 'TRANSFER_FAILED' })
-            .eq('id', payment.id);
+            .eq('id', payment.id)
+            .is('stripe_transfer_id', null);
 
         return {
             success: true,
@@ -5202,8 +5560,8 @@ async function retryMilestoneTransfer(milestoneId) {
     const stripeAccountId = providerProfile.stripe_account_id;
 
     // 4. Verify Stripe Connect Eligibility Server-Side
-    if (process.env.STRIPE_SECRET_KEY) {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    {
+        const stripe = transferRuntime.stripe;
         try {
             const account = await stripe.v2.core.accounts.retrieve(stripeAccountId, {
                 include: ['configuration.recipient']
@@ -5214,7 +5572,8 @@ async function retryMilestoneTransfer(milestoneId) {
                 await supabaseAdmin
                     .from('payments')
                     .update({ transfer_status: 'TRANSFER_FAILED' })
-                    .eq('id', payment.id);
+                    .eq('id', payment.id)
+                    .is('stripe_transfer_id', null);
 
                 return {
                     success: true,
@@ -5228,7 +5587,8 @@ async function retryMilestoneTransfer(milestoneId) {
             await supabaseAdmin
                 .from('payments')
                 .update({ transfer_status: 'TRANSFER_FAILED' })
-                .eq('id', payment.id);
+                .eq('id', payment.id)
+                .is('stripe_transfer_id', null);
 
             return {
                 success: true,
@@ -5264,165 +5624,144 @@ async function retryMilestoneTransfer(milestoneId) {
     // 6. Execute Stripe Transfer (Separate Charges & Transfers with Deterministic Idempotency Key)
     const stripeIdempotencyKey = transferIdempotencyKey(milestone.id);
     const transferAmountCents = Number(payment.provider_net_cents);
-
-    if (process.env.STRIPE_SECRET_KEY) {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-        try {
-            const transferParams = {
-                amount: transferAmountCents,
-                currency: 'eur',
-                destination: stripeAccountId,
-                description: `Versement Partie LYANN ${milestone.id}`,
-                metadata: {
-                    milestone_id: milestone.id,
-                    payment_id: payment.id,
-                    mission_id: payment.mission_id,
-                    provider_id: providerId
-                }
-            };
-            const sourceChargeId = stripeChargeId(payment.stripe_charge_id);
-            if (sourceChargeId) transferParams.source_transaction = sourceChargeId;
-            let intentLivemode = null;
-            try {
-                const intent = payment.stripe_payment_intent_id
-                    ? await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
-                    : null;
-                intentLivemode = intent ? intent.livemode : null;
-            } catch (_) {
-                intentLivemode = null;
-            }
-            const modeCheck = transferModeMatches(
-                intentLivemode,
-                String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? 'live' : 'test'
-            );
-            const createGate = liveTransferDecision(process.env);
-            if (!createGate.ok || !modeCheck.ok) {
-                if (lockedPayment.transfer_status === 'TRANSFER_PROCESSING') {
-                    await supabaseAdmin
-                        .from('payments')
-                        .update({ transfer_status: lockPlan.revertTo })
-                        .eq('id', payment.id)
-                        .eq('transfer_status', 'TRANSFER_PROCESSING')
-                        .is('stripe_transfer_id', null);
-                }
-                return {
-                    success: false,
-                    code: !createGate.ok ? createGate.code : modeCheck.code,
-                    mutated: false,
-                    error: 'Aucun transfert n’a été créé.'
-                };
-            }
-            const transferDecision = evaluateTransfer({
-                payment,
-                milestone,
-                providerAccountId: stripeAccountId,
-                destinationAccountId: stripeAccountId
-            });
-            if (!transferDecision.ok) {
-                await supabaseAdmin
-                    .from('payments')
-                    .update({ transfer_status: lockPlan.revertTo })
-                    .eq('id', payment.id);
-                return { success: false, error: "Versement refusé.", code: transferDecision.code };
-            }
-            const transfer = await stripe.transfers.create(transferParams, {
-                idempotencyKey: stripeIdempotencyKey
-            });
-
-            // 7. Update Payment & Milestone on Transfer Success
-            const nowIso = new Date().toISOString();
-            await supabaseAdmin
-                .from('payments')
-                .update({
-                    stripe_transfer_id: transfer.id,
-                    transfer_status: 'TRANSFERRED',
-                    released_at: nowIso
-                })
-                .eq('id', payment.id);
-
-            await supabaseAdmin
-                .from('milestones')
-                .update({
-                    status: 'RELEASED',
-                    updated_at: nowIso
-                })
-                .eq('id', milestone.id);
-
-            console.log(`🎉 [LYANN TRANSFER] Transfert réussi ${transfer.id} pour Partie ${milestone.id}. Montant: ${transferAmountCents} cents.`);
-
-            await closeRequestWhenQuoteIsSettled(quote);
-            return {
-                success: true,
-                status: "RELEASED",
-                transfer_id: transfer.id,
-                message: "Versement autorisé et libéré."
-            };
-        } catch (trErr) {
-            console.error("❌ Erreur Stripe Transfer:", trErr);
-            const recovered = trErr && (trErr.transfer || (trErr.raw && trErr.raw.transfer));
-            const failure = stripeTransferFailureAction(recovered && recovered.id ? recovered : null);
-            if (failure.action === 'complete') {
-                const nowIso = new Date().toISOString();
-                await supabaseAdmin
-                    .from('payments')
-                    .update({
-                        stripe_transfer_id: failure.transferId,
-                        transfer_status: 'TRANSFERRED',
-                        released_at: nowIso
-                    })
-                    .eq('id', payment.id);
-                await supabaseAdmin
-                    .from('milestones')
-                    .update({ status: 'RELEASED', updated_at: nowIso })
-                    .eq('id', milestone.id);
-                await closeRequestWhenQuoteIsSettled(quote);
-                return {
-                    success: true,
-                    status: "RELEASED",
-                    transfer_id: failure.transferId,
-                    message: "Versement autorisé et libéré."
-                };
-            }
-            await supabaseAdmin
-                .from('payments')
-                .update({ transfer_status: failure.nextStatus })
-                .eq('id', payment.id);
-
-            return {
-                success: false,
-                status: "TRANSFER_FAILED",
-                error: `Erreur Stripe lors du transfert: ${trErr.message}`
-            };
-        }
-    } else {
-        // Test Mode Mock Fallback when process.env.STRIPE_SECRET_KEY is not defined in non-prod test environments
-        const mockTransferId = `tr_test_${Date.now()}`;
+    const stripe = transferRuntime.stripe;
+    const releaseRecorded = async (transferId) => {
         const nowIso = new Date().toISOString();
-
-        await supabaseAdmin
+        const paymentWrite = await supabaseAdmin
             .from('payments')
             .update({
-                stripe_transfer_id: mockTransferId,
+                stripe_transfer_id: transferId,
                 transfer_status: 'TRANSFERRED',
                 released_at: nowIso
             })
             .eq('id', payment.id);
-
+        if (paymentWrite.error) {
+            // TRANSFER_PROCESSING stays: the next attempt finds this transfer instead of creating one.
+            console.error('[LYANN TRANSFER] transfer created, DB sync pending', String(paymentWrite.error.message || '').slice(0, 80));
+            return {
+                success: false,
+                code: 'TRANSFER_DB_SYNC_PENDING',
+                status: 'TRANSFER_PROCESSING',
+                transfer_id: transferId,
+                error: 'Le versement Stripe est créé mais son enregistrement doit être repris. Aucun second versement ne sera créé.'
+            };
+        }
         await supabaseAdmin
             .from('milestones')
-            .update({
-                status: 'RELEASED',
-                updated_at: nowIso
-            })
+            .update({ status: 'RELEASED', updated_at: nowIso })
             .eq('id', milestone.id);
-
         await closeRequestWhenQuoteIsSettled(quote);
         return {
             success: true,
-            mode: 'stripe_test_mock',
             status: "RELEASED",
-            transfer_id: mockTransferId,
-            message: "Versement autorisé et libéré (mode test)."
+            transfer_id: transferId,
+            message: "Versement autorisé et libéré."
+        };
+    };
+
+    try {
+        const transferParams = {
+            amount: transferAmountCents,
+            currency: 'eur',
+            destination: stripeAccountId,
+            description: `Versement Partie LYANN ${milestone.id}`,
+            metadata: {
+                milestone_id: milestone.id,
+                payment_id: payment.id,
+                mission_id: payment.mission_id,
+                provider_id: providerId
+            }
+        };
+        const sourceChargeId = stripeChargeId(payment.stripe_charge_id);
+        if (sourceChargeId) transferParams.source_transaction = sourceChargeId;
+        let intentLivemode = null;
+        try {
+            const intent = payment.stripe_payment_intent_id
+                ? await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
+                : null;
+            intentLivemode = intent ? intent.livemode : null;
+        } catch (_) {
+            intentLivemode = null;
+        }
+        const modeCheck = transferModeMatches(
+            intentLivemode,
+            String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_') ? 'live' : 'test'
+        );
+        const createGate = liveTransferDecision(process.env);
+        if (!createGate.ok || !modeCheck.ok) {
+            if (lockedPayment.transfer_status === 'TRANSFER_PROCESSING') {
+                await supabaseAdmin
+                    .from('payments')
+                    .update({ transfer_status: lockPlan.revertTo })
+                    .eq('id', payment.id)
+                    .eq('transfer_status', 'TRANSFER_PROCESSING')
+                    .is('stripe_transfer_id', null);
+            }
+            return {
+                success: false,
+                code: !createGate.ok ? createGate.code : modeCheck.code,
+                mutated: false,
+                error: 'Aucun transfert n’a été créé.'
+            };
+        }
+        const transferDecision = evaluateTransfer({
+            payment,
+            milestone,
+            providerAccountId: stripeAccountId,
+            destinationAccountId: stripeAccountId
+        });
+        if (!transferDecision.ok) {
+            await supabaseAdmin
+                .from('payments')
+                .update({ transfer_status: lockPlan.revertTo })
+                .eq('id', payment.id)
+                .is('stripe_transfer_id', null);
+            return { success: false, error: "Versement refusé.", code: transferDecision.code };
+        }
+
+        const paidSince = Math.floor(new Date(payment.created_at || payment.funded_at || 0).getTime() / 1000);
+        const listParams = { destination: stripeAccountId, limit: 100 };
+        if (paidSince > 0) listParams.created = { gte: paidSince - 3600 };
+        const earlier = [];
+        for await (const row of stripe.transfers.list(listParams)) {
+            earlier.push(row);
+            if (earlier.length >= 1000) break;
+        }
+        const previous = existingMilestoneTransferDecision(earlier, milestone.id, transferAmountCents, stripeAccountId);
+        if (previous.action === 'complete') {
+            return releaseRecorded(previous.transferId);
+        }
+        if (previous.action === 'block' || earlier.length >= 1000) {
+            return {
+                success: false,
+                code: previous.code || 'TRANSFER_TO_VERIFY',
+                status: 'TRANSFER_PROCESSING',
+                error: 'Un versement existant doit être vérifié avant toute nouvelle tentative. Aucun versement n’a été créé.'
+            };
+        }
+
+        const transfer = await stripe.transfers.create(transferParams, {
+            idempotencyKey: stripeIdempotencyKey
+        });
+        console.log(`🎉 [LYANN TRANSFER] Transfert réussi ${transfer.id} pour Partie ${milestone.id}. Montant: ${transferAmountCents} cents.`);
+        return releaseRecorded(transfer.id);
+    } catch (trErr) {
+        console.error("❌ Erreur Stripe Transfer:", trErr && trErr.type, String(trErr && trErr.message || '').slice(0, 120));
+        const recovered = trErr && (trErr.transfer || (trErr.raw && trErr.raw.transfer));
+        const failure = stripeTransferFailureAction(recovered && recovered.id ? recovered : null);
+        if (failure.action === 'complete') {
+            return releaseRecorded(failure.transferId);
+        }
+        await supabaseAdmin
+            .from('payments')
+            .update({ transfer_status: failure.nextStatus })
+            .eq('id', payment.id)
+            .is('stripe_transfer_id', null);
+
+        return {
+            success: false,
+            status: "TRANSFER_FAILED",
+            error: `Erreur Stripe lors du transfert: ${trErr.message}`
         };
     }
 }
@@ -5484,12 +5823,11 @@ app.post('/v1/milestones/release-payment', async (req, res) => {
         if (!canValidateRelease(authUid, mission.requester_id)) {
             return res.status(403).json({ error: "Seul le demandeur (client) peut valider la Partie." });
         }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json({ ...MISSION_CANCELLED_BODY, mutated: false });
+        }
 
-        const { data: payment, error: pErr } = await supabaseAdmin
-            .from('payments')
-            .select('*')
-            .eq('milestone_id', milestone_id)
-            .single();
+        const { data: payment, error: pErr } = await milestoneMoneyPayment(milestone_id);
 
         if (pErr || !payment) {
             return res.status(404).json({ error: "Enregistrement de paiement introuvable pour cette Partie." });
@@ -5683,11 +6021,7 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
             return res.status(400).json({ error: "Mission associée introuvable." });
         }
 
-        const { data: payment, error: pErr } = await supabaseAdmin
-            .from('payments')
-            .select('*')
-            .eq('milestone_id', milestone_id)
-            .single();
+        const { data: payment, error: pErr } = await milestoneMoneyPayment(milestone_id);
 
         const dispute = raiseDisputeDecision({
             authUid,
@@ -5701,12 +6035,83 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
         if (dispute.action === 'not_found' || pErr || !payment) {
             return res.status(404).json({ error: "Paiement introuvable pour cette Partie." });
         }
+        const providerId = payment.provider_id || quote.provider_id || mission.helper_id || mission.provider_id || null;
+        const reportText = String(reason || '').trim();
+        const metaReason = payment.metadata && typeof payment.metadata === 'object'
+            ? String(payment.metadata.dispute_reason || '').trim()
+            : '';
+
+        async function findActiveAdminDispute() {
+            const { data: rows } = await supabaseAdmin
+                .from('disputes')
+                .select('id, status')
+                .eq('milestone_id', milestone.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+            const closed = new Set([
+                'RESOLVED_CLIENT', 'RESOLVED_PROVIDER', 'RESOLVED_PARTIAL', 'CANCELLED',
+                'RESOLVED_REFUND', 'RESOLVED_PAYOUT', 'CLOSED'
+            ]);
+            return (rows || []).find((row) => row?.id && !closed.has(String(row.status || '').toUpperCase())) || null;
+        }
+
+        async function ensureAdminDisputeRow(sourceReason, { idempotent }) {
+            const existing = await findActiveAdminDispute();
+            if (existing?.id) {
+                return { disputeId: existing.id, created: false, idempotent: true };
+            }
+            if (!providerId) {
+                console.error('[raise-dispute] admin dispute missing provider_id', milestone.id);
+                return { disputeId: null, created: false, error: 'PROVIDER_MISSING' };
+            }
+            const draft = disputeDraftRow({
+                missionId: mission.id,
+                milestoneId: milestone.id,
+                paymentId: payment.id,
+                requesterId: mission.requester_id,
+                providerId,
+                reason: sourceReason || metaReason || 'Signalement client',
+                description: sourceReason || metaReason || null,
+                frozenAmountCents: payment.customer_total_cents
+            });
+            const inserted = await supabaseAdmin
+                .from('disputes')
+                .insert(draft)
+                .select('id')
+                .maybeSingle();
+            if (inserted.error) {
+                // Unique active-dispute index: another request won the race.
+                const raced = await findActiveAdminDispute();
+                if (raced?.id) {
+                    return { disputeId: raced.id, created: false, idempotent: true };
+                }
+                console.error('[raise-dispute] disputes insert failed', inserted.error.code || '', inserted.error.message || inserted.error);
+                return { disputeId: null, created: false, error: inserted.error };
+            }
+            if (inserted.data?.id) {
+                await supabaseAdmin.from('dispute_events').insert({
+                    dispute_id: inserted.data.id,
+                    actor_id: authUid,
+                    event_type: 'DISPUTE_OPENED',
+                    metadata: {
+                        source: 'raise-dispute',
+                        milestone_id: milestone.id,
+                        payment_id: payment.id,
+                        idempotent: !!idempotent
+                    }
+                });
+            }
+            return { disputeId: inserted.data?.id || null, created: true, idempotent: !!idempotent };
+        }
+
         if (dispute.action === 'already') {
+            const adminRow = await ensureAdminDisputeRow(reportText, { idempotent: true });
             return res.json({
                 success: true,
                 idempotent: true,
                 status: 'DISPUTED',
                 milestone_id: milestone.id,
+                dispute_id: adminRow.disputeId || null,
                 message: "Signalement de litige déjà enregistré. Le versement reste gelé."
             });
         }
@@ -5717,29 +6122,45 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
                     code: "ALREADY_VALIDATED"
                 });
             }
-            if (dispute.code === 'MILESTONE_NOT_COMPLETED') {
-                return res.status(400).json({ error: `Un litige ne peut être ouvert que sur une Partie réalisée (statut actuel: ${milestone.status}).` });
+            if (dispute.code === 'MILESTONE_NOT_REPORTABLE') {
+                return res.status(400).json({
+                    error: 'Ce signalement n’est possible que lorsque le paiement est sécurisé et pas encore versé.',
+                    code: 'MILESTONE_NOT_REPORTABLE'
+                });
             }
             return res.status(400).json({ error: "Le statut du paiement ne permet pas l'ouverture d'un litige." });
         }
 
         const nowIso = new Date().toISOString();
+        // payments.dispute_reason is not on Staging yet. Freeze status only; keep the
+        // reason in logs and payment metadata when that column exists later.
+        const freezePayload = { payment_status: 'DISPUTED' };
+        const meta = payment.metadata && typeof payment.metadata === 'object' ? Object.assign({}, payment.metadata) : {};
+        if (reportText) {
+            meta.dispute_reason = reportText.slice(0, 2000);
+            meta.dispute_reported_at = nowIso;
+            freezePayload.metadata = meta;
+        }
         const frozen = await supabaseAdmin
             .from('payments')
-            .update({
-                payment_status: 'DISPUTED',
-                dispute_reason: reason || null
-            })
+            .update(freezePayload)
             .eq('id', payment.id)
             .eq('payment_status', 'SUCCEEDED')
             .eq('transfer_status', 'PENDING_VALIDATION')
             .is('client_validated_at', null)
             .is('stripe_transfer_id', null)
             .is('stripe_refund_id', null)
-            .select()
+            .select('id,payment_status')
             .maybeSingle();
 
-        if (frozen.error || !frozen.data) {
+        if (frozen.error) {
+            console.error('[raise-dispute] freeze failed', frozen.error.code || '', frozen.error.message || frozen.error);
+            return res.status(500).json({
+                code: 'DISPUTE_FREEZE_FAILED',
+                error: 'Le signalement n’a pas pu geler le versement. Réessayez dans un instant.'
+            });
+        }
+        if (!frozen.data) {
             return res.status(409).json({ code: 'CONCURRENCY_LOCK_FAILED', error: "Le versement n'a pas pu être gelé (concurrence)." });
         }
 
@@ -5750,7 +6171,12 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
                 updated_at: nowIso
             })
             .eq('id', milestone.id)
-            .eq('status', 'COMPLETED');
+            .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
+
+        const adminRow = await ensureAdminDisputeRow(reportText, { idempotent: false });
+        if (!adminRow.disputeId) {
+            console.error('[raise-dispute] freeze ok but admin dispute missing', milestone.id, adminRow.error || '');
+        }
 
         console.log(`⚠️ [DISPUTE RAISED] Litige ouvert par le client sur Partie ${milestone.id}. Raison: ${reason}`);
 
@@ -5758,12 +6184,139 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
             success: true,
             status: "DISPUTED",
             milestone_id: milestone.id,
+            dispute_id: adminRow.disputeId || null,
             message: "Signalement de litige enregistré. Le versement est gelé en attente de médiation."
         });
 
     } catch (e) {
         console.error("Erreur serveur raise-dispute:", e);
         return res.status(500).json({ error: "Erreur interne serveur." });
+    }
+});
+
+async function loadMilestoneDeal(milestoneId) {
+    const { data: milestone } = await supabaseAdmin.from('milestones').select('*, quotes(*)').eq('id', milestoneId).maybeSingle();
+    if (!milestone) return { error: { http: 404, body: { error: 'Étape introuvable.' } } };
+    const quote = milestone.quotes;
+    if (!quote) return { error: { http: 400, body: { error: 'Devis introuvable.' } } };
+    const { data: mission } = await supabaseAdmin.from('missions').select('*').eq('id', quote.mission_id).maybeSingle();
+    if (!mission) return { error: { http: 400, body: { error: 'Mission introuvable.' } } };
+    return { milestone, quote, mission };
+}
+
+app.post('/v1/milestones/request-cancel', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const milestoneId = req.body && req.body.milestone_id;
+        if (!milestoneId) return res.status(400).json({ error: 'Le paramètre milestone_id est obligatoire.' });
+        const loaded = await loadMilestoneDeal(milestoneId);
+        if (loaded.error) return res.status(loaded.error.http).json(loaded.error.body);
+        const { milestone, mission } = loaded;
+        if (String(mission.requester_id) !== String(user.id)) {
+            return res.status(403).json({ error: 'Seul le demandeur peut demander l’annulation.' });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
+        }
+        if (milestone.status !== 'IN_PROGRESS') {
+            return res.status(409).json({
+                error: milestone.status === 'FUNDED'
+                    ? 'Cette étape n’a pas encore commencé. Annulez pour récupérer vos fonds.'
+                    : 'Cette étape ne peut plus être annulée ainsi.',
+                code: 'BUSINESS_POLICY_REQUIRED'
+            });
+        }
+        if (String(milestone.cancellation_status || '') === 'REQUESTED') {
+            return res.json({ success: true, idempotent: true, cancellation_status: 'REQUESTED' });
+        }
+        const nowIso = new Date().toISOString();
+        const { data: updated, error } = await supabaseAdmin.from('milestones').update({
+            cancellation_status: 'REQUESTED',
+            cancellation_requested_at: nowIso,
+            updated_at: nowIso
+        }).eq('id', milestone.id).eq('status', 'IN_PROGRESS').select('id,cancellation_status').maybeSingle();
+        if (error || !updated) {
+            return res.status(409).json({ error: 'La demande d’annulation n’a pas abouti.' });
+        }
+        return res.json({ success: true, cancellation_status: 'REQUESTED' });
+    } catch (e) {
+        return res.status(500).json({ error: 'Demande d’annulation impossible.' });
+    }
+});
+
+app.post('/v1/milestones/decide-cancel', async (req, res) => {
+    try {
+        const user = await requireBearerUser(req);
+        if (!user) return res.status(401).json({ error: 'Authentification requise.' });
+        const milestoneId = req.body && req.body.milestone_id;
+        const accept = req.body && req.body.accept === true;
+        if (!milestoneId) return res.status(400).json({ error: 'Le paramètre milestone_id est obligatoire.' });
+        const loaded = await loadMilestoneDeal(milestoneId);
+        if (loaded.error) return res.status(loaded.error.http).json(loaded.error.body);
+        const { milestone, quote, mission } = loaded;
+        const assignedHelperId = mission.helper_id || quote.provider_id;
+        if (!canDeclareWorkDone(user.id, assignedHelperId)) {
+            return res.status(403).json({ error: 'Seul le Lyanneur peut répondre à l’annulation.' });
+        }
+        if (missionBlocksMoneyStep(mission)) {
+            return res.status(409).json(MISSION_CANCELLED_BODY);
+        }
+        if (String(milestone.cancellation_status || '') !== 'REQUESTED') {
+            return res.status(409).json({ error: 'Aucune demande d’annulation en attente.', code: 'NO_CANCEL_REQUEST' });
+        }
+        const nowIso = new Date().toISOString();
+        const nextStatus = accept ? 'ACCEPTED' : 'REFUSED';
+        const { data: updated, error } = await supabaseAdmin.from('milestones').update({
+            cancellation_status: nextStatus,
+            cancellation_decided_at: nowIso,
+            updated_at: nowIso
+        }).eq('id', milestone.id).eq('cancellation_status', 'REQUESTED').select('id,cancellation_status,status').maybeSingle();
+        if (error || !updated) {
+            return res.status(409).json({ error: 'La réponse n’a pas abouti.' });
+        }
+        if (!accept) {
+            return res.json({ success: true, cancellation_status: 'REFUSED' });
+        }
+        milestone.cancellation_status = 'ACCEPTED';
+        const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestone.id).not('payment_status', 'in', '(FAILED,CANCELLED)').maybeSingle();
+        const grant = loadPreTransferRefundGrant();
+        const facts = grantFactsFromPayment(payment, {
+            requesterId: mission.requester_id,
+            env: process.env,
+            livemode: String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_'),
+            stripeAccount: String(process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_')
+                ? STRIPE_TEST_PLATFORM_ACCOUNT
+                : null
+        });
+        const prepared = preparePreTransferRefund({
+            authUid: mission.requester_id,
+            requesterId: mission.requester_id,
+            payment,
+            milestone,
+            mission,
+            body: { milestone_id: milestone.id },
+            livemode: facts.livemode,
+            grantActive: grant.active === true,
+            grantEvaluation: evaluatePreTransferRefundGrant(grant, facts),
+            providerConsented: true
+        });
+        if (prepared.execute !== true) {
+            return res.json({
+                success: true,
+                cancellation_status: 'ACCEPTED',
+                refunded: false,
+                code: prepared.code || 'EXECUTION_DISABLED'
+            });
+        }
+        return res.json({
+            success: true,
+            cancellation_status: 'ACCEPTED',
+            refunded: false,
+            code: 'REFUND_PENDING_REQUESTER'
+        });
+    } catch (e) {
+        return res.status(500).json({ error: 'Réponse d’annulation impossible.' });
     }
 });
 
@@ -5990,7 +6543,7 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
         if (!mission) {
             return res.status(400).json({ error: 'Mission associée introuvable.' });
         }
-        const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestoneId).maybeSingle();
+        const { data: payment } = await supabaseAdmin.from('payments').select('*').eq('milestone_id', milestoneId).not('payment_status', 'in', '(FAILED,CANCELLED)').maybeSingle();
         const grant = loadPreTransferRefundGrant();
         const facts = grantFactsFromPayment(payment, {
             requesterId: mission.requester_id,
@@ -6011,7 +6564,8 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
             query: req.query,
             livemode: facts.livemode,
             grantActive: grant.active === true,
-            grantEvaluation: evaluatePreTransferRefundGrant(grant, facts)
+            grantEvaluation: evaluatePreTransferRefundGrant(grant, facts),
+            providerConsented: String(milestone.cancellation_status || '') === 'ACCEPTED'
         });
         if (prepared.code === 'FORBIDDEN') {
             return res.status(403).json({ error: 'Seul le demandeur peut annuler ce paiement.', code: prepared.code });
@@ -6081,7 +6635,9 @@ app.post('/v1/payments/refund-untransferred', async (req, res) => {
             locked = reserved.data;
         }
 
-        const amountCents = refundAmountFromPayment(payment);
+        const amountCents = Number.isFinite(Number(prepared.amount_cents))
+            ? Number(prepared.amount_cents)
+            : refundAmountFromPayment(payment);
         if (!Number.isFinite(amountCents) || amountCents <= 0) {
             return res.status(409).json({ code: 'AMOUNT_UNAVAILABLE', error: 'Montant remboursable introuvable.' });
         }
@@ -6215,16 +6771,55 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 const paymentIntent = event.data.object;
                 console.log(`✅ [STRIPE WEBHOOK] PaymentIntent réussi: ${paymentIntent.id}`);
 
-                const { data: payment } = await supabaseAdmin
+                const byIntent = await supabaseAdmin
                     .from('payments')
                     .select('*')
                     .eq('stripe_payment_intent_id', paymentIntent.id)
                     .maybeSingle();
+                if (byIntent.error) throw new Error('PAYMENT_READ_FAILED');
+                let payment = byIntent.data;
+                const metadataPaymentId = paymentIntent.metadata && paymentIntent.metadata.payment_id;
+                if (!payment && metadataPaymentId) {
+                    // The intent id may not have been stored before the customer paid.
+                    const byMetadata = await supabaseAdmin
+                        .from('payments')
+                        .select('*')
+                        .eq('id', metadataPaymentId)
+                        .maybeSingle();
+                    if (byMetadata.error) throw new Error('PAYMENT_READ_FAILED');
+                    const candidate = byMetadata.data;
+                    if (candidate && candidate.stripe_payment_intent_id && candidate.stripe_payment_intent_id !== paymentIntent.id) {
+                        throw new Error('PAYMENT_INTENT_MISMATCH');
+                    }
+                    if (candidate && !candidate.stripe_payment_intent_id) {
+                        const linkIntent = await supabaseAdmin
+                            .from('payments')
+                            .update({ stripe_payment_intent_id: paymentIntent.id })
+                            .eq('id', candidate.id)
+                            .is('stripe_payment_intent_id', null);
+                        if (linkIntent.error) throw new Error('PAYMENT_WRITE_FAILED');
+                        payment = { ...candidate, stripe_payment_intent_id: paymentIntent.id };
+                    }
+                }
 
                 if (payment) {
                     const funded = applyPaymentSucceeded(payment, paymentIntent);
                     if (!funded.ok) {
                         throw new Error(funded.code);
+                    }
+                    if (!funded.idempotent) {
+                        const settledSibling = await supabaseAdmin
+                            .from('payments')
+                            .select('id')
+                            .eq('milestone_id', payment.milestone_id)
+                            .neq('id', payment.id)
+                            .in('payment_status', ['SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'])
+                            .limit(1);
+                        if (settledSibling.error) throw new Error('PAYMENT_READ_FAILED');
+                        if ((settledSibling.data || []).length) {
+                            // Two charges for one milestone: no automatic refund, an operator decides.
+                            throw new Error('DUPLICATE_MILESTONE_CHARGE');
+                        }
                     }
                     if (funded.preserve_payment !== true && funded.apply !== false) {
                         const paymentUpdate = {
@@ -6233,13 +6828,14 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                             stripe_charge_id: funded.stripe_charge_id
                         };
                         if (!funded.preserve_transfer) paymentUpdate.transfer_status = funded.transfer_status;
-                        await supabaseAdmin
+                        const paymentWrite = await supabaseAdmin
                             .from('payments')
                             .update(paymentUpdate)
                             .eq('id', payment.id);
+                        if (paymentWrite.error) throw new Error('PAYMENT_WRITE_FAILED');
                     }
                     if (funded.milestone_status === 'FUNDED') {
-                        await supabaseAdmin
+                        const milestoneWrite = await supabaseAdmin
                             .from('milestones')
                             .update({
                                 status: 'FUNDED',
@@ -6247,6 +6843,35 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                             })
                             .eq('id', payment.milestone_id)
                             .in('status', ['PENDING', 'IN_PROGRESS', 'FUNDED']);
+                        if (milestoneWrite.error) throw new Error('MILESTONE_WRITE_FAILED');
+                    }
+
+                    // A dispute opened in the same second may have been refused before this row was settled;
+                    // Stripe only re-sends it hours later in test mode, so freeze now if the charge is contested.
+                    const settledChargeId = typeof paymentIntent.latest_charge === 'string'
+                        ? paymentIntent.latest_charge
+                        : paymentIntent.latest_charge && paymentIntent.latest_charge.id;
+                    if (funded.preserve_payment !== true && settledChargeId && runtime.stripe) {
+                        let settledCharge = null;
+                        try {
+                            settledCharge = await runtime.stripe.charges.retrieve(settledChargeId);
+                        } catch (_) {
+                            settledCharge = null;
+                        }
+                        if (settledCharge && settledCharge.disputed === true) {
+                            const freezePayment = await supabaseAdmin
+                                .from('payments')
+                                .update({ payment_status: 'DISPUTED' })
+                                .eq('id', payment.id)
+                                .in('payment_status', ['SUCCEEDED', 'PARTIALLY_REFUNDED']);
+                            if (freezePayment.error) throw new Error('DISPUTE_PAYMENT_WRITE_FAILED');
+                            const freezeMilestone = await supabaseAdmin
+                                .from('milestones')
+                                .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
+                                .eq('id', payment.milestone_id)
+                                .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
+                            if (freezeMilestone.error) throw new Error('DISPUTE_MILESTONE_WRITE_FAILED');
+                        }
                     }
 
                     // Annonce → en cours (hors recherche publique OPEN).
@@ -6258,15 +6883,21 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                             .maybeSingle();
                         const quoteRow = fundedMilestone && fundedMilestone.quotes;
                         let requestId = quoteRow && quoteRow.request_id;
-                        if (!requestId && quoteRow && quoteRow.mission_id) {
-                            const { data: missionRow } = await supabaseAdmin
+                        let missionRow = null;
+                        if (quoteRow && quoteRow.mission_id) {
+                            ({ data: missionRow } = await supabaseAdmin
                                 .from('missions')
-                                .select('related_request_id')
+                                .select('related_request_id, status')
                                 .eq('id', quoteRow.mission_id)
-                                .maybeSingle();
-                            requestId = missionRow && missionRow.related_request_id;
+                                .maybeSingle());
+                            if (!requestId) requestId = missionRow && missionRow.related_request_id;
                         }
-                        if (requestId) {
+                        const paidAfterCancel = !!missionRow && missionBlocksMoneyStep(missionRow);
+                        if (paidAfterCancel) {
+                            // A checkout opened before the cancellation was confirmed after it.
+                            console.error('[PAYMENT CORE] PAYMENT_ON_CANCELLED_MISSION', payment.id);
+                        }
+                        if (requestId && !paidAfterCancel) {
                             await supabaseAdmin
                                 .from('requests')
                                 .update({
@@ -6338,11 +6969,12 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     .maybeSingle();
                 const failed = applyPaymentFailed(existingFailed);
                 if (failed.apply) {
-                    await supabaseAdmin
+                    const failedWrite = await supabaseAdmin
                         .from('payments')
                         .update({ payment_status: 'FAILED' })
                         .eq('id', existingFailed.id)
                         .in('payment_status', ['CREATED', 'REQUIRES_ACTION', 'PROCESSING']);
+                    if (failedWrite.error) throw new Error('PAYMENT_WRITE_FAILED');
                 }
                 break;
             }
@@ -6355,6 +6987,10 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                     .eq('stripe_charge_id', charge && charge.id)
                     .maybeSingle();
                 const synced = applyChargeRefunded(refundedPayment, charge);
+                if (synced.action === 'observe' && refundedPayment) {
+                    // Refund made outside LYANN (e.g. Dashboard): the row is not rewritten, an operator reconciles it.
+                    console.error('[PAYMENT CORE] REFUND_OUTSIDE_LYANN', refundedPayment.id, charge && charge.amount_refunded);
+                }
                 if (synced.apply && refundedPayment && synced.persist !== false) {
                     await supabaseAdmin
                         .from('payments')
@@ -6421,25 +7057,31 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
                 } else {
                     break;
                 }
-                const { data: disputedPayment } = await disputedQuery.maybeSingle();
+                const { data: disputedPayment, error: disputedReadErr } = await disputedQuery.maybeSingle();
+                if (disputedReadErr) throw new Error('PAYMENT_READ_FAILED');
+                if (disputeArrivedBeforeSettlement(disputedPayment)) {
+                    // Stripe retries this event; by then payment_intent.succeeded has settled the row.
+                    throw new Error('DISPUTE_BEFORE_PAYMENT_SETTLED');
+                }
                 const frozen = event.type === 'charge.dispute.updated'
                     ? applyChargeDisputeUpdated(disputedPayment)
                     : applyChargeDisputeCreated(disputedPayment);
                 if (frozen.apply && disputedPayment) {
-                    await supabaseAdmin
+                    const disputeWrite = await supabaseAdmin
                         .from('payments')
                         .update({ payment_status: 'DISPUTED' })
                         .eq('id', disputedPayment.id)
                         .in('payment_status', ['SUCCEEDED', 'PARTIALLY_REFUNDED']);
+                    if (disputeWrite.error) throw new Error('DISPUTE_PAYMENT_WRITE_FAILED');
                     if (disputedPayment.milestone_id) {
-                        await supabaseAdmin
+                        const milestoneWrite = await supabaseAdmin
                             .from('milestones')
                             .update({ status: 'DISPUTED', updated_at: new Date().toISOString() })
                             .eq('id', disputedPayment.milestone_id)
                             .in('status', ['FUNDED', 'IN_PROGRESS', 'COMPLETED']);
+                        if (milestoneWrite.error) throw new Error('DISPUTE_MILESTONE_WRITE_FAILED');
                     }
                 }
-                void chargeId;
                 break;
             }
 
@@ -6523,7 +7165,7 @@ app.post(['/v1/payments/webhook', '/v1/webhooks/stripe', '/payments/webhook', '/
         }
         return res.json({ received: true });
     } catch (handlerErr) {
-        console.error('Erreur traitement Webhook Stripe');
+        console.error('Erreur traitement Webhook Stripe', event && event.type, String(handlerErr && handlerErr.message || '').slice(0, 80));
         if (event && event.id) {
             await supabaseAdmin.from('stripe_webhook_events').delete().eq('stripe_event_id', event.id);
         }
@@ -6545,7 +7187,9 @@ if (require.main === module) {
     const bind = process.env.LYANN_API_BIND || undefined;
     const onListen = () => {
         console.log(`🚀 LYANN DOM API Engine en écoute sur http://${bind || 'localhost'}:${PORT}/v1`);
-        if (process.env.PUSH_AUTOMATIC_ENABLED === 'true' && process.env.PUSH_CRON_SECRET && !process.env.VERCEL) {
+        // The shared Staging queue is drained only by the Vercel cron. A local
+        // process must opt in explicitly, or a restart would claim those rows first.
+        if (process.env.LYANN_ALLOW_LOCAL_PUSH_DRAIN === 'true' && process.env.PUSH_AUTOMATIC_ENABLED === 'true' && process.env.PUSH_CRON_SECRET && !process.env.VERCEL) {
             const http = require('http');
             const secret = process.env.PUSH_CRON_SECRET;
             const tick = () => {

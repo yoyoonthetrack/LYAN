@@ -1,11 +1,13 @@
 {
   "timezone": "America/Guadeloupe",
   "enabled": true,
-  "reason": "Chaque agent prépare au plus une proposition par passage. Rien n’est publié sans validation humaine. Une proposition ignorée reste en attente.",
+  "reason": "Un seul chemin de cron, sans paramètre d’URL : Vercel ignore les chemins en double ou avec une query. 07:00, 12:00 et 17:00 en Guadeloupe. Rien n’est publié sans validation humaine.",
+  "cron": "0 11,16,21 * * *",
+  "path": "/v1/editorial/collect/scheduled",
   "passes": [
-    { "local": "07:00", "utc": "11:00", "cron": "0 11 * * *" },
-    { "local": "12:00", "utc": "16:00", "cron": "0 16 * * *" },
-    { "local": "17:00", "utc": "21:00", "cron": "0 21 * * *" }
+    { "local": "07:00", "utc": "11:00", "cron": "0 11,16,21 * * *" },
+    { "local": "12:00", "utc": "16:00", "cron": "0 11,16,21 * * *" },
+    { "local": "17:00", "utc": "21:00", "cron": "0 11,16,21 * * *" }
   ],
   "agents": 5,
   "maxProposalsPerPass": 5,

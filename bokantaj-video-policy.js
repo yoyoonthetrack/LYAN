@@ -91,6 +91,15 @@ function fitFrame(width, height) {
 // real shape of the clip before fetching anything. Names without it stay valid.
 const POSTER_PATTERN = /-poster(?:-(\d+)x(\d+))?\.jpe?g(?:[?#]|$)/i;
 
+function displayFrame(width, height, rotation) {
+    const turn = rotation === 90 || rotation === 270;
+    return {
+        width: turn ? height : width,
+        height: turn ? width : height,
+        rotation: rotation || 0
+    };
+}
+
 function posterName(id, width, height) {
     const w = Math.round(Number(width) || 0);
     const h = Math.round(Number(height) || 0);
@@ -122,18 +131,35 @@ function playbackMarkup(videoUrl, posterUrl) {
     const video = escapeAttr(videoUrl);
     const poster = escapeAttr(posterUrl);
     const ratio = posterRatio(posterUrl);
-    const shaped = ratio ? ' has-media-ratio' : '';
-    const style = ratio ? ` style="--media-ratio:${ratio.width} / ${ratio.height}"` : '';
+    // A landscape size in the filename is the coded iPhone frame. Reserving it
+    // paints a wide black box before the clip is known to be portrait.
+    const portrait = ratio && ratio.height > ratio.width;
+    const shaped = portrait ? ' has-media-ratio' : '';
+    const style = portrait ? ` style="--media-ratio:${ratio.width} / ${ratio.height}"` : '';
+    const coded = ratio ? ` data-coded-ratio="${ratio.width}x${ratio.height}"` : '';
     const image = poster
         ? `<img src="${poster}" alt="" class="bokantaj-video-poster-image">`
         : '';
-    return `<button type="button" class="bokantaj-video-poster${shaped}" data-video-src="${video}"${style}>${image}<span>Lire la vidéo</span></button>`;
+    return `<button type="button" class="bokantaj-video-poster${shaped}" data-video-src="${video}"${coded}${style}>${image}<span>Lire la vidéo</span></button>`;
 }
 
 function escapeAttr(value) {
     return String(value || '').replace(/[&<>"']/g, (ch) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[ch]);
+}
+
+function normalizeBokantajPlace(place) {
+    if (place == null || place === false) return null;
+    const lat = Number(place.lat);
+    const lng = Number(place.lng);
+    const label = typeof place.label === 'string' ? place.label.trim() : '';
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)
+        || lat < -90 || lat > 90 || lng < -180 || lng > 180
+        || label.length < 2 || label.length > 90) {
+        return { error: 'Sélectionnez un repère valide sur la carte.' };
+    }
+    return { lat, lng, label };
 }
 
 function mapPinVisible(post, now) {
@@ -148,6 +174,92 @@ function mapPinVisible(post, now) {
 
 function pinExpiryEffect() {
     return { hidePinOnly: true, deletePost: false, deletePhotos: false, deleteVideo: false };
+}
+
+// iPhone portrait clips store a landscape frame plus a display matrix. The
+// poster is that raw frame, so the feed has to know the matrix before showing it.
+function mp4Rotation(input) {
+    const found = mp4RotationFound(input);
+    return found === null ? 0 : found;
+}
+
+// A camera MOV often parks moov at the end. The first range then has no tkhd,
+// and a landscape coded frame would be reserved for a portrait clip.
+function mp4HasTkhd(input) {
+    return mp4RotationFound(input) !== null;
+}
+
+function mp4RotationScan(input) {
+    const bytes = mp4Bytes(input);
+    if (!bytes) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let identity = false;
+    for (let i = 4; i + 8 < bytes.length; i += 1) {
+        if (bytes[i] !== 0x74 || bytes[i + 1] !== 0x6b || bytes[i + 2] !== 0x68 || bytes[i + 3] !== 0x64) continue;
+        const rotation = tkhdRotation(view, i - 4, Math.min(bytes.length - (i - 4), 240));
+        if (rotation) return rotation;
+        identity = true;
+    }
+    return identity ? 0 : null;
+}
+
+function mp4RotationFound(input) {
+    const bytes = mp4Bytes(input);
+    if (!bytes || bytes.length < 16) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return rotationIn(view, 0, bytes.length);
+}
+
+function mp4Bytes(input) {
+    if (!input) return null;
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(input)) {
+        return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    }
+    if (input instanceof ArrayBuffer) return new Uint8Array(input);
+    if (ArrayBuffer.isView(input)) return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    return null;
+}
+
+function rotationIn(view, start, end) {
+    let offset = start;
+    while (offset + 8 <= end) {
+        let size = view.getUint32(offset);
+        let header = 8;
+        if (size === 1 && offset + 16 <= end) {
+            size = view.getUint32(offset + 8) * 4294967296 + view.getUint32(offset + 12);
+            header = 16;
+        }
+        if (!size || size < header || offset + size > end) break;
+        const type = String.fromCharCode(
+            view.getUint8(offset + 4), view.getUint8(offset + 5),
+            view.getUint8(offset + 6), view.getUint8(offset + 7)
+        );
+        if (type === 'tkhd') {
+            const rotation = tkhdRotation(view, offset, size);
+            if (rotation !== null) return rotation;
+        } else if (type === 'moov' || type === 'trak') {
+            const nested = rotationIn(view, offset + header, offset + size);
+            if (nested !== null) return nested;
+        }
+        offset += size;
+    }
+    return null;
+}
+
+function tkhdRotation(view, offset, size) {
+    const version = view.getUint8(offset + 8);
+    const matrixAt = offset + (version === 1 ? 60 : 48);
+    const widthAt = matrixAt + 36;
+    if (widthAt + 8 > offset + size) return null;
+    const width = view.getUint32(widthAt);
+    const height = view.getUint32(widthAt + 4);
+    if (width < 2 && height < 2) return null;
+    const a = view.getInt32(matrixAt);
+    const b = view.getInt32(matrixAt + 4);
+    if (a === 0 && b > 0) return 90;
+    if (a < 0 && b === 0) return 180;
+    if (a === 0 && b < 0) return 270;
+    return 0;
 }
 
 function inspectMp4(input) {
@@ -215,6 +327,22 @@ function volumeOf(objects) {
     return { files: files.length, bytes };
 }
 
+// WKWebView paints a white frame for a QuickTime URL whose response is
+// Cache-Control: no-store. An avc1 file can be handed to the player as MP4
+// once the member has asked to watch it. HEVC stays QuickTime.
+function playbackMime(bytes, headerType) {
+    const header = String(headerType || '').toLowerCase().split(';')[0].trim();
+    if (header !== 'video/quicktime') return header || 'application/octet-stream';
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+    const limit = Math.min(view.length, 524288);
+    const sample = typeof TextDecoder !== 'undefined'
+        ? new TextDecoder('latin1').decode(view.subarray(0, limit))
+        : '';
+    if (sample.includes('hvc1') || sample.includes('hev1')) return 'video/quicktime';
+    if (sample.includes('avc1')) return 'video/mp4';
+    return 'video/quicktime';
+}
+
 const api = {
     MAX_SECONDS,
     MAX_BYTES,
@@ -233,16 +361,22 @@ const api = {
     fitFrame,
     isPosterUrl,
     posterName,
+    displayFrame,
     posterRatio,
     posterFor,
     playbackMarkup,
+    normalizeBokantajPlace,
     mapPinVisible,
     pinExpiryEffect,
     inspectMp4,
+    mp4Rotation,
+    mp4HasTkhd,
+    mp4RotationScan,
     isProductionTarget,
     mediaDeletionAllowed,
     selectOrphans,
-    volumeOf
+    volumeOf,
+    playbackMime
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -1,11 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 process.env.LYANN_MOBILE_BUILD = '1';
 process.env.LYANN_NATIVE_BUILD_AT = new Date().toISOString();
 process.env.LYANN_NATIVE_BUILD_ID = process.env.LYANN_NATIVE_BUILD_ID
   || ('ios-' + Date.now().toString(36) + '-' + crypto.randomBytes(3).toString('hex'));
-const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin } = require('./shared-html-build');
+const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin, nativeBuildIdentity, assertRecipeNativeBundle } = require('./shared-html-build');
+try {
+  process.env.LYANN_NATIVE_GIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: __dirname, encoding: 'utf8' }).trim();
+} catch (_) {
+  process.env.LYANN_NATIVE_GIT_SHA = '';
+}
+if (!process.env.LYANN_APP_VERSION) {
+  try {
+    const gradle = fs.readFileSync(path.join(__dirname, 'android', 'app', 'build.gradle'), 'utf8');
+    const match = gradle.match(/versionName\s+"([^"]+)"/);
+    process.env.LYANN_APP_VERSION = match ? match[1] : '1.0';
+  } catch (_) {
+    process.env.LYANN_APP_VERSION = '1.0';
+  }
+}
 require('./scripts/ensure-leaflet-assets')();
 
 const srcDir = __dirname;
@@ -97,14 +112,27 @@ for (const dir of ['vendor', 'assets']) {
   if (fs.existsSync(source)) fs.cpSync(source, path.join(sharedDist, dir), { recursive: true, force: true });
 }
 
+function bundleDigest(dir) {
+  const hash = crypto.createHash('sha256');
+  for (const relative of listFilesRecursive(dir)) {
+    if (relative === 'lyann-native-build.json') continue;
+    hash.update(relative);
+    hash.update('\0');
+    hash.update(hashFile(path.join(dir, relative)));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
+const identity = nativeBuildIdentity();
 const stamp = {
-  id: process.env.LYANN_NATIVE_BUILD_ID,
-  at: process.env.LYANN_NATIVE_BUILD_AT,
-  lock: process.env.LYANN_E2E_WRITE_PROJECT_REF || process.env.LYANN_SUPABASE_LOCK || '',
-  backend: resolveInjectedBackendOrigin()
+  ...identity,
+  bundle: bundleDigest(sharedDist),
+  lock: identity.supabase
 };
 fs.writeFileSync(path.join(sharedDist, 'lyann-native-build.json'), JSON.stringify(stamp) + '\n');
-console.log('LYANN native build stamp', stamp.id, stamp.at, 'backend=' + (stamp.backend || '(empty)'));
+assertRecipeNativeBundle(stamp, fs.readFileSync(path.join(sharedDist, 'feed.html'), 'utf8'));
+console.log('LYANN native build stamp', stamp.id, (stamp.sha || '').slice(0, 12), (stamp.bundle || '').slice(0, 12), 'backend=' + (stamp.backend || '(empty)'));
 
 // Capacitor consumes the exact shared artifact. No iOS/Android-specific HTML or JS mutation is allowed here.
 if (fs.existsSync(path.dirname(iosPublic))) {

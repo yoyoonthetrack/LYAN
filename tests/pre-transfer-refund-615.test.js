@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {
+    const {
     preparePreTransferRefund,
     classifyPreTransferRefundBusiness,
     admitPreTransferRefundDispatch,
@@ -12,7 +12,10 @@ const {
     reconcileRefundAfterFailure,
     refundReservationId,
     refundTransferExclusion,
-    postTransferFinancialExecutionEnabled
+    postTransferFinancialExecutionEnabled,
+    customerFeeRefundPolicy,
+    optionARefundBreakdown,
+    optionARefundAmountCents
 } = require('../api/stripe-policy');
 const {
     PRE_TRANSFER_REFUND_GRANT,
@@ -41,7 +44,9 @@ const PAY = {
     stripe_refund_id: null,
     stripe_reversal_id: null,
     stripe_payment_intent_id: 'pi_615_qa',
-    customer_total_cents: 4349
+    customer_total_cents: 4349,
+    service_amount_cents: 4200,
+    customer_fee_cents: 149
 };
 
 function prepare(overrides) {
@@ -224,6 +229,31 @@ test('6.15 business classification does not invent auto-refund for started work'
         milestone: { status: 'IN_PROGRESS' },
         mission: { status: 'IN_PROGRESS' }
     }).decision, 'NEEDS_PROVIDER_OR_ADMIN');
+    assert.equal(classifyPreTransferRefundBusiness({
+        payment: PAY,
+        milestone: { status: 'IN_PROGRESS' },
+        mission: { status: 'IN_PROGRESS' },
+        providerConsented: true
+    }).decision, 'AUTO_ELIGIBLE');
+    const testAutoBlocked = prepare({
+        env: { STRIPE_TEST_AUTO_REFUND: 'true' },
+        livemode: false
+    });
+    assert.equal(testAutoBlocked.execute, false);
+    assert.equal(testAutoBlocked.code, 'FEE_POLICY_UNDECIDED');
+    const testAutoReady = prepare({
+        env: { STRIPE_TEST_AUTO_REFUND: 'true', LYANN_CUSTOMER_FEE_REFUND: 'refund' },
+        livemode: false
+    });
+    assert.equal(testAutoReady.execute, true);
+    assert.equal(testAutoReady.code, 'READY');
+    assert.equal(testAutoReady.amount_cents, 4349);
+    const testAutoRetain = prepare({
+        env: { STRIPE_TEST_AUTO_REFUND: 'true', LYANN_CUSTOMER_FEE_REFUND: 'retain' },
+        livemode: false
+    });
+    assert.equal(testAutoRetain.amount_cents, 4200);
+    assert.equal(testAutoRetain.fee_policy, 'FEE_RETAINED');
     assert.equal(classifyPreTransferRefundBusiness({
         payment: PAY,
         milestone: { status: 'COMPLETED' },

@@ -9,7 +9,7 @@ async function createTestPaymentIntent() {
   const intent = await stripe.paymentIntents.create({
     amount: 2100,
     currency: 'eur',
-    payment_method_types: ['card']
+    automatic_payment_methods: { enabled: true, allow_redirects: 'never' }
   });
   expect(intent.livemode, 'Stripe test mode only').toBe(false);
   expect(intent.client_secret).toBeTruthy();

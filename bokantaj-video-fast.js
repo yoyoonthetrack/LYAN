@@ -58,6 +58,34 @@
         return vendorPromise;
     }
 
+    function orientedSize(width, height, rotation) {
+        if (rotation === 90 || rotation === 270) return { width: height, height: width };
+        return { width, height };
+    }
+
+    // The coded frame is what the decoder returns. Turning it here means the
+    // file, the poster and the feed all share one upright picture.
+    function paintFrame(context, videoFrame, rotation, width, height) {
+        context.save();
+        context.clearRect(0, 0, width, height);
+        if (rotation === 90) {
+            context.translate(width, 0);
+            context.rotate(Math.PI / 2);
+            context.drawImage(videoFrame, 0, 0, height, width);
+        } else if (rotation === 270) {
+            context.translate(0, height);
+            context.rotate(-Math.PI / 2);
+            context.drawImage(videoFrame, 0, 0, height, width);
+        } else if (rotation === 180) {
+            context.translate(width, height);
+            context.rotate(Math.PI);
+            context.drawImage(videoFrame, 0, 0, width, height);
+        } else {
+            context.drawImage(videoFrame, 0, 0, width, height);
+        }
+        context.restore();
+    }
+
     function rotationOf(track) {
         const matrix = track && track.matrix;
         if (!matrix || matrix.length < 5) return 0;
@@ -189,7 +217,9 @@
         const track = parsed.videoTrack;
         const codedWidth = track.video ? track.video.width : meta.width;
         const codedHeight = track.video ? track.video.height : meta.height;
-        const frame = policy.fitFrame(codedWidth, codedHeight);
+        const rotation = rotationOf(track);
+        const display = orientedSize(codedWidth, codedHeight, rotation);
+        const frame = policy.fitFrame(display.width, display.height);
         const seconds = Math.max(0.5, Number(end) - Number(start));
         const config = await encoderConfig(frame.width, frame.height, seconds);
         if (!config) throw new Error('no_encoder');
@@ -212,7 +242,7 @@
                 codec: 'avc',
                 width: frame.width,
                 height: frame.height,
-                rotation: rotationOf(track)
+                rotation: 0
             },
             ...(audioTrack ? {
                 audio: {
@@ -252,7 +282,7 @@
                     videoFrame.close();
                     return;
                 }
-                context.drawImage(videoFrame, 0, 0, frame.width, frame.height);
+                paintFrame(context, videoFrame, rotation, frame.width, frame.height);
                 if (!painted) posterCanvas.getContext('2d').drawImage(canvas, 0, 0);
                 const scaled = new window.VideoFrame(canvas, { timestamp: timestamp - startUs });
                 videoFrame.close();
@@ -341,7 +371,9 @@
         if (!description) throw new Error('no_description');
         const codedWidth = track.video ? track.video.width : 0;
         const codedHeight = track.video ? track.video.height : 0;
-        const frame = policy.fitFrame(codedWidth, codedHeight);
+        const rotation = rotationOf(track);
+        const display = orientedSize(codedWidth, codedHeight, rotation);
+        const frame = policy.fitFrame(display.width, display.height);
         const canvas = document.createElement('canvas');
         canvas.width = frame.width;
         canvas.height = frame.height;
@@ -352,7 +384,7 @@
         const decoder = new window.VideoDecoder({
             output: (videoFrame) => {
                 if (!drawn && videoFrame.timestamp >= atUs) {
-                    canvas.getContext('2d').drawImage(videoFrame, 0, 0, frame.width, frame.height);
+                    paintFrame(canvas.getContext('2d'), videoFrame, rotation, frame.width, frame.height);
                     drawn = true;
                 }
                 videoFrame.close();
@@ -386,9 +418,103 @@
         return poster;
     }
 
+    function videoCodecOf(track) {
+        const codec = String(track && track.codec || '').toLowerCase();
+        if (codec.includes('hev') || codec.includes('hvc')) return 'hevc';
+        if (codec.includes('avc')) return 'avc';
+        if (codec.includes('vp09') || codec.includes('vp9')) return 'vp9';
+        if (codec.includes('av01')) return 'av1';
+        return null;
+    }
+
+    // Copy the chosen minute as-is. Re-encoding is what fails on the phone and
+    // used to leave the original, still longer than a minute, attached.
+    async function remuxClip(file, start, end) {
+        await loadVendor();
+        const parsed = await demux(file);
+        const track = parsed.videoTrack;
+        const codec = videoCodecOf(track);
+        const description = codecDescription(parsed.mp4, track);
+        const codedWidth = Math.round(track.video ? track.video.width : 0);
+        const codedHeight = Math.round(track.video ? track.video.height : 0);
+        if (!codec || !description || codedWidth < 2 || codedHeight < 2) throw new Error('remux_unsupported');
+        const rotation = rotationOf(track);
+        const startUs = Math.round(Number(start) * 1e6);
+        const endUs = Math.round(Number(end) * 1e6);
+        let decodeFrom = 0;
+        parsed.video.forEach((sample, index) => {
+            const at = (sample.cts / sample.timescale) * 1e6;
+            if (sample.isSync && at <= startUs) decodeFrom = index;
+        });
+        const origin = parsed.video[decodeFrom];
+        if (!origin) throw new Error('no_frames');
+        const originUs = (origin.cts / origin.timescale) * 1e6;
+        const clipEndUs = Math.min(endUs, originUs + 60e6);
+        const audioTrack = parsed.audioTrack;
+        const audioMeta = audioTrack && audioTrack.audio ? audioTrack.audio : null;
+        const audio = audioTrack ? audioConfig(parsed.mp4, audioTrack) : null;
+        const withAudio = Boolean(audio && audioMeta);
+        const muxer = new window.Mp4Muxer.Muxer({
+            target: new window.Mp4Muxer.ArrayBufferTarget(),
+            fastStart: 'in-memory',
+            firstTimestampBehavior: 'offset',
+            video: { codec, width: codedWidth, height: codedHeight, rotation },
+            ...(withAudio ? {
+                audio: {
+                    codec: audio.codec,
+                    numberOfChannels: audioMeta.channel_count || 2,
+                    sampleRate: audioMeta.sample_rate || 44100
+                }
+            } : {})
+        });
+        let firstVideo = true;
+        let added = 0;
+        let lastTimestamp = -1;
+        for (let index = decodeFrom; index < parsed.video.length; index += 1) {
+            const sample = parsed.video[index];
+            const at = (sample.cts / sample.timescale) * 1e6;
+            if (at > clipEndUs) break;
+            const timestamp = Math.max(lastTimestamp, Math.max(0, at - originUs));
+            lastTimestamp = timestamp;
+            muxer.addVideoChunkRaw(
+                sample.data,
+                sample.isSync ? 'key' : 'delta',
+                timestamp,
+                Math.max(1, (sample.duration / sample.timescale) * 1e6),
+                firstVideo ? { decoderConfig: { description } } : undefined
+            );
+            firstVideo = false;
+            added += 1;
+        }
+        if (!added) throw new Error('no_frames');
+        if (withAudio) {
+            let firstAudio = true;
+            let lastAudio = -1;
+            for (const sample of parsed.audio) {
+                const at = (sample.cts / sample.timescale) * 1e6;
+                if (at < originUs || at > clipEndUs) continue;
+                const timestamp = Math.max(lastAudio, Math.max(0, at - originUs));
+                lastAudio = timestamp;
+                muxer.addAudioChunkRaw(
+                    sample.data,
+                    'key',
+                    timestamp,
+                    Math.max(1, (sample.duration / sample.timescale) * 1e6),
+                    firstAudio && audio.description ? { decoderConfig: { description: audio.description } } : undefined
+                );
+                firstAudio = false;
+            }
+        }
+        muxer.finalize();
+        const blob = new Blob([muxer.target.buffer], { type: 'video/mp4' });
+        if (!blob.size || blob.size > policy.MAX_BYTES) throw new Error('too_large');
+        return { file: new File([blob], 'bokantaj.mp4', { type: 'video/mp4' }), poster: null };
+    }
+
     window.LYANN_BOKANTAJ_VIDEO_FAST = {
         fastClip,
         firstFrame,
+        remuxClip,
         codecsAvailable,
         rotationOf
     };

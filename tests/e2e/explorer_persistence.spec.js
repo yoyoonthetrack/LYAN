@@ -145,7 +145,8 @@ test.describe('Explorer business persistence — approved staging only', () => {
       await page.locator(`[data-member-id="${helperId}"] [data-action="contact"]`).click();
       await expect(page.locator('#chatModal')).toBeVisible();
       await expect(page.locator('#chatMessagesContainer')).toContainText(description);
-      await page.locator(`[data-deal-recap="${quote.id}"] button`, { hasText: /Accepter/ }).click();
+      await page.locator('#chatMessagesContainer').getByRole('button', { name: 'Voir le devis' }).click();
+      await page.locator('#quoteReviewOverlay').getByRole('button', { name: 'Signer et accepter le devis' }).click();
       const accept = page.waitForResponse(r => r.url().includes('/rpc/accept_request_quote'));
       await page.locator('#lyannDialogActions').getByRole('button',{name:'Confirmer',exact:true}).click();
       expect((await accept).ok()).toBe(true);

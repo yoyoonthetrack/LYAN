@@ -1549,7 +1549,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     async function updateAnalyticsDashboard(periodKey, territory) {
-        const fallback = PERIOD_DATASETS[periodKey] || PERIOD_DATASETS['30d'];
         let live = null;
         try {
             const mapped = periodKey === 'today' ? '7d' : (periodKey === 'this_month' || periodKey === 'quarter' ? '90d' : (periodKey === 'year2026' ? '12m' : periodKey));
@@ -1559,20 +1558,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok && body.success) live = body;
         } catch (e) {}
         const money = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+        const emptyKpi = {
+            gmv: '—', gmvTrend: '—',
+            comm: '—', commTrend: '—',
+            mrr: '—', mrrTrend: '—',
+            aov: '—', aovTrend: '—',
+            users: '—', usersTrend: '—',
+            newUsers: '—', newUsersTrend: '—',
+            deals: '—', dealsTrend: '—',
+            conv: '—', convTrend: '—',
+            kyc: '—', kycTrend: '—',
+            sla: '—', slaTrend: '—',
+            disputes: '—', disputesTrend: '—',
+            retention: '—', retentionTrend: '—',
+            subtitle: 'KPI live indisponibles — aucun chiffre de démonstration affiché',
+            chartLabels: ['—', '—', '—', '—', '—', '—'],
+            chartGmvVals: ['—', '—', '—', '—', '—', '—'],
+            chartGmvHeights: ['8%', '8%', '8%', '8%', '8%', '8%'],
+            domGuadeloupe: '—', domGuadeloupeBar: '0%',
+            domMartinique: '—', domMartiniqueBar: '0%',
+            domGuyane: '—', domGuyaneBar: '0%',
+            domReunion: '—', domReunionBar: '0%',
+            cat1Vol: '—', cat1Count: '—', cat1Pct: '—',
+            cat2Vol: '—', cat2Count: '—', cat2Pct: '—',
+            cat3Vol: '—', cat3Count: '—', cat3Pct: '—',
+            cat4Vol: '—', cat4Count: '—', cat4Pct: '—'
+        };
         const data = live ? {
-            ...fallback,
+            ...emptyKpi,
             gmv: money(live.gmvMonth),
             comm: money(live.mrrCommissions),
             users: String(live.activeMembers || 0),
             deals: String(live.activeMissions || 0),
             disputes: String(live.openDisputes || 0),
-            kyc: live.activeMembers ? `${Math.round(((live.kycVerified || 0) / live.activeMembers) * 1000) / 10}%` : fallback.kyc,
+            kyc: live.activeMembers ? `${Math.round(((live.kycVerified || 0) / live.activeMembers) * 1000) / 10}%` : '—',
             subtitle: `Données réelles ${live.period || periodKey} · territoire ${live.territory || 'tous'}`,
             gmvTrend: 'base réelle',
             commTrend: 'base réelle',
             usersTrend: `${live.realMembers || 0} comptes réels`,
             dealsTrend: `${live.openRequests || 0} demandes ouvertes`
-        } : fallback;
+        } : emptyKpi;
 
         const elMap = {
             'kpiGmvVal': data.gmv, 'kpiGmvTrend': data.gmvTrend,
@@ -3423,6 +3448,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderMaisonDesk(payload) {
         const desk = document.getElementById('maisonDesk');
         if (!desk) return;
+        if (window.__maisonPlaceListener) {
+            window.removeEventListener('lyann-bokantaj-place-change', window.__maisonPlaceListener);
+            window.__maisonPlaceListener = null;
+        }
+        window.LYANN_BOKANTAJ_MAP?.releaseComposerPlace?.();
+        window.LYANN_BOKANTAJ_MAP?.resetComposerPlace?.();
         const profile = payload.profile;
         const quotes = payload.quotes || [];
         const conversations = payload.conversations || [];
@@ -3435,6 +3466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div>
                         <h2 style="margin:0; font-size:1.2rem;">${maisonEsc(maisonName(profile))}</h2>
                         <p class="maison-muted">${maisonEsc(profile.city || '')} ${maisonEsc(profile.territory || '')}</p>
+                        <p class="maison-muted" id="maisonAvatarNote">${profile.avatar_moderation_status === 'pending' ? 'Photo en cours de vérification.' : ''}</p>
                     </div>
                 </div>
                 <form id="maisonProfileForm" class="admin-card" style="padding:12px;">
@@ -3467,7 +3499,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="bokantaj-preview-body" id="maisonBokantajPreview">Le texte apparaîtra ici avant soumission.</div>
                         <p class="maison-muted" style="margin:8px 0 0;">Tant que la modération n’a pas approuvé, ce post n’est pas visible sur le fil public.</p>
                     </aside>
-                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;">
+                    <div class="maison-post-fields">
                         <select id="maisonPostType" class="admin-input">
                             <option value="info">Info</option>
                             <option value="dispo">Dispo</option>
@@ -3481,6 +3513,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <option value="reunion"${profile.territory === 'reunion' ? ' selected' : ''}>La Réunion</option>
                         </select>
                     </div>
+                    <div class="bokantaj-place-composer">
+                        <p class="maison-muted" id="maisonPlaceSummary">Aucune localisation. La publication reste dans le fil.</p>
+                        <label class="bokantaj-place-name" for="maisonPlaceSearch">Localisation
+                            <input type="search" id="maisonPlaceSearch" class="admin-input" placeholder="Ville, commune ou quartier" autocomplete="off">
+                        </label>
+                        <ul id="maisonPlaceResults" class="maison-place-results" hidden></ul>
+                        <button type="button" id="bokantajPlaceTrigger" class="bokantaj-place-trigger" aria-expanded="false" aria-controls="bokantajPlacePicker"><i class="ph ph-map-pin" aria-hidden="true"></i> <span id="bokantajPlaceTriggerLabel">Ajouter une localisation</span></button>
+                        <div id="bokantajPlacePicker" class="bokantaj-place-picker" hidden>
+                            <div class="bokantaj-picker-map-wrap">
+                                <div id="bokantajPickerMap" class="bokantaj-picker-map" aria-label="Choisir un lieu sur la carte"></div>
+                                <button type="button" id="bokantajLocateMe" class="bokantaj-picker-locate" aria-label="Me localiser"><i class="ph ph-navigation-arrow" aria-hidden="true"></i></button>
+                            </div>
+                            <p class="bokantaj-place-status" id="bokantajPickerStatus" role="status">Touchez la carte, puis choisissez comment la partager.</p>
+                            <label class="bokantaj-place-name" for="bokantajPlaceName">Nom du lieu
+                                <input type="text" id="bokantajPlaceName" maxlength="90" autocomplete="off">
+                            </label>
+                            <div class="bokantaj-place-share" role="group" aria-label="Comment partager ce lieu">
+                                <button type="button" id="bokantajShareQuarter" class="bokantaj-place-share-btn is-quarter">Partager le nom du quartier</button>
+                                <button type="button" id="bokantajShareExact" class="bokantaj-place-share-btn is-exact">Partager la localisation précise</button>
+                            </div>
+                            <button type="button" id="bokantajPlaceRemove" class="bokantaj-place-clear">Retirer le lieu</button>
+                            <button type="button" id="bokantajPickOnMap" hidden aria-pressed="true">Choisir sur la carte</button>
+                            <input type="checkbox" id="bokantajPlaceExact" hidden>
+                            <button type="button" id="bokantajPlaceSave" hidden>Confirmer</button>
+                            <button type="button" id="bokantajPlaceMove" hidden>Déplacer</button>
+                            <div hidden>
+                                <strong id="bokantajPlaceSummaryTitle">Position actuelle</strong>
+                                <span id="bokantajPlaceSummaryMeta"></span>
+                                <span id="bokantajPlaceSummaryPrecision">Les autres verront le quartier, pas votre position exacte.</span>
+                            </div>
+                        </div>
+                    </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                         <label class="admin-btn admin-btn-secondary">Photo<input id="maisonPhotoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
                         <label class="admin-btn admin-btn-secondary">Vidéo<input id="maisonVideoInput" type="file" accept="video/mp4,video/quicktime,video/webm" hidden></label>
@@ -3490,7 +3554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button type="button" class="admin-btn admin-btn-secondary" id="maisonDraftBtn">Enregistrer le brouillon</button>
                         <button type="button" class="admin-btn admin-btn-primary" id="maisonPublishBtn"><i class="ph-bold ph-paper-plane-tilt"></i> Soumettre à la modération</button>
                     </div>
-                    ${posts.length ? `<div style="margin-top:12px;">${posts.map((p) => `<div class="admin-card" style="padding:10px;margin-bottom:8px;"><strong>${maisonEsc(p.lifecycle_label || p.moderation_status || 'Statut inconnu')}</strong><p style="margin:6px 0 0;">${maisonEsc((p.content || '').slice(0, 160))}</p>${p.moderation_reason ? `<p class="maison-muted">${maisonEsc(p.moderation_reason)}</p>` : ''}</div>`).join('')}</div>` : ''}
+                    ${posts.length ? `<div style="margin-top:12px;">${posts.map((p) => `<div class="admin-card" style="padding:10px;margin-bottom:8px;"><strong>${maisonEsc(p.lifecycle_label || p.moderation_status || 'Statut inconnu')}</strong><p style="margin:6px 0 0;">${maisonEsc((p.content || '').slice(0, 160))}</p><p class="maison-muted">Lieu : ${maisonEsc(p.place_label || 'aucune localisation')}</p><div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><button type="button" class="admin-btn admin-btn-secondary admin-btn-sm" data-maison-place-edit="${maisonEsc(p.id)}" data-place-lat="${p.place_lat == null ? '' : maisonEsc(p.place_lat)}" data-place-lng="${p.place_lng == null ? '' : maisonEsc(p.place_lng)}" data-place-label="${maisonEsc(p.place_label || '')}">Modifier le lieu</button>${p.place_label ? `<button type="button" class="admin-btn admin-btn-secondary admin-btn-sm" data-maison-place-clear="${maisonEsc(p.id)}">Retirer le lieu</button>` : ''}</div>${p.moderation_reason ? `<p class="maison-muted">${maisonEsc(p.moderation_reason)}</p>` : ''}</div>`).join('')}</div>` : ''}
                 </div>
                 <form id="maisonRequestForm" class="admin-card" style="padding:12px;">
                     <h3 style="margin:0 0 8px; font-size:1rem;">Publier une annonce</h3>
@@ -3605,6 +3669,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (button) button.disabled = true;
                 const photo = photoInput?.files?.[0] ? await readDataUrl(photoInput.files[0]) : '';
                 const video = videoInput?.files?.[0] ? await readDataUrl(videoInput.files[0]) : '';
+                if (desk.dataset.placeEdit) {
+                    if (notice) notice.textContent = 'Terminez ou retirez la modification du lieu avant de publier un nouveau Lyann.';
+                    if (button) button.disabled = false;
+                    return;
+                }
                 const body = await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj`, {
                     method: 'POST',
                     body: JSON.stringify({
@@ -3614,6 +3683,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         territory: document.getElementById('maisonPostTerritory')?.value || profile.territory,
                         photo,
                         video,
+                        place: window.LYANN_BOKANTAJ_MAP?.getComposerPlace?.() || null,
                         draft
                     })
                 });
@@ -3630,6 +3700,113 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         document.getElementById('maisonDraftBtn')?.addEventListener('click', () => publishMaison(true));
         document.getElementById('maisonPublishBtn')?.addEventListener('click', () => publishMaison(false));
+        window.LYANN_BOKANTAJ_MAP?.bindComposerPlace?.();
+        if (profile.avatar_moderation_status === 'pending' && desk.dataset.avatarReview !== profile.id) {
+            desk.dataset.avatarReview = profile.id;
+            maisonJson(`/v1/admin/maison/profiles/${profile.id}/avatar/review`, { method: 'POST', body: '{}' })
+                .then((body) => {
+                    const note = document.getElementById('maisonAvatarNote');
+                    if (body && body.needs_human) {
+                        if (note) note.textContent = body.message || 'Cette photo doit être regardée par l’équipe avant d’être publiée.';
+                        return null;
+                    }
+                    return window.openMaisonDesk(profile.id);
+                })
+                .catch(() => {});
+        }
+        const placeSummary = document.getElementById('maisonPlaceSummary');
+        const writePlaceSummary = (place) => {
+            if (!placeSummary) return;
+            const editing = desk.dataset.placeEdit;
+            if (editing) {
+                placeSummary.textContent = place
+                    ? `Modification du lieu : ${place.label}. Confirmez sur la carte.`
+                    : 'Modification du lieu : aucun lieu. Confirmez pour le retirer.';
+                return;
+            }
+            placeSummary.textContent = place
+                ? `Lieu sélectionné : ${place.label}${place.exact ? ' · position exacte' : ' · quartier'}.`
+                : 'Aucune localisation. La publication reste dans le fil.';
+        };
+        window.__maisonPlaceListener = async (event) => {
+            const place = event.detail ? event.detail.place : null;
+            const editing = desk.dataset.placeEdit || '';
+            if (!editing) {
+                writePlaceSummary(place);
+                return;
+            }
+            desk.dataset.placeEdit = '';
+            try {
+                await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj/${editing}/place`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ place })
+                });
+                await window.openMaisonDesk(profile.id);
+            } catch (err) {
+                alert(err.message);
+            }
+        };
+        window.addEventListener('lyann-bokantaj-place-change', window.__maisonPlaceListener);
+        const search = document.getElementById('maisonPlaceSearch');
+        const results = document.getElementById('maisonPlaceResults');
+        const dept = { guadeloupe: '971', martinique: '972', guyane: '973', reunion: '974' }[String(profile.territory || '').toLowerCase()] || '';
+        search?.addEventListener('input', () => {
+            const needle = search.value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            if (!results) return;
+            const geo = window.LYANN_COMMUNE_GEO || {};
+            const found = needle.length < 2 ? [] : Object.entries(geo).filter(([key]) => {
+                const [code, name] = key.split('|');
+                return (!dept || code === dept) && name.includes(needle);
+            }).slice(0, 6);
+            results.hidden = found.length === 0;
+            results.innerHTML = found.map(([key, coords]) => {
+                const raw = key.split('|')[1];
+                const name = raw.replace(/(^|[\s-])([a-z])/g, (all, sep, ch) => sep + ch.toUpperCase());
+                return `<li><button type="button" data-place-lat="${coords[0]}" data-place-lng="${coords[1]}" data-place-name="${maisonEsc(name)}">${maisonEsc(name)}</button></li>`;
+            }).join('');
+        });
+        results?.addEventListener('click', (event) => {
+            const button = event.target.closest('button');
+            if (!button || !window.LYANN_BOKANTAJ_MAP?.focusComposerPlace) return;
+            window.LYANN_BOKANTAJ_MAP.focusComposerPlace({
+                lat: Number(button.dataset.placeLat),
+                lng: Number(button.dataset.placeLng),
+                label: button.dataset.placeName || ''
+            });
+            if (results) results.hidden = true;
+        });
+        const patchPlace = async (postId, place) => {
+            await maisonJson(`/v1/admin/maison/profiles/${profile.id}/bokantaj/${postId}/place`, {
+                method: 'PATCH',
+                body: JSON.stringify({ place })
+            });
+            await window.openMaisonDesk(profile.id);
+        };
+        desk.querySelectorAll('[data-maison-place-edit]').forEach((button) => {
+            button.addEventListener('click', () => {
+                desk.dataset.placeEdit = button.getAttribute('data-maison-place-edit') || '';
+                const lat = button.getAttribute('data-place-lat');
+                const lng = button.getAttribute('data-place-lng');
+                const label = button.getAttribute('data-place-label') || '';
+                if (lat && lng && label) {
+                    window.LYANN_BOKANTAJ_MAP?.setComposerPlace?.({ lat: Number(lat), lng: Number(lng), label });
+                } else {
+                    window.LYANN_BOKANTAJ_MAP?.setComposerPlace?.(null);
+                }
+                writePlaceSummary(window.LYANN_BOKANTAJ_MAP?.getComposerPlace?.() || null);
+                window.LYANN_BOKANTAJ_MAP?.openComposerPlace?.();
+                document.getElementById('bokantajPlacePicker')?.scrollIntoView({ block: 'nearest' });
+            });
+        });
+        desk.querySelectorAll('[data-maison-place-clear]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                try {
+                    await patchPlace(button.getAttribute('data-maison-place-clear'), null);
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+        });
         desk.querySelectorAll('.maison-reply-btn').forEach((btn) => {
             btn.addEventListener('click', async () => {
                 const card = btn.closest('[data-maison-conv]');
@@ -3718,9 +3895,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
             const envEl = document.getElementById('editorialEnv');
+            const metrics = bots.metrics || {};
+            const lastRun = metrics.lastRun || {};
             if (envEl) {
                 const allowed = bots.collectionAllowed;
-                envEl.innerHTML = `<strong>${maisonEsc(bots.environment || 'staging')}</strong> · Collecte ${allowed ? 'autorisée' : 'bloquée (Production)'} · IA ${bots.aiProvider?.configured ? maisonEsc(bots.aiProvider.model || bots.aiProvider.mode) : 'non configurée'}${bots.aiProvider?.error ? ' · ' + maisonEsc(bots.aiProvider.error) : ''} · Planning ${bots.schedule?.enabled === false ? 'inactif' : (bots.schedule?.passes || []).join(' · ')}`;
+                const when = (value) => value ? new Date(value).toLocaleString('fr-FR') : 'aucune';
+                envEl.innerHTML = `<strong>${maisonEsc(bots.environment || 'staging')}</strong> · Collecte ${allowed ? 'autorisée' : 'bloquée (Production)'} · IA ${bots.aiProvider?.configured ? maisonEsc(bots.aiProvider.model || bots.aiProvider.mode) : 'non configurée'}${bots.aiProvider?.error ? ' · ' + maisonEsc(bots.aiProvider.error) : ''} · Planning ${bots.schedule?.enabled === false ? 'inactif' : (bots.schedule?.passes || []).join(' · ')}<br>Dernière collecte ${maisonEsc(when(metrics.lastCollectAt))} · Dernière réussite ${maisonEsc(when(metrics.lastSuccessAt))} · Durée moyenne ${metrics.averageDurationMs == null ? '—' : maisonEsc(String(Math.round(metrics.averageDurationMs / 1000)) + ' s')} · Trouvés ${maisonEsc(lastRun.found ?? '—')} · Propositions ${maisonEsc(lastRun.created ?? '—')} · Doublons ${maisonEsc(lastRun.duplicates ?? '—')} · Erreurs ${maisonEsc(lastRun.errors ?? '—')} · Prochain passage ${maisonEsc(metrics.nextPassLabel || '07:00, 12:00, 17:00')}`;
             }
             const histEl = document.getElementById('editorialHistory');
             if (histEl) {
@@ -3729,7 +3909,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? history.map((h) => `<p class="maison-muted" style="margin:0 0 6px;">${maisonEsc(h.created_at || '')} · ${maisonEsc(h.agent_name || '')} · ${maisonEsc(h.event_type || '')} · ${maisonEsc(h.description || '')}</p>`).join('')
                     : '<p class="maison-muted">Aucun passage enregistré.</p>');
             }
-            const nothing = (item) => item.metadata && item.metadata.outcome === 'nothing_to_propose';
+            const nothing = (item) => item.metadata && (item.metadata.outcome === 'nothing_to_propose' || item.metadata.outcome === 'pass_started');
             const collectionError = (item) => item.status === 'FAILED' || (item.metadata && item.metadata.outcome === 'collection_error');
             const pending = rows.filter((item) => item.approval_status === 'PENDING' && item.status !== 'CANCELLED' && !nothing(item) && !collectionError(item));
             const approved = rows.filter((item) => item.approval_status === 'APPROVED');
@@ -3817,7 +3997,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="status-badge ${pendingItem ? 'pending' : (item.approval_status === 'APPROVED' ? 'verified' : 'suspended')}">${maisonEsc(statusLabel(item))}</span>
                         </div>
                         <p style="margin:8px 0 4px; font-weight:700;">${maisonEsc(item.title || '')}</p>
-                        <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Lien d’origine')}</a></p>
+                        <p class="maison-muted" style="margin:0 0 8px;">${maisonEsc(versionOf(item))} · Rubrique : ${maisonEsc(item.agent_name || '')} · Source : <a href="${maisonEsc(item.metadata?.source_url || '#')}" target="_blank" rel="noopener">${maisonEsc(item.metadata?.source_name || 'Lien d’origine')}</a>${item.metadata?.collected_at ? ' · Collecté le ' + maisonEsc(new Date(item.metadata.collected_at).toLocaleString('fr-FR')) : ''}</p>
+                        ${pendingItem ? `<label class="maison-muted">Territoire <select class="admin-select editorial-territory">${['guadeloupe','martinique','guyane','reunion'].map((code) => `<option value="${code}"${item.metadata?.territory === code ? ' selected' : ''}>${code}</option>`).join('')}</select></label>` : `<p class="maison-muted" style="margin:0 0 8px;">Territoire : ${maisonEsc(item.metadata?.territory || '—')}</p>`}
                         ${(item.controls && !item.controls.ok && (item.controls.reasons || []).some((reason) => /affirmation thérapeutique/.test(reason))) ? '<p class="editorial-warning">Publication impossible : affirmation thérapeutique insuffisamment vérifiée. Modifie le texte avant validation.</p>' : ''}
                         <textarea class="admin-input editorial-text" rows="6" style="width:100%;"${pendingItem ? '' : ' readonly'}>${maisonEsc(body)}</textarea>
                         <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
@@ -3881,14 +4062,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
                 const id = card.getAttribute('data-proposal');
                 const text = () => card.querySelector('.editorial-text')?.value || '';
+                const territory = () => card.querySelector('.editorial-territory')?.value || '';
                 card.querySelector('.editorial-save')?.addEventListener('click', run(card.querySelector('.editorial-save'), 'Enregistrement…', () => maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
                     method: 'POST',
-                    body: JSON.stringify({ content: text() })
+                    body: JSON.stringify({ content: text(), territory: territory() })
                 }).then((body) => ({ message: body.message || 'Modification enregistrée.' }))));
                 card.querySelector('.editorial-publish')?.addEventListener('click', run(card.querySelector('.editorial-publish'), 'Publication…', async () => {
                     await maisonJson(`/v1/admin/editorial/proposals/${id}/revise`, {
                         method: 'POST',
-                        body: JSON.stringify({ content: text() })
+                        body: JSON.stringify({ content: text(), territory: territory() })
                     });
                     return maisonJson(`/v1/admin/editorial/proposals/${id}/publish`, {
                         method: 'POST',
@@ -4836,14 +5018,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchAdminOps('invoices');
                 const tbody = document.getElementById('invoicesAdminTableBody');
                 const rows = data.rows || [];
-                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                const business = data.source === 'lyann_business_invoices';
+                tbody.innerHTML = rows.length ? rows.map((row) => business ? `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.number || row.id)}</td>
+                    <td>${adminEscape(row.member_name)}</td>
+                    <td>${adminEscape(row.kind || '—')}</td>
+                    <td>—</td>
+                    <td><strong>${adminMoney(row.total_euros)}</strong></td>
+                    <td>${adminDate(row.created_at)}</td>
+                </tr>` : `<tr>
                     <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
                     <td>${adminEscape(row.requester_name)}</td>
-                    <td>${adminMoney(row.customer_total / 1.085)}</td>
-                    <td>${adminMoney(row.customer_total - (row.customer_total / 1.085))}</td>
+                    <td>${adminEscape(row.invoice_label || 'Paiement encaissé')}</td>
+                    <td>${adminMoney(row.customer_fee)}</td>
                     <td><strong>${adminMoney(row.customer_total)}</strong></td>
                     <td>${adminDate(row.created_at)}</td>
-                </tr>`).join('') : adminEmpty(6, 'Aucune écriture : aucun paiement SUCCEEDED.');
+                </tr>`).join('') : adminEmpty(6, 'Aucune écriture facture / paiement SUCCEEDED.');
             },
             'sec-payouts': async () => {
                 const data = await fetchAdminOps('payouts');
@@ -4863,14 +5053,113 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchAdminOps('disputes');
                 const tbody = document.getElementById('disputesAdminTableBody');
                 const rows = data.rows || [];
-                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
-                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
-                    <td>${adminEscape(row.mission_id || '—')}</td>
-                    <td>${adminEscape(row.requester_name)} / ${adminEscape(row.provider_name)}</td>
+                const openish = new Set(['OPEN', 'OPENED', 'UNDER_REVIEW', 'AWAITING_PROVIDER', 'UNDER_INVESTIGATION']);
+                tbody.innerHTML = rows.length ? rows.map((row) => {
+                    const open = openish.has(String(row.status || '').toUpperCase());
+                    const actions = open
+                        ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">
+                            <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDecideDispute('${row.id}','keep_frozen')">Garder gelé</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideDispute('${row.id}','resolve_provider')">Libérer Lyanneur</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideDispute('${row.id}','resolve_client')">Trancher client</button>
+                          </div>`
+                        : adminEscape(row.resolution_note || row.resolution_type || '—');
+                    return `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.dispute_number || row.id)}</td>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.mission_id || '—')}<br><span class="maison-muted">${adminEscape(row.requester_name)} / ${adminEscape(row.provider_name)}</span></td>
+                    <td>${row.frozen_amount != null ? adminMoney(row.frozen_amount) : '—'}</td>
                     <td>${adminEscape(row.reason || row.description || '—')}</td>
                     <td>${adminBadge(row.status)}</td>
-                    <td>${adminDate(row.created_at)}</td>
-                </tr>`).join('') : adminEmpty(6, 'Aucun litige ouvert.');
+                    <td>${actions}</td>
+                </tr>`;
+                }).join('') : adminEmpty(6, 'Aucun litige ouvert.');
+            },
+            'sec-subscriptions': async () => {
+                const data = await fetchAdminOps('subscriptions');
+                const plansRoot = document.getElementById('subscriptionsPlansGrid');
+                const tbody = document.getElementById('subscriptionsAdminTableBody');
+                const plans = data.plans || [];
+                if (plansRoot) {
+                    plansRoot.innerHTML = plans.length ? plans.map((plan) => `
+                        <div class="admin-card" style="border-top: 3px solid var(--admin-brand-primary);">
+                            <h3>${adminEscape(plan.name)}</h3>
+                            <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0;">${adminMoney(plan.price_monthly || 0)}${Number(plan.price_monthly) > 0 ? ' / mois' : ''}</div>
+                            <p style="font-size: 0.8rem; color: var(--admin-text-muted);">${adminEscape(plan.description || '')}</p>
+                            <p>${adminBadge(plan.active ? 'ACTIF' : 'INACTIF')}</p>
+                        </div>`).join('') : '<p class="maison-muted">Aucun plan en base.</p>';
+                }
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td>${adminEscape(row.member_name)}</td>
+                        <td>${adminEscape(row.provider || '—')}</td>
+                        <td>${adminEscape(row.plan || row.product_id || '—')}</td>
+                        <td>${adminBadge(row.status)}</td>
+                        <td>${adminDate(row.expires_at)}</td>
+                        <td>${adminEscape(row.environment || '—')}</td>
+                    </tr>`).join('') : adminEmpty(6, 'Aucun abonnement store enregistré.');
+                }
+            },
+            'sec-protection': async () => {
+                const data = await fetchAdminOps('protection');
+                const tbody = document.getElementById('protectionAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.claim_number || row.id)}</td>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.mission_id || '—')}</td>
+                    <td>${adminEscape(row.claimant_name)}</td>
+                    <td>${adminEscape(row.description || '—')}</td>
+                    <td>${adminBadge(row.status)}</td>
+                    <td>
+                        <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDecideProtection('${row.id}','IN_REVIEW')">Examiner</button>
+                        <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideProtection('${row.id}','APPROVED')">Approuver</button>
+                        <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideProtection('${row.id}','REJECTED')">Refuser</button>
+                    </td>
+                </tr>`).join('') : adminEmpty(6, 'Aucun dossier d’assurance pour le moment.');
+            },
+            'sec-notifications': async () => {
+                const data = await fetchAdminOps('notifications');
+                const tbody = document.getElementById('notificationsAdminTableBody');
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td>${adminDate(row.created_at)}</td>
+                        <td>${adminEscape(row.member_name)}</td>
+                        <td>${adminEscape(row.type || '—')}</td>
+                        <td><strong>${adminEscape(row.title || '')}</strong><br><span class="maison-muted">${adminEscape((row.body || '').slice(0, 140))}</span></td>
+                        <td>${adminBadge(row.read ? 'LU' : 'NON LU')}</td>
+                    </tr>`).join('') : adminEmpty(5, 'Aucune notification en base.');
+                }
+            },
+            'sec-rbac': async () => {
+                const data = await fetchAdminOps('rbac');
+                const thead = document.getElementById('rbacAdminTableHead');
+                const tbody = document.getElementById('rbacAdminTableBody');
+                const roles = data.roles || [];
+                if (thead) {
+                    thead.innerHTML = `<tr><th>Permission</th>${roles.map((role) => `<th>${adminEscape(role.code || role.name)}</th>`).join('')}</tr>`;
+                }
+                if (tbody) {
+                    const matrix = data.matrix || [];
+                    tbody.innerHTML = matrix.length ? matrix.map((row) => `<tr>
+                        <td>${adminEscape(row.label)} <span class="maison-muted">(${adminEscape(row.code)})</span></td>
+                        ${(row.roles || []).map((cell) => `<td>${cell.granted ? '<i class="ph-bold ph-check" style="color:#A3E635;"></i>' : '<i class="ph-bold ph-x" style="color:#E76F51;"></i>'}</td>`).join('')}
+                    </tr>`).join('') : adminEmpty(Math.max(roles.length + 1, 2), 'Matrice RBAC indisponible.');
+                }
+            },
+            'sec-audit-logs': async () => {
+                const data = await fetchAdminOps('audit-logs');
+                const tbody = document.querySelector('#auditLogsAdminTable tbody');
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td>${adminDate(row.created_at)}</td>
+                        <td>${adminEscape(row.actor_name || row.actor_id || '—')}</td>
+                        <td>${adminEscape(row.action)}</td>
+                        <td>${adminEscape(row.module_name || '—')}</td>
+                        <td style="font-family:var(--admin-font-mono);">${adminEscape(row.target_type || '')} ${adminEscape(row.target_id || '')}</td>
+                        <td>${adminEscape(row.reason || (row.metadata ? JSON.stringify(row.metadata).slice(0, 120) : '—'))}</td>
+                    </tr>`).join('') : adminEmpty(6, 'Aucun événement d’audit.');
+                }
             },
             'sec-reviews': async () => {
                 const data = await fetchAdminOps('reviews');
@@ -5038,8 +5327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             },
             'sec-agents': () => loadAdminRealData(),
-            'sec-mika': () => window.loadMikaControlRoom && window.loadMikaControlRoom(),
-            'sec-audit-logs': () => loadAdminRealData()
+            'sec-mika': () => window.loadMikaControlRoom && window.loadMikaControlRoom()
         };
         const loader = loaders[sectionId];
         if (!loader) return;
@@ -5116,11 +5404,74 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.loadAdminModerationCenter();
         }, 250);
     });
+    window.adminDecideDispute = async function(disputeId, action) {
+        const note = window.prompt(action === 'keep_frozen'
+            ? 'Note interne (optionnel) :'
+            : 'Note de médiation (obligatoire pour trancher) :') || '';
+        if ((action === 'resolve_client' || action === 'resolve_partial') && !note.trim()) {
+            window.adminShowOutcome('Note obligatoire pour cette décision.', true);
+            return;
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/disputes/${disputeId}/decide`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, note })
+        });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.message || body.error || (res.ok ? 'Décision enregistrée.' : 'Échec'), !res.ok);
+        if (res.ok) window.loadAdminSection('sec-disputes');
+    };
+    window.adminDecideProtection = async function(claimId, status) {
+        const note = window.prompt('Note de décision (optionnel) :') || '';
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/protection/${claimId}/decide`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status, decision_notes: note })
+        });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.error || (res.ok ? 'Dossier assurance mis à jour.' : 'Échec'), !res.ok);
+        if (res.ok) window.loadAdminSection('sec-protection');
+    };
+    window.adminGrantProBadge = async function(userId) {
+        if (!userId) return;
+        if (!window.confirm('Activer le badge Pro sur ce profil ? Aucun prélèvement Stripe ne sera créé.')) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/users/${userId}/grant-pro`, { method: 'POST' });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.message || body.error || (res.ok ? 'Badge Pro activé.' : 'Échec'), !res.ok);
+        if (res.ok) {
+            window.loadAdminSection('sec-users');
+            window.loadAdminSection('sec-lyanneurs');
+        }
+    };
+    window.adminSendNotificationTest = async function() {
+        const title = document.getElementById('campTitle')?.value?.trim() || '';
+        const userId = document.getElementById('campUserId')?.value?.trim() || '';
+        const bodyText = document.getElementById('campBody')?.value?.trim() || title;
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/notifications/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, body: bodyText, user_id: userId })
+        });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.message || body.error || (res.ok ? 'Notification créée.' : 'Échec'), !res.ok);
+        if (res.ok) window.loadAdminSection('sec-notifications');
+    };
     document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
-        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
+        window.adminMarkWired(btn);
+        btn.disabled = false;
+        btn.removeAttribute('data-unavailable');
+        btn.classList.remove('is-unavailable');
+        btn.onclick = () => {
+            const userId = btn.getAttribute('data-user-id') || document.querySelector('#sec-user-detail .btn-approve-kyc')?.getAttribute('data-user-id');
+            window.adminGrantProBadge(userId);
+        };
     });
     document.getElementById('btnAdminQuickNotifications')?.addEventListener('click', () => {
         document.querySelector('.admin-nav-item[data-section="sec-notifications"]')?.click();
+    });
+    document.getElementById('newCampaignForm')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        window.adminSendNotificationTest();
     });
     document.getElementById('userTerritoryFilter')?.addEventListener('change', () => {
         const territory = document.getElementById('userTerritoryFilter')?.value || 'all';
@@ -5146,9 +5497,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('button[id], .admin-icon-btn[id], .admin-nav-item, .mod-tab, .admin-modal-close, .command-palette-item, [onclick], [data-section], [data-mod-tab]').forEach((el) => {
         if (!el.hasAttribute('data-unavailable')) window.adminMarkWired(el);
-    });
-    document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
-        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
     });
     window.adminSealDeadControls();
     console.log('Back-office LYANN initialisé.');

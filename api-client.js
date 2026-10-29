@@ -613,10 +613,22 @@ const LYANN_API_CLIENT = {
 
     async logout() {
         if (!this.supabase) return { error: null };
+        // Device deactivation and the server revoke must not keep the local session open.
         if (window.LYANN_PUSH && typeof window.LYANN_PUSH.deactivate === 'function') {
-            try { await window.LYANN_PUSH.deactivate(); } catch (_) {}
+            try { Promise.resolve(window.LYANN_PUSH.deactivate()).catch(() => {}); } catch (_) {}
         }
-        return await this.supabase.auth.signOut();
+        const pending = this.supabase.auth.signOut();
+        let result = { error: null };
+        try {
+            result = await Promise.race([
+                pending,
+                new Promise((resolve) => setTimeout(() => resolve({ error: null, local: true }), 2000))
+            ]);
+        } catch (_) {}
+        if (!result || result.local) {
+            try { await this.supabase.auth.signOut({ scope: 'local' }); } catch (_) {}
+        }
+        return result || { error: null };
     },
 
     async signOut() {
@@ -836,6 +848,7 @@ const LYANN_API_CLIENT = {
 
     async uploadAvatar(userId, file) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
+        const uploadStarted = Date.now();
         const fileExt = file.name ? file.name.split('.').pop() : 'png';
         const filePath = `${userId}/avatar_${Date.now()}.${fileExt}`;
 
@@ -846,14 +859,31 @@ const LYANN_API_CLIENT = {
         if (uploadError) return { error: uploadError };
 
         const submittedUrl = holdMediaUrl('avatars-hold', filePath);
+        const savedAt = Date.now();
         const updated = await this.updateProfile(userId, { avatar_url: submittedUrl });
         if (updated.error) return { error: updated.error };
+        const reviewStarted = Date.now();
+        let review = {};
+        try {
+            const reviewRes = await this.memberHelpdeskRequest('/v1/profile/avatar/review', { method: 'POST', body: {} });
+            review = await reviewRes.json();
+        } catch (_) {
+            review = {};
+        }
+        const status = review.avatar_moderation_status || (updated.data && updated.data.avatar_moderation_status);
+        const avatarUrl = review.avatar_url || (updated.data && updated.data.avatar_url) || '';
         return {
             data: {
-                avatar_url: updated.data && updated.data.avatar_url,
-                avatar_pending: updated.data && updated.data.avatar_pending,
-                avatar_moderation_status: updated.data && updated.data.avatar_moderation_status,
-                submitted_avatar_url: submittedUrl
+                avatar_url: avatarUrl,
+                avatar_pending: Object.prototype.hasOwnProperty.call(review, 'avatar_pending') ? review.avatar_pending : (updated.data && updated.data.avatar_pending),
+                avatar_moderation_status: status,
+                needs_human: !!review.needs_human,
+                message: review.message || '',
+                submitted_avatar_url: submittedUrl,
+                timings: {
+                    upload_ms: savedAt - uploadStarted,
+                    review_ms: review.review_ms || (Date.now() - reviewStarted)
+                }
             }
         };
     },
@@ -1503,15 +1533,22 @@ const LYANN_API_CLIENT = {
 
         try {
             const sessionUser = await this.getCurrentUser();
-            // 1. Fetch Bokantaj Posts
-            let postsQuery = this.supabase
-                .from('bokantaj_posts')
-                .select('*')
-                // Public Bokantaj must never expose hidden/pending posts, including to admin sessions.
-                .eq('public_moderation_status', 'approved')
-                .order('created_at', { ascending: false })
-                .limit(LYANN_FEED_PAGE_SIZE);
-            if (pageOptions.before) postsQuery = postsQuery.lt('created_at', pageOptions.before);
+            const territoryFilter = ['guadeloupe', 'martinique', 'guyane', 'reunion', 'saint-martin'].includes(pageOptions.territory)
+                ? pageOptions.territory
+                : '';
+            const matchesTerritory = (row, author) => {
+                if (!territoryFilter) return true;
+                const query = window.LYANN_BOKANTAJ_QUERY;
+                if (!query || typeof query.postMatchesTerritory !== 'function') return true;
+                return query.postMatchesTerritory({
+                    territory: row.territory,
+                    author_territory: author && author.territory,
+                    city: row.city,
+                    author_city: author && author.city
+                }, territoryFilter);
+            };
+            // A member's island is often stored on the author, not the post.
+            // Keep reading older pages until the island has a full page, or the feed ends.
             const pendingQuery = sessionUser?.id && !pageOptions.before
                 ? this.supabase
                     .from('bokantaj_posts')
@@ -1521,30 +1558,53 @@ const LYANN_API_CLIENT = {
                     .order('created_at', { ascending: false })
                     .limit(10)
                 : Promise.resolve({ data: [], error: null });
-            const [{ data: postsData, error: postsError }, pendingRes] = await Promise.all([postsQuery, pendingQuery]);
-
-            if (postsError) throw postsError;
-            const approved = postsData || [];
+            const profilesMap = {};
+            const collected = [];
+            let scanCursor = pageOptions.before || '';
+            let moreRaw = false;
+            const scanLimit = territoryFilter ? 6 : 1;
+            for (let scan = 0; scan < scanLimit && collected.length < LYANN_FEED_PAGE_SIZE; scan += 1) {
+                let postsQuery = this.supabase
+                    .from('bokantaj_posts')
+                    .select('*')
+                    .eq('public_moderation_status', 'approved')
+                    .order('created_at', { ascending: false })
+                    .limit(LYANN_FEED_PAGE_SIZE);
+                if (scanCursor) postsQuery = postsQuery.lt('created_at', scanCursor);
+                const { data: postsData, error: postsError } = await postsQuery;
+                if (postsError) throw postsError;
+                const batch = postsData || [];
+                moreRaw = batch.length === LYANN_FEED_PAGE_SIZE;
+                if (!batch.length) {
+                    moreRaw = false;
+                    break;
+                }
+                scanCursor = batch[batch.length - 1].created_at;
+                const authorIds = [...new Set(batch.map((row) => row.author_id).filter(Boolean))].filter((id) => !profilesMap[id]);
+                if (authorIds.length > 0) {
+                    try {
+                        const { data: pubProfs } = await this.supabase
+                            .from('public_profiles')
+                            .select('id, first_name, last_name, avatar_url, city, territory, bio')
+                            .in('id', authorIds);
+                        if (pubProfs && Array.isArray(pubProfs)) {
+                            pubProfs.forEach((profile) => { profilesMap[profile.id] = profile; });
+                        }
+                    } catch (profErr) {
+                        console.warn("[LYANN API] Error fetching public_profiles for feed:", profErr);
+                    }
+                }
+                batch.forEach((row) => {
+                    if (matchesTerritory(row, profilesMap[row.author_id])) collected.push(row);
+                });
+            }
+            const pendingRes = await pendingQuery;
+            const approved = collected.slice(0, LYANN_FEED_PAGE_SIZE);
             const ownPending = (pendingRes && pendingRes.data) || [];
             const seen = new Set(approved.map((row) => row.id));
             const posts = [...ownPending.filter((row) => row && !seen.has(row.id)), ...approved];
-            // Community discovery never queries or merges transactional Requests.
-            const authorIds = [...new Set(posts.map(p => p.author_id).filter(Boolean))];
-
-            const profilesMap = {};
-            if (authorIds.length > 0) {
-                try {
-                    const { data: pubProfs } = await this.supabase
-                        .from('public_profiles')
-                        .select('id, first_name, last_name, avatar_url, city, territory, bio')
-                        .in('id', authorIds);
-                    if (pubProfs && Array.isArray(pubProfs)) {
-                        pubProfs.forEach(p => { profilesMap[p.id] = p; });
-                    }
-                } catch (profErr) {
-                    console.warn("[LYANN API] Error fetching public_profiles for feed:", profErr);
-                }
-            }
+            const feedCursor = approved.length ? approved[approved.length - 1].created_at : (scanCursor || null);
+            const feedHasMore = collected.length > approved.length || moreRaw;
 
             function formatAuthorName(prof) {
                 if (!prof || !prof.first_name) return 'Lyanneur';
@@ -1621,8 +1681,16 @@ const LYANN_API_CLIENT = {
                     type: p.type,
                     city: p.city || '',
                     territory: p.territory || authorProf?.territory || '',
+                    author_territory: authorProf?.territory || '',
                     location: p.city || p.territory || authorProf?.city || '',
-                    territoryKey: extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
+                    territoryKey: (window.LYANN_BOKANTAJ_QUERY && window.LYANN_BOKANTAJ_QUERY.postTerritoryKey)
+                        ? window.LYANN_BOKANTAJ_QUERY.postTerritoryKey({
+                            territory: p.territory,
+                            author_territory: authorProf?.territory,
+                            city: p.city,
+                            author_city: authorProf?.city
+                        })
+                        : extractTerritoryKey(p.territory || authorProf?.city, authorProf?.territory),
                     place_lat: p.place_lat,
                     place_lng: p.place_lng,
                     place_label: p.place_label || null,
@@ -1645,7 +1713,7 @@ const LYANN_API_CLIENT = {
 
             const unifiedFeed = formattedPosts;
 
-            return { data: unifiedFeed, error: null, hasMore: posts.length === LYANN_FEED_PAGE_SIZE };
+            return { data: unifiedFeed, error: null, hasMore: feedHasMore, cursor: feedCursor };
         } catch (err) {
             console.error("❌ Error loading unified Bokantaj feed:", err);
             return { data: [], error: err.message || "Erreur serveur" };
@@ -1785,7 +1853,7 @@ const LYANN_API_CLIENT = {
             video.onerror = () => { URL.revokeObjectURL(url); resolve(NaN); };
             video.src = url;
         });
-        if (Number.isFinite(duration) && (duration <= 0 || duration > 60)) {
+        if (Number.isFinite(duration) && (duration <= 0 || duration > 60.5)) {
             throw new Error('La vidéo doit durer 60 secondes au plus.');
         }
         // Moderation reviews the poster to release the video, so sending the
@@ -2364,7 +2432,7 @@ const LYANN_API_CLIENT = {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
-                    // E5: safe client retry key (Lyann-test / code paths). Server also uses pi_milestone_<id>.
+                    // E5: safe client retry key. The server keys Stripe per payment row and reuses an open intent.
                     'Idempotency-Key': 'create-milestone-intent:' + String(milestoneId)
                 },
                 body: JSON.stringify({ milestone_id: milestoneId })
@@ -2377,6 +2445,97 @@ const LYANN_API_CLIENT = {
         } catch (err) {
             return { error: { message: err.message || "Erreur de connexion au serveur de paiement." } };
         }
+    },
+
+    async refundUntransferredMilestone(milestoneId) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await lyannBackendFetch('/v1/payments/refund-untransferred', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Remboursement impossible.", code: data.code } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
+    async requestMilestoneCancel(milestoneId) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await lyannBackendFetch('/v1/milestones/request-cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Demande d’annulation impossible.", code: data.code } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
+    async decideMilestoneCancel(milestoneId, accept) {
+        const sessionRes = await this.getSession();
+        const token = sessionRes?.data?.session?.access_token;
+        if (!token) {
+            return { error: { message: "Utilisateur non authentifié." } };
+        }
+        try {
+            const res = await lyannBackendFetch('/v1/milestones/decide-cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ milestone_id: milestoneId, accept: accept === true })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { error: { message: data.error || "Réponse d’annulation impossible.", code: data.code } };
+            }
+            return { data };
+        } catch (err) {
+            return { error: { message: err.message || "Erreur de connexion serveur." } };
+        }
+    },
+
+    async requestHasEngagedMoney(requestId) {
+        if (!this.supabase || !requestId) return false;
+        const { data: quotes } = await this.supabase.from('quotes').select('id').eq('request_id', requestId);
+        const quoteIds = (quotes || []).map((row) => row.id);
+        if (!quoteIds.length) return false;
+        const { data: milestones } = await this.supabase.from('milestones').select('id,status').in('quote_id', quoteIds);
+        const rows = milestones || [];
+        if (rows.some((row) => ['FUNDED', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'].includes(String(row.status || '').toUpperCase()))) {
+            return true;
+        }
+        const milestoneIds = rows.map((row) => row.id);
+        if (!milestoneIds.length) return false;
+        const { data: payments } = await this.supabase.from('payments').select('payment_status').in('milestone_id', milestoneIds);
+        return (payments || []).some((row) => ['REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED'].includes(String(row.payment_status || '').toUpperCase()));
     },
 
     async startMilestoneWork(milestoneId) {

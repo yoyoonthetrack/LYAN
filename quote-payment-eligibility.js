@@ -191,6 +191,48 @@
         return (Math.round(value * 100) / 100).toLocaleString('fr-FR') + ' €';
     }
 
+    function centsLabel(cents) {
+        if (!Number.isFinite(cents) || !Number.isInteger(cents) || cents < 0) return '';
+        return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    }
+
+    function succeededPaymentForMilestone(quote, milestone) {
+        return ((quote && quote.payments) || []).find((row) => {
+            return row && String(row.milestone_id) === String(milestone && milestone.id)
+                && String(row.payment_status || '').toUpperCase() === 'SUCCEEDED';
+        }) || null;
+    }
+
+    function retainRefundView(quote, milestone) {
+        const pay = succeededPaymentForMilestone(quote, milestone);
+        if (!pay) return null;
+        const service = Number(pay.service_amount_cents);
+        const fee = Number(pay.customer_fee_cents);
+        const total = Number(pay.customer_total_cents);
+        const refundedTotal = Number(pay.amount_refunded_cents) || 0;
+        const refundedFee = Number(pay.customer_fee_refunded_cents) || 0;
+        if (![service, fee, total, refundedTotal, refundedFee].every((value) => Number.isInteger(value) && value >= 0)) return null;
+        if (total !== service + fee || refundedFee > fee || refundedTotal < refundedFee || refundedTotal > total) return null;
+        const refundedService = refundedTotal - refundedFee;
+        const remainingService = service - refundedService;
+        const remainingTotal = total - refundedTotal;
+        if (remainingService <= 0 || remainingService > remainingTotal) return null;
+        const refundLabel = centsLabel(remainingService);
+        const feeLabel = centsLabel(fee);
+        const paidLabel = centsLabel(total);
+        return {
+            amount_cents: remainingService,
+            label: 'Annuler et récupérer ' + refundLabel,
+            confirmCopy: [
+                'Prestation remboursée : ' + refundLabel + '.',
+                'Frais de service LYANN non remboursés : ' + feeLabel + '.',
+                'Total payé : ' + paidLabel + '.',
+                'Montant restitué : ' + refundLabel + '.',
+                'Le remboursement n’est pas encore effectué.'
+            ].join('\n')
+        };
+    }
+
     function actorCopy(actorToAct, role) {
         if (!actorToAct) return { actorLabel: '', waitingLabel: '' };
         if (actorToAct === role) {
@@ -242,9 +284,8 @@
             status = role === 'requester' ? 'Devis reçu' : 'Devis envoyé';
             if (role === 'requester') {
                 actorToAct = 'requester';
-                actions.push({ id: 'accept', label: 'Accepter le devis' });
-                actions.push({ id: 'decline', label: 'Refuser', tone: 'secondary' });
-                context = 'Acceptez ou refusez ce devis pour continuer.';
+                actions.push({ id: 'view', label: 'Voir le devis' });
+                context = 'Ouvrez le devis pour lire la prestation, les jalons et les conditions.';
             } else {
                 actorToAct = 'requester';
                 context = 'En attente de la réponse du demandeur.';
@@ -307,11 +348,23 @@
                             : 'Vous pouvez maintenant sécuriser le paiement.';
                     }
                 } else if (phase === 'prestation') {
-                    status = 'Paiement sécurisé';
-                    actorToAct = 'provider';
-                    context = role === 'provider'
-                        ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
-                        : 'Paiement sécurisé. L’argent est mis en sécurité par LYANN et n’est pas encore versé au Lyanneur. La mission peut commencer. Quand elle sera terminée, vous la validerez dans ce même chat pour libérer les fonds.';
+                    const started = milestones.some((milestone) => milestone && milestone.status === 'IN_PROGRESS');
+                    const cancelAsked = milestones.some((milestone) => String(milestone && milestone.cancellation_status || '').toUpperCase() === 'REQUESTED');
+                    status = cancelAsked ? 'Annulation demandée' : 'Paiement sécurisé';
+                    actorToAct = cancelAsked ? 'provider' : (started ? 'provider' : 'provider');
+                    if (cancelAsked && role === 'requester') {
+                        context = 'Annulation envoyée. Le Lyanneur doit accepter le remboursement ou continuer la mission.';
+                    } else if (cancelAsked) {
+                        context = 'Le demandeur veut annuler. Accepter rembourse les fonds. Continuer garde la mission.';
+                    } else if (!started && role === 'requester') {
+                        context = 'Paiement sécurisé. Le Lyanneur n’a pas encore commencé : vous pouvez annuler et récupérer vos fonds.';
+                    } else if (!started) {
+                        context = 'Le paiement est sécurisé. Touchez J’ai commencé quand vous démarrez : le demandeur ne pourra plus se rembourser tout seul.';
+                    } else {
+                        context = role === 'provider'
+                            ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
+                            : 'Le Lyanneur a commencé. L’argent reste chez LYANN. Une annulation a besoin de son accord.';
+                    }
                 } else if (phase === 'validation') {
                     const transferPending = milestones.some((milestone) => milestone && milestone.status === 'VALIDATED')
                         && !milestones.some((milestone) => milestone && milestone.status === 'COMPLETED');
@@ -337,11 +390,56 @@
                 if (!payoutWait && !paymentInFlight) {
                     milestones.forEach((milestone) => {
                         const step = milestonePhase(quote, milestone);
+                        const cancel = String(milestone.cancellation_status || '').toUpperCase();
                         if (step === 'paiement' && role === 'requester' && milestone.status === 'PENDING' && !milestoneSettled(quote, milestone)) {
                             actions.push({ id: 'pay', label: 'Sécuriser le paiement', milestoneId: milestone.id });
                         }
-                        if (step === 'prestation' && role === 'provider') {
-                            actions.push({ id: 'done', label: 'Déclarer la prestation terminée', milestoneId: milestone.id });
+                        if (step === 'prestation' && milestone.status === 'FUNDED') {
+                            if (role === 'provider') {
+                                actions.push({ id: 'start', label: 'J’ai commencé', milestoneId: milestone.id });
+                            }
+                            if (role === 'requester') {
+                                const refundView = retainRefundView(quote, milestone);
+                                if (refundView) {
+                                    actions.push({
+                                        id: 'refund',
+                                        label: refundView.label,
+                                        milestoneId: milestone.id,
+                                        tone: 'secondary',
+                                        confirm: true,
+                                        confirmCopy: refundView.confirmCopy
+                                    });
+                                }
+                            }
+                        }
+                        if (step === 'prestation' && milestone.status === 'IN_PROGRESS') {
+                            if (cancel === 'REQUESTED') {
+                                if (role === 'provider') {
+                                    actions.push({ id: 'accept_cancel', label: 'Accepter le remboursement', milestoneId: milestone.id, confirm: true });
+                                    actions.push({ id: 'refuse_cancel', label: 'Je continue', milestoneId: milestone.id, tone: 'secondary' });
+                                }
+                            } else if (cancel === 'ACCEPTED' && role === 'requester') {
+                                const refundView = retainRefundView(quote, milestone);
+                                if (refundView) {
+                                    actions.push({
+                                        id: 'refund',
+                                        label: refundView.label,
+                                        milestoneId: milestone.id,
+                                        confirm: true,
+                                        confirmCopy: refundView.confirmCopy
+                                    });
+                                }
+                            } else if (role === 'provider' && cancel !== 'ACCEPTED') {
+                                actions.push({ id: 'done', label: 'Déclarer la prestation terminée', milestoneId: milestone.id });
+                            } else if (role === 'requester' && cancel !== 'REFUSED' && cancel !== 'ACCEPTED') {
+                                actions.push({
+                                    id: 'request_cancel',
+                                    label: 'Demander l’annulation',
+                                    milestoneId: milestone.id,
+                                    tone: 'secondary',
+                                    confirm: true
+                                });
+                            }
                         }
                         if (step === 'validation' && role === 'requester' && milestone.status === 'COMPLETED') {
                             actions.push({ id: 'release', label: 'Valider et libérer le paiement', milestoneId: milestone.id, confirm: true });
@@ -355,6 +453,12 @@
                     if (firstAction.id === 'pay') {
                         status = 'Devis accepté';
                         context = 'Sécurisez le paiement du prochain paiement par étape.';
+                    } else if (firstAction.id === 'start') {
+                        status = 'Paiement sécurisé';
+                        context = 'Le paiement est sécurisé. Touchez J’ai commencé quand vous démarrez : le demandeur ne pourra plus se rembourser tout seul.';
+                    } else if (firstAction.id === 'accept_cancel') {
+                        status = 'Annulation demandée';
+                        context = 'Le demandeur veut annuler. Accepter rembourse les fonds. Continuer garde la mission.';
                     } else if (firstAction.id === 'done') {
                         status = 'Paiement sécurisé';
                         context = role === 'provider'
@@ -364,6 +468,14 @@
                         status = 'Prestation à valider';
                         context = 'Le Lyanneur a déclaré la prestation terminée. Vérifiez le travail avant de confirmer.';
                     }
+                } else if (actions.some((action) => action.id === 'refund')) {
+                    actorToAct = 'requester';
+                    status = 'Paiement sécurisé';
+                    context = role === 'requester'
+                        ? 'Le Lyanneur n’a pas encore commencé. Vous pouvez annuler et récupérer vos fonds.'
+                        : 'Le demandeur peut encore annuler tant que vous n’avez pas touché J’ai commencé.';
+                } else if (actions.some((action) => action.id === 'request_cancel')) {
+                    context = 'Le Lyanneur a commencé. Une annulation a besoin de son accord.';
                 }
             }
         } else if (phase === 'paiement' && payoutBlocked) {
@@ -377,10 +489,18 @@
                 : 'Votre validation est confirmée. Le paiement a été libéré.';
         }
 
-        // At most one primary deal action in the header; extra milestone actions stay in details.
+        // One jalon family in the header. Paired actions for that same
+        // milestone stay together (accept + continue). Later jalons stay in details.
         const headerActions = [];
         actions.forEach((action) => {
-            if (!action.milestoneId || !headerActions.some((item) => item.milestoneId)) headerActions.push(action);
+            if (!action.milestoneId) {
+                headerActions.push(action);
+                return;
+            }
+            const headerMilestone = headerActions.find((item) => item.milestoneId);
+            if (!headerMilestone || headerMilestone.milestoneId === action.milestoneId) {
+                headerActions.push(action);
+            }
         });
         const primaryAction = headerActions.find((action) => action.tone !== 'secondary') || null;
         const secondaryActions = headerActions.filter((action) => action !== primaryAction);
@@ -427,6 +547,83 @@
             actions: headerActions,
             details,
             closed
+        };
+    }
+
+    function formatQuoteDate(value) {
+        const raw = String(value || '').slice(0, 10);
+        const parts = raw.split('-');
+        if (parts.length !== 3 || parts.some((part) => !part)) return '';
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+
+    function quoteAcceptBlock(quote, userId) {
+        if (!quote || !userId) return 'Ce devis ne peut pas être ouvert.';
+        const providerId = quote.provider_id || quote.helper_id;
+        if (String(providerId) === String(userId) || String(quote.requester_id) !== String(userId)) {
+            return 'Seul le demandeur peut accepter ce devis.';
+        }
+        const status = String(quote.status || '').toUpperCase();
+        if (status !== 'SENT') return 'Ce devis ne peut plus être accepté.';
+        const until = Date.parse(quote.valid_until);
+        if (Number.isFinite(until) && until < Date.now()) return 'Ce devis a expiré.';
+        const requestStatus = String(
+            quote.request_status
+            || (quote.request && quote.request.status)
+            || ''
+        ).toUpperCase();
+        if (requestStatus && requestStatus !== 'OPEN') return 'La demande n’est plus ouverte.';
+        const missionId = quote.mission_id || (quote.mission && quote.mission.id) || '';
+        const missionStatus = String(
+            quote.mission_status
+            || (quote.mission && quote.mission.status)
+            || ''
+        ).toUpperCase();
+        if (missionId && missionStatus !== 'CANCELLED' && missionStatus !== 'CANCELED') {
+            return 'Une mission existe déjà pour ce devis.';
+        }
+        return '';
+    }
+
+    /**
+     * Detail shown before a recipient can accept. Opening it never accepts.
+     * The button is hidden unless the same gates as accept_request_quote are already false here.
+     * The SQL function remains the authority.
+     */
+    function quoteReview(quote, userId) {
+        if (!quote || !userId) return null;
+        const providerId = quote.provider_id || quote.helper_id;
+        const role = String(providerId) === String(userId) ? 'provider' : (String(quote.requester_id) === String(userId) ? 'requester' : '');
+        if (!role) return null;
+        const milestones = activeMilestones(quote)
+            .slice()
+            .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0))
+            .map((milestone) => ({
+                title: String(milestone.title || 'Paiement par étape').trim(),
+                detail: String(milestone.description || '').trim(),
+                amount: euros(milestone.amount)
+            }));
+        const prestation = String(quote.description || (milestones[0] && milestones[0].title) || '').trim();
+        const valid = formatQuoteDate(quote.valid_until);
+        const version = Number(quote.version) || 1;
+        const acceptBlock = quoteAcceptBlock(quote, userId);
+        const canAccept = !acceptBlock;
+        return {
+            quoteId: quote.id,
+            version,
+            role,
+            status: quote.status,
+            prestation,
+            amount: euros(quote.total_amount != null ? quote.total_amount : quote.amount),
+            milestones,
+            conditions: valid
+                ? 'Valable jusqu’au ' + valid + '. Version ' + version + '.'
+                : 'Aucune date de fin n’est indiquée. Version ' + version + '.',
+            canAccept,
+            acceptBlock,
+            acceptLabel: canAccept ? 'Signer et accepter le devis' : '',
+            declineLabel: canAccept ? 'Refuser' : '',
+            acceptsOnOpen: false
         };
     }
 
@@ -605,6 +802,7 @@
         isVisibleDealNotice,
         quoteDeclineCopy,
         missionCard,
+        quoteReview,
         actionPanel,
         actionPanelNeutral,
         missionBoard,
@@ -619,6 +817,7 @@
         providerFundsSecuredNote,
         quoteSettled,
         dealRecap,
+        retainRefundView,
         PAYMENT_ROUTE
     };
 });

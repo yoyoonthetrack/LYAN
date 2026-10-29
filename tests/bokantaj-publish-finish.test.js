@@ -72,13 +72,25 @@ test('a card keeps the shape of the media and plays video on scroll', () => {
     const icons = fs.readFileSync(path.join(__dirname, '../vendor/phosphor/phosphor.css'), 'utf8');
     assert.doesNotMatch(icons, /\.ph-speaker/);
     assert.match(icons, /\.ph-arrows-out/);
-    // Autoplay is bound before the media downloads, which run together: bound
-    // last and one by one, a video waited for every photo of the feed first.
-    const hydrate = source.slice(source.indexOf('async function hydrateHoldMedia'));
-    const body = hydrate.slice(0, hydrate.indexOf('\n    }'));
-    assert.ok(body.indexOf('observeFeedVideos(root)') < body.indexOf('querySelectorAll'), 'bound before fetching');
-    assert.match(body, /await Promise\.all\(Array\.from\(nodes\)\.map/);
-    assert.doesNotMatch(body, /for \(const node of nodes\)/);
+    // The feed fills twenty posts in order. Reaching the 15th starts the next
+    // twenty photos. A video stays a poster until the member taps it.
+    assert.match(source, /const FEED_MEDIA_BATCH = 20/);
+    assert.match(source, /const FEED_MEDIA_TRIGGER = 15/);
+    const hydrate = source.slice(source.indexOf('function hydrateHoldMedia'));
+    const body = hydrate.slice(0, hydrate.indexOf('\n        pump();'));
+    assert.ok(body.indexOf('observeFeedVideos(root)') < body.indexOf('preloadFeedCard'), 'bound before fetching');
+    assert.match(body, /released - runway - 1/);
+    assert.match(source, /async function preloadFeedCard/);
+    const preload = source.slice(source.indexOf('async function preloadFeedCard'), source.indexOf('function hydrateHoldMedia'));
+    assert.doesNotMatch(preload, /bokantaj-video-poster/);
+    assert.doesNotMatch(preload, /openBokantajVideo/);
+    const opener = source.slice(source.indexOf('function openBokantajVideo'), source.indexOf('function openFullPlayer'));
+    assert.match(opener, /video\.src = source/);
+    assert.doesNotMatch(opener, /await /);
+    assert.doesNotMatch(body, /await Promise\.all/);
+    const chat = fs.readFileSync(path.join(__dirname, '../chat-logic.js'), 'utf8');
+    const removal = chat.slice(chat.indexOf("remove.className = 'btn btn-outline md-milestone-remove'"), chat.indexOf('milestoneEditorApi.removeRow'));
+    assert.ok(removal.indexOf('getClientRects') < removal.indexOf('window.confirm'));
     assert.match(css, /aspect-ratio: var\(--media-ratio, 16 \/ 9\)/);
     assert.match(css, /\.bokantaj-video-sound/);
     assert.match(css, /\.bokantaj-photos-1 \.bokantaj-photo\.has-media-ratio/);
@@ -130,4 +142,15 @@ test('composer location is a map plus two share choices', () => {
     assert.match(html, /id="bokantajPlaceSave" hidden/);
     assert.match(map, /function sharePlace/);
     assert.match(map, /bokantajShareQuarter/);
+    assert.match(map, /position exacte/);
+    assert.match(map, / · quartier/);
+    assert.match(map, /function revealComposer/);
+    assert.match(map, /togglePicker\(false\);\s*revealComposer\(\)/);
+    assert.match(map, /window\.scrollBy\(0, delta\)/);
+    const css = fs.readFileSync(path.join(__dirname, '../bokantaj-map.css'), 'utf8');
+    assert.doesNotMatch(css, /body\.bokantaj-map-open::before/);
+    assert.match(css, /body\.bokantaj-map-open \.feed-hero-section/);
+    assert.match(map, /document\.body\.appendChild\(mapPanel\)/);
+    assert.match(css, /body\.bokantaj-map-open #flashComposerCard/);
+    assert.match(map, /if \(wantMap\) window\.scrollTo\(0, 0\)/);
 });

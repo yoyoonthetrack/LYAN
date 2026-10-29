@@ -239,16 +239,22 @@ async function decideVideoRelease({ textDecision, files, inspectVideo, downloadM
     const videos = files.filter((file) => VIDEO_EXT.has(extensionOf(file.path)));
     const posters = files.filter((file) => isPosterPath(file.path));
     if (!videos.length) return { decision: 'pending', reason: 'video_unverified' };
-    let containerOk = true;
-    for (const video of videos) {
-        let report = null;
-        try { report = await inspectVideo(video); } catch (err) { report = null; }
-        if (!report || report.verified !== true) containerOk = false;
-    }
     if (posters.length < videos.length) return { decision: 'pending', reason: 'video_unverified' };
     if (typeof downloadMedia !== 'function') return { decision: 'pending', reason: 'video_unverified' };
+    let reports;
     let posterImages;
-    try { posterImages = await downloadMedia(posters); } catch (err) { return { decision: 'pending', reason: 'video_unverified' }; }
+    try {
+        [reports, posterImages] = await Promise.all([
+            Promise.all(videos.map(async (video) => {
+                try { return await inspectVideo(video); } catch (err) { return null; }
+            })),
+            downloadMedia(posters)
+        ]);
+    } catch (err) {
+        return { decision: 'pending', reason: 'video_unverified' };
+    }
+    const containerOk = Array.isArray(reports) && reports.length === videos.length
+        && reports.every((report) => report && report.verified === true);
     if (!Array.isArray(posterImages) || posterImages.length !== posters.length || posterImages.some((image) => !image)) {
         return { decision: 'pending', reason: 'video_unverified' };
     }
@@ -267,7 +273,9 @@ async function classifyContent({ text, media, apiKey, fetchImpl, downloadMedia, 
     const trimmed = String(text || '').trim();
     if (!trimmed && files.length === 0) return { decision: 'approved', reason: 'empty' };
     if (!apiKey || typeof fetchImpl !== 'function') {
-        return combineDecisions({ decision: 'pending', reason: 'unconfigured' }, files);
+        // A missing checker is a technical retry. It must not be rewritten into
+        // video_unreviewed, which parks the publication on the first attempt.
+        return { decision: 'pending', reason: 'unconfigured' };
     }
     if (containsVideo(files)) {
         const textDecision = trimmed

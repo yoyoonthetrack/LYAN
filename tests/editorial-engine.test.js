@@ -86,7 +86,10 @@ assert.strictEqual(assertHumanApproval(null).ok, false);
 assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'script-de-test' }).ok, false);
 assert.strictEqual(assertHumanApproval({ userId: 'admin', actor: 'admin' }).ok, true);
 
-const { providerConfig } = require('../api/editorial-run');
+const { providerConfig, summarizeEditorialRun } = require('../api/editorial-run');
+const { nextEditorialPass } = require('../api/editorial-engine');
+const stagingConfig = require('../vercel.staging.json');
+const editorialSchedule = require('../config/editorial-schedule.json');
 function fakeJwt(payload) {
     return `e30.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.e30`;
 }
@@ -108,4 +111,48 @@ assert.strictEqual(providerConfig({
     LYANN_EDITORIAL_AI_ENABLED: '1'
 }).mode, 'oidc');
 
-console.log('editorial-engine: sources, doublon logique, santé et suspension');
+assert.strictEqual(nextEditorialPass(new Date('2026-10-27T10:30:00Z')).local, '07:00');
+assert.strictEqual(nextEditorialPass(new Date('2026-10-27T15:00:00Z')).local, '12:00');
+assert.strictEqual(nextEditorialPass(new Date('2026-10-27T21:30:00Z')).local, '07:00');
+const summary = summarizeEditorialRun({
+    created: [{ id: 'a' }],
+    skipped: [{ reason: 'doublon' }, { reason: 'faits insuffisants' }],
+    diagnoses: [{ count: 3, status: 'exploitable' }, { count: 0, status: 'inaccessible' }],
+    startedAt: '2026-10-27T11:00:00.000Z',
+    finishedAt: '2026-10-27T11:00:02.000Z',
+    slot: '2026-10-27T07'
+});
+assert.deepStrictEqual({
+    found: summary.found,
+    created: summary.created,
+    duplicates: summary.duplicates,
+    errors: summary.errors,
+    rejected: summary.rejected,
+    duration_ms: summary.duration_ms
+}, { found: 3, created: 1, duplicates: 1, errors: 1, rejected: 1, duration_ms: 2000 });
+const cronPaths = stagingConfig.crons.map((row) => row.path);
+assert.strictEqual(new Set(cronPaths).size, cronPaths.length);
+assert.ok(cronPaths.every((path) => !path.includes('?')));
+assert.strictEqual(editorialSchedule.path, '/v1/editorial/collect/scheduled');
+assert.ok(stagingConfig.crons.some((row) => row.path === editorialSchedule.path && row.schedule === editorialSchedule.cron));
+const { fetchText } = require('../api/editorial-run');
+(async () => {
+    let sourceCalls = 0;
+    const previousFetch = global.fetch;
+    global.fetch = async () => {
+        sourceCalls += 1;
+        if (sourceCalls === 1) {
+            const error = new Error('Source indisponible (503)');
+            error.status = 503;
+            throw error;
+        }
+        return { ok: true, status: 200, text: async () => '<rss></rss>' };
+    };
+    assert.strictEqual(await fetchText('https://example.test/feed'), '<rss></rss>');
+    assert.strictEqual(sourceCalls, 2);
+    global.fetch = previousFetch;
+    console.log('editorial-engine: sources, doublon logique, santé et suspension');
+})().catch((error) => {
+    console.error(error);
+    process.exit(1);
+});

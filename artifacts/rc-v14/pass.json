@@ -1,0 +1,419 @@
+{
+  "environment": "staging",
+  "supabase_ref": "tdktfbtqceldlaeqjtow",
+  "cases": [
+    {
+      "id": "admin lit users",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur users",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit lyanneurs",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur lyanneurs",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit requests",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur requests",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit services",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur services",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit missions",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur missions",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit quotes",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur quotes",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit payments",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur payments",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit invoices",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur invoices",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit payouts",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur payouts",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit disputes",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur disputes",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit reviews",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur reviews",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit bokantaj",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur bokantaj",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit reports",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur reports",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit conversations",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur conversations",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit team",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur team",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit health",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur health",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit territories",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur territories",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "admin lit feature-flags",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre refusé sur feature-flags",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "territoires renvoie des comptes",
+      "ok": true,
+      "detail": "cles=5"
+    },
+    {
+      "id": "feature flags listés",
+      "ok": true,
+      "detail": "lignes=6"
+    },
+    {
+      "id": "rubrique action",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "rubrique marketplace",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "rubrique utilisateurs",
+      "ok": true,
+      "detail": "lignes=80"
+    },
+    {
+      "id": "rubrique maison",
+      "ok": true,
+      "detail": "profils=50"
+    },
+    {
+      "id": "membre refusé sur les profils maison",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "ticket support créé",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "ticket relu puis fermé",
+      "ok": true,
+      "detail": "statut=closed"
+    },
+    {
+      "id": "fermeture idempotente",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "membre ne crée pas de ticket admin",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "écran sec-action",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "écran sec-marketplace",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "écran sec-users",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "écran sec-maison",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "écran sec-territories",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "écran sec-feature-flags",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "filtre utilisateurs vide une recherche inconnue",
+      "ok": true,
+      "detail": "lignes=1"
+    },
+    {
+      "id": "demande QA créée",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "devis créé",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "devis modifié",
+      "ok": true,
+      "detail": "25"
+    },
+    {
+      "id": "le client ne modifie pas le devis",
+      "ok": true,
+      "detail": "Seul l’auteur du devis peut le modifier."
+    },
+    {
+      "id": "révision périmée ne réessaie plus indéfiniment dans la source",
+      "ok": true,
+      "detail": "Staging non migré : PostgREST réessaie 40001"
+    },
+    {
+      "id": "devis annulé par le client",
+      "ok": true,
+      "detail": "REJECTED"
+    },
+    {
+      "id": "second refus refusé",
+      "ok": true,
+      "detail": "Le devis ne peut plus être refusé (statut actuel: REJECTED)"
+    },
+    {
+      "id": "invitation acceptée avant devis",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "remboursement hors grant reste bloqué",
+      "ok": true,
+      "detail": "status=409 code=EXECUTION_DISABLED"
+    },
+    {
+      "id": "formule expirée retombe sur Gratuit",
+      "ok": true,
+      "detail": "FREE"
+    },
+    {
+      "id": "RPC profil refuse un admin dont le rôle métier n’est pas OWNER",
+      "ok": true,
+      "detail": "Accès refusé : seuls les rôles SUPER_ADMIN et OWNER peuvent modifier les attributs administratifs"
+    },
+    {
+      "id": "changement de rôle par un admin",
+      "ok": true,
+      "detail": "status=200 role=EMPLOYEE"
+    },
+    {
+      "id": "un membre ne change pas un rôle",
+      "ok": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "OWNER ne s’accorde pas par cette opération",
+      "ok": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "jeton push posé avant suppression",
+      "ok": true,
+      "detail": "lignes=1"
+    },
+    {
+      "id": "suppression complète du compte QA",
+      "ok": true,
+      "detail": "status=200 sessions=revoked"
+    },
+    {
+      "id": "les deux sessions sont closes",
+      "ok": true,
+      "detail": "User from sub claim in JWT does not exist"
+    },
+    {
+      "id": "reconnexion impossible",
+      "ok": true,
+      "detail": "Invalid login credentials"
+    },
+    {
+      "id": "média personnel retiré",
+      "ok": true,
+      "detail": "absent"
+    },
+    {
+      "id": "jeton push désactivé",
+      "ok": true,
+      "detail": "lignes=0"
+    },
+    {
+      "id": "données personnelles inaccessibles",
+      "ok": true,
+      "detail": "profil absent"
+    },
+    {
+      "id": "journal de suppression",
+      "ok": true,
+      "detail": "lignes=1"
+    }
+  ],
+  "sections": [
+    {
+      "id": "sec-action",
+      "status": 200,
+      "url": "http://127.0.0.1:8098/v1/admin/control-center"
+    },
+    {
+      "id": "sec-marketplace",
+      "status": 200,
+      "url": "http://127.0.0.1:8098/v1/admin/marketplace-stats"
+    },
+    {
+      "id": "sec-users",
+      "status": 200,
+      "url": "http://127.0.0.1:8098/v1/admin/ops"
+    },
+    {
+      "id": "sec-maison",
+      "status": 200,
+      "url": "http://127.0.0.1:8098/v1/admin/maison/profiles"
+    },
+    {
+      "id": "sec-territories",
+      "status": 200,
+      "url": "http://127.0.0.1:8098/v1/admin/ops"
+    },
+    {
+      "id": "sec-feature-flags",
+      "status": 200,
+      "url": "http://127.0.0.1:8098/v1/admin/ops"
+    }
+  ],
+  "ok": true
+}

@@ -62,6 +62,15 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
         ]
       });
     });
+    // The switch is pinned on the feed too, and body must not be a scroll
+    // container or sticky silently stops working.
+    const feedChrome = await page.evaluate(() => ({
+        tabsPosition: getComputedStyle(document.querySelector('.bokantaj-view-tabs')).position,
+        bodyOverflowX: getComputedStyle(document.body).overflowX
+    }));
+    expect(feedChrome.tabsPosition).toBe('sticky');
+    expect(feedChrome.bodyOverflowX).not.toBe('hidden');
+
     await page.locator('#bokantajViewMap').click();
     await expect(page.locator('#bokantajMapSection')).toBeVisible();
     await expect(page.locator('#bokantajFeedSection')).toBeHidden();
@@ -70,10 +79,57 @@ for (const screen of [{ name: 'desktop', w: 1260, h: 850 }, { name: 'iPhone', w:
     await page.locator('#bokantajMapFilters [data-map-type="trafic"]').click();
     await expect(page.locator('#bokantajMapStatus')).toContainText('1 partage');
     await expect(page.locator('#bokantajMapCanvas .bokantaj-map-pin')).toHaveCount(1);
+    // The chrome rides over the tiles, and on a phone the panel fills the screen
+    // with Fil/Carte pinned as the only way back.
+    const chrome = await page.evaluate(() => {
+        const box = (sel) => {
+            const node = document.querySelector(sel);
+            const r = node.getBoundingClientRect();
+            return { top: Math.round(r.top), height: Math.round(r.height), position: getComputedStyle(node).position };
+        };
+        const canvas = document.getElementById('bokantajMapCanvas').getBoundingClientRect();
+        return {
+            tabs: box('.bokantaj-view-tabs'),
+            section: box('#bokantajMapSection'),
+            chipsOverCanvas: document.querySelector('#bokantajMapFilters').getBoundingClientRect().top >= canvas.top,
+            statusIgnoresTouch: getComputedStyle(document.getElementById('bokantajMapStatus')).pointerEvents,
+            mapShare: Math.round((canvas.height / window.innerHeight) * 100)
+        };
+    });
+    expect(chrome.chipsOverCanvas).toBe(true);
+    expect(chrome.statusIgnoresTouch).toBe('none');
+    if (screen.w < 768) {
+        expect(chrome.tabs.position).toBe('fixed');
+        expect(chrome.section.position).toBe('fixed');
+        expect(chrome.section.top).toBeGreaterThanOrEqual(chrome.tabs.top + chrome.tabs.height);
+        expect(chrome.mapShare).toBeGreaterThan(70);
+        const chips = await page.evaluate(() => {
+            const row = document.querySelector('#bokantajMapFilters');
+            const last = row.querySelector('[data-map-type="evenement"]');
+            const rowBox = row.getBoundingClientRect();
+            const clipped = last.getBoundingClientRect().right > rowBox.right + 1;
+            row.scrollLeft = row.scrollWidth;
+            const after = last.getBoundingClientRect();
+            return {
+                overflows: row.scrollWidth > row.clientWidth + 8,
+                clipped,
+                lastVisible: after.right <= rowBox.right + 1 && after.left >= rowBox.left
+            };
+        });
+        expect(chips.overflows).toBe(true);
+        expect(chips.clipped).toBe(true);
+        expect(chips.lastVisible).toBe(true);
+    } else {
+        expect(chrome.section.position).toBe('static');
+    }
+
     await page.locator('#bokantajMapCanvas .bokantaj-map-pin').click();
     await expect(page.locator('#bokantajMapDetail')).toContainText('Jarry');
     await expect(page.locator('#bokantajMapDetail')).toContainText('bouchon');
     await expect(page.locator('#bokantajMapDetail')).toContainText('Voir le Bokantaj');
+    // One card, not two: the sheet replaces the old bubble.
+    await expect(page.locator('.leaflet-popup')).toHaveCount(0);
+    await expect(page.locator('.bokantaj-map-detail-close')).toBeVisible();
     await page.evaluate(() => {
       window.LYANN_API_CLIENT.getApprovedBokantajPost = async (id) => id === 'qa-traffic' ? {
         id: 'qa-traffic', author_id: 'qa-author', type: 'trafic', content: 'Attention, bouchon vers Jarry',
@@ -204,13 +260,13 @@ for (const mobile of [false, true]) {
     await expect(page.locator('#bokantajMapCanvas canvas')).toBeVisible();
     await expect(page.getByRole('link', { name: '© OpenStreetMap', exact: true })).toBeVisible();
     const marker = page.locator('#bokantajMapCanvas .bokantaj-map-pin');
-    await expect(marker).toHaveAttribute('title', 'Resto · Pointe-à-Pitre');
+    await expect(marker).toHaveAttribute('title', 'Resto · Pointe-à-Pitre · secteur d’environ 4 km');
     await page.evaluate(() => { document.getElementById('bokantajMapDetail').hidden = true; });
     await marker.focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('#bokantajMapDetail')).toBeVisible();
     await expect(page.locator('#bokantajMapDetail')).toContainText('Publication de test');
-    await expect(page.locator('.bokantaj-popup .leaflet-popup-content')).toContainText('Pointe-à-Pitre');
+    await expect(page.locator('#bokantajMapDetail')).toContainText('Pointe-à-Pitre');
     await page.locator('#bokantajMapSection').screenshot({ path: 'test-results/bokantaj-map-real-' + (mobile ? 'mobile' : 'desktop') + '.png' });
     await page.getByRole('button', { name: 'Zoomer', exact: true }).click();
     await expect(page.locator('#bokantajMapCanvas')).toHaveAttribute('data-basemap', 'ready');
@@ -247,4 +303,59 @@ test('GPS place stays approximate until the author shares the exact point', asyn
   expect(exact.exact).toBe(true);
   expect(exact.lat).toBeCloseTo(16.24119, 5);
   expect(exact.lng).toBeCloseTo(-61.53381, 5);
+});
+
+test('a place shared as a neighbourhood draws its sector, an exact point does not', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/*', (route) => {
+    const host = new URL(route.request().url()).hostname;
+    return ['localhost', '127.0.0.1'].includes(host) ? route.continue() : route.abort();
+  });
+  await page.goto('/feed.html?demo=true', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.LYANN_BOKANTAJ_MAP?.switchView && window.LYANN_API_CLIENT?.getMappedBokantajPosts && window.L);
+  await page.evaluate(() => {
+    const now = new Date().toISOString();
+    window.LYANN_API_CLIENT.getMappedBokantajPosts = async () => ({
+      data: [
+        // Three decimals: publicCoordinate's neighbourhood rounding.
+        { id: 'qa-quarter', type: 'info', content: 'Réunion de quartier samedi', place_lat: 16.241, place_lng: -61.534, place_label: 'Pointe-à-Pitre', public_moderation_status: 'approved', created_at: now, media_urls: [] },
+        // Six decimals: the author shared the exact point.
+        { id: 'qa-exact', type: 'restaurant', content: 'Le resto au bout de la rue', place_lat: 16.223814, place_lng: -61.382417, place_label: 'Sainte-Anne', public_moderation_status: 'approved', created_at: now, media_urls: [] }
+      ]
+    });
+  });
+  await page.locator('#bokantajViewMap').click();
+  await expect(page.locator('#bokantajMapCanvas .bokantaj-map-pin')).toHaveCount(2);
+
+  const zones = page.locator('#bokantajMapCanvas path.bokantaj-map-zone');
+  await expect(zones).toHaveCount(1);
+  // Translucent, and never in the way of a tap on the pin underneath it.
+  const paint = await zones.first().evaluate((node) => {
+    const style = getComputedStyle(node);
+    return { fillOpacity: style.fillOpacity, pointerEvents: style.pointerEvents, fill: node.getAttribute('fill') };
+  });
+  expect(Number(paint.fillOpacity)).toBeGreaterThan(0);
+  expect(Number(paint.fillOpacity)).toBeLessThan(0.3);
+  expect(paint.pointerEvents).toBe('none');
+
+  // The circle really measures ~4 km on the ground. The scale is read off the
+  // two pins, whose coordinates are known, so no map internals are needed.
+  const radiusKm = await page.evaluate(() => {
+    const anchor = (index) => {
+      const r = document.querySelectorAll('#bokantajMapCanvas .bokantaj-map-pin')[index].getBoundingClientRect();
+      return { x: r.left + 23, y: r.top + 50 };
+    };
+    const a = anchor(0);
+    const b = anchor(1);
+    const pins = window.L.latLng(16.241, -61.534).distanceTo(window.L.latLng(16.223814, -61.382417));
+    const metresPerPixel = pins / Math.hypot(b.x - a.x, b.y - a.y);
+    const zone = document.querySelector('#bokantajMapCanvas path.bokantaj-map-zone').getBoundingClientRect();
+    return (zone.width / 2) * metresPerPixel / 1000;
+  });
+  expect(radiusKm).toBeGreaterThan(3.6);
+  expect(radiusKm).toBeLessThan(4.4);
+
+  await page.locator('#bokantajMapCanvas .bokantaj-map-pin').first().click();
+  await expect(page.locator('#bokantajMapDetail')).toContainText('secteur d’environ 4 km');
+  await page.locator('#bokantajMapSection').screenshot({ path: 'test-results/bokantaj-zone-4km.png' });
 });

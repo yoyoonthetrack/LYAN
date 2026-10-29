@@ -816,8 +816,14 @@
                 console.log(`[ProfileSave] userId=${userId} step=final payloadFields=first_name,last_name,bio,territory,city,phone,intervention_radius_km,avatar_url avatarChanged=${!!selectedAvatarFile} saveStarted=true`);
 
                 let avatarUploadStatus = 'SKIPPED';
+                let avatarNeedsHuman = false;
+                let avatarMessage = '';
                 if (selectedAvatarFile && window.apiClient && typeof window.apiClient.uploadAvatar === 'function') {
-                    const { data: upData, error: upError } = await window.apiClient.uploadAvatar(userId, selectedAvatarFile);
+                    let photo = selectedAvatarFile;
+                    if (window.LYANN_BOKANTAJ_MEDIA && typeof window.LYANN_BOKANTAJ_MEDIA.preparePhoto === 'function') {
+                        try { photo = await window.LYANN_BOKANTAJ_MEDIA.preparePhoto(selectedAvatarFile); } catch (_) { photo = selectedAvatarFile; }
+                    }
+                    const { data: upData, error: upError } = await window.apiClient.uploadAvatar(userId, photo);
                     if (upError) {
                         avatarUploadStatus = 'ERROR';
                         console.error(`[ProfileSaveResult] profilesUpdate=SKIPPED skillsUpdate=SKIPPED avatarUpload=ERROR errorCode=${upError.code || 'UPLOAD_ERR'} errorMessage=${upError.message || 'Avatar upload failed'}`);
@@ -829,6 +835,8 @@
                     } else if (upData?.avatar_url) {
                         avatarUploadStatus = 'SUCCESS';
                         currentAvatar = upData.avatar_url;
+                        avatarNeedsHuman = !!upData.needs_human;
+                        avatarMessage = upData.message || '';
                     }
                 }
 
@@ -910,9 +918,11 @@
 
                 // Show mandatory success toast
                 const profilePending = dbData && (dbData.bio_moderation_status === 'pending' || dbData.avatar_moderation_status === 'pending');
-                const profileMessage = dbData && dbData.avatar_moderation_status === 'pending'
+                const profileMessage = avatarNeedsHuman
+                    ? (avatarMessage || 'Cette photo doit être regardée par l’équipe avant d’être publiée.')
+                    : (dbData && dbData.avatar_moderation_status === 'pending'
                     ? 'Votre photo est en cours de vérification.'
-                    : (profilePending ? 'Votre publication est en cours de vérification.' : 'Profil mis à jour');
+                    : (profilePending ? 'Votre publication est en cours de vérification.' : 'Profil mis à jour'));
                 if (window.NotificationService) {
                     window.NotificationService.showToast('success', profileMessage);
                 } else if (window.lyannAlert) {

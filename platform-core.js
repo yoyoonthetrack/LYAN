@@ -257,7 +257,9 @@ async function setupNativePushNotifications() {
     window.LYANN_PUSH = {
         deactivate: deactivatePushDevice,
         sync: function () { return registerPushDevice(latestPushToken); },
-        openPending: openPendingPushNotification
+        openPending: openPendingPushNotification,
+        discard: discardPendingPushNotification,
+        open: openLyannNotification
     };
     try {
         let perm = await push.checkPermissions();
@@ -281,6 +283,7 @@ async function setupNativePushNotifications() {
         });
         push.addListener('pushNotificationActionPerformed', (event) => {
             const data = event && event.notification && (event.notification.data || event.notification);
+            rememberPendingPushTarget(data, currentPushSessionUser());
             openPushNotification(data);
         });
     } catch (error) {
@@ -412,14 +415,118 @@ async function pushResourceVisible(route, targetId, sessionUserId) {
     return false;
 }
 
-async function notificationResourceAllowed(plan, sessionUserId) {
+function currentPushSessionUser() {
+    return window.CURRENT_USER_ID
+        || window.LYANN_AUTH_STATE?.getSnapshot?.().userId
+        || null;
+}
+
+function rememberPendingPushTarget(data, audienceUserId) {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    try {
+        const raw = policy && typeof policy.serializePendingPushTarget === 'function'
+            ? policy.serializePendingPushTarget(data)
+            : JSON.stringify({
+                route: (data && data.route) || '',
+                contactId: (data && data.contactId) || '',
+                requestId: (data && data.requestId) || '',
+                invitationId: (data && data.invitationId) || '',
+                quoteId: (data && data.quoteId) || '',
+                missionId: (data && data.missionId) || '',
+                milestoneId: (data && data.milestoneId) || '',
+                postId: (data && (data.postId || data.post_id)) || ''
+            });
+        sessionStorage.setItem('lyann_push_target', JSON.stringify({
+            version: 1,
+            audienceUserId: audienceUserId || '',
+            target: JSON.parse(raw)
+        }));
+    } catch (_) {}
+}
+
+function readPendingPushTarget() {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    let stored = null;
+    try { stored = JSON.parse(sessionStorage.getItem('lyann_push_target') || 'null'); } catch (_) { stored = null; }
+    if (!stored) return null;
+    if (stored.target) {
+        const pending = policy && typeof policy.parsePendingPushTarget === 'function'
+            ? policy.parsePendingPushTarget(stored.target)
+            : stored.target;
+        if (!pending || !pending.route) return null;
+        return { audienceUserId: stored.audienceUserId || '', target: pending };
+    }
+    const pending = policy && typeof policy.parsePendingPushTarget === 'function'
+        ? policy.parsePendingPushTarget(stored)
+        : stored;
+    if (!pending || !pending.route) return null;
+    return { audienceUserId: '', target: pending };
+}
+
+function discardPendingPushNotification() {
+    try { sessionStorage.removeItem('lyann_push_target'); } catch (_) {}
+}
+
+function announceUnavailableNotification(target, code) {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    const message = policy && typeof policy.notificationUnavailableMessage === 'function'
+        ? policy.notificationUnavailableMessage(Object.assign({}, target || {}, code ? { code } : {}))
+        : 'Ce contenu n’est plus accessible.';
+    if (target && target.route === 'bokantaj' && document.querySelector('.bokantaj-reveal-miss')) {
+        return message;
+    }
+    if (typeof window.showLyanToast === 'function') window.showLyanToast(message, 'ℹ️');
+    return message;
+}
+
+async function attachQuoteConversation(plan, sessionUserId) {
+    if (!plan || plan.route !== 'messages' || !plan.target || !plan.target.quoteId) return { status: 'skip' };
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    if (!supabase || !policy || typeof policy.resolveQuoteThread !== 'function') return { status: 'retry' };
+    const quote = await supabase
+        .from('quotes')
+        .select('id,conversation_id,requester_id,provider_id,request_id')
+        .eq('id', plan.target.quoteId)
+        .limit(1);
+    if (quote.error) return { status: 'retry' };
+    const resolved = policy.resolveQuoteThread(quote.data && quote.data[0], sessionUserId);
+    if (!resolved.ok) return { status: 'unavailable', code: resolved.code };
+    const participant = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('conversation_id', resolved.conversationId)
+        .eq('user_id', sessionUserId)
+        .limit(1);
+    if (participant.error) return { status: 'retry' };
+    if (!participant.data || !participant.data.length) return { status: 'unavailable', code: 'conversation_unavailable' };
+    plan.payload = Object.assign({}, plan.payload, {
+        contactId: resolved.contactId,
+        conversationId: resolved.conversationId,
+        quoteId: resolved.quoteId,
+        requestId: resolved.requestId || undefined,
+        scopeSource: 'notification'
+    });
+    plan.target.contactId = resolved.contactId;
+    plan.target.conversationId = resolved.conversationId;
+    if (resolved.requestId) plan.target.requestId = resolved.requestId;
+    plan.target.code = null;
+    return { status: 'ready' };
+}
+
+async function notificationResourceAllowed(plan, sessionUserId, audienceUserId) {
     if (!plan || !plan.open || !plan.target) return false;
     if (plan.target.access && plan.target.access.authorized === true) return false;
+    if (audienceUserId && sessionUserId && String(audienceUserId) !== String(sessionUserId)) return false;
     if (plan.route === 'finances') return true;
+    if (plan.route === 'bokantaj') return true;
     if (plan.route === 'messages') {
         if (!plan.payload || !plan.payload.contactId) return false;
         if (!await pushResourceVisible('messages', plan.payload.contactId, sessionUserId)) return false;
-        if (plan.payload.requestId && !await pushResourceVisible('mission', plan.payload.requestId, sessionUserId)) return false;
+        if (plan.payload.requestId && !await pushResourceVisible('mission', plan.payload.requestId, sessionUserId)) {
+            plan.payload.requestId = undefined;
+            plan.target.requestId = null;
+        }
         return true;
     }
     if (plan.route === 'mission') {
@@ -428,68 +535,178 @@ async function notificationResourceAllowed(plan, sessionUserId) {
     return false;
 }
 
-async function openPushNotification(data) {
+async function attachVisibleDealRequest(plan, sessionUserId) {
+    if (!plan || plan.route !== 'messages' || !plan.payload || plan.payload.requestId || !plan.target) return plan;
+    const supabase = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase;
     const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
-    const sessionUser = window.CURRENT_USER_ID
-        || window.LYANN_AUTH_STATE?.getSnapshot?.().userId
-        || null;
-    if (!sessionUser) {
-        try {
-            const raw = policy && typeof policy.serializePendingPushTarget === 'function'
-                ? policy.serializePendingPushTarget(data)
-                : JSON.stringify({
-                    route: (data && data.route) || '',
-                    contactId: (data && data.contactId) || '',
-                    requestId: (data && data.requestId) || '',
-                    invitationId: (data && data.invitationId) || '',
-                    quoteId: (data && data.quoteId) || '',
-                    missionId: (data && data.missionId) || '',
-                    milestoneId: (data && data.milestoneId) || ''
-                });
-            sessionStorage.setItem('lyann_push_target', raw);
-        } catch (_) {}
-        if (typeof window.openLoginModal === 'function') window.openLoginModal();
-        return false;
+    if (!supabase || !policy || typeof policy.isUuid !== 'function') return plan;
+    let quoteId = plan.target.quoteId || null;
+    if (!quoteId && plan.target.milestoneId) {
+        const milestone = await supabase.from('milestones').select('quote_id').eq('id', plan.target.milestoneId).limit(1);
+        quoteId = !milestone.error && milestone.data && milestone.data[0] ? milestone.data[0].quote_id : null;
     }
-    if (!window.LYANN_ROUTER || typeof window.LYANN_ROUTER.go !== 'function') return false;
+    if (!quoteId) return plan;
+    const quote = await supabase.from('quotes').select('request_id').eq('id', quoteId).limit(1);
+    const requestId = !quote.error && quote.data && quote.data[0] ? quote.data[0].request_id : null;
+    if (!policy.isUuid(requestId)) return plan;
+    if (!await pushResourceVisible('mission', requestId, sessionUserId)) return plan;
+    plan.payload = Object.assign({}, plan.payload, { requestId: String(requestId) });
+    plan.target.requestId = String(requestId);
+    return plan;
+}
+
+async function waitForNotificationRouter() {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+        if (window.LYANN_ROUTER && typeof window.LYANN_ROUTER.go === 'function') return window.LYANN_ROUTER;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return null;
+}
+
+const notificationNavigationFlights = new Map();
+
+function notificationFlightKey(data) {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    const parsed = policy && typeof policy.parseNotificationTarget === 'function'
+        ? policy.parseNotificationTarget(data)
+        : null;
+    if (!parsed) return '';
+    return [
+        parsed.type || '',
+        parsed.route || '',
+        parsed.contactId || '',
+        parsed.requestId || '',
+        parsed.postId || '',
+        parsed.quoteId || '',
+        parsed.conversationId || '',
+        parsed.milestoneId || ''
+    ].join('|');
+}
+
+async function openLyannNotification(data, options) {
+    const opts = options || {};
+    const key = notificationFlightKey(data);
+    if (key && notificationNavigationFlights.has(key)) return notificationNavigationFlights.get(key);
+    const flight = openLyannNotificationNow(data, opts);
+    if (key) {
+        notificationNavigationFlights.set(key, flight);
+        flight.finally(() => { notificationNavigationFlights.delete(key); });
+    }
+    return flight;
+}
+
+async function openLyannNotificationNow(data, options) {
+    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
+    if (window.LYANN_AUTH_STATE && typeof window.LYANN_AUTH_STATE.ready === 'function') {
+        try { await window.LYANN_AUTH_STATE.ready(); } catch (_) {}
+    }
+    const sessionUser = currentPushSessionUser();
+    const audienceUserId = options.audienceUserId || '';
+    if (audienceUserId && sessionUser && String(audienceUserId) !== String(sessionUser)) {
+        if (options.source !== 'bell') discardPendingPushNotification();
+        const message = announceUnavailableNotification(null, 'session_mismatch');
+        return { opened: false, announced: true, message };
+    }
+    if (!sessionUser) {
+        if (options.source !== 'bell') rememberPendingPushTarget(data, '');
+        const snapshot = window.LYANN_AUTH_STATE?.getSnapshot?.();
+        if (snapshot && snapshot.status === 'ready' && snapshot.authenticated !== true && typeof window.openLoginModal === 'function') {
+            window.openLoginModal();
+        }
+        return { opened: false, queued: options.source !== 'bell' };
+    }
+    const router = await waitForNotificationRouter();
+    if (!router) {
+        if (options.source !== 'bell') rememberPendingPushTarget(data, sessionUser);
+        return { opened: false, queued: options.source !== 'bell' };
+    }
+    if (currentPushSessionUser() !== sessionUser) return { opened: false };
     const plan = policy && typeof policy.planNotificationNavigation === 'function'
         ? policy.planNotificationNavigation(data, { viewerId: sessionUser })
         : null;
     if (plan) {
-        if (!plan.open) return false;
-        if (!await notificationResourceAllowed(plan, sessionUser)) return false;
-        if (plan.route === 'finances') return window.LYANN_ROUTER.go('finances');
-        if (plan.route === 'messages') return window.LYANN_ROUTER.go('messages', plan.payload);
-        if (plan.route === 'mission') return window.LYANN_ROUTER.go('mission', plan.payload);
-        return false;
+        if (!plan.open) {
+            if (options.source !== 'bell') discardPendingPushNotification();
+            const message = announceUnavailableNotification(plan.target);
+            return { opened: false, announced: true, message };
+        }
+        try { await attachVisibleDealRequest(plan, sessionUser); } catch (_) {}
+        const quoteDestination = plan.target && plan.target.quoteId
+            ? await attachQuoteConversation(plan, sessionUser).catch(() => ({ status: 'retry' }))
+            : { status: 'skip' };
+        if (quoteDestination.status === 'retry') {
+            if (options.source !== 'bell') rememberPendingPushTarget(data, sessionUser);
+            return { opened: false, queued: true };
+        }
+        if (quoteDestination.status === 'unavailable') {
+            if (options.source !== 'bell') discardPendingPushNotification();
+            const message = announceUnavailableNotification(plan.target, quoteDestination.code);
+            return { opened: false, announced: true, message };
+        }
+        if (quoteDestination.status === 'ready') {
+            if (currentPushSessionUser() !== sessionUser) return { opened: false };
+            const opened = Boolean(await window.LYANN_ROUTER.go('messages', plan.payload));
+            if (opened) {
+                if (options.source !== 'bell') discardPendingPushNotification();
+            } else if (options.source !== 'bell') {
+                rememberPendingPushTarget(data, sessionUser);
+            }
+            return { opened, route: 'messages' };
+        }
+        if (plan.route === 'messages' && plan.target && plan.target.type === 'PAYMENT_FAILED') {
+            const conversationAllowed = await notificationResourceAllowed(plan, sessionUser, audienceUserId);
+            if (!conversationAllowed) {
+                if (currentPushSessionUser() !== sessionUser) return { opened: false };
+                if (options.source !== 'bell') discardPendingPushNotification();
+                const openedFinances = await window.LYANN_ROUTER.go('finances');
+                return { opened: Boolean(openedFinances), route: 'finances' };
+            }
+        } else if (!await notificationResourceAllowed(plan, sessionUser, audienceUserId)) {
+            if (options.source !== 'bell') discardPendingPushNotification();
+            const code = plan.route === 'mission' ? 'request_unavailable' : (plan.route === 'messages' ? 'conversation_unavailable' : '');
+            const message = announceUnavailableNotification(plan.target, code);
+            return { opened: false, announced: true, message };
+        }
+        if (currentPushSessionUser() !== sessionUser) return { opened: false };
+        if (options.source !== 'bell') discardPendingPushNotification();
+        if (plan.route === 'finances') return { opened: Boolean(await window.LYANN_ROUTER.go('finances')), route: 'finances' };
+        if (plan.route === 'messages') return { opened: Boolean(await window.LYANN_ROUTER.go('messages', plan.payload)), route: 'messages' };
+        if (plan.route === 'mission') return { opened: Boolean(await window.LYANN_ROUTER.go('mission', plan.payload)), route: 'mission' };
+        if (plan.route === 'bokantaj') {
+            const opened = Boolean(await window.LYANN_ROUTER.go('bokantaj', plan.payload));
+            if (!opened) {
+                const message = announceUnavailableNotification(plan.target, 'post_unavailable');
+                return { opened: false, announced: true, message, route: 'bokantaj' };
+            }
+            return { opened: true, route: 'bokantaj' };
+        }
+        return { opened: false };
     }
-    const route = data && data.route;
-    const contactId = data && data.contactId;
-    const requestId = data && data.requestId;
-    if (contactId && String(contactId) === String(sessionUser)) return false;
-    if (route === 'finances') return window.LYANN_ROUTER.go('finances');
-    if (route === 'messages') {
-        if (!await pushResourceVisible('messages', contactId, sessionUser)) return false;
-        return window.LYANN_ROUTER.go('messages', { contactId, requestId: requestId || undefined, scopeSource: 'notification' });
-    }
-    if (route === 'mission') {
-        if (!await pushResourceVisible('mission', requestId, sessionUser)) return false;
-        return window.LYANN_ROUTER.go('mission', { requestId });
-    }
-    return false;
+    return { opened: false };
+}
+
+async function openPushNotification(data) {
+    const sessionUser = currentPushSessionUser();
+    return openLyannNotification(data, { source: 'push', audienceUserId: sessionUser || '' });
 }
 
 function openPendingPushNotification() {
-    const policy = window.LYANN_DEAL_NOTIFICATION_POLICY;
-    let pending = null;
-    try { pending = JSON.parse(sessionStorage.getItem('lyann_push_target') || 'null'); } catch (_) {}
-    if (policy && typeof policy.parsePendingPushTarget === 'function') {
-        pending = policy.parsePendingPushTarget(pending);
+    const stored = readPendingPushTarget();
+    if (!stored) return false;
+    const sessionUser = currentPushSessionUser();
+    if (stored.audienceUserId && sessionUser && String(stored.audienceUserId) !== String(sessionUser)) {
+        discardPendingPushNotification();
+        return false;
     }
-    if (!pending || !pending.route) return false;
-    try { sessionStorage.removeItem('lyann_push_target'); } catch (_) {}
-    return openPushNotification(pending);
+    if (!sessionUser) return false;
+    return openLyannNotification(stored.target, {
+        source: 'push',
+        audienceUserId: stored.audienceUserId || sessionUser,
+        replay: true
+    });
 }
+
+window.openLyannNotification = openLyannNotification;
 
 async function deactivatePushDevice() {
     const installationId = pushInstallationId();

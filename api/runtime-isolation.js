@@ -83,7 +83,7 @@ function runtimeIdentity(env) {
         isolation: isolation.code,
         production: ref === PRODUCTION_REF,
         staging: ref === STAGING_REF,
-        commit: (env && env.VERCEL_GIT_COMMIT_SHA) || null
+        commit: (env && (env.VERCEL_GIT_COMMIT_SHA || env.LYANN_RELEASE_SHA)) || null
     };
 }
 

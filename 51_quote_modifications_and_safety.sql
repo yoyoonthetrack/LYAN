@@ -203,6 +203,8 @@ DECLARE
     v_order int := 1;
     v_snapshot jsonb;
 BEGIN
+    -- PostgREST retries serialization_failure until the HTTP call dies. A stale version is a business refusal.
+    PERFORM set_config('lock_timeout', '4s', true);
     v_my_id := auth.uid();
     IF v_my_id IS NULL THEN
         RAISE EXCEPTION 'Non authentifié' USING ERRCODE = '42501';
@@ -225,7 +227,7 @@ BEGIN
     v_current_version := COALESCE(v_quote.version, 1);
     IF p_expected_version IS DISTINCT FROM v_current_version THEN
         RAISE EXCEPTION 'Ce devis a été modifié entre-temps. Rechargez la conversation avant de réessayer.'
-            USING ERRCODE = '40001';
+            USING ERRCODE = 'P0001';
     END IF;
 
     IF EXISTS (
@@ -308,7 +310,7 @@ BEGIN
       AND COALESCE(version, 1) = v_current_version;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Ce devis a été modifié entre-temps. Rechargez la conversation avant de réessayer.'
-            USING ERRCODE = '40001';
+            USING ERRCODE = 'P0001';
     END IF;
 
     DELETE FROM public.milestones

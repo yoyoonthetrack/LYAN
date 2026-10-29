@@ -1,0 +1,277 @@
+{
+  "environment": "staging",
+  "supabase_ref": "tdktfbtqceldlaeqjtow",
+  "api_isolation": "STAGING_ISOLATED",
+  "marker": "RC12-1793040959319",
+  "cases": [
+    {
+      "id": "auth A B C",
+      "ok": true,
+      "detail": "trois sessions membre"
+    },
+    {
+      "id": "bokantaj A inserts via RLS",
+      "ok": true,
+      "detail": "pending"
+    },
+    {
+      "id": "bokantaj place stored rounded",
+      "ok": true,
+      "detail": "16.241,-61.534"
+    },
+    {
+      "id": "bokantaj B cannot read pending as approved",
+      "ok": true,
+      "detail": "absent"
+    },
+    {
+      "id": "admin approves member post",
+      "ok": true,
+      "detail": "approved"
+    },
+    {
+      "id": "B sees approved post",
+      "ok": true,
+      "detail": "rows=1"
+    },
+    {
+      "id": "hide removes post from B",
+      "ok": true,
+      "detail": "rejected"
+    },
+    {
+      "id": "A opens conversation with B",
+      "ok": true,
+      "detail": "uuid"
+    },
+    {
+      "id": "B reads the message",
+      "ok": true,
+      "detail": "rows=1"
+    },
+    {
+      "id": "C cannot read the message",
+      "ok": true,
+      "detail": "rows=0"
+    },
+    {
+      "id": "C cannot send as A",
+      "ok": true,
+      "detail": "42501"
+    },
+    {
+      "id": "feed HTML lock is Staging",
+      "ok": true,
+      "detail": "tdktfbtqceldlaeqjtow"
+    },
+    {
+      "id": "UI login A",
+      "ok": true,
+      "detail": "session"
+    },
+    {
+      "id": "UI publish persists",
+      "ok": true,
+      "detail": "pending"
+    },
+    {
+      "id": "UI publish visibility matches status",
+      "ok": true,
+      "detail": "B does not"
+    },
+    {
+      "id": "admin UI authorized",
+      "ok": true,
+      "detail": "AUTHORIZED"
+    },
+    {
+      "id": "admin nav lists 33 sections",
+      "ok": true,
+      "detail": "33"
+    },
+    {
+      "id": "each admin section opens",
+      "ok": true,
+      "detail": "33"
+    },
+    {
+      "id": "QA C is not an admin",
+      "ok": true,
+      "detail": "UNAUTHENTICATED"
+    },
+    {
+      "id": "QA rows removed",
+      "ok": true,
+      "detail": "gone"
+    }
+  ],
+  "failures": [],
+  "admin_sections": [
+    {
+      "id": "sec-overview",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-action",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-marketplace",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-users",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-maison",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-lyanneurs",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-requests",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-missions",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-services",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-quotes",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-chat",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-editorial",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-bokantaj",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-agents",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-mika",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-content",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-support",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-disputes",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-notifications",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-reviews",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-finances",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-payouts",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-subscriptions",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-protection",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-invoices",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-taxonomy",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-team",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-rbac",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-audit-logs",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-feature-flags",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-territories",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-health",
+      "present": true,
+      "active": true
+    },
+    {
+      "id": "sec-user-detail",
+      "present": true,
+      "active": true
+    }
+  ],
+  "ok": true
+}
