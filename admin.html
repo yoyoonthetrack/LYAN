@@ -844,7 +844,7 @@
                     </div>
                 </div>
 
-                <div id="adminFinanceDeskRoot" class="finance-desk" aria-label="Dossiers remboursement et litiges"></div>
+                <p class="maison-muted" id="adminFinanceDeskRoot">Paiements réels ci-dessous. Le lab finance de démonstration n’est plus monté dans le back-office.</p>
 
                 <div class="admin-card">
                     <table class="admin-table">
@@ -902,26 +902,28 @@
             <section id="sec-subscriptions" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Moteur d'Abonnements & Pricing Pro</h1>
-                        <p class="admin-page-sub">Gestion des offres récurrentes et suivi du Churn / MRR de la plateforme.</p>
+                        <h1 class="admin-page-title">Abonnements & plans</h1>
+                        <p class="admin-page-sub">Plans en base et abonnements store. Aucun prélèvement Stripe n’est déclenché depuis cet écran.</p>
                     </div>
                 </div>
-                <div class="admin-grid-3">
-                    <div class="admin-card" style="border-top: 3px solid var(--admin-border);">
-                        <h3>Lyanneur</h3>
-                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0;">0 €</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Offre publique actuelle — 0 € pour toujours.</p>
-                    </div>
-                    <div class="admin-card" style="border-top: 3px solid var(--admin-brand-yellow);">
-                        <h3 style="color: #9A6F12;">Lyanneur Plus</h3>
-                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: #9A6F12;">7,90 € / mois</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Formule mensuelle en préparation.</p>
-                    </div>
-                    <div class="admin-card" style="border-top: 3px solid var(--admin-brand-primary);">
-                        <h3 style="color: var(--admin-brand-primary);">Pro</h3>
-                        <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: var(--admin-brand-primary);">19,90 € / mois</div>
-                        <p style="font-size: 0.8rem; color: var(--admin-text-muted);">Formule mensuelle en préparation. Achat non activé.</p>
-                    </div>
+                <div class="admin-grid-3" id="subscriptionsPlansGrid"></div>
+                <div class="admin-card" style="margin-top:16px;">
+                    <h3>Abonnements store</h3>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Membre</th>
+                                <th>Store</th>
+                                <th>Plan</th>
+                                <th>Statut</th>
+                                <th>Expire</th>
+                                <th>Environnement</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subscriptionsAdminTableBody">
+                            <tr><td colspan="6" class="admin-empty-cell">Chargement…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
@@ -966,7 +968,7 @@
                     </div>
                 </div>
 
-                <div id="adminDisputeDeskRoot" class="finance-desk" aria-label="Litiges financiers"></div>
+                <p class="maison-muted" id="adminDisputeDeskRoot">Décisions admin sans exécution Stripe automatique. Les remboursements restent hors de ce desk tant que non autorisés.</p>
 
                 <div class="admin-card">
                     <table class="admin-table">
@@ -1780,26 +1782,42 @@
             <section id="sec-notifications" class="admin-section">
                 <div class="admin-page-header">
                     <div>
-                        <h1 class="admin-page-title">Centre de Broadcast & Push Notifications</h1>
-                        <p class="admin-page-sub">L’envoi push n’est pas encore branché. Rien n’est envoyé depuis cet écran.</p>
+                        <h1 class="admin-page-title">Notifications</h1>
+                        <p class="admin-page-sub">Journal in-app réel. Test ciblé possible ; aucune diffusion push de masse.</p>
                     </div>
                 </div>
-                <div class="admin-card" style="max-width: 650px;">
-                    <form id="newCampaignForm" onsubmit="event.preventDefault();">
+                <div class="admin-card" style="max-width: 650px; margin-bottom:16px;">
+                    <form id="newCampaignForm">
                         <div style="margin-bottom: 12px;">
-                            <label class="admin-label">Titre Notification Push *</label>
-                            <input type="text" id="campTitle" class="admin-input" placeholder="Ex: Nouveaux besoins climatisation disponible !" required>
+                            <label class="admin-label">Titre *</label>
+                            <input type="text" id="campTitle" class="admin-input" placeholder="Titre de la notification" required>
                         </div>
                         <div style="margin-bottom: 12px;">
-                            <label class="admin-label">Territoire Cible</label>
-                            <select id="campTerritory" class="admin-select">
-                                <option value="Tous les DOM">Tous les territoires DOM</option>
-                                <option value="Guadeloupe">Guadeloupe uniquement</option>
-                                <option value="Martinique">Martinique uniquement</option>
-                            </select>
+                            <label class="admin-label">Message</label>
+                            <textarea id="campBody" class="admin-input" rows="3" placeholder="Corps de la notification test"></textarea>
                         </div>
-                        <button type="submit" class="admin-btn admin-btn-secondary" disabled><i class="ph-bold ph-paper-plane-tilt"></i> Diffusion push non branchée</button>
+                        <div style="margin-bottom: 12px;">
+                            <label class="admin-label">UUID membre cible *</label>
+                            <input type="text" id="campUserId" class="admin-input" placeholder="uuid du profil" required>
+                        </div>
+                        <button type="submit" class="admin-btn admin-btn-primary" data-admin-wired="1"><i class="ph-bold ph-bell"></i> Créer une notif in-app test</button>
                     </form>
+                </div>
+                <div class="admin-card">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Membre</th>
+                                <th>Type</th>
+                                <th>Contenu</th>
+                                <th>Lecture</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notificationsAdminTableBody">
+                            <tr><td colspan="5" class="admin-empty-cell">Chargement…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 
@@ -1923,41 +1941,11 @@
 
                 <div class="admin-card">
                     <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Module / Permission</th>
-                                <th>OWNER (Propriétaire)</th>
-                                <th>ADMINISTRATEUR</th>
-                                <th>SUPPORT</th>
-                                <th>FINANCE</th>
-                                <th>MODÉRATION</th>
-                            </tr>
+                        <thead id="rbacAdminTableHead">
+                            <tr><th>Permission</th><th>…</th></tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>Voir les utilisateurs</td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                            </tr>
-                            <tr>
-                                <td>Déclencher des Remboursements</td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i></td>
-                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
-                            </tr>
-                            <tr>
-                                <td>Gérer les Feature Flags</td>
-                                <td><i class="ph-bold ph-check" style="color:#A3E635;"></i> SEUL OWNER</td>
-                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
-                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
-                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
-                                <td><i class="ph-bold ph-x" style="color:#E76F51;"></i> Interdit</td>
-                            </tr>
+                        <tbody id="rbacAdminTableBody">
+                            <tr><td colspan="2" class="admin-empty-cell">Chargement de la matrice RBAC…</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2469,12 +2457,7 @@
     <script src="finance-policy-ui.js"></script>
     <script src="finance-desk.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            if (!window.LYANN_FINANCE_DESK) return;
-            if (document.getElementById('adminFinanceDeskRoot')) {
-                window.LYANN_FINANCE_DESK.mount('#adminFinanceDeskRoot', { role: 'admin', caseId: 'funded_not_started', screen: 'payment', syncHash: false });
-            }
-        });
+        /* Demo finance desk intentionally not mounted in admin back-office. */
     </script>
     <script src="ai-agents.js?v=20261021bo"></script>
     <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
@@ -2482,6 +2465,6 @@
     <script src="vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4"></script>
     <script src="commune-geo.js?v=20261028place"></script>
     <script src="bokantaj-map.js?v=20261028place"></script>
-    <script src="admin-script.js?v=20261028place"></script>
+    <script src="admin-script.js?v=20261029opsdesk"></script>
 </body>
 </html>

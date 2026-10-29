@@ -2115,6 +2115,8 @@ const { registerAdminModerationCenter } = require('./admin-moderation-center');
 registerAdminModerationCenter(app, { supabaseAdmin, verifyAdminPermission, recordAudit: recordMaisonAudit });
 const { registerAdminOperations, registerMemberHelpdesk } = require('./admin-operations');
 registerAdminOperations(app, { supabaseAdmin, verifyAdminPermission });
+const { registerAdminOpsDesk, handleOpsResource } = require('./admin-ops-desk');
+registerAdminOpsDesk(app, { supabaseAdmin, verifyAdminPermission });
 registerMemberHelpdesk(app, { supabaseAdmin, requireBearerUser });
 
 function adminProfileName(profile) {
@@ -2284,6 +2286,12 @@ app.get('/v1/admin/ops', async (req, res) => {
         }
 
         if (resource === 'payments' || resource === 'payouts' || resource === 'invoices') {
+            if (resource === 'invoices') {
+                const business = await handleOpsResource(supabaseAdmin, 'business-invoices', limit);
+                if (business && business.rows && business.rows.length) {
+                    return res.json({ success: true, source: 'lyann_business_invoices', rows: business.rows });
+                }
+            }
             const rows = await adminSafeSelect(
                 'payments',
                 'id, mission_id, requester_id, provider_id, customer_total_cents, customer_fee_cents, lyann_revenue_cents, provider_net_cents, payment_status, transfer_status, stripe_payment_intent_id, stripe_transfer_id, created_at',
@@ -2295,15 +2303,17 @@ app.get('/v1/admin/ops', async (req, res) => {
                 formatted = formatted.filter((row) => ['TRANSFERRED', 'TRANSFER_PROCESSING', 'PENDING_VALIDATION'].includes(row.transfer_status));
             }
             if (resource === 'invoices') {
-                formatted = formatted.filter((row) => row.payment_status === 'SUCCEEDED');
+                formatted = formatted
+                    .filter((row) => row.payment_status === 'SUCCEEDED')
+                    .map((row) => ({ ...row, source: 'payments_succeeded', invoice_label: 'Paiement encaissé (pas de PDF facture)' }));
             }
-            return res.json({ success: true, rows: formatted });
+            return res.json({ success: true, source: resource === 'invoices' ? 'payments_succeeded' : resource, rows: formatted });
         }
 
         if (resource === 'disputes') {
             const rows = await adminSafeSelect(
                 'disputes',
-                'id, mission_id, status, reason, description, requester_id, provider_id, created_at',
+                'id, dispute_number, mission_id, milestone_id, payment_id, status, reason, description, frozen_amount, requester_id, provider_id, resolution_type, resolution_note, created_at',
                 (q) => q.order('created_at', { ascending: false }).limit(limit)
             );
             const profiles = await adminMapProfiles(rows.flatMap((row) => [row.requester_id, row.provider_id]));
@@ -2486,6 +2496,9 @@ app.get('/v1/admin/ops', async (req, res) => {
             );
             return res.json({ success: true, rows });
         }
+
+        const desk = await handleOpsResource(supabaseAdmin, resource, limit);
+        if (desk) return res.json(desk);
 
         return res.status(400).json({ success: false, error: 'Ressource admin inconnue.' });
     } catch (e) {

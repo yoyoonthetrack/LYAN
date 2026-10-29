@@ -1549,7 +1549,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     async function updateAnalyticsDashboard(periodKey, territory) {
-        const fallback = PERIOD_DATASETS[periodKey] || PERIOD_DATASETS['30d'];
         let live = null;
         try {
             const mapped = periodKey === 'today' ? '7d' : (periodKey === 'this_month' || periodKey === 'quarter' ? '90d' : (periodKey === 'year2026' ? '12m' : periodKey));
@@ -1559,20 +1558,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (res.ok && body.success) live = body;
         } catch (e) {}
         const money = (n) => Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+        const emptyKpi = {
+            gmv: '—', gmvTrend: '—',
+            comm: '—', commTrend: '—',
+            mrr: '—', mrrTrend: '—',
+            aov: '—', aovTrend: '—',
+            users: '—', usersTrend: '—',
+            newUsers: '—', newUsersTrend: '—',
+            deals: '—', dealsTrend: '—',
+            conv: '—', convTrend: '—',
+            kyc: '—', kycTrend: '—',
+            sla: '—', slaTrend: '—',
+            disputes: '—', disputesTrend: '—',
+            retention: '—', retentionTrend: '—',
+            subtitle: 'KPI live indisponibles — aucun chiffre de démonstration affiché',
+            chartLabels: ['—', '—', '—', '—', '—', '—'],
+            chartGmvVals: ['—', '—', '—', '—', '—', '—'],
+            chartGmvHeights: ['8%', '8%', '8%', '8%', '8%', '8%'],
+            domGuadeloupe: '—', domGuadeloupeBar: '0%',
+            domMartinique: '—', domMartiniqueBar: '0%',
+            domGuyane: '—', domGuyaneBar: '0%',
+            domReunion: '—', domReunionBar: '0%',
+            cat1Vol: '—', cat1Count: '—', cat1Pct: '—',
+            cat2Vol: '—', cat2Count: '—', cat2Pct: '—',
+            cat3Vol: '—', cat3Count: '—', cat3Pct: '—',
+            cat4Vol: '—', cat4Count: '—', cat4Pct: '—'
+        };
         const data = live ? {
-            ...fallback,
+            ...emptyKpi,
             gmv: money(live.gmvMonth),
             comm: money(live.mrrCommissions),
             users: String(live.activeMembers || 0),
             deals: String(live.activeMissions || 0),
             disputes: String(live.openDisputes || 0),
-            kyc: live.activeMembers ? `${Math.round(((live.kycVerified || 0) / live.activeMembers) * 1000) / 10}%` : fallback.kyc,
+            kyc: live.activeMembers ? `${Math.round(((live.kycVerified || 0) / live.activeMembers) * 1000) / 10}%` : '—',
             subtitle: `Données réelles ${live.period || periodKey} · territoire ${live.territory || 'tous'}`,
             gmvTrend: 'base réelle',
             commTrend: 'base réelle',
             usersTrend: `${live.realMembers || 0} comptes réels`,
             dealsTrend: `${live.openRequests || 0} demandes ouvertes`
-        } : fallback;
+        } : emptyKpi;
 
         const elMap = {
             'kpiGmvVal': data.gmv, 'kpiGmvTrend': data.gmvTrend,
@@ -4993,14 +5018,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchAdminOps('invoices');
                 const tbody = document.getElementById('invoicesAdminTableBody');
                 const rows = data.rows || [];
-                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                const business = data.source === 'lyann_business_invoices';
+                tbody.innerHTML = rows.length ? rows.map((row) => business ? `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.number || row.id)}</td>
+                    <td>${adminEscape(row.member_name)}</td>
+                    <td>${adminEscape(row.kind || '—')}</td>
+                    <td>—</td>
+                    <td><strong>${adminMoney(row.total_euros)}</strong></td>
+                    <td>${adminDate(row.created_at)}</td>
+                </tr>` : `<tr>
                     <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
                     <td>${adminEscape(row.requester_name)}</td>
-                    <td>${adminMoney(row.customer_total / 1.085)}</td>
-                    <td>${adminMoney(row.customer_total - (row.customer_total / 1.085))}</td>
+                    <td>${adminEscape(row.invoice_label || 'Paiement encaissé')}</td>
+                    <td>${adminMoney(row.customer_fee)}</td>
                     <td><strong>${adminMoney(row.customer_total)}</strong></td>
                     <td>${adminDate(row.created_at)}</td>
-                </tr>`).join('') : adminEmpty(6, 'Aucune écriture : aucun paiement SUCCEEDED.');
+                </tr>`).join('') : adminEmpty(6, 'Aucune écriture facture / paiement SUCCEEDED.');
             },
             'sec-payouts': async () => {
                 const data = await fetchAdminOps('payouts');
@@ -5020,14 +5053,113 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await fetchAdminOps('disputes');
                 const tbody = document.getElementById('disputesAdminTableBody');
                 const rows = data.rows || [];
-                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
-                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.id)}</td>
-                    <td>${adminEscape(row.mission_id || '—')}</td>
-                    <td>${adminEscape(row.requester_name)} / ${adminEscape(row.provider_name)}</td>
+                const openish = new Set(['OPEN', 'OPENED', 'UNDER_REVIEW', 'AWAITING_PROVIDER', 'UNDER_INVESTIGATION']);
+                tbody.innerHTML = rows.length ? rows.map((row) => {
+                    const open = openish.has(String(row.status || '').toUpperCase());
+                    const actions = open
+                        ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">
+                            <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDecideDispute('${row.id}','keep_frozen')">Garder gelé</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideDispute('${row.id}','resolve_provider')">Libérer Lyanneur</button>
+                            <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideDispute('${row.id}','resolve_client')">Trancher client</button>
+                          </div>`
+                        : adminEscape(row.resolution_note || row.resolution_type || '—');
+                    return `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.dispute_number || row.id)}</td>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.mission_id || '—')}<br><span class="maison-muted">${adminEscape(row.requester_name)} / ${adminEscape(row.provider_name)}</span></td>
+                    <td>${row.frozen_amount != null ? adminMoney(row.frozen_amount) : '—'}</td>
                     <td>${adminEscape(row.reason || row.description || '—')}</td>
                     <td>${adminBadge(row.status)}</td>
-                    <td>${adminDate(row.created_at)}</td>
-                </tr>`).join('') : adminEmpty(6, 'Aucun litige ouvert.');
+                    <td>${actions}</td>
+                </tr>`;
+                }).join('') : adminEmpty(6, 'Aucun litige ouvert.');
+            },
+            'sec-subscriptions': async () => {
+                const data = await fetchAdminOps('subscriptions');
+                const plansRoot = document.getElementById('subscriptionsPlansGrid');
+                const tbody = document.getElementById('subscriptionsAdminTableBody');
+                const plans = data.plans || [];
+                if (plansRoot) {
+                    plansRoot.innerHTML = plans.length ? plans.map((plan) => `
+                        <div class="admin-card" style="border-top: 3px solid var(--admin-brand-primary);">
+                            <h3>${adminEscape(plan.name)}</h3>
+                            <div style="font-size: 1.5rem; font-weight: 800; margin: 10px 0;">${adminMoney(plan.price_monthly || 0)}${Number(plan.price_monthly) > 0 ? ' / mois' : ''}</div>
+                            <p style="font-size: 0.8rem; color: var(--admin-text-muted);">${adminEscape(plan.description || '')}</p>
+                            <p>${adminBadge(plan.active ? 'ACTIF' : 'INACTIF')}</p>
+                        </div>`).join('') : '<p class="maison-muted">Aucun plan en base.</p>';
+                }
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td>${adminEscape(row.member_name)}</td>
+                        <td>${adminEscape(row.provider || '—')}</td>
+                        <td>${adminEscape(row.plan || row.product_id || '—')}</td>
+                        <td>${adminBadge(row.status)}</td>
+                        <td>${adminDate(row.expires_at)}</td>
+                        <td>${adminEscape(row.environment || '—')}</td>
+                    </tr>`).join('') : adminEmpty(6, 'Aucun abonnement store enregistré.');
+                }
+            },
+            'sec-protection': async () => {
+                const data = await fetchAdminOps('protection');
+                const tbody = document.getElementById('protectionAdminTableBody');
+                const rows = data.rows || [];
+                tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.claim_number || row.id)}</td>
+                    <td style="font-family:var(--admin-font-mono);">${adminEscape(row.mission_id || '—')}</td>
+                    <td>${adminEscape(row.claimant_name)}</td>
+                    <td>${adminEscape(row.description || '—')}</td>
+                    <td>${adminBadge(row.status)}</td>
+                    <td>
+                        <button class="admin-btn admin-btn-sm admin-btn-secondary" onclick="window.adminDecideProtection('${row.id}','IN_REVIEW')">Examiner</button>
+                        <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="window.adminDecideProtection('${row.id}','APPROVED')">Approuver</button>
+                        <button class="admin-btn admin-btn-sm admin-btn-danger" onclick="window.adminDecideProtection('${row.id}','REJECTED')">Refuser</button>
+                    </td>
+                </tr>`).join('') : adminEmpty(6, 'Aucun dossier d’assurance pour le moment.');
+            },
+            'sec-notifications': async () => {
+                const data = await fetchAdminOps('notifications');
+                const tbody = document.getElementById('notificationsAdminTableBody');
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td>${adminDate(row.created_at)}</td>
+                        <td>${adminEscape(row.member_name)}</td>
+                        <td>${adminEscape(row.type || '—')}</td>
+                        <td><strong>${adminEscape(row.title || '')}</strong><br><span class="maison-muted">${adminEscape((row.body || '').slice(0, 140))}</span></td>
+                        <td>${adminBadge(row.read ? 'LU' : 'NON LU')}</td>
+                    </tr>`).join('') : adminEmpty(5, 'Aucune notification en base.');
+                }
+            },
+            'sec-rbac': async () => {
+                const data = await fetchAdminOps('rbac');
+                const thead = document.getElementById('rbacAdminTableHead');
+                const tbody = document.getElementById('rbacAdminTableBody');
+                const roles = data.roles || [];
+                if (thead) {
+                    thead.innerHTML = `<tr><th>Permission</th>${roles.map((role) => `<th>${adminEscape(role.code || role.name)}</th>`).join('')}</tr>`;
+                }
+                if (tbody) {
+                    const matrix = data.matrix || [];
+                    tbody.innerHTML = matrix.length ? matrix.map((row) => `<tr>
+                        <td>${adminEscape(row.label)} <span class="maison-muted">(${adminEscape(row.code)})</span></td>
+                        ${(row.roles || []).map((cell) => `<td>${cell.granted ? '<i class="ph-bold ph-check" style="color:#A3E635;"></i>' : '<i class="ph-bold ph-x" style="color:#E76F51;"></i>'}</td>`).join('')}
+                    </tr>`).join('') : adminEmpty(Math.max(roles.length + 1, 2), 'Matrice RBAC indisponible.');
+                }
+            },
+            'sec-audit-logs': async () => {
+                const data = await fetchAdminOps('audit-logs');
+                const tbody = document.querySelector('#auditLogsAdminTable tbody');
+                const rows = data.rows || [];
+                if (tbody) {
+                    tbody.innerHTML = rows.length ? rows.map((row) => `<tr>
+                        <td>${adminDate(row.created_at)}</td>
+                        <td>${adminEscape(row.actor_name || row.actor_id || '—')}</td>
+                        <td>${adminEscape(row.action)}</td>
+                        <td>${adminEscape(row.module_name || '—')}</td>
+                        <td style="font-family:var(--admin-font-mono);">${adminEscape(row.target_type || '')} ${adminEscape(row.target_id || '')}</td>
+                        <td>${adminEscape(row.reason || (row.metadata ? JSON.stringify(row.metadata).slice(0, 120) : '—'))}</td>
+                    </tr>`).join('') : adminEmpty(6, 'Aucun événement d’audit.');
+                }
             },
             'sec-reviews': async () => {
                 const data = await fetchAdminOps('reviews');
@@ -5195,8 +5327,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             },
             'sec-agents': () => loadAdminRealData(),
-            'sec-mika': () => window.loadMikaControlRoom && window.loadMikaControlRoom(),
-            'sec-audit-logs': () => loadAdminRealData()
+            'sec-mika': () => window.loadMikaControlRoom && window.loadMikaControlRoom()
         };
         const loader = loaders[sectionId];
         if (!loader) return;
@@ -5273,11 +5404,74 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.loadAdminModerationCenter();
         }, 250);
     });
+    window.adminDecideDispute = async function(disputeId, action) {
+        const note = window.prompt(action === 'keep_frozen'
+            ? 'Note interne (optionnel) :'
+            : 'Note de médiation (obligatoire pour trancher) :') || '';
+        if ((action === 'resolve_client' || action === 'resolve_partial') && !note.trim()) {
+            window.adminShowOutcome('Note obligatoire pour cette décision.', true);
+            return;
+        }
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/disputes/${disputeId}/decide`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, note })
+        });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.message || body.error || (res.ok ? 'Décision enregistrée.' : 'Échec'), !res.ok);
+        if (res.ok) window.loadAdminSection('sec-disputes');
+    };
+    window.adminDecideProtection = async function(claimId, status) {
+        const note = window.prompt('Note de décision (optionnel) :') || '';
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/protection/${claimId}/decide`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status, decision_notes: note })
+        });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.error || (res.ok ? 'Dossier assurance mis à jour.' : 'Échec'), !res.ok);
+        if (res.ok) window.loadAdminSection('sec-protection');
+    };
+    window.adminGrantProBadge = async function(userId) {
+        if (!userId) return;
+        if (!window.confirm('Activer le badge Pro sur ce profil ? Aucun prélèvement Stripe ne sera créé.')) return;
+        const res = await window.fetchWithAdminAuth(`/v1/admin/ops/users/${userId}/grant-pro`, { method: 'POST' });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.message || body.error || (res.ok ? 'Badge Pro activé.' : 'Échec'), !res.ok);
+        if (res.ok) {
+            window.loadAdminSection('sec-users');
+            window.loadAdminSection('sec-lyanneurs');
+        }
+    };
+    window.adminSendNotificationTest = async function() {
+        const title = document.getElementById('campTitle')?.value?.trim() || '';
+        const userId = document.getElementById('campUserId')?.value?.trim() || '';
+        const bodyText = document.getElementById('campBody')?.value?.trim() || title;
+        const res = await window.fetchWithAdminAuth('/v1/admin/ops/notifications/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, body: bodyText, user_id: userId })
+        });
+        const body = await res.json().catch(() => ({}));
+        window.adminShowOutcome(body.message || body.error || (res.ok ? 'Notification créée.' : 'Échec'), !res.ok);
+        if (res.ok) window.loadAdminSection('sec-notifications');
+    };
     document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
-        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
+        window.adminMarkWired(btn);
+        btn.disabled = false;
+        btn.removeAttribute('data-unavailable');
+        btn.classList.remove('is-unavailable');
+        btn.onclick = () => {
+            const userId = btn.getAttribute('data-user-id') || document.querySelector('#sec-user-detail .btn-approve-kyc')?.getAttribute('data-user-id');
+            window.adminGrantProBadge(userId);
+        };
     });
     document.getElementById('btnAdminQuickNotifications')?.addEventListener('click', () => {
         document.querySelector('.admin-nav-item[data-section="sec-notifications"]')?.click();
+    });
+    document.getElementById('newCampaignForm')?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        window.adminSendNotificationTest();
     });
     document.getElementById('userTerritoryFilter')?.addEventListener('change', () => {
         const territory = document.getElementById('userTerritoryFilter')?.value || 'all';
@@ -5303,9 +5497,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('button[id], .admin-icon-btn[id], .admin-nav-item, .mod-tab, .admin-modal-close, .command-palette-item, [onclick], [data-section], [data-mod-tab]').forEach((el) => {
         if (!el.hasAttribute('data-unavailable')) window.adminMarkWired(el);
-    });
-    document.querySelectorAll('.btn-grant-subscription').forEach((btn) => {
-        window.adminMarkUnavailable(btn, 'Offrir un abonnement Pro n’est pas une opération financière activée ici.');
     });
     window.adminSealDeadControls();
     console.log('Back-office LYANN initialisé.');
