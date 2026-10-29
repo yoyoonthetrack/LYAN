@@ -6047,22 +6047,35 @@ app.post('/v1/milestones/raise-dispute', async (req, res) => {
         }
 
         const nowIso = new Date().toISOString();
+        // payments.dispute_reason is not on Staging yet. Freeze status only; keep the
+        // reason in logs and payment metadata when that column exists later.
+        const freezePayload = { payment_status: 'DISPUTED' };
+        const meta = payment.metadata && typeof payment.metadata === 'object' ? Object.assign({}, payment.metadata) : {};
+        if (reason) {
+            meta.dispute_reason = String(reason).slice(0, 2000);
+            meta.dispute_reported_at = nowIso;
+            freezePayload.metadata = meta;
+        }
         const frozen = await supabaseAdmin
             .from('payments')
-            .update({
-                payment_status: 'DISPUTED',
-                dispute_reason: reason || null
-            })
+            .update(freezePayload)
             .eq('id', payment.id)
             .eq('payment_status', 'SUCCEEDED')
             .eq('transfer_status', 'PENDING_VALIDATION')
             .is('client_validated_at', null)
             .is('stripe_transfer_id', null)
             .is('stripe_refund_id', null)
-            .select()
+            .select('id,payment_status')
             .maybeSingle();
 
-        if (frozen.error || !frozen.data) {
+        if (frozen.error) {
+            console.error('[raise-dispute] freeze failed', frozen.error.code || '', frozen.error.message || frozen.error);
+            return res.status(500).json({
+                code: 'DISPUTE_FREEZE_FAILED',
+                error: 'Le signalement n’a pas pu geler le versement. Réessayez dans un instant.'
+            });
+        }
+        if (!frozen.data) {
             return res.status(409).json({ code: 'CONCURRENCY_LOCK_FAILED', error: "Le versement n'a pas pu être gelé (concurrence)." });
         }
 
