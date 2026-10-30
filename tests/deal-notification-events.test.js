@@ -108,7 +108,7 @@ test('2a E4 wake stays on timeline INSERT even if NEW_MESSAGE is skipped', () =>
     const chat = fs.readFileSync(path.join(__dirname, '..', 'chat-logic.js'), 'utf8');
     assert.match(chat, /isDealWakeMessage/);
     assert.match(chat, /refreshDealContext\('realtime-timeline'\)/);
-    assert.match(chat, /refreshDealContext\('realtime'\)/);
+    assert.match(chat, /refreshDealContext\(source === 'fanout' \? 'fanout' : 'realtime'\)/);
     for (const type of ['quote_declined', 'payment_failed', 'payment_secured', 'funds_released']) {
         assert.equal(dealSync.isDealWakeMessage({ message_type: type }), true, type);
     }

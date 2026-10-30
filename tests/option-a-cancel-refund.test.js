@@ -148,10 +148,10 @@ test('dossier CTAs follow option A without hiding report after a refusal', () =>
     assert.equal(missionCard(funded, requester, 'active').actions[0].id, 'refund');
     assert.match(missionCard(funded, requester, 'active').actions[0].label, /8,00/);
     assert.doesNotMatch(missionCard(funded, requester, 'active').actions[0].label, /9,49/);
-    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /Prestation remboursée : 8,00/);
-    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /non remboursés : 1,49/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /Montant de prestation concerné : 8,00/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /conservés : 1,49/);
     assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /Total payé : 9,49/);
-    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /n’est pas encore effectué/);
+    assert.match(missionCard(funded, requester, 'active').actions[0].confirmCopy, /Aucun remboursement automatique/);
     assert.equal(missionCard(funded, provider, 'active').actions[0].id, 'start');
 
     const started = quote({ milestones: [{ id: 'milestone-1', title: 'Prestation', status: 'IN_PROGRESS', amount: 8 }] });

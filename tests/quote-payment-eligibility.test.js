@@ -251,7 +251,7 @@ test('one mission card replaces the stack and keeps a single primary action', ()
     assert.equal(doing.actions[0].label, 'J’ai commencé');
     const fundedRequester = missionCard(funded, requester, 'active');
     assert.equal(fundedRequester.actions[0].id, 'refund');
-    assert.match(fundedRequester.actions[0].label, /Annuler et récupérer/);
+    assert.match(fundedRequester.actions[0].label, /Demander l’annulation/);
     const started = quote();
     started.milestones[0].status = 'IN_PROGRESS';
     assert.equal(missionCard(started, provider, 'active').actions[0].id, 'done');

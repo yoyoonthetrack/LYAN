@@ -293,7 +293,7 @@
             '</header>',
             '<section class="chat-dossier-next" aria-label="Prochaine étape"><h4>Prochaine étape</h4><p data-dossier-next></p></section>',
             '<div data-dossier-actions></div>',
-            '<details class="chat-dossier-history"><summary>Historique et paiements par étape</summary><div data-dossier-history></div></details>'
+            '<details class="chat-dossier-history"><summary>Historique et jalons</summary><div data-dossier-history></div></details>'
         ].join('');
         list.appendChild(shell);
         const actionsHost = shell.querySelector('[data-dossier-actions]');
@@ -313,9 +313,21 @@
         }
         const milestones = quote && Array.isArray(quote.milestones) ? quote.milestones : [];
         if (historyHost && milestones.length) {
-            milestones.forEach((milestone) => {
+            const total = milestones.length;
+            milestones.forEach((milestone, idx) => {
                 const line = document.createElement('p');
-                line.textContent = (milestone.title || 'Paiement par étape') + (milestone.amount != null ? ' · ' + milestone.amount + ' €' : '');
+                const stepNum = total > 1 ? 'Paiement ' + (idx + 1) + ' sur ' + total : 'Paiement';
+                const rawTitle = String(milestone.title || 'Paiement par étape').trim();
+                const statusStr = typeof window.milestoneStatusLabel === 'function'
+                    ? window.milestoneStatusLabel(milestone.status)
+                    : (window.LYANN_QUOTE_PAYMENT && typeof window.LYANN_QUOTE_PAYMENT.milestoneStatusLabel === 'function'
+                        ? window.LYANN_QUOTE_PAYMENT.milestoneStatusLabel(milestone.status)
+                        : (milestone.status || ''));
+                line.textContent = [
+                    (total > 1 ? stepNum + ' : ' + rawTitle : rawTitle),
+                    (milestone.amount != null ? milestone.amount + ' €' : null),
+                    statusStr
+                ].filter(Boolean).join(' · ');
                 historyHost.appendChild(line);
             });
         }

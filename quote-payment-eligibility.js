@@ -92,7 +92,26 @@
         return pending || null;
     }
 
-    function payButtonLabel(amount) {
+    function milestoneStatusLabel(status) {
+        const labels = {
+            PENDING: 'En attente de paiement',
+            FUNDED: 'Paiement sécurisé',
+            IN_PROGRESS: 'Travaux en cours',
+            COMPLETED: 'Travail déclaré terminé',
+            VALIDATED: 'Travail validé',
+            RELEASED: 'Paiement libéré',
+            CANCELLED: 'Annulé',
+            CANCELED: 'Annulé',
+            DISPUTED: 'Litige en cours'
+        };
+        const key = String(status || '').toUpperCase();
+        return labels[key] || 'En cours';
+    }
+
+    function payButtonLabel(amount, index, total) {
+        if (typeof index === 'number' && typeof total === 'number' && total > 1) {
+            return 'Payer (Paiement ' + index + ' sur ' + total + ' · ' + amount + ' €)';
+        }
         return 'Payer & Bloquer (' + amount + ' €)';
     }
 
@@ -222,13 +241,13 @@
         const paidLabel = centsLabel(total);
         return {
             amount_cents: remainingService,
-            label: 'Annuler et récupérer ' + refundLabel,
+            label: 'Demander l’annulation (' + refundLabel + ')',
             confirmCopy: [
-                'Prestation remboursée : ' + refundLabel + '.',
-                'Frais de service LYANN non remboursés : ' + feeLabel + '.',
+                'Montant de prestation concerné : ' + refundLabel + '.',
+                'Frais de service LYANN conservés : ' + feeLabel + '.',
                 'Total payé : ' + paidLabel + '.',
-                'Montant restitué : ' + refundLabel + '.',
-                'Le remboursement n’est pas encore effectué.'
+                'Aucun remboursement automatique n’est lancé.',
+                'L’équipe LYANN traite les fonds après validation (assistance).'
             ].join('\n')
         };
     }
@@ -353,13 +372,13 @@
                     status = cancelAsked ? 'Annulation demandée' : 'Paiement sécurisé';
                     actorToAct = cancelAsked ? 'provider' : (started ? 'provider' : 'provider');
                     if (cancelAsked && role === 'requester') {
-                        context = 'Annulation envoyée. Le Lyanneur doit accepter le remboursement ou continuer la mission.';
+                        context = 'Annulation envoyée. Le Lyanneur doit accepter ou continuer. Un remboursement n’est pas automatique : l’assistance LYANN peut traiter les fonds.';
                     } else if (cancelAsked) {
-                        context = 'Le demandeur veut annuler. Accepter rembourse les fonds. Continuer garde la mission.';
+                        context = 'Le demandeur veut annuler. Accepter l’annulation ouvre le traitement manuel des fonds. Continuer garde la mission.';
                     } else if (!started && role === 'requester') {
-                        context = 'Paiement sécurisé. Le Lyanneur n’a pas encore commencé : vous pouvez annuler et récupérer vos fonds.';
+                        context = 'Paiement sécurisé. Le Lyanneur n’a pas encore commencé : vous pouvez demander une annulation. Le remboursement n’est pas immédiat.';
                     } else if (!started) {
-                        context = 'Le paiement est sécurisé. Touchez J’ai commencé quand vous démarrez : le demandeur ne pourra plus se rembourser tout seul.';
+                        context = 'Le paiement est sécurisé. Touchez J’ai commencé quand vous démarrez : le demandeur ne pourra plus annuler seul.';
                     } else {
                         context = role === 'provider'
                             ? 'Le paiement est sécurisé par LYANN. Réalisez la prestation puis déclarez-la terminée.'
@@ -392,7 +411,13 @@
                         const step = milestonePhase(quote, milestone);
                         const cancel = String(milestone.cancellation_status || '').toUpperCase();
                         if (step === 'paiement' && role === 'requester' && milestone.status === 'PENDING' && !milestoneSettled(quote, milestone)) {
-                            actions.push({ id: 'pay', label: 'Sécuriser le paiement', milestoneId: milestone.id });
+                            const idx = milestones.indexOf(milestone);
+                            const total = milestones.length;
+                            const stepPrefix = total > 1 ? 'Paiement ' + (idx + 1) + ' sur ' + total : 'Paiement';
+                            const payLabel = total > 1
+                                ? 'Sécuriser le ' + stepPrefix + ' (' + euros(milestone.amount) + ')'
+                                : 'Sécuriser le paiement';
+                            actions.push({ id: 'pay', label: payLabel, milestoneId: milestone.id, stepLabel: stepPrefix });
                         }
                         if (step === 'prestation' && milestone.status === 'FUNDED') {
                             if (role === 'provider') {
@@ -415,7 +440,13 @@
                         if (step === 'prestation' && milestone.status === 'IN_PROGRESS') {
                             if (cancel === 'REQUESTED') {
                                 if (role === 'provider') {
-                                    actions.push({ id: 'accept_cancel', label: 'Accepter le remboursement', milestoneId: milestone.id, confirm: true });
+                                    actions.push({
+                                        id: 'accept_cancel',
+                                        label: 'Accepter l’annulation',
+                                        milestoneId: milestone.id,
+                                        confirm: true,
+                                        confirmCopy: 'Vous acceptez l’annulation. Aucun remboursement Stripe automatique n’est lancé. L’assistance LYANN traite les fonds.'
+                                    });
                                     actions.push({ id: 'refuse_cancel', label: 'Je continue', milestoneId: milestone.id, tone: 'secondary' });
                                 }
                             } else if (cancel === 'ACCEPTED' && role === 'requester') {
@@ -504,15 +535,24 @@
         });
         const primaryAction = headerActions.find((action) => action.tone !== 'secondary') || null;
         const secondaryActions = headerActions.filter((action) => action !== primaryAction);
-        const details = milestones.map((milestone) => {
+        const details = milestones.map((milestone, idx) => {
             const own = actions.find((action) => action.milestoneId === milestone.id);
             const inHeader = headerActions.some((action) => action.milestoneId === milestone.id);
             const inFlight = milestone.status === 'PENDING' && milestonePaymentInFlight(quote, milestone);
+            const total = milestones.length;
+            const stepPrefix = total > 1 ? 'Paiement ' + (idx + 1) + ' sur ' + total : 'Paiement';
+            const rawTitle = String(milestone.title || 'Paiement par étape').trim();
+            const fullTitle = total > 1 ? stepPrefix + ' : ' + rawTitle : rawTitle;
             return {
                 id: milestone.id,
-                title: milestone.title || 'Paiement par étape',
+                index: idx + 1,
+                total: total,
+                stepLabel: stepPrefix,
+                title: fullTitle,
+                rawTitle: rawTitle,
                 amount: euros(milestone.amount),
                 status: milestone.status,
+                statusLabel: milestoneStatusLabel(milestone.status),
                 paymentState: milestoneSettled(quote, milestone) || milestone.status === 'FUNDED' || milestone.status === 'IN_PROGRESS' || milestone.status === 'COMPLETED' || milestone.status === 'RELEASED' || milestone.status === 'VALIDATED'
                     ? 'confirmed'
                     : (inFlight ? 'initiated' : (milestone.status === 'PENDING' ? 'awaiting' : 'none')),
@@ -598,11 +638,23 @@
         const milestones = activeMilestones(quote)
             .slice()
             .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0))
-            .map((milestone) => ({
-                title: String(milestone.title || 'Paiement par étape').trim(),
-                detail: String(milestone.description || '').trim(),
-                amount: euros(milestone.amount)
-            }));
+            .map((milestone, idx, arr) => {
+                const total = arr.length;
+                const stepPrefix = total > 1 ? 'Paiement ' + (idx + 1) + ' sur ' + total : 'Paiement';
+                const rawTitle = String(milestone.title || 'Paiement par étape').trim();
+                return {
+                    id: milestone.id,
+                    index: idx + 1,
+                    total: total,
+                    stepLabel: stepPrefix,
+                    title: total > 1 ? stepPrefix + ' : ' + rawTitle : rawTitle,
+                    rawTitle: rawTitle,
+                    detail: String(milestone.description || '').trim(),
+                    amount: euros(milestone.amount),
+                    status: milestone.status,
+                    statusLabel: milestoneStatusLabel(milestone.status)
+                };
+            });
         const prestation = String(quote.description || (milestones[0] && milestones[0].title) || '').trim();
         const valid = formatQuoteDate(quote.valid_until);
         const version = Number(quote.version) || 1;
@@ -797,6 +849,7 @@
         payButtonLabel,
         payMissionPayload,
         dispatchQuotePay,
+        milestoneStatusLabel,
         hiddenTimelineTypes,
         isDealTimeline,
         isVisibleDealNotice,
