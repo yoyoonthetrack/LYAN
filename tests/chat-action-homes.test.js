@@ -52,8 +52,10 @@ test('E2: indispensable deal actions stay on missionCard for both roles', () => 
 
     const funded = quote();
     funded.milestones[0].status = 'FUNDED';
-    assert.equal(missionCard(funded, provider, 'active').actions[0].id, 'done');
-    assert.equal(missionCard(funded, requester, 'active').actions.length, 0);
+    assert.equal(missionCard(funded, provider, 'active').actions[0].id, 'start');
+
+    const started = quote({ milestones: [{ id: 'milestone-1', status: 'IN_PROGRESS', amount: 10 }] });
+    assert.equal(missionCard(started, provider, 'active').actions[0].id, 'done');
 
     const done = quote();
     done.milestones[0].status = 'COMPLETED';

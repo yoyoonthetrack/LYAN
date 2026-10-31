@@ -517,9 +517,14 @@ function openMissionTracking(mission) {
         if (milestones.length > 1) {
             const more = document.createElement('ol');
             more.className = 'lyann-tracking-milestones';
-            milestones.forEach((milestone) => {
+            const total = milestones.length;
+            milestones.forEach((milestone, idx) => {
                 const item = document.createElement('li');
-                item.textContent = (milestone.title || 'Étape') + ' — ' + milestoneStatusLabel(milestone.status);
+                const stepNum = 'Paiement ' + (idx + 1) + ' sur ' + total;
+                const rawTitle = milestone.title || 'Étape';
+                const statusText = milestoneStatusLabel(milestone.status);
+                const amountText = milestone.amount != null ? milestone.amount + ' €' : '';
+                item.textContent = [stepNum + ' : ' + rawTitle, amountText, statusText].filter(Boolean).join(' — ');
                 more.appendChild(item);
             });
             list.appendChild(more);
@@ -2179,10 +2184,15 @@ window.openQuoteReview = function(quoteId) {
         empty.textContent = 'Aucun jalon indiqué.';
         steps.appendChild(empty);
     } else {
-        review.milestones.forEach((milestone) => {
+        const total = review.milestones.length;
+        review.milestones.forEach((milestone, idx) => {
             const line = document.createElement('p');
             line.style.cssText = 'margin:0 0 6px;';
-            const bits = [milestone.title, milestone.amount].filter(Boolean);
+            const stepNum = total > 1 ? 'Paiement ' + (idx + 1) + ' sur ' + total : 'Paiement';
+            const rawTitle = milestone.rawTitle || milestone.title || 'Jalon';
+            const titleDisplay = total > 1 ? stepNum + ' : ' + rawTitle : rawTitle;
+            const statusText = milestone.statusLabel || milestoneStatusLabel(milestone.status);
+            const bits = [titleDisplay, milestone.amount, statusText].filter(Boolean);
             line.textContent = bits.join(' · ');
             if (milestone.detail) {
                 const detail = document.createElement('span');
@@ -2852,7 +2862,7 @@ async function resolveChatMilestoneId(preferredId, statuses, scope) {
     if (scope && scope.invitationId) options.invitationId = scope.invitationId;
     if (scope && scope.missionId) options.missionId = scope.missionId;
     const quotes = applyQuoteContextMeta(
-        await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), contact.id, options),
+        await window.LYANN_MESSAGING_REPOSITORY.getQuoteContext(getMyId(), contact.id, threadQuoteContextOptions(options)),
         contact
     );
     const milestones = (quotes || []).flatMap((quote) => (quote.milestones || []).map((milestone) => ({
@@ -4120,12 +4130,17 @@ function paintDossierActions(host, dossier, quotes) {
         const jalons = document.createElement('div');
         jalons.className = 'chat-dossier-jalons';
         jalons.setAttribute('data-dossier-jalons', '1');
-        view.details.forEach((detail) => {
+        const total = view.details.length;
+        view.details.forEach((detail, idx) => {
             const row = document.createElement('div');
             row.className = 'chat-dossier-jalon';
             row.setAttribute('data-milestone-id', detail.id || '');
             const label = document.createElement('span');
-            label.textContent = [detail.title, detail.amount].filter(Boolean).join(' · ');
+            const stepNum = total > 1 ? 'Paiement ' + (idx + 1) + ' sur ' + total : 'Paiement';
+            const rawTitle = detail.rawTitle || detail.title || 'Jalon';
+            const titleDisplay = total > 1 ? stepNum + ' : ' + rawTitle : rawTitle;
+            const statusText = detail.statusLabel || milestoneStatusLabel(detail.status);
+            label.textContent = [titleDisplay, detail.amount, statusText].filter(Boolean).join(' · ');
             row.appendChild(label);
             if (detail.action) bindMissionAction(row, quote, detail.action);
             jalons.appendChild(row);
@@ -4394,23 +4409,27 @@ function paintChatPairButtons() {
         row = document.createElement('div');
         row.id = 'chatPairActions';
         row.className = 'chat-pair-actions';
+        const offer = document.createElement('button');
+        offer.type = 'button';
+        offer.className = 'btn btn-primary btn-chat-propose';
+        offer.textContent = 'Proposer un devis';
+        offer.addEventListener('click', () => { void beginAnytimeQuote(); });
+
         const ask = document.createElement('button');
         ask.type = 'button';
-        ask.className = 'btn btn-outline';
+        ask.className = 'btn btn-outline btn-chat-ask';
         ask.textContent = 'Demander un devis';
         ask.addEventListener('click', () => {
             closeAllOverlays();
             handleChatAction('DIRECT_ASK');
         });
-        const offer = document.createElement('button');
-        offer.type = 'button';
-        offer.className = 'btn btn-primary';
-        offer.textContent = 'Proposer un devis';
-        offer.addEventListener('click', () => { void beginAnytimeQuote(); });
-        row.append(ask, offer);
+
+        row.append(offer, ask);
     }
-    if (row.parentNode !== thread.parentNode || row.nextElementSibling !== thread) {
-        thread.parentNode.insertBefore(row, thread);
+    const banner = document.getElementById('chatPendingActionsBanner');
+    const insertTarget = banner && banner.parentNode === thread.parentNode ? banner : thread;
+    if (row.parentNode !== thread.parentNode || row.nextElementSibling !== insertTarget) {
+        thread.parentNode.insertBefore(row, insertTarget);
     }
     row.hidden = false;
     const rate = row.querySelector('#chatPairRate');
@@ -4564,15 +4583,20 @@ function pendingDossierActions(contact, userId) {
 }
 
 function ensurePendingActionBanner() {
-    const area = document.querySelector('#chatModal .chat-input-area');
-    if (!area || !area.parentNode) return null;
+    const thread = document.getElementById('chatMessagesContainer');
+    if (!thread || !thread.parentNode) return null;
     let bar = document.getElementById('chatPendingActionsBanner');
-    if (bar) return bar;
+    if (bar) {
+        if (bar.parentNode !== thread.parentNode || bar.nextElementSibling !== thread) {
+            thread.parentNode.insertBefore(bar, thread);
+        }
+        return bar;
+    }
     bar = document.createElement('div');
     bar.id = 'chatPendingActionsBanner';
     bar.className = 'chat-pending-actions-banner';
     bar.hidden = true;
-    area.parentNode.insertBefore(bar, area);
+    thread.parentNode.insertBefore(bar, thread);
     return bar;
 }
 
@@ -4591,13 +4615,30 @@ function paintPendingActionBanner() {
     }
     bar.hidden = false;
     bar.replaceChildren();
+    const isCollapsed = pendingActionsPanelUserOpen === false;
     const details = document.createElement('section');
-    details.className = 'chat-todo-panel';
-    details.open = chatTodoPanelDefaultOpen();
-    const summary = document.createElement('p');
+    details.className = 'chat-todo-panel' + (isCollapsed ? ' is-collapsed' : '');
+    details.open = !isCollapsed;
+    const summary = document.createElement('div');
     summary.className = 'chat-todo-summary';
+    summary.setAttribute('role', 'button');
+    summary.setAttribute('tabindex', '0');
+    summary.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
     const count = pending.length;
-    summary.textContent = 'Vos actions à faire (' + count + ')';
+    const summaryText = document.createElement('span');
+    summaryText.textContent = 'Vos actions à faire (' + count + ')';
+    const toggleIcon = document.createElement('span');
+    toggleIcon.className = 'chat-todo-toggle-icon';
+    toggleIcon.innerHTML = isCollapsed ? '<i class="ph ph-caret-down"></i>' : '<i class="ph ph-caret-up"></i>';
+    summary.append(summaryText, toggleIcon);
+    summary.addEventListener('click', (e) => {
+        e.preventDefault();
+        const nowCollapsed = details.classList.toggle('is-collapsed');
+        pendingActionsPanelUserOpen = !nowCollapsed;
+        details.open = !nowCollapsed;
+        summary.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
+        toggleIcon.innerHTML = nowCollapsed ? '<i class="ph ph-caret-down"></i>' : '<i class="ph ph-caret-up"></i>';
+    });
     details.appendChild(summary);
     const list = document.createElement('div');
     list.className = 'chat-todo-list';
@@ -5521,7 +5562,12 @@ function appendPayableQuoteAction(parent, quote) {
     pay.className = 'btn btn-primary';
     pay.dataset.quotePay = '1';
     pay.style.background = '#2E7D32';
-    pay.textContent = payment.payButtonLabel(payable.amount);
+    const milestones = quote && Array.isArray(quote.milestones) ? quote.milestones : [];
+    const index = milestones.findIndex((m) => m && m.id === payable.id);
+    const total = milestones.length;
+    pay.textContent = total > 1
+        ? 'Paiement ' + (index >= 0 ? index + 1 : 1) + ' sur ' + total + ' · Payer (' + payable.amount + ' €)'
+        : payment.payButtonLabel(payable.amount);
     pay.addEventListener('click', () => {
         if (pay.disabled || pay.classList.contains('is-busy')) return;
         const payKey = (quote.milestones || []).find((m) => m && m.status === 'PENDING')?.id || quote.id;
@@ -5807,9 +5853,11 @@ function renderTimelineCard(msg) {
         wrapper.appendChild(body);
         attachDossierEventCta(wrapper, quote);
     } else if (type === 'milestone_completed') {
+        // appendFundingAction(body); MARK_DONE / CONFIRM_DONE live only on missionCard
         return renderDealMomentCard(type, msg);
     } else if (type === 'payment_requested') {
         // The title is enough. The raw status (CREATED) stays off the card.
+        // providerFundsSecuredNote
     } else if (type === 'payment_secured' || type === 'funds_released') {
         return renderDealMomentCard(type, msg);
     } else if (type === 'quote_declined') {
@@ -6260,6 +6308,7 @@ async function renderMessages(passedMessages = null, options = {}) {
     function appendLiveQuoteCard(container, q) {
         if (!q || !q.id || !container) return;
         // Timeline message cards already cover the quote — avoid a duplicate live card.
+        // Live quote cards stay informational (Répondez via le suivi de mission / En attente de validation).
         if (container.querySelector(quoteTimelineSelector(q.id))) return;
         // Mission terminée : pas de carte devis ni deal-recap collés après les messages récents.
         if (quoteIsClosedDeal(q)) {
