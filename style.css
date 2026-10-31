@@ -21991,3 +21991,56 @@ body.is-native-app .navbar.native-page-header .native-header-row {
     .lyann-helpdesk-sheet { border-radius: 22px; }
 }
 
+/* ==========================================================================
+   PUBLIC HOME REFINEMENT (3 ÉTAPES, APERÇU APP & STORES BIENTÔT DISPONIBLE)
+   ========================================================================== */
+.lyann-cta-web-btn {
+    background: #4A7C59 !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    box-shadow: 0 6px 20px rgba(74, 124, 89, 0.3) !important;
+}
+.lyann-cta-web-btn:hover {
+    background: #3A6346 !important;
+    transform: translateY(-1px) !important;
+}
+
+.how-steps-grid,
+.app-features-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+.store-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+}
+
+@media (max-width: 992px) {
+    .how-steps-grid,
+    .app-features-preview-grid,
+    .store-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .how-step-card,
+    .app-feature-card,
+    .store-card {
+        padding: 22px 16px !important;
+        border-radius: 18px !important;
+    }
+    .web-direct-banner {
+        padding: 22px 16px !important;
+        border-radius: 18px !important;
+    }
+    .hero-cta-group .lyann-cta-home {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
+
+
