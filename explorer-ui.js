@@ -174,39 +174,45 @@
                 : ([p.city, p.territory].filter(Boolean).join(' · ') || 'Guadeloupe');
             const badgeText = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? (window.LYANN_PLANS?.badgeLabel(p) || '') : p.badge || (p.is_pro_verified ? 'PRO VÉRIFIÉ' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
             const rawSkills = Array.isArray(p.skills) && p.skills.length ? p.skills : (Array.isArray(p.intervention_zone) && p.intervention_zone.length ? p.intervention_zone : (p.services || []).map(s => s.title || s.name).filter(Boolean));
-            const skillsText = rawSkills.slice(0, 4).join(' · ');
-            const bioQuote = formatBioQuote(p, skillsText);
+            const primarySkill = rawSkills[0] || '';
+            const secondarySkills = rawSkills.slice(1, 3);
+            const skillsSnippet = rawSkills.slice(0, 3).join(' · ');
+            const bioPlain = formatBioQuote(p, skillsSnippet).replace(/^«\s*|\s*»$/g, '').trim();
             const radiusLine = formatRadiusText(p);
-            const statsLine = formatStatsLine(p);
+            const seed = getSeedProfileMetadata(p);
+            const ratingSource = {
+                ...p,
+                average_rating: seed?.rating ?? p.average_rating ?? p.rating ?? p.avg_rating,
+                reviews_count: seed?.reviews_count ?? p.reviews_count ?? p.reviewsCount
+            };
+            const ratingLabel = format()?.ratingLabel(ratingSource);
+            const speed = seed?.response_speed || p.response_speed || p.response_rate_text || '';
             const isSelf = p.id === currentUserId();
 
-            return `<article class="explorer-card explorer-profile-card" data-member-id="${escape(p.id)}" style="display: flex; flex-direction: column; gap: 10px; padding: 20px; border-radius: 18px; border: 1px solid #D3E0D6; background: #fff;">
+            return `<article class="explorer-card explorer-profile-card" data-member-id="${escape(p.id)}">
                 ${showType ? typePill('profile') : ''}
-                <div class="explorer-card-top" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
-                    <div class="explorer-person explorer-person-zone" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                <div class="explorer-card-top explorer-profile-head">
+                    <div class="explorer-person explorer-person-zone explorer-profile-identity">
                         ${profileZoneTrigger(p.id, displayName)}
-                        <img src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">
-                        <div style="min-width: 0;">
-                            <h2 style="font-size: 1.15rem; line-height: 1.25; margin: 0; color: #1F3827; font-weight: 800;">${escape(displayName)}</h2>
-                            <p class="explorer-meta" style="margin-top: 2px; font-size: 0.84rem; color: #64748B;">📍 ${escape(place)}</p>
+                        <img class="explorer-profile-avatar" src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)">
+                        <div class="explorer-profile-id-text">
+                            <h2 class="explorer-profile-name">${escape(displayName)}</h2>
+                            ${badgeText ? `<span class="explorer-profile-verified">${escape(badgeText)}</span>` : ''}
                         </div>
                     </div>
                     ${favorite('PROFILE', p.id)}
                 </div>
-
-                ${badgeText ? `<div style="margin-top: -2px;"><span class="explorer-badge-pill" style="display: inline-block; background: rgba(74, 124, 89, 0.12); color: #2D5A39; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.04em;">${escape(badgeText)}</span></div>` : ''}
-
-                ${skillsText ? `<p class="explorer-skills-text" style="font-size: 0.9rem; color: #1E293B; font-weight: 700; margin: 2px 0 0; line-height: 1.35;">${escape(skillsText)}</p>` : ''}
-
-                <p class="explorer-quote-text" style="font-size: 0.88rem; color: #475569; font-style: italic; margin: 2px 0; line-height: 1.45;">${escape(bioQuote)}</p>
-
-                <div style="display: flex; flex-direction: column; gap: 3px; font-size: 0.82rem; margin-top: 2px;">
-                    <p style="margin: 0; color: #4A7C59; font-weight: 600; display: flex; align-items: center; gap: 4px;">📍 ${escape(radiusLine)}</p>
-                    <p style="margin: 0; color: #64748B; font-weight: 500;">${statsLine}</p>
+                ${primarySkill ? `<p class="explorer-skills-text explorer-profile-primary-skill">${escape(primarySkill)}</p>` : ''}
+                <p class="explorer-profile-place"><i class="ph ph-map-pin" aria-hidden="true"></i><span>${escape(place)}</span></p>
+                ${secondarySkills.length ? `<ul class="explorer-profile-secondary-skills" aria-label="Autres compétences">${secondarySkills.map((skill) => `<li>${escape(skill)}</li>`).join('')}</ul>` : ''}
+                <div class="explorer-profile-stats">
+                    ${ratingLabel ? `<span class="explorer-profile-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(ratingLabel)}</span>` : '<span class="explorer-profile-rating is-new">Nouveau sur LYANN</span>'}
+                    ${speed ? `<span class="explorer-profile-speed">${escape(speed)}</span>` : ''}
                 </div>
-
-                <div class="explorer-profile-actions" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: auto; padding-top: 10px;">
-                    ${!isSelf ? `<button class="btn lyann-cta-primary explorer-btn-contact" data-action="contact" data-id="${escape(p.id)}" style="width: 100% !important; min-height: 44px; justify-content: center; font-weight: 700; border-radius: 22px; font-size: 0.9rem; box-sizing: border-box;">Contacter</button>` : ''}
+                ${bioPlain ? `<p class="explorer-quote-text explorer-profile-bio explorer-card-description">${escape(bioPlain)}</p>` : ''}
+                <p class="explorer-profile-radius">${escape(radiusLine)}</p>
+                <div class="explorer-card-actions explorer-profile-actions">
+                    ${!isSelf ? `<button class="btn btn-primary explorer-btn-contact" data-action="contact" data-id="${escape(p.id)}">Contacter</button>` : ''}
                 </div>
             </article>`;
         }

@@ -60,6 +60,30 @@
 .explorer-annonce-actions .btn-primary{box-shadow:0 6px 18px #c9a24a33!important}
 .explorer-annonce-actions .explorer-btn-lyanner{background:#fff;border-color:#D3E0D6;color:#35583F}
 @media(min-width:720px){.explorer-annonce-actions{flex-direction:row}.explorer-annonce-actions .btn{flex:1}}
+/* Lyanneur card: avatar, primary skill, location, secondary skills, rating, short bio. */
+.explorer-profile-card{gap:14px;padding:22px;border-radius:18px;background:#FAFCFA;box-shadow:0 1px 0 #fff inset,0 10px 28px #24382b0a}
+.explorer-profile-head{align-items:flex-start;gap:12px}
+.explorer-profile-identity{align-items:center;gap:14px;min-width:0;flex:1}
+.explorer-profile-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #E8F1EA;background:#E8F2EC}
+.explorer-profile-id-text{min-width:0;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.explorer-profile-name{font-size:1.18rem;line-height:1.28;margin:0;font-weight:800;letter-spacing:-.02em;color:#24382b}
+.explorer-profile-verified{display:inline-block;font-size:.72rem;font-weight:700;color:#2F6B45;background:#E8F1EA;border:1px solid #C9D9CE;border-radius:999px;padding:4px 10px;line-height:1.2;text-transform:none;letter-spacing:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.explorer-profile-primary-skill{margin:0;font-size:.95rem;font-weight:700;color:#35583F;line-height:1.35}
+.explorer-profile-place{display:flex;align-items:flex-start;gap:8px;margin:0;font-size:.9rem;color:#4A5C50;line-height:1.4}
+.explorer-profile-place .ph{font-size:1.05rem;color:#4A7C59;margin-top:.1rem;flex-shrink:0}
+.explorer-profile-secondary-skills{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.explorer-profile-secondary-skills li{font-size:.78rem;font-weight:600;color:#35583F;background:#EFF7F0;border:1px solid #D3E0D6;border-radius:999px;padding:5px 10px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.explorer-profile-stats{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:.82rem;color:#5E6B62}
+.explorer-profile-rating{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:#6F5A2A}
+.explorer-profile-rating .ph-star{color:#C9A24A;font-size:.95rem}
+.explorer-profile-rating.is-new{font-weight:600;color:#6B7568}
+.explorer-profile-speed{font-size:.78rem;color:#6B7568}
+.explorer-profile-bio{margin:0;font-size:.88rem;color:#5E6B62;font-style:normal;line-height:1.45;-webkit-line-clamp:2}
+.explorer-profile-radius{margin:0;font-size:.78rem;color:#8A9690;line-height:1.35}
+.explorer-profile-actions{flex-direction:column;align-items:stretch;gap:10px;padding-top:6px}
+.explorer-profile-actions .btn{width:100%;min-height:48px;font-weight:700;font-size:.95rem;border-radius:14px}
+.explorer-profile-actions .btn-primary{box-shadow:0 6px 18px #6b947633!important}
+@media(min-width:720px){.explorer-profile-actions{flex-direction:row}.explorer-profile-actions .btn{flex:1}}
 .explorer-card-actions{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:4px;flex-wrap:wrap}
 .explorer-card-actions .btn{flex:1;justify-content:center;font-size:.9rem;padding:10px}
 .explorer-state{grid-column:1/-1;padding:48px 20px;text-align:center;background:#fff;border-radius:16px}
