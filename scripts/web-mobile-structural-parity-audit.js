@@ -7,6 +7,7 @@ const pages = [
   'index.html',
   'feed.html',
   'results.html',
+  'discover.html',
   'pricing.html',
   'payment-portal.html',
   'how-it-works.html',

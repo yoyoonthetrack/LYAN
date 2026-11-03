@@ -148,6 +148,8 @@ const PRODUCT_HTML = {
     '/feed.html': 'feed.html',
     '/results': 'results.html',
     '/results.html': 'results.html',
+    '/discover': 'discover.html',
+    '/discover.html': 'discover.html',
     '/payment-portal': 'payment-portal.html',
     '/payment-portal.html': 'payment-portal.html',
     '/pricing': 'pricing.html',

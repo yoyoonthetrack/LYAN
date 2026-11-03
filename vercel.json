@@ -39,6 +39,14 @@
       "destination": "/api/render?file=results.html"
     },
     {
+      "source": "/discover",
+      "destination": "/api/render?file=discover.html"
+    },
+    {
+      "source": "/discover.html",
+      "destination": "/api/render?file=discover.html"
+    },
+    {
       "source": "/payment-portal",
       "destination": "/api/render?file=payment-portal.html"
     },

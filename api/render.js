@@ -6,6 +6,7 @@ const ALLOWED_PAGES = new Set([
   'index.html',
   'feed.html',
   'results.html',
+  'discover.html',
   'payment-portal.html',
   'pricing.html',
   'how-it-works.html',
