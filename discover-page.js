@@ -61,6 +61,50 @@
         return [profile.city, territory].filter(Boolean).join(' · ');
     }
 
+    function territoryKeyFromLabel(value) {
+        const resolver = window.LYANN_BOKANTAJ_QUERY?.territoryKeyFromLabel;
+        return typeof resolver === 'function' ? resolver(value) : '';
+    }
+
+    async function resolveDiscoverTerritoryKey() {
+        try {
+            await window.LYANN_BOKANTAJ_PLACE?.ready?.();
+            const key = window.LYANN_BOKANTAJ_PLACE?.current?.();
+            if (key && key !== 'all') return key;
+        } catch (_) {}
+        return '';
+    }
+
+    function profileTerritoryKey(profile) {
+        return territoryKeyFromLabel(profile?.territory) || '';
+    }
+
+    function requestTerritoryKey(row) {
+        return territoryKeyFromLabel(row?.territory || row?.location) || '';
+    }
+
+    function prioritizeTerritory(items, territoryKey, keyFn) {
+        if (!territoryKey || !items.length) return { items, localCount: 0 };
+        const local = items.filter(item => keyFn(item) === territoryKey);
+        const rest = items.filter(item => keyFn(item) !== territoryKey);
+        return { items: local.concat(rest), localCount: local.length };
+    }
+
+    function updateSectionHeadings(territoryKey, localTalents, localNeeds) {
+        const talentsTitle = document.getElementById('discoverTalentsTitle');
+        const needsTitle = document.getElementById('discoverNeedsTitle');
+        if (talentsTitle) {
+            talentsTitle.textContent = territoryKey && localTalents > 0
+                ? 'Les talents près de vous'
+                : 'Découvrez nos talents';
+        }
+        if (needsTitle) {
+            needsTitle.textContent = territoryKey && localNeeds > 0
+                ? 'Des besoins près de vous'
+                : 'Des besoins à découvrir';
+        }
+    }
+
     function openRequest(row) {
         if (typeof window.openLyannDetailModal === 'function') {
             window.openLyannDetailModal(row.id, row);
@@ -198,18 +242,10 @@
         let requests = [];
         let profiles = [];
 
-        form?.addEventListener('click', event => {
-            const modeBtn = event.target.closest('.discover-search-mode');
-            if (!modeBtn || !form.contains(modeBtn)) return;
-            form.querySelectorAll('.discover-search-mode').forEach((btn) => {
-                btn.classList.toggle('is-active', btn === modeBtn);
-            });
-        });
-
         form?.addEventListener('submit', event => {
             event.preventDefault();
-            const active = form.querySelector('.discover-search-mode.is-active');
-            const mode = (event.submitter?.dataset.mode || active?.dataset.mode) === 'lyanneurs' ? 'lyanneurs' : 'annonces';
+            const submitterMode = event.submitter?.dataset.mode;
+            const mode = submitterMode === 'annonces' ? 'annonces' : 'lyanneurs';
             const params = new URLSearchParams({ mode });
             const text = query?.value.trim();
             if (text) params.set('query', text);
@@ -270,28 +306,37 @@
             talents.setAttribute('aria-busy', 'true');
             needs.innerHTML = state('Chargement des annonces', 'Les besoins publics arrivent.');
             talents.innerHTML = state('Chargement des talents', 'Les profils publics arrivent.');
+            const territoryKey = await resolveDiscoverTerritoryKey();
+            let localTalentCount = 0;
+            let localNeedCount = 0;
             const [requestResult, talentResult] = await Promise.allSettled([repo.loadRequests(), repo.load()]);
             if (requestResult.status === 'fulfilled') {
-                requests = requestResult.value.filter(eligibleRequest).slice(0, 4);
+                const eligible = requestResult.value.filter(eligibleRequest);
+                const rankedNeeds = prioritizeTerritory(eligible, territoryKey, requestTerritoryKey);
+                localNeedCount = rankedNeeds.localCount;
+                requests = rankedNeeds.items.slice(0, 4);
                 needs.innerHTML = requests.length
                     ? requests.map(requestCard).join('')
-                    : state('Aucune annonce pour le moment.', 'Les besoins publics apparaîtront ici dès qu\'ils seront disponibles.');
+                    : state('Aucune annonce pour le moment.', 'Parcourez toutes les annonces ou publiez votre besoin depuis le menu.');
             } else {
                 requests = [];
                 needs.innerHTML = state('Les annonces n\'ont pas pu être chargées.', 'Vérifiez votre connexion, puis réessayez.', 'retry-needs');
             }
             if (talentResult.status === 'fulfilled') {
-                profiles = talentResult.value
+                const rankedProfiles = talentResult.value
                     .filter(profile => talentActivity(profile))
-                    .sort((a, b) => (Number(b.reviews_count) || 0) - (Number(a.reviews_count) || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'fr'))
-                    .slice(0, 6);
+                    .sort((a, b) => (Number(b.reviews_count) || 0) - (Number(a.reviews_count) || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'fr'));
+                const rankedTalents = prioritizeTerritory(rankedProfiles, territoryKey, profileTerritoryKey);
+                localTalentCount = rankedTalents.localCount;
+                profiles = rankedTalents.items.slice(0, 6);
                 talents.innerHTML = profiles.length
                     ? profiles.map(talentCard).join('')
-                    : state('Aucun talent à afficher.', 'Les lyanneurs visibles apparaîtront ici.');
+                    : state('Aucun talent à afficher.', 'Explorez l\'annuaire Lyanneurs pour trouver de l\'aide.');
             } else {
                 profiles = [];
                 talents.innerHTML = state('Les talents n\'ont pas pu être chargés.', 'Vérifiez votre connexion, puis réessayez.', 'retry-talents');
             }
+            updateSectionHeadings(territoryKey, localTalentCount, localNeedCount);
             needs.setAttribute('aria-busy', 'false');
             talents.setAttribute('aria-busy', 'false');
         }
@@ -309,5 +354,7 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
         else init();
     }
-    if (typeof module !== 'undefined' && module.exports) module.exports = { eligibleRequest, territoryName };
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = { eligibleRequest, territoryName, prioritizeTerritory, profileTerritoryKey, requestTerritoryKey };
+    }
 })();

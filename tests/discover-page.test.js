@@ -12,8 +12,11 @@ assert.match(page, /Les talents de votre quartier/i);
 assert.match(page, /id="discoverOfferTalents"/);
 assert.match(page, /discoverOfferTalents[\s\S]*mode=annonces/);
 assert.match(page, /Explorer les services/);
-assert.match(page, /Les talents près de vous/);
-assert.match(page, /Des besoins près de vous/);
+assert.match(page, /Découvrez nos talents/);
+assert.match(page, /Des besoins à découvrir/);
+assert.match(page, /is-help[\s\S]*mode=lyanneurs/);
+assert.match(page, /discover-search-alt[\s\S]*mode=annonces/);
+assert.match(page, /discover-search-mode[\s\S]*mode=lyanneurs/);
 assert.match(page, /Explorer les besoins sur la carte/);
 assert.match(page, /Bientôt disponible/);
 assert.doesNotMatch(page, /href="[^"]*carte[^"]*"/i);
@@ -40,13 +43,17 @@ assert.match(source, /openLyannDetailModal/);
 assert.match(source, /openPublicMemberProfile/);
 assert.match(source, /loadRequests\(\)/);
 assert.match(source, /repo\.load\(\)/);
-assert.doesNotMatch(source, /bokantaj/i);
+assert.match(source, /prioritizeTerritory/);
+assert.match(source, /updateSectionHeadings/);
 
 assert.match(shell, /tab-discover', 'discover\.html', 'ph-house', 'Découvrir'/);
 
-const { eligibleRequest, territoryName } = require('../discover-page.js');
+const { eligibleRequest, territoryName, prioritizeTerritory } = require('../discover-page.js');
 const open = { id: 'a', visibility: 'PUBLIC', status: 'OPEN', safety_status: 'SAFE', target_user_id: null, classification_status: 'CLASSIFIED', public_moderation_status: 'approved' };
 assert.equal(eligibleRequest(open), true);
+const ranked = prioritizeTerritory([{ id: 'b' }, { id: 'a' }], 'guadeloupe', (row) => (row.id === 'a' ? 'guadeloupe' : 'martinique'));
+assert.equal(ranked.localCount, 1);
+assert.equal(ranked.items[0].id, 'a');
 
 const css = fs.readFileSync('discover.css', 'utf8');
 assert.match(css, /\.discover-hero/);

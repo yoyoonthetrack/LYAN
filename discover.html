@@ -23,7 +23,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261027v26">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
-    <link rel="stylesheet" href="discover.css?v=20261103f2">
+    <link rel="stylesheet" href="discover.css?v=20261103g">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -158,7 +158,7 @@
         </header>
 
         <section class="discover-actions" aria-label="Actions principales">
-            <a class="discover-action-card is-help" href="results.html?mode=annonces">
+            <a class="discover-action-card is-help" href="results.html?mode=lyanneurs">
                 <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-hand-heart"></i></span>
                 <span class="discover-action-text">
                     <strong>Trouver de l'aide</strong>
@@ -183,9 +183,9 @@
                     <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
                     <input id="discoverQuery" type="search" name="query" placeholder="Quel service recherchez-vous ?" autocomplete="off" enterkeyhint="search">
                 </div>
-                <div class="discover-search-modes" role="group" aria-label="Type de recherche">
-                    <button type="submit" class="discover-search-mode is-active" data-mode="annonces">Annonces</button>
-                    <button type="submit" class="discover-search-mode" data-mode="lyanneurs">Lyanneurs</button>
+                <div class="discover-search-modes">
+                    <button type="submit" class="discover-search-mode is-active" data-mode="lyanneurs">Rechercher</button>
+                    <button type="submit" class="discover-search-alt" data-mode="annonces">Voir les annonces</button>
                 </div>
             </form>
         </section>
@@ -214,7 +214,7 @@
 
         <section class="discover-block" aria-labelledby="discoverTalentsTitle">
             <div class="discover-block-head">
-                <h2 id="discoverTalentsTitle" class="discover-section-title">Les talents près de vous</h2>
+                <h2 id="discoverTalentsTitle" class="discover-section-title">Découvrez nos talents</h2>
                 <a href="results.html?mode=lyanneurs">Tous les lyanneurs</a>
             </div>
             <div id="discoverTalents" class="discover-grid discover-grid-talents" aria-live="polite" aria-busy="true"></div>
@@ -222,7 +222,7 @@
 
         <section class="discover-block" aria-labelledby="discoverNeedsTitle">
             <div class="discover-block-head">
-                <h2 id="discoverNeedsTitle" class="discover-section-title">Des besoins près de vous</h2>
+                <h2 id="discoverNeedsTitle" class="discover-section-title">Des besoins à découvrir</h2>
                 <a href="results.html?mode=annonces">Toutes les annonces</a>
             </div>
             <div id="discoverNeeds" class="discover-grid discover-grid-needs" aria-live="polite" aria-busy="true"></div>
