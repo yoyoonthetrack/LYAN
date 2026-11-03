@@ -88,28 +88,33 @@
         const format = window.LYANN_ANNONCE_FORMAT;
         const title = format?.shortTitle?.(row.title) || row.title || 'Annonce';
         const price = format?.priceLabel?.(row) || '';
-        const author = row.profiles?.display_name || window.formatPublicName?.(row.profiles || {}, null, '') || '';
-        return `<button type="button" class="discover-card" data-request-id="${escapeText(row.id)}">
-            <span class="discover-card-kicker">Annonce</span>
+        const category = String(row.category || '').trim();
+        const badge = category || 'Annonce';
+        return `<button type="button" class="discover-card discover-need-card" data-request-id="${escapeText(row.id)}">
+            <span class="discover-card-badge">${escapeText(badge)}</span>
             <h3>${escapeText(title)}</h3>
             <p class="discover-meta">${escapeText(placeLabel(row))}${price ? ` · ${escapeText(price)}` : ''}</p>
-            ${author ? `<p class="discover-author">${escapeText(author)}</p>` : ''}
         </button>`;
     }
 
     function talentCard(profile) {
+        const format = window.LYANN_ANNONCE_FORMAT;
         const name = window.formatPublicName?.(profile, null, 'Lyanneur') || profile.name || 'Lyanneur';
         const activity = talentActivity(profile);
         const place = talentPlace(profile);
-        const rating = window.LYANN_ANNONCE_FORMAT?.ratingLabel?.(profile) || '';
+        const rating = format?.ratingLabel?.(profile) || '';
+        const verified = format?.verifiedLabel?.(profile) || '';
         const avatar = window.getLyannAvatarUrl?.(profile.avatar_url) || profile.avatar || '';
         const photo = avatar
-            ? `<img src="${escapeText(avatar)}" alt="" width="48" height="48" loading="lazy">`
+            ? `<img src="${escapeText(avatar)}" alt="" width="52" height="52" loading="lazy">`
             : '<span class="discover-avatar-fallback" aria-hidden="true"></span>';
         return `<button type="button" class="discover-card discover-talent" data-member-id="${escapeText(profile.id)}">
             ${photo}
-            <span>
-                <h3>${escapeText(name)}</h3>
+            <span class="discover-talent-body">
+                <div class="discover-talent-head">
+                    <h3>${escapeText(name)}</h3>
+                    ${verified ? `<span class="discover-verified">${escapeText(verified)}</span>` : ''}
+                </div>
                 ${activity ? `<p class="discover-activity">${escapeText(activity)}</p>` : ''}
                 <p class="discover-meta">${escapeText(place || 'Commune non renseignée')}${rating ? ` · ${escapeText(rating)}` : ''}</p>
             </span>

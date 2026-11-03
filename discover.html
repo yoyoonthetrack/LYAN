@@ -146,20 +146,41 @@
     </div>
 
     <main id="discover" class="discover-main">
-        <header class="discover-intro">
-            <div class="discover-intro-copy">
-                <p class="discover-kicker">Services de proximité</p>
-                <h1>Talents, conseils et besoins près de chez vous</h1>
-                <p class="discover-lead">Trouvez un service près de chez vous, ou proposez le vôtre. LYANN relie les besoins et les talents du quartier.</p>
+        <header class="discover-hero">
+            <div class="discover-hero-media" aria-hidden="true">
+                <img src="assets/discover/hero-talents.jpg" alt="" width="640" height="420" loading="eager" decoding="async">
             </div>
-            <img class="discover-intro-art" src="assets/universe/lyanneurs-hero-character@2x.webp" alt="" width="220" height="148">
+            <div class="discover-hero-copy">
+                <p class="discover-kicker">Marketplace locale · DOM</p>
+                <h1>Un besoin ? Un talent près de vous.</h1>
+                <p class="discover-lead">Trouvez de l'aide pour vos projets du quotidien, ou proposez vos compétences près de chez vous.</p>
+            </div>
         </header>
 
+        <section class="discover-actions" aria-label="Actions principales">
+            <a class="discover-action-card is-help" href="results.html?mode=annonces">
+                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-hand-heart"></i></span>
+                <span class="discover-action-text">
+                    <strong>Trouver de l'aide</strong>
+                    <span>Je cherche quelqu'un</span>
+                </span>
+                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
+            </a>
+            <a class="discover-action-card is-offer" href="results.html?mode=lyanneurs">
+                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-briefcase"></i></span>
+                <span class="discover-action-text">
+                    <strong>Proposer mes talents</strong>
+                    <span>Je veux trouver des missions</span>
+                </span>
+                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
+            </a>
+        </section>
+
         <section class="discover-search" aria-labelledby="discoverSearchTitle">
-            <h2 id="discoverSearchTitle">De quoi avez-vous besoin ?</h2>
+            <h2 id="discoverSearchTitle" class="discover-section-title">Rechercher</h2>
             <form id="discoverSearchForm" role="search">
-                <label class="sr-only" for="discoverQuery">De quoi avez-vous besoin ?</label>
-                <input id="discoverQuery" type="search" name="query" placeholder="Ex. climatisation, ménage, jardin" autocomplete="off" enterkeyhint="search">
+                <label class="sr-only" for="discoverQuery">Rechercher un service ou un besoin</label>
+                <input id="discoverQuery" type="search" name="query" placeholder="Ménage, jardinage, climatisation…" autocomplete="off" enterkeyhint="search">
                 <div class="discover-search-actions">
                     <button type="submit" class="btn lyann-cta-primary" data-mode="annonces">Chercher dans les annonces</button>
                     <button type="submit" class="btn btn-outline" data-mode="lyanneurs">Chercher un lyanneur</button>
@@ -167,20 +188,42 @@
             </form>
         </section>
 
-        <section class="discover-block" aria-labelledby="discoverNeedsTitle">
-            <div class="discover-block-head">
-                <h2 id="discoverNeedsTitle">Besoins près de vous</h2>
-                <a href="results.html?mode=annonces">Toutes les annonces</a>
+        <section class="discover-block discover-categories" aria-labelledby="discoverCategoriesTitle">
+            <h2 id="discoverCategoriesTitle" class="discover-section-title">Explorer les services</h2>
+            <div class="discover-category-grid">
+                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=Entretien%20Jardin">
+                    <img src="assets/discover/categories/jardinage.jpg" alt="" loading="lazy" decoding="async">
+                    <span class="discover-category-label">Jardinage</span>
+                </a>
+                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=Bricolage">
+                    <img src="assets/discover/categories/bricolage.jpg" alt="" loading="lazy" decoding="async">
+                    <span class="discover-category-label">Bricolage</span>
+                </a>
+                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=M%C3%A9nage">
+                    <img src="assets/discover/categories/menage.jpg" alt="" loading="lazy" decoding="async">
+                    <span class="discover-category-label">Maison et ménage</span>
+                </a>
+                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=Coiffure%20%26%20Esth%C3%A9tique">
+                    <img src="assets/discover/categories/beaute.jpg" alt="" loading="lazy" decoding="async">
+                    <span class="discover-category-label">Beauté</span>
+                </a>
             </div>
-            <div id="discoverNeeds" class="discover-grid" aria-live="polite" aria-busy="true"></div>
         </section>
 
         <section class="discover-block" aria-labelledby="discoverTalentsTitle">
             <div class="discover-block-head">
-                <h2 id="discoverTalentsTitle">Talents du moment</h2>
+                <h2 id="discoverTalentsTitle" class="discover-section-title">Les talents près de vous</h2>
                 <a href="results.html?mode=lyanneurs">Tous les lyanneurs</a>
             </div>
-            <div id="discoverTalents" class="discover-grid" aria-live="polite" aria-busy="true"></div>
+            <div id="discoverTalents" class="discover-grid discover-grid-talents" aria-live="polite" aria-busy="true"></div>
+        </section>
+
+        <section class="discover-block" aria-labelledby="discoverNeedsTitle">
+            <div class="discover-block-head">
+                <h2 id="discoverNeedsTitle" class="discover-section-title">Des besoins près de vous</h2>
+                <a href="results.html?mode=annonces">Toutes les annonces</a>
+            </div>
+            <div id="discoverNeeds" class="discover-grid discover-grid-needs" aria-live="polite" aria-busy="true"></div>
         </section>
 
         <section id="discoverAdvice" class="discover-block" hidden aria-labelledby="discoverAdviceTitle">
