@@ -4,6 +4,7 @@ const { buildHtml, injectIsolatedSupabaseConfig } = require('../shared-html-buil
 
 const ALLOWED_PAGES = new Set([
   'index.html',
+  'bienvenue.html',
   'feed.html',
   'results.html',
   'discover.html',
@@ -19,7 +20,7 @@ const ALLOWED_PAGES = new Set([
 
 module.exports = function handler(req, res) {
   const requested = Array.isArray(req.query?.file) ? req.query.file[0] : req.query?.file;
-  const file = typeof requested === 'string' ? requested : 'index.html';
+  const file = typeof requested === 'string' ? requested : 'discover.html';
 
   if (!ALLOWED_PAGES.has(file)) {
     res.statusCode = 404;

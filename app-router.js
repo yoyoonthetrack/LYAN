@@ -129,7 +129,7 @@
       if (document.body) document.body.style.overflow = 'hidden';
       return true;
     }
-    return hardNavigate('index.html#login');
+    return hardNavigate('discover.html#login');
   }
 
   // Product policy: reading is public; mutations and personal surfaces require a session.
@@ -155,7 +155,7 @@
         || !Number.isFinite(intent.createdAt) || Date.now() - intent.createdAt > 15 * 60 * 1000) return null;
     try {
       const url = new URL(intent.destination, window.location.href);
-      if (url.origin !== window.location.origin || !/^\/(?:index|feed|results|discover|pricing|payment-portal|how-it-works|about|confirm-signup)?(?:\.html)?$/.test(url.pathname)) return null;
+      if (url.origin !== window.location.origin || !/^\/(?:index|feed|results|discover|bienvenue|pricing|payment-portal|how-it-works|about|confirm-signup)?(?:\.html)?$/.test(url.pathname)) return null;
     } catch (_) { return null; }
     return intent;
   }
@@ -333,7 +333,8 @@
     hasAuthIntent: () => Boolean(readIntent()), cancelAuthIntent: clearIntent, protectedControls, protectedForms
   };
 
-  register('home', () => hardNavigate('index.html'));
+  register('home', () => hardNavigate('discover.html'));
+  register('bienvenue', () => hardNavigate('bienvenue.html'));
   function openExplorer(mode, payload = {}) {
     const params = new URLSearchParams();
     if (mode) params.set('mode', mode);
@@ -386,13 +387,13 @@
     const params = new URLSearchParams({ action: 'messages' });
     if (contactId) params.set('contact', contactId);
     if (payload.name) params.set('name', payload.name);
-    return hardNavigate(`feed.html?${params.toString()}`);
+    return hardNavigate(`discover.html?${params.toString()}`);
   });
   register('publish', (payload = {}) => {
     prepareForegroundSurface();
     if (typeof window.openLyannWizard === 'function') return window.openLyannWizard(payload.query);
     if (typeof window.openNeedWizard === 'function') return window.openNeedWizard();
-    return hardNavigate('index.html?action=publish');
+    return hardNavigate('discover.html?action=publish');
   });
   register('mission', (payload = {}) => {
     const requestId = payload.requestId || payload.id;
@@ -451,7 +452,7 @@
       return openedChat;
     }
     const params = new URLSearchParams({ action: 'messages', contact: supportId, name: 'Support LYANN' });
-    return hardNavigate(`feed.html?${params.toString()}`);
+    return hardNavigate(`discover.html?${params.toString()}`);
   });
   register('about', () => hardNavigate('about.html'));
   register('member', (payload = {}) => {
@@ -616,9 +617,9 @@
     const native = window.Capacitor?.isNativePlatform?.() === true
       || document.body.classList.contains('is-native-app');
     if (native) return;
-    const here = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
-    ['index.html', 'discover.html', 'feed.html', 'results.html', 'how-it-works.html'].forEach((page) => {
-      if (page === here || (here === '' && page === 'index.html')) return;
+    const here = (window.location.pathname.split('/').pop() || 'discover.html').toLowerCase();
+    ['discover.html', 'bienvenue.html', 'feed.html', 'results.html', 'how-it-works.html'].forEach((page) => {
+      if (page === here || (here === '' && page === 'discover.html')) return;
       const link = document.createElement('link');
       link.rel = 'prefetch';
       link.as = 'document';

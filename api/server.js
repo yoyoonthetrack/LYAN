@@ -142,8 +142,10 @@ app.use(cors({
 const PRODUCT_HTML = {
     '/professional.html': 'professional.html',
     '/business-admin.html': 'business-admin.html',
-    '/': 'index.html',
-    '/index.html': 'index.html',
+    '/': 'discover.html',
+    '/index.html': 'discover.html',
+    '/bienvenue': 'bienvenue.html',
+    '/bienvenue.html': 'bienvenue.html',
     '/feed': 'feed.html',
     '/feed.html': 'feed.html',
     '/results': 'results.html',

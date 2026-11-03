@@ -214,24 +214,26 @@ async function injectMobileInterface() {
     if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bodyIsNativeAppApplied = document.body.classList.contains('is-native-app');
 
     const path = window.location.pathname;
-    const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+    const isLegacyEntry = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
     const isDiscover = path.includes('discover.html') || path.endsWith('/discover');
+    const isMarketingLanding = path.includes('bienvenue.html') || path.endsWith('/bienvenue');
     const isExplorer = path.includes('results.html');
     const explorerMode = new URLSearchParams(window.location.search).get('mode') === 'annonces' ? 'annonces' : 'lyanneurs';
     const isLoggedIn = window.LYANN_AUTH_STATE ? window.LYANN_AUTH_STATE.isAuthenticated() : document.body.classList.contains('user-is-logged-in');
 
-    // A member never stays on the marketing home. Deep links keep their target.
+    // Native and web entry points must land on Découvrir, not marketing or Bokantaj.
     const hasDeepLink = window.location.search && (
         window.location.search.includes('view=') ||
         window.location.search.includes('action=') ||
         window.location.search.includes('post_id=') ||
+        window.location.search.includes('post=') ||
         window.location.search.includes('chat=')
     );
-    if (isLoggedIn && isHome && !hasDeepLink) {
-        window.location.replace('discover.html');
+    if (isLegacyEntry && !hasDeepLink) {
+        window.location.replace('discover.html' + (window.location.search || '') + (window.location.hash || ''));
         return;
     }
-    if (!isLoggedIn) {
+    if (!isLoggedIn && isMarketingLanding) {
         document.querySelectorAll('.app-welcome-screen').forEach((el) => el.remove());
         if (typeof window.mountNativeGuestHome === 'function') window.mountNativeGuestHome();
     }
@@ -458,7 +460,7 @@ window.ensureDeterministicAppHeader = function(overrideViewType) {
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                window.location.href = 'index.html';
+                window.location.href = 'discover.html';
             }
         });
     }

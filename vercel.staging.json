@@ -13,11 +13,27 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/api/render?file=index.html"
+      "destination": "/api/render?file=discover.html"
     },
     {
       "source": "/index.html",
-      "destination": "/api/render?file=index.html"
+      "destination": "/api/render?file=discover.html"
+    },
+    {
+      "source": "/discover",
+      "destination": "/api/render?file=discover.html"
+    },
+    {
+      "source": "/discover.html",
+      "destination": "/api/render?file=discover.html"
+    },
+    {
+      "source": "/bienvenue",
+      "destination": "/api/render?file=bienvenue.html"
+    },
+    {
+      "source": "/bienvenue.html",
+      "destination": "/api/render?file=bienvenue.html"
     },
     {
       "source": "/feed",
