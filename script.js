@@ -1382,7 +1382,8 @@ safeDomReady(() => {
 
         const metrics = pData.metrics || {};
         const realReviewsCount = (reviewsList && Array.isArray(reviewsList)) ? reviewsList.length : 0;
-        const reviewsCount = realReviewsCount;
+        const storedCount = Number(metrics.reviews_count);
+        const reviewsCount = Number.isFinite(storedCount) && storedCount > 0 ? storedCount : realReviewsCount;
         const storedAverage = Number(metrics.average_rating);
         const avgRating = (reviewsCount > 0 && Number.isFinite(storedAverage) && storedAverage > 0)
             ? storedAverage.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })

@@ -55,7 +55,7 @@
 
     function talentPlace(profile) {
         const territory = territoryName(profile.territory);
-        if (typeof window.formatProfileLocation === 'function') {
+        if (territory && typeof window.formatProfileLocation === 'function') {
             return window.formatProfileLocation(profile.city, territory);
         }
         return [profile.city, territory].filter(Boolean).join(' · ');
