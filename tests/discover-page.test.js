@@ -32,6 +32,8 @@ assert.doesNotMatch(page, /id="explorer"/);
 assert.match(source, /visibility !== 'PUBLIC'/);
 assert.match(source, /discover-need-card/);
 assert.match(source, /discover-talent-card/);
+assert.match(source, /discover-talent-title-row/);
+assert.match(source, /\.slice\(0, 4\)/);
 assert.match(source, /goOfferTalents/);
 assert.match(source, /results\.html\?mode=annonces/);
 assert.match(source, /openLyannDetailModal/);

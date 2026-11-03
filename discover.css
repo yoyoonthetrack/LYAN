@@ -220,13 +220,17 @@ body.has-member-nav .discover-main {
 .discover-search-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 46px;
-    padding: 0 14px;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 12px;
     border: 1px solid #D5DDD6;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #fff;
-    box-shadow: 0 2px 10px rgba(27, 59, 43, 0.04);
+    box-shadow: none;
+}
+
+.discover-search-bar:focus-within {
+    border-color: #4A7C59;
 }
 
 .discover-search-bar i {
@@ -238,30 +242,35 @@ body.has-member-nav .discover-main {
 .discover-search-bar input {
     box-sizing: border-box;
     width: 100%;
-    min-height: 44px;
+    min-height: 42px;
     padding: 0;
-    border: 0;
+    margin: 0;
+    border: 0 !important;
     background: transparent;
     color: #1B3B2B;
     font: inherit;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+    box-shadow: none !important;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .discover-search-bar input:focus {
     outline: none;
+    box-shadow: none !important;
 }
 
 .discover-search-modes {
     display: flex;
-    gap: 8px;
-    margin-top: 8px;
+    gap: 6px;
+    margin-top: 6px;
 }
 
 .discover-search-mode {
     flex: 1;
-    min-height: 36px;
-    padding: 0 10px;
-    border: 1px solid #D5DDD6;
+    min-height: 34px;
+    padding: 0 8px;
+    border: 1px solid #E0E6E1;
     border-radius: 999px;
     background: #fff;
     color: #5A6E5F;
@@ -417,22 +426,31 @@ button.discover-card {
 .discover-grid-talents {
     display: flex;
     gap: 12px;
+    max-width: 100%;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     padding: 2px 2px 8px;
-    margin: 0 -2px;
+    margin: 0;
+    scrollbar-width: none;
+}
+
+.discover-grid-talents::-webkit-scrollbar {
+    display: none;
 }
 
 .discover-talent-card {
-    flex: 0 0 min(78vw, 240px);
+    flex: 0 0 min(76vw, 232px);
     scroll-snap-align: start;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
-    padding: 14px;
+    gap: 8px;
+    min-height: 168px;
+    padding: 12px;
     text-align: left;
+    box-sizing: border-box;
 }
 
 .discover-talent-photo {
@@ -444,24 +462,35 @@ button.discover-card {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
+    flex: 1;
+}
+
+.discover-talent-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
 }
 
 .discover-talent-body h3 {
     margin: 0;
-    font-size: 1.02rem;
+    font-size: 0.98rem;
     font-weight: 800;
     color: #1B3B2B;
     letter-spacing: -0.02em;
+    line-height: 1.2;
+    min-width: 0;
 }
 
 .discover-talent-rating {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     margin: 0;
+    flex-shrink: 0;
     color: #8A6A1E;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 700;
 }
 
@@ -500,13 +529,14 @@ button.discover-card {
 
 .discover-talent-card img,
 .discover-avatar-fallback {
-    width: 72px;
-    height: 72px;
+    width: 68px;
+    height: 68px;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center top;
     background: #E8F2EC;
-    border: 3px solid #E8F1EA;
-    box-shadow: 0 4px 14px rgba(27, 59, 43, 0.08);
+    border: 2px solid #E8F1EA;
+    box-shadow: 0 2px 10px rgba(27, 59, 43, 0.06);
 }
 
 .discover-need-card .discover-meta {
@@ -600,12 +630,43 @@ button.discover-card {
     .discover-grid-needs { grid-template-columns: 1fr 1fr; }
     .discover-grid-talents {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
         overflow: visible;
         padding: 0;
         margin: 0;
     }
-    .discover-talent-card { flex: initial; }
+    .discover-talent-card {
+        flex: initial;
+        flex-direction: row;
+        align-items: center;
+        min-height: 108px;
+        max-height: 120px;
+        padding: 10px 12px;
+        gap: 10px;
+    }
+    .discover-talent-photo {
+        justify-content: flex-start;
+    }
+    .discover-talent-card img,
+    .discover-avatar-fallback {
+        width: 56px;
+        height: 56px;
+    }
+    .discover-talent-body h3 {
+        font-size: 0.92rem;
+    }
+    .discover-talent-skill {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .discover-talent-place span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     .discover-category-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .discover-action-chevron { display: block; }
     .discover-action-text strong { font-size: 1rem; }

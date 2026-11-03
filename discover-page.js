@@ -108,7 +108,7 @@
             ? `<img src="${escapeText(avatar)}" alt="" width="72" height="72" loading="lazy">`
             : '<span class="discover-avatar-fallback" aria-hidden="true"></span>';
         const ratingHtml = rating
-            ? `<p class="discover-talent-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span>${escapeText(rating)}</span></p>`
+            ? `<span class="discover-talent-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span>${escapeText(rating)}</span></span>`
             : '';
         const skillHtml = activity
             ? `<span class="discover-talent-skill">${escapeText(activity)}</span>`
@@ -116,8 +116,10 @@
         return `<button type="button" class="discover-card discover-talent-card" data-member-id="${escapeText(profile.id)}">
             <span class="discover-talent-photo">${photo}</span>
             <span class="discover-talent-body">
-                <h3>${escapeText(name)}</h3>
-                ${ratingHtml}
+                <span class="discover-talent-title-row">
+                    <h3>${escapeText(name)}</h3>
+                    ${ratingHtml}
+                </span>
                 ${skillHtml}
                 <p class="discover-talent-place"><i class="ph ph-map-pin" aria-hidden="true"></i><span>${escapeText(place || 'Commune non renseignée')}</span></p>
             </span>
@@ -270,7 +272,7 @@
             talents.innerHTML = state('Chargement des talents', 'Les profils publics arrivent.');
             const [requestResult, talentResult] = await Promise.allSettled([repo.loadRequests(), repo.load()]);
             if (requestResult.status === 'fulfilled') {
-                requests = requestResult.value.filter(eligibleRequest).slice(0, 6);
+                requests = requestResult.value.filter(eligibleRequest).slice(0, 4);
                 needs.innerHTML = requests.length
                     ? requests.map(requestCard).join('')
                     : state('Aucune annonce pour le moment.', 'Les besoins publics apparaîtront ici dès qu\'ils seront disponibles.');
