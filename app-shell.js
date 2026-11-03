@@ -215,9 +215,9 @@ async function injectMobileInterface() {
 
     const path = window.location.pathname;
     const isHome = path.endsWith('index.html') || path.endsWith('/') || (!path.includes('.html'));
+    const isDiscover = path.includes('discover.html') || path.endsWith('/discover');
     const isExplorer = path.includes('results.html');
     const explorerMode = new URLSearchParams(window.location.search).get('mode') === 'annonces' ? 'annonces' : 'lyanneurs';
-    const isBokantaj = path.includes('feed.html');
     const isLoggedIn = window.LYANN_AUTH_STATE ? window.LYANN_AUTH_STATE.isAuthenticated() : document.body.classList.contains('user-is-logged-in');
 
     // A member never stays on the marketing home. Deep links keep their target.
@@ -228,7 +228,7 @@ async function injectMobileInterface() {
         window.location.search.includes('chat=')
     );
     if (isLoggedIn && isHome && !hasDeepLink) {
-        window.location.replace('feed.html');
+        window.location.replace('discover.html');
         return;
     }
     if (!isLoggedIn) {
@@ -259,7 +259,7 @@ async function injectMobileInterface() {
         };
         // ph-list is in the bundled Phosphor font. ph-list-bullets is not.
         bottomNav.innerHTML = `
-            ${memberTab('a', 'tab-bokantaj', 'feed.html', 'ph-broadcast', 'Bokantaj', isBokantaj)}
+            ${memberTab('a', 'tab-discover', 'discover.html', 'ph-house', 'Découvrir', isDiscover)}
             ${memberTab('a', 'tab-lyanneurs', 'results.html?mode=lyanneurs', 'ph-users-three', 'Lyanneurs', isExplorer && explorerMode === 'lyanneurs')}
             ${memberTab('a', 'tab-annonces', 'results.html?mode=annonces', 'ph-list', 'Annonces', isExplorer && explorerMode === 'annonces')}
             <button type="button" class="nav-tab" id="tab-messages" role="tab" aria-selected="false" aria-label="Messages" style="position: relative;">
@@ -289,7 +289,7 @@ async function injectMobileInterface() {
             });
         });
 
-        // Bokantaj, Lyanneurs, Annonces, Messages and Profil are owned by app-router.js.
+        // Découvrir, Lyanneurs, Annonces, Messages and Profil are owned by app-router.js.
     }
 }
 window.injectMobileInterface = injectMobileInterface;

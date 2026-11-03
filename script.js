@@ -280,7 +280,7 @@ function syncDrawerNavigation(overlay) {
     const onResults = path === 'results.html' || path === 'results';
     const current = onResults
         ? (mode === 'annonces' ? 'annonces' : 'lyanneurs')
-        : ((path === 'feed.html' || path === 'feed') ? 'bokantaj' : '');
+        : ((path === 'discover.html' || path === 'discover') ? 'discover' : '');
     overlay.querySelectorAll('[data-drawer-nav]').forEach((link) => {
         const on = link.getAttribute('data-drawer-nav') === current;
         link.classList.toggle('active', on);
@@ -317,10 +317,10 @@ function ensureMobileHamburgerDrawer() {
                 <div class="drawer-body">
 
                     <nav class="drawer-primary-nav" aria-label="Navigation principale">
-                        <a href="feed.html" class="drawer-direct-link" data-lyann-route="bokantaj" data-drawer-nav="bokantaj">
+                        <a href="discover.html" class="drawer-direct-link" data-lyann-route="discover" data-drawer-nav="discover">
                             <span class="drawer-accordion-label">
-                                <i class="ph ph-broadcast" aria-hidden="true"></i>
-                                <span>Bokantaj</span>
+                                <i class="ph ph-house" aria-hidden="true"></i>
+                                <span>Découvrir</span>
                             </span>
                             <i class="ph ph-caret-right drawer-chevron" aria-hidden="true"></i>
                         </a>

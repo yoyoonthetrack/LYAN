@@ -17,7 +17,8 @@ assert.match(page, /results\.html\?mode=lyanneurs/);
 assert.match(page, /discover-page\.js/);
 assert.match(page, /explorer-repository\.js/);
 assert.match(page, /id="publicMemberProfileModal"/);
-assert.match(page, /nav-link-bokantaj/);
+assert.doesNotMatch(page, /nav-link-bokantaj/);
+assert.match(page, /Découvrir/);
 assert.doesNotMatch(page, /id="explorer"/);
 
 assert.match(source, /visibility !== 'PUBLIC'/);
@@ -34,8 +35,9 @@ assert.match(source, /ADVICE = Object\.freeze\(\[\]\)/);
 assert.doesNotMatch(source, /bokantaj/i);
 assert.doesNotMatch(source, /LYANN_MAISON_CATALOG/);
 
-assert.match(shell, /ph-broadcast', 'Bokantaj'/);
-assert.doesNotMatch(shell, /discover\.html/);
+assert.match(shell, /ph-house', 'Découvrir'/);
+assert.match(shell, /tab-discover', 'discover\.html', 'ph-house', 'Découvrir'/);
+assert.doesNotMatch(shell, /tab-bokantaj/);
 
 const { eligibleRequest, territoryName } = require('../discover-page.js');
 const open = { id: 'a', visibility: 'PUBLIC', status: 'OPEN', safety_status: 'SAFE', target_user_id: null, classification_status: 'CLASSIFIED', public_moderation_status: 'approved' };

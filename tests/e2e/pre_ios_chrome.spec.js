@@ -16,7 +16,7 @@ test.describe('Pre-iOS chrome — mobile menu, opaque chat, readable profile', (
       await page.setViewportSize(size);
       await page.goto('/index.html');
       const drawer = await openMenu(page);
-      for (const [key, name] of [['bokantaj', 'Bokantaj'], ['lyanneurs', 'Lyanneurs'], ['annonces', 'Annonces'], ['messages', 'Messages'], ['profil', 'Profil']]) {
+      for (const [key, name] of [['discover', 'Découvrir'], ['lyanneurs', 'Lyanneurs'], ['annonces', 'Annonces'], ['messages', 'Messages'], ['profil', 'Profil']]) {
         const link = drawer.locator(`[data-drawer-nav="${key}"]`);
         await expect(link).toBeVisible();
         await expect(link).toContainText(name);

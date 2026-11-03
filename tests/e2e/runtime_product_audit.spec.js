@@ -3,6 +3,7 @@ const { requireWriteBackend, login, waitAuthenticated } = require('./helpers/app
 
 const PAGES = [
   { path: '/index.html', text: /LYANN/ },
+  { path: '/discover.html', text: /Découvrir|besoin/i },
   { path: '/feed.html', text: /Bokantaj/i },
   { path: '/results.html', text: /Explorer|Lyanneur|Annonces/i },
   { path: '/pricing.html', text: /tarif|abonnement|offre/i },
@@ -165,7 +166,7 @@ test.describe('Runtime product audit — pages and primary surfaces', () => {
     await showMemberNav();
     const nav = page.locator('.mobile-bottom-nav');
     await expect(nav).toBeVisible();
-    await expect(nav.getByRole('tab', { name: 'Bokantaj' })).toBeVisible();
+    await expect(nav.getByRole('tab', { name: 'Découvrir' })).toBeVisible();
     await expect(nav.getByRole('tab', { name: 'Lyanneurs' })).toBeVisible();
     await expect(nav.getByRole('tab', { name: 'Annonces' })).toBeVisible();
     await expect(nav.getByRole('tab', { name: 'Messages' })).toBeVisible();
@@ -195,7 +196,7 @@ test.describe('Runtime product audit — pages and primary surfaces', () => {
         height: Math.round(box.height)
       };
     }));
-    expect(tabBoxes.map((tab) => tab.name)).toEqual(['Bokantaj', 'Lyanneurs', 'Annonces', 'Messages', 'Profil']);
+    expect(tabBoxes.map((tab) => tab.name)).toEqual(['Découvrir', 'Lyanneurs', 'Annonces', 'Messages', 'Profil']);
     expect(tabBoxes.find((tab) => tab.name === 'Lyanneurs').current).toBe('page');
     expect(tabBoxes.find((tab) => tab.name === 'Lyanneurs').selected).toBe('true');
     expect(tabBoxes.filter((tab) => tab.name !== 'Lyanneurs').every((tab) => tab.selected === 'false' && tab.current !== 'page')).toBe(true);
@@ -219,5 +220,10 @@ test.describe('Runtime product audit — pages and primary surfaces', () => {
     await showMemberNav();
     await expect(page.locator('#tab-lyanneurs')).toHaveClass(/active/);
     await expect(page.locator('#explorerTitle')).toHaveText('Lyanneurs');
+
+    await page.locator('#tab-discover').click();
+    await expect(page).toHaveURL(/discover\.html/);
+    await showMemberNav();
+    await expect(page.locator('#tab-discover')).toHaveClass(/active/);
   });
 });

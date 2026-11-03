@@ -568,7 +568,7 @@
         document.body.classList.remove('lyann-messaging-transition');
         registerSurfaces();
         if (!setShellVisible(true)) {
-            window.location.href = 'feed.html?action=messages';
+            window.location.href = 'discover.html?action=messages';
             return;
         }
         document.body.classList.remove('in-chat-active', 'chat-conversation-open');
@@ -605,7 +605,7 @@
         document.body.classList.remove('lyann-messaging-transition');
         registerSurfaces();
         if (!setShellVisible(true)) {
-            window.location.href = 'feed.html?action=messages';
+            window.location.href = 'discover.html?action=messages';
             return false;
         }
         hideAllChildSurfaces();

@@ -155,7 +155,7 @@
         || !Number.isFinite(intent.createdAt) || Date.now() - intent.createdAt > 15 * 60 * 1000) return null;
     try {
       const url = new URL(intent.destination, window.location.href);
-      if (url.origin !== window.location.origin || !/^\/(?:index|feed|results|pricing|payment-portal|how-it-works|about|confirm-signup)?(?:\.html)?$/.test(url.pathname)) return null;
+      if (url.origin !== window.location.origin || !/^\/(?:index|feed|results|discover|pricing|payment-portal|how-it-works|about|confirm-signup)?(?:\.html)?$/.test(url.pathname)) return null;
     } catch (_) { return null; }
     return intent;
   }
@@ -343,6 +343,7 @@
     const suffix = params.toString();
     return hardNavigate(`results.html${suffix ? `?${suffix}` : ''}`);
   }
+  register('discover', () => hardNavigate('discover.html'));
   register('explorer', (payload = {}) => openExplorer(payload.mode || '', payload));
   register('lyanneurs', (payload = {}) => openExplorer('lyanneurs', payload));
   register('annonces', (payload = {}) => openExplorer('annonces', payload));
@@ -463,7 +464,7 @@
   });
 
   const selectorRouteMap = [
-    ['#tab-bokantaj', 'bokantaj'],
+    ['#tab-discover', 'discover'],
     ['#tab-lyanneurs', 'lyanneurs'],
     ['#tab-annonces', 'annonces'],
     ['#tab-explorer', 'explorer'],
@@ -616,7 +617,7 @@
       || document.body.classList.contains('is-native-app');
     if (native) return;
     const here = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
-    ['index.html', 'feed.html', 'results.html', 'how-it-works.html'].forEach((page) => {
+    ['index.html', 'discover.html', 'feed.html', 'results.html', 'how-it-works.html'].forEach((page) => {
       if (page === here || (here === '' && page === 'index.html')) return;
       const link = document.createElement('link');
       link.rel = 'prefetch';
