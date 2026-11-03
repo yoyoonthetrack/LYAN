@@ -87,6 +87,20 @@ function runtimeIdentity(env) {
     };
 }
 
+function stagingPreviewOrigin(origin) {
+    let url;
+    try {
+        url = new URL(String(origin || ''));
+    } catch (_) {
+        return false;
+    }
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return false;
+    if (url.pathname !== '/' || url.search || url.hash) return false;
+    // Preview deployments of lyann-staging-preview on the yoyo-d85d team.
+    // The deployment id changes; the project and team do not. Origin is not authentication.
+    return /^lyann-staging-preview-[a-z0-9-]+-yoyo-d85d\.vercel\.app$/i.test(url.hostname);
+}
+
 function browserOriginAllowed(origin, env) {
     if (!origin) return true;
     const known = new Set([
@@ -100,7 +114,8 @@ function browserOriginAllowed(origin, env) {
     ]);
     if (known.has(origin)) return true;
     const ref = supabaseRefFromUrl((env && (env.SUPABASE_URL || env.LYANN_SUPABASE_URL)) || '');
-    return ref === STAGING_REF && origin === 'https://staging.lyann.app';
+    if (ref !== STAGING_REF) return false;
+    return origin === 'https://staging.lyann.app' || stagingPreviewOrigin(origin);
 }
 
 module.exports = {
@@ -110,5 +125,6 @@ module.exports = {
     assertHostedIsolation,
     runtimeIdentity,
     jwtPayload,
-    browserOriginAllowed
+    browserOriginAllowed,
+    stagingPreviewOrigin
 };

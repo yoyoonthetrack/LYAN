@@ -26,16 +26,26 @@
         return true;
     }
 
+    function territoryName(value) {
+        const key = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        if (key.includes('guadeloupe')) return 'Guadeloupe';
+        if (key.includes('martinique')) return 'Martinique';
+        if (key.includes('guyane')) return 'Guyane';
+        if (key.includes('reunion')) return 'La Réunion';
+        return String(value || '').trim();
+    }
+
     function placeLabel(row) {
         const raw = String(row.city || row.location || '').trim();
         if (!raw) return 'Lieu non précisé';
+        const readable = raw.split(/\s*[·,]\s*/).map(territoryName).filter(Boolean).join(' · ');
         if (/\d/.test(raw)) {
-            const parts = raw.split(',').map(part => part.trim()).filter(Boolean);
+            const parts = readable.split(' · ');
             const last = parts[parts.length - 1] || '';
             if (last && !/\d/.test(last)) return last;
             return 'Lieu indiqué sur l\'annonce';
         }
-        return raw;
+        return readable;
     }
 
     function talentActivity(profile) {
@@ -44,7 +54,11 @@
     }
 
     function talentPlace(profile) {
-        return [profile.city, profile.territory].filter(Boolean).join(' · ');
+        const territory = territoryName(profile.territory);
+        if (typeof window.formatProfileLocation === 'function') {
+            return window.formatProfileLocation(profile.city, territory);
+        }
+        return [profile.city, territory].filter(Boolean).join(' · ');
     }
 
     function openRequest(row) {
@@ -108,8 +122,7 @@
         if (!section || !list) return;
         const items = ADVICE.filter(item => item && item.title && item.text && !item.author);
         if (!items.length) {
-            section.hidden = true;
-            list.innerHTML = '';
+            section.remove();
             return;
         }
         list.innerHTML = items.map(item => `<article class="discover-card"><h3>${escapeText(item.title)}</h3><p>${escapeText(item.text)}</p></article>`).join('');
@@ -207,5 +220,5 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
         else init();
     }
-    if (typeof module !== 'undefined' && module.exports) module.exports = { eligibleRequest };
+    if (typeof module !== 'undefined' && module.exports) module.exports = { eligibleRequest, territoryName };
 })();

@@ -287,6 +287,11 @@ function nativeBuildStamp() {
 }
 
 function resolveInjectedBackendOrigin() {
+  const previewHost = String(process.env.VERCEL_URL || '').replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+  if (process.env.VERCEL_ENV === 'preview'
+    && /^lyann-staging-preview-[a-z0-9-]+-yoyo-d85d\.vercel\.app$/.test(previewHost)) {
+    return 'https://' + previewHost;
+  }
   if (String(process.env.LYANN_RUNTIME || '').toLowerCase() === 'staging') {
     const origin = String(process.env.LYANN_STAGING_PUBLIC_ORIGIN || '').replace(/\/$/, '');
     return ['https://staging.lyann.app', 'https://staging-bokantaj.lyann.app'].includes(origin) ? origin : '';

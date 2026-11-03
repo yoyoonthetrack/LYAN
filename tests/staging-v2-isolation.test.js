@@ -243,9 +243,11 @@ test('messaging repository reads missions and milestones with live columns', () 
 
 test('mobile Staging backend accepts only the two approved HTTPS origins', () => {
   const { resolveInjectedBackendOrigin } = require('../shared-html-build');
-  const keys = ['LYANN_RUNTIME', 'LYANN_STAGING_PUBLIC_ORIGIN'];
+  const keys = ['LYANN_RUNTIME', 'LYANN_STAGING_PUBLIC_ORIGIN', 'VERCEL_ENV', 'VERCEL_URL'];
   const previous = Object.fromEntries(keys.map(k => [k, process.env[k]]));
   try {
+    delete process.env.VERCEL_ENV;
+    delete process.env.VERCEL_URL;
     process.env.LYANN_RUNTIME = 'staging';
     for (const origin of ['https://staging.lyann.app', 'https://staging-bokantaj.lyann.app']) {
       process.env.LYANN_STAGING_PUBLIC_ORIGIN = origin;
@@ -256,6 +258,12 @@ test('mobile Staging backend accepts only the two approved HTTPS origins', () =>
       process.env.LYANN_STAGING_PUBLIC_ORIGIN = origin;
       assert.equal(resolveInjectedBackendOrigin(), '');
     }
+    process.env.VERCEL_ENV = 'preview';
+    process.env.VERCEL_URL = 'lyann-staging-preview-lstb80zsq-yoyo-d85d.vercel.app';
+    process.env.LYANN_STAGING_PUBLIC_ORIGIN = 'https://staging.lyann.app';
+    assert.equal(resolveInjectedBackendOrigin(), 'https://lyann-staging-preview-lstb80zsq-yoyo-d85d.vercel.app');
+    process.env.VERCEL_URL = 'lyan-git-main-yoyo-d85d.vercel.app';
+    assert.equal(resolveInjectedBackendOrigin(), 'https://staging.lyann.app');
   } finally {
     for (const k of keys) {
       if (previous[k] === undefined) delete process.env[k];

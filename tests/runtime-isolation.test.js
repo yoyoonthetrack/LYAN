@@ -30,6 +30,14 @@ test('staging can publish from its own site, production cannot', () => {
     assert.equal(browserOriginAllowed('capacitor://localhost', staging), true);
     assert.equal(browserOriginAllowed('ionic://localhost', staging), true);
     assert.equal(browserOriginAllowed('https://attacker.lyann.app', staging), false);
+    assert.equal(browserOriginAllowed('https://lyann-staging-preview-lstb80zsq-yoyo-d85d.vercel.app', staging), true);
+    assert.equal(browserOriginAllowed('https://lyann-staging-preview-git-feature-marketplace-discover-v1-yoyo-d85d.vercel.app', staging), true);
+    assert.equal(browserOriginAllowed('https://lyann-staging-preview-lstb80zsq-yoyo-d85d.vercel.app', {
+        SUPABASE_URL: 'https://gzispjfoywklpqatjyop.supabase.co'
+    }), false);
+    assert.equal(browserOriginAllowed('https://evil.vercel.app', staging), false);
+    assert.equal(browserOriginAllowed('https://lyann-staging-preview.vercel.app.evil.example', staging), false);
+    assert.equal(browserOriginAllowed('http://lyann-staging-preview-lstb80zsq-yoyo-d85d.vercel.app', staging), false);
 });
 
 test('an unscoped local process is not treated as a hosted environment', () => {

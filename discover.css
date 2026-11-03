@@ -16,6 +16,10 @@ body.discover-page {
     background: #4A7C59 !important;
 }
 
+#discoverAdvice[hidden] {
+    display: none !important;
+}
+
 body.is-native-app .discover-main,
 body.has-member-nav .discover-main {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
@@ -247,5 +251,14 @@ button.discover-card {
 }
 
 @media (max-width: 640px) {
-    .discover-search-actions .btn { width: 100%; justify-content: center; }
+    .discover-block-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .discover-search-actions .btn,
+    .discover-search .lyann-cta-primary {
+        width: 100% !important;
+        justify-content: center;
+    }
 }

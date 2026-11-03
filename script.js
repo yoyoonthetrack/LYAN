@@ -1383,7 +1383,10 @@ safeDomReady(() => {
         const metrics = pData.metrics || {};
         const realReviewsCount = (reviewsList && Array.isArray(reviewsList)) ? reviewsList.length : 0;
         const reviewsCount = realReviewsCount;
-        const avgRating = (reviewsCount > 0 && metrics.average_rating) ? Number(metrics.average_rating).toFixed(1) : null;
+        const storedAverage = Number(metrics.average_rating);
+        const avgRating = (reviewsCount > 0 && Number.isFinite(storedAverage) && storedAverage > 0)
+            ? storedAverage.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+            : null;
         const completedMissions = metrics.completed_missions || 0;
 
         // Build Name Prénom N. using canonical formatter

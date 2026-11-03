@@ -58,6 +58,8 @@
     if (rawProfile.created_at) {
       profileData.member_since = new Date(rawProfile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
     }
+    if (rawProfile.average_rating != null) profileData.average_rating = rawProfile.average_rating;
+    if (rawProfile.reviews_count != null) profileData.reviews_count = rawProfile.reviews_count;
     return true;
   }
 
@@ -201,11 +203,23 @@
           comment: r.comment || 'Mission réalisée avec succès.'
         }));
       }
-      profileData.metrics.reviews_count = reviewsList.length || seed.reviews_count;
-      profileData.metrics.average_rating = seed.rating;
-    } else {
+      if (!reviewRows.length) {
+        profileData.metrics.reviews_count = reviewsList.length || seed.reviews_count;
+        profileData.metrics.average_rating = seed.rating;
+      }
+    } else if (!reviewRows.length) {
       profileData.metrics.reviews_count = reviewsList.length;
       if (!reviewsList.length) profileData.metrics.average_rating = null;
+    }
+    if (reviewRows.length) {
+      const storedAverage = Number(profileData.average_rating);
+      const storedCount = Number(profileData.reviews_count);
+      profileData.metrics.reviews_count = Number.isFinite(storedCount) && storedCount > 0
+        ? storedCount
+        : reviewRows.length;
+      if (Number.isFinite(storedAverage) && storedAverage > 0) {
+        profileData.metrics.average_rating = storedAverage;
+      }
     }
 
     return {
