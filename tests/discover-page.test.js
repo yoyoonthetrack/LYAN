@@ -7,7 +7,10 @@ const shell = fs.readFileSync('app-shell.js', 'utf8');
 assert.match(page, /Un besoin \? Un talent près de vous/);
 assert.match(page, /Trouver de l'aide/);
 assert.match(page, /Proposer mes talents/);
-assert.match(page, /Ménage, jardinage, climatisation/);
+assert.match(page, /Quel service recherchez-vous \?/);
+assert.match(page, /Les talents de votre quartier/i);
+assert.match(page, /id="discoverOfferTalents"/);
+assert.match(page, /discoverOfferTalents[\s\S]*mode=annonces/);
 assert.match(page, /Explorer les services/);
 assert.match(page, /Les talents près de vous/);
 assert.match(page, /Des besoins près de vous/);
@@ -28,7 +31,9 @@ assert.doesNotMatch(page, /id="explorer"/);
 
 assert.match(source, /visibility !== 'PUBLIC'/);
 assert.match(source, /discover-need-card/);
-assert.match(source, /discover-talent-body/);
+assert.match(source, /discover-talent-card/);
+assert.match(source, /goOfferTalents/);
+assert.match(source, /results\.html\?mode=annonces/);
 assert.match(source, /openLyannDetailModal/);
 assert.match(source, /openPublicMemberProfile/);
 assert.match(source, /loadRequests\(\)/);
@@ -43,6 +48,8 @@ assert.equal(eligibleRequest(open), true);
 
 const css = fs.readFileSync('discover.css', 'utf8');
 assert.match(css, /\.discover-hero/);
+assert.match(css, /\.discover-search-bar/);
+assert.match(css, /\.discover-talent-card/);
 assert.match(css, /\.discover-category-grid/);
 assert.match(css, /#discoverAdvice\[hidden\]/);
 

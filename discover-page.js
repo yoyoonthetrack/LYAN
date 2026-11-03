@@ -103,22 +103,73 @@
         const activity = talentActivity(profile);
         const place = talentPlace(profile);
         const rating = format?.ratingLabel?.(profile) || '';
-        const verified = format?.verifiedLabel?.(profile) || '';
         const avatar = window.getLyannAvatarUrl?.(profile.avatar_url) || profile.avatar || '';
         const photo = avatar
-            ? `<img src="${escapeText(avatar)}" alt="" width="52" height="52" loading="lazy">`
+            ? `<img src="${escapeText(avatar)}" alt="" width="72" height="72" loading="lazy">`
             : '<span class="discover-avatar-fallback" aria-hidden="true"></span>';
-        return `<button type="button" class="discover-card discover-talent" data-member-id="${escapeText(profile.id)}">
-            ${photo}
+        const ratingHtml = rating
+            ? `<p class="discover-talent-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span>${escapeText(rating)}</span></p>`
+            : '';
+        const skillHtml = activity
+            ? `<span class="discover-talent-skill">${escapeText(activity)}</span>`
+            : '';
+        return `<button type="button" class="discover-card discover-talent-card" data-member-id="${escapeText(profile.id)}">
+            <span class="discover-talent-photo">${photo}</span>
             <span class="discover-talent-body">
-                <div class="discover-talent-head">
-                    <h3>${escapeText(name)}</h3>
-                    ${verified ? `<span class="discover-verified">${escapeText(verified)}</span>` : ''}
-                </div>
-                ${activity ? `<p class="discover-activity">${escapeText(activity)}</p>` : ''}
-                <p class="discover-meta">${escapeText(place || 'Commune non renseignée')}${rating ? ` · ${escapeText(rating)}` : ''}</p>
+                <h3>${escapeText(name)}</h3>
+                ${ratingHtml}
+                ${skillHtml}
+                <p class="discover-talent-place"><i class="ph ph-map-pin" aria-hidden="true"></i><span>${escapeText(place || 'Commune non renseignée')}</span></p>
             </span>
         </button>`;
+    }
+
+    const OFFER_AFTER_LOGIN_KEY = 'lyann_discover_offer_after_login';
+
+    function profileHasOfferSkills(profile) {
+        const services = profile?.services;
+        if (Array.isArray(services) && services.length > 0) return true;
+        const skills = profile?.skills;
+        if (Array.isArray(skills) && skills.filter(Boolean).length > 0) return true;
+        if (typeof skills === 'string' && skills.trim()) return true;
+        return false;
+    }
+
+    function goOfferTalents(event) {
+        if (event) event.preventDefault();
+        const missionsUrl = 'results.html?mode=annonces';
+        const auth = window.LYANN_AUTH_STATE;
+
+        if (knownLoggedOut()) {
+            try { sessionStorage.setItem(OFFER_AFTER_LOGIN_KEY, missionsUrl); } catch (_) {}
+            document.querySelector('.open-login-trigger')?.click();
+            return;
+        }
+
+        Promise.resolve(auth?.ready?.()).then(() => {
+            const snapshot = auth?.getSnapshot?.();
+            const profile = snapshot?.profile || snapshot?.user || null;
+            const needsSkills = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow'
+                && profile
+                && !profileHasOfferSkills(profile);
+            if (needsSkills) {
+                if (typeof window.openCompleteProfileModal === 'function') {
+                    window.openCompleteProfileModal();
+                    return;
+                }
+                if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow') {
+                    window.location.href = 'professional.html';
+                    return;
+                }
+            }
+            window.location.href = missionsUrl;
+        }).catch(() => {
+            window.location.href = missionsUrl;
+        });
+    }
+
+    function knownLoggedOut() {
+        return !window.LYANN_AUTH_STATE?.isAuthenticated?.();
     }
 
     function renderAdvice() {
@@ -145,13 +196,44 @@
         let requests = [];
         let profiles = [];
 
+        form?.addEventListener('click', event => {
+            const modeBtn = event.target.closest('.discover-search-mode');
+            if (!modeBtn || !form.contains(modeBtn)) return;
+            form.querySelectorAll('.discover-search-mode').forEach((btn) => {
+                btn.classList.toggle('is-active', btn === modeBtn);
+            });
+        });
+
         form?.addEventListener('submit', event => {
             event.preventDefault();
-            const mode = event.submitter?.dataset.mode === 'lyanneurs' ? 'lyanneurs' : 'annonces';
+            const active = form.querySelector('.discover-search-mode.is-active');
+            const mode = (event.submitter?.dataset.mode || active?.dataset.mode) === 'lyanneurs' ? 'lyanneurs' : 'annonces';
             const params = new URLSearchParams({ mode });
             const text = query?.value.trim();
             if (text) params.set('query', text);
             window.location.href = `results.html?${params.toString()}`;
+        });
+
+        document.getElementById('discoverOfferTalents')?.addEventListener('click', goOfferTalents);
+
+        window.addEventListener('lyann:auth-state', (event) => {
+            if (!event.detail?.authenticated) return;
+            let next = null;
+            try { next = sessionStorage.getItem(OFFER_AFTER_LOGIN_KEY); } catch (_) {}
+            if (!next) return;
+            try { sessionStorage.removeItem(OFFER_AFTER_LOGIN_KEY); } catch (_) {}
+            const authState = window.LYANN_AUTH_STATE;
+            authState?.ready?.().then(() => {
+                const snapshot = authState.getSnapshot?.();
+                const profile = snapshot?.profile || snapshot?.user || null;
+                if (profile && !profileHasOfferSkills(profile) && typeof window.openCompleteProfileModal === 'function') {
+                    window.openCompleteProfileModal();
+                    return;
+                }
+                window.location.href = next;
+            }).catch(() => {
+                window.location.href = next;
+            });
         });
 
         needs?.addEventListener('click', event => {

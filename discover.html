@@ -23,7 +23,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261027v26">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
-    <link rel="stylesheet" href="discover.css?v=20261103">
+    <link rel="stylesheet" href="discover.css?v=20261103e">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -151,7 +151,7 @@
                 <img src="assets/discover/hero-talents.jpg" alt="" width="640" height="420" loading="eager" decoding="async">
             </div>
             <div class="discover-hero-copy">
-                <p class="discover-kicker">Marketplace locale · DOM</p>
+                <p class="discover-kicker">Les talents de votre quartier</p>
                 <h1>Un besoin ? Un talent près de vous.</h1>
                 <p class="discover-lead">Trouvez de l'aide pour vos projets du quotidien, ou proposez vos compétences près de chez vous.</p>
             </div>
@@ -166,7 +166,7 @@
                 </span>
                 <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
             </a>
-            <a class="discover-action-card is-offer" href="results.html?mode=lyanneurs">
+            <a class="discover-action-card is-offer" href="results.html?mode=annonces" id="discoverOfferTalents">
                 <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-briefcase"></i></span>
                 <span class="discover-action-text">
                     <strong>Proposer mes talents</strong>
@@ -176,14 +176,16 @@
             </a>
         </section>
 
-        <section class="discover-search" aria-labelledby="discoverSearchTitle">
-            <h2 id="discoverSearchTitle" class="discover-section-title">Rechercher</h2>
+        <section class="discover-search" aria-label="Rechercher">
             <form id="discoverSearchForm" role="search">
-                <label class="sr-only" for="discoverQuery">Rechercher un service ou un besoin</label>
-                <input id="discoverQuery" type="search" name="query" placeholder="Ménage, jardinage, climatisation…" autocomplete="off" enterkeyhint="search">
-                <div class="discover-search-actions">
-                    <button type="submit" class="btn lyann-cta-primary" data-mode="annonces">Chercher dans les annonces</button>
-                    <button type="submit" class="btn btn-outline" data-mode="lyanneurs">Chercher un lyanneur</button>
+                <label class="sr-only" for="discoverQuery">Rechercher un service</label>
+                <div class="discover-search-bar">
+                    <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+                    <input id="discoverQuery" type="search" name="query" placeholder="Quel service recherchez-vous ?" autocomplete="off" enterkeyhint="search">
+                </div>
+                <div class="discover-search-modes" role="group" aria-label="Type de recherche">
+                    <button type="submit" class="discover-search-mode is-active" data-mode="annonces">Annonces</button>
+                    <button type="submit" class="discover-search-mode" data-mode="lyanneurs">Lyanneurs</button>
                 </div>
             </form>
         </section>
