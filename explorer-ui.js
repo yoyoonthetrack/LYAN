@@ -48,9 +48,15 @@
         const format = () => window.LYANN_ANNONCE_FORMAT;
         // One fact per line, each icon decorative and each line labelled for
         // screen readers. A missing fact drops its line instead of showing a filler.
-        function factLine(icon, label, text, hint) {
+        function factLine(icon, label, text, hint, extraClass = '') {
             if (!text) return '';
-            return `<li${hint ? ` title="${escape(hint)}"` : ''}><span class="explorer-fact-icon" aria-hidden="true">${icon}</span><span class="sr-only">${escape(label)} : </span>${escape(text)}</li>`;
+            const cls = extraClass ? ` class="explorer-annonce-fact ${extraClass}"` : ' class="explorer-annonce-fact"';
+            return `<li${cls}${hint ? ` title="${escape(hint)}"` : ''}><span class="explorer-fact-icon" aria-hidden="true">${icon}</span><span class="sr-only">${escape(label)} : </span><span class="explorer-fact-text">${escape(text)}</span></li>`;
+        }
+        function annonceFact(phIcon, label, text, hint, extraClass = '') {
+            if (!text) return '';
+            const cls = extraClass ? ` class="explorer-annonce-fact ${extraClass}"` : ' class="explorer-annonce-fact"';
+            return `<li${cls}${hint ? ` title="${escape(hint)}"` : ''}><i class="ph ${phIcon} explorer-fact-icon" aria-hidden="true"></i><span class="sr-only">${escape(label)} : </span><span class="explorer-fact-text">${escape(text)}</span></li>`;
         }
         // Annonce locations are municipality-level, so the distance is an
         // approximation between commune centres and is only shown when the viewer's
@@ -75,20 +81,22 @@
             // The card carries the short title only; the full description the author
             // wrote is the payload of the Détails surface.
             return `<article class="explorer-card explorer-annonce" data-request-id="${escape(r.id)}">
-                <div class="explorer-card-top">
-                    ${showType ? typePill('annonce') : ''}
-                    ${taxonomy ? `<span class="explorer-annonce-taxonomy" title="${escape(taxonomy)}">${escape(taxonomy)}</span>` : ''}
-                    ${age ? `<span class="explorer-annonce-age">${escape(age)}</span>` : ''}
+                <div class="explorer-card-top explorer-annonce-head">
+                    <div class="explorer-annonce-labels">
+                        ${showType ? typePill('annonce') : ''}
+                        ${taxonomy ? `<span class="explorer-annonce-taxonomy" title="${escape(taxonomy)}">${escape(taxonomy)}</span>` : ''}
+                        ${age ? `<span class="explorer-annonce-age">${escape(age)}</span>` : ''}
+                    </div>
                     ${favorite('REQUEST', r.id)}
                 </div>
-                <h2>${escape(format()?.shortTitle(r.title) || r.title)}</h2>
+                <h2 class="explorer-annonce-title">${escape(format()?.shortTitle(r.title) || r.title)}</h2>
                 <ul class="explorer-annonce-facts">
-                    ${factLine('📍', 'Lieu', placeText(r), distanceKnown ? 'Distance approximative entre communes' : '')}
-                    ${factLine('🗓️', 'Date', format()?.dateLabel(r))}
-                    ${factLine('💰', 'Prix', format()?.priceLabel(r))}
+                    ${annonceFact('ph-map-pin', 'Lieu', placeText(r), distanceKnown ? 'Distance approximative entre communes' : '', 'explorer-fact-location')}
+                    ${annonceFact('ph-currency-eur', 'Prix', format()?.priceLabel(r), '', 'explorer-fact-price')}
+                    ${annonceFact('ph-calendar-blank', 'Date', format()?.dateLabel(r), '', 'explorer-fact-date')}
                 </ul>
-                <div class="explorer-person explorer-person-zone">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
-                <div class="explorer-card-actions"><button class="btn btn-outline" data-action="detail" data-id="${escape(r.id)}">Détails</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
+                <div class="explorer-person explorer-person-zone explorer-annonce-author">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
+                <div class="explorer-card-actions explorer-annonce-actions"><button class="btn btn-primary" data-action="detail" data-id="${escape(r.id)}">Voir l'annonce</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
             </article>`;
         }
         function formatDisplayName(p) {

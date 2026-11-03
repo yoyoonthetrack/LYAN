@@ -34,21 +34,32 @@
 .explorer-card-top .btn-fav-toggle{flex-shrink:0;background:none;border:0;font-size:1.25rem;width:44px;color:#536258;border-radius:50%}
 .explorer-meta{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.85rem;color:#536258}
 .explorer-budget{font-weight:700;color:var(--primary-dark)}
-/* Annonce card: taxonomy and age on one line, then the short title, then one fact
-   per line. The full description belongs to the Détails surface, never the card. */
-.explorer-annonce{gap:10px}
-.explorer-annonce .explorer-card-top{align-items:flex-start}
-.explorer-annonce-taxonomy{flex:1;min-width:0;max-width:100%;font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--primary-dark,#24382b);background:#EBF3EE;border-radius:6px;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.explorer-annonce-age{flex-shrink:0;font-size:.74rem;color:#6B7A70;background:#F4F6F4;border-radius:6px;padding:4px 8px;white-space:nowrap}
-.explorer-annonce-facts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:.89rem;color:#42504a}
-.explorer-annonce-facts li{display:flex;align-items:baseline;gap:7px;min-width:0}
-.explorer-fact-icon{flex-shrink:0;width:1.15em;text-align:center;font-size:.95em}
-.explorer-annonce-facts li:last-child{font-weight:700;color:var(--primary-dark,#24382b)}
-.explorer-person-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:.78rem;font-weight:700;color:#2F6B45}
-.explorer-person-rating{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:.82rem;font-weight:700;color:#8A6A18}
+/* Annonce card: pastel badge, short title, location + budget, then optional date.
+   The full description belongs to the detail surface, never the card. */
+.explorer-annonce{gap:14px;padding:22px;border-radius:18px;background:#FFFCF7;box-shadow:0 1px 0 #fff inset,0 10px 28px #24382b0a}
+.explorer-annonce-head{align-items:flex-start;gap:12px}
+.explorer-annonce-labels{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:1;min-width:0}
+.explorer-annonce-title{font-size:1.22rem;font-weight:800;line-height:1.32;letter-spacing:-.02em;color:#24382b}
+.explorer-annonce-taxonomy{flex:0 1 auto;max-width:100%;font-size:.78rem;font-weight:700;letter-spacing:0;text-transform:none;color:#6F5A2A;background:#F6EEDD;border:1px solid #E5D4B0;border-radius:999px;padding:5px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.explorer-annonce-age{flex-shrink:0;font-size:.74rem;font-weight:600;color:#6B7568;background:transparent;padding:0;white-space:nowrap}
+.explorer-annonce-facts{list-style:none;margin:0;padding:14px 14px;display:flex;flex-direction:column;gap:10px;font-size:.92rem;color:#42504a;background:#FAF7F2;border:1px solid #EDE6DA;border-radius:14px}
+.explorer-annonce-fact{display:flex;align-items:flex-start;gap:10px;min-width:0;line-height:1.45}
+.explorer-annonce-fact .explorer-fact-text{min-width:0;overflow-wrap:anywhere}
+.explorer-annonce-fact .explorer-fact-icon{flex-shrink:0;width:1.25rem;margin-top:.12rem;text-align:center;font-size:1.05rem;color:#4A7C59;line-height:1}
+.explorer-fact-location .explorer-fact-text{font-weight:650;color:#2d4034}
+.explorer-fact-price .explorer-fact-text{font-size:1.02rem;font-weight:800;color:#6F5A2A;letter-spacing:-.01em}
+.explorer-fact-date .explorer-fact-text{font-size:.86rem;color:#5E6B62}
+.explorer-annonce-author{margin-top:2px;padding-top:12px;border-top:1px solid #EDE6DA;font-size:.84rem;color:#5E6B62}
+.explorer-annonce-author img{width:36px;height:36px}
+.explorer-person-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:.74rem;font-weight:700;color:#2F6B45}
+.explorer-person-rating{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:.78rem;font-weight:700;color:#8A6A18}
 .explorer-person-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Name, badge and rating share the author line and wrap together on narrow cards. */
 .explorer-annonce .explorer-person{flex-wrap:wrap;gap:6px 10px}
+.explorer-annonce-actions{flex-direction:column;align-items:stretch;gap:10px;padding-top:6px}
+.explorer-annonce-actions .btn{width:100%;min-height:48px;font-weight:700;font-size:.95rem;border-radius:14px}
+.explorer-annonce-actions .btn-primary{box-shadow:0 6px 18px #c9a24a33!important}
+.explorer-annonce-actions .explorer-btn-lyanner{background:#fff;border-color:#D3E0D6;color:#35583F}
+@media(min-width:720px){.explorer-annonce-actions{flex-direction:row}.explorer-annonce-actions .btn{flex:1}}
 .explorer-card-actions{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:4px;flex-wrap:wrap}
 .explorer-card-actions .btn{flex:1;justify-content:center;font-size:.9rem;padding:10px}
 .explorer-state{grid-column:1/-1;padding:48px 20px;text-align:center;background:#fff;border-radius:16px}

@@ -69,15 +69,15 @@ test('The card carries taxonomy, age, short title and one fact per line, never t
   await expect(facts.nth(0)).toContainText('Lieu : Le Gosier');
   await expect(facts.nth(0)).toContainText('km');
   await expect(facts.nth(0)).toHaveAttribute('title', 'Distance approximative entre communes');
-  await expect(facts.nth(1)).toContainText('Sam. 3 oct. · 18h');
-  await expect(facts.nth(2)).toContainText('150 – 300 €');
+  await expect(facts.nth(1)).toContainText('150 – 300 €');
+  await expect(facts.nth(2)).toContainText('Sam. 3 oct. · 18h');
 
   await expect(card.locator('.explorer-person-badge')).toHaveText('Pro vérifié');
   await expect(card.locator('.explorer-person-rating')).toContainText('4,8 (12)');
 
   // The long description belongs to the detail surface only.
   await expect(card).not.toContainText('trois heures sur place');
-  await expect(card.getByRole('button', { name: 'Détails', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: "Voir l'annonce", exact: true })).toBeVisible();
   await expect(card.getByRole('button', { name: 'Lyanner', exact: true })).toBeVisible();
 });
 
@@ -104,15 +104,15 @@ test('A record without a real date, price or rating drops those lines instead of
 test('A legacy budget of zero reads as a quote, never as a free job', async ({ page }) => {
   const row = enrichedRequest({ id: '12121212-3434-5656-7878-909090909090', price_mode: null, budget: 0, budget_max: null });
   await openWithStub(page, [row]);
-  const facts = page.locator(`[data-request-id="${row.id}"] .explorer-annonce-facts li`);
-  await expect(facts.last()).toContainText('Prix : Sur devis');
-  await expect(facts.last()).not.toContainText('0 €');
+  const price = page.locator(`[data-request-id="${row.id}"] .explorer-fact-price`);
+  await expect(price).toContainText('Prix : Sur devis');
+  await expect(price).not.toContainText('0 €');
 });
 
 test('Détails reveals the complete description and the structured facts', async ({ page }) => {
   const row = enrichedRequest();
   await openWithStub(page, [row], { preciseFix: ABYMES });
-  await page.locator(`[data-request-id="${row.id}"]`).getByRole('button', { name: 'Détails', exact: true }).click();
+  await page.locator(`[data-request-id="${row.id}"]`).getByRole('button', { name: "Voir l'annonce", exact: true }).click();
 
   await expect(page.locator('#lyannDetailTitle')).toHaveText(row.title);
   await expect(page.locator('#lyannDetailAge')).toContainText('il y a 23 min');
