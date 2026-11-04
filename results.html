@@ -23,6 +23,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261027v26">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
+    <link rel="stylesheet" href="needs-map.css?v=20261104a">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -213,10 +214,15 @@
                 <button id="explorerFiltersButton" class="btn btn-outline" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Filtres et zone</button>
             </div>
             <div id="explorerActiveFilters" class="explorer-active-filters" aria-label="Filtres actifs"></div>
+            <div id="explorerViewToggle" class="explorer-view-toggle" role="group" aria-label="Affichage des annonces" hidden>
+                <button type="button" data-view="list" class="is-active" aria-pressed="true"><i class="ph ph-list-bullets" aria-hidden="true"></i> Liste</button>
+                <button type="button" data-view="map" aria-pressed="false"><i class="ph ph-map-trifold" aria-hidden="true"></i> Carte</button>
+            </div>
             <div class="explorer-results-heading">
                 <button class="explorer-publish btn lyann-cta-primary" type="button" hidden><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>
                 <p id="explorerSummary" role="status" aria-live="polite"></p>
             </div>
+            <div id="explorerMap" class="explorer-map" hidden></div>
             <div id="explorerResults" class="explorer-grid" aria-busy="true"></div>
             <p id="explorerRanking" class="explorer-ranking">Annonces les plus récentes en premier.</p>
         </section>
@@ -1251,6 +1257,7 @@
     <script src="annonce-format.js?v=20260922g"></script>
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20261019-drom5"></script>
+    <script src="needs-map.js?v=20261104a"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
     <script src="explorer-ui.js?v=20261025skel" defer></script>

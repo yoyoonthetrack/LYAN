@@ -1,0 +1,272 @@
+/* Carte des besoins V1 — bascule Liste / Carte et carte par commune. */
+
+#explorerResults[hidden],
+#explorerRanking[hidden],
+#explorerMap[hidden],
+.explorer-view-toggle[hidden],
+.needs-map [hidden] {
+    display: none !important;
+}
+
+.explorer-view-toggle {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    margin: 4px 0 12px;
+    border-radius: 999px;
+    border: 1px solid #E5EAE3;
+    background: #FFFFFF;
+}
+
+.explorer-view-toggle button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: #35583F;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.explorer-view-toggle button.is-active {
+    background: #1B3B2B;
+    color: #FFFFFF;
+}
+
+.explorer-view-toggle button:active { transform: scale(0.98); }
+
+.explorer-view-toggle button:focus-visible,
+.needs-map button:focus-visible,
+.needs-map-pin:focus-visible .needs-map-pin-face {
+    outline: 3px solid #E5B345;
+    outline-offset: 2px;
+}
+
+.explorer-map { scroll-margin-top: 80px; }
+
+.needs-map {
+    position: relative;
+    isolation: isolate;
+    margin: 0 0 16px;
+}
+
+.needs-map-summary {
+    margin: 0 0 8px;
+    color: #42504a;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.needs-map-stage {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #E5EAE3;
+    border-radius: 18px;
+    background: #EEF3EA;
+}
+
+.needs-map-canvas {
+    width: 100%;
+    height: clamp(420px, 64vh, 640px);
+    background: #EEF3EA;
+}
+
+.needs-map-canvas .leaflet-bar a.leaflet-control-zoom-in,
+.needs-map-canvas .leaflet-bar a.leaflet-control-zoom-out {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    line-height: 1;
+    font-size: 22px;
+    color: #1B3B2B;
+}
+
+.needs-map-basemap-notice {
+    position: absolute;
+    z-index: 800;
+    left: 70px;
+    top: 12px;
+    max-width: calc(100% - 90px);
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #1B3B2B;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 2px 10px rgba(27, 59, 43, 0.12);
+}
+
+.needs-map-basemap-notice button {
+    min-height: 32px;
+    border: 0;
+    background: transparent;
+    color: #35583F;
+    font: inherit;
+    font-weight: 800;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.needs-map-pin { background: none; border: 0; }
+
+.needs-map-pin-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 3px solid #FFFFFF;
+    border-radius: 50%;
+    background: #1B3B2B;
+    color: #FFFFFF;
+    font-size: 1rem;
+    font-weight: 800;
+    box-shadow: 0 3px 10px rgba(27, 59, 43, 0.35);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.needs-map-pin.is-multi .needs-map-pin-face { background: #35583F; }
+
+.needs-map-pin.is-selected .needs-map-pin-face {
+    background: #E5B345;
+    color: #1B3B2B;
+    transform: scale(1.14);
+}
+
+.needs-map-panel {
+    position: absolute;
+    z-index: 900;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 56%;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    border-radius: 18px 18px 0 0;
+    background: #FFFFFF;
+    box-shadow: 0 -6px 24px rgba(27, 59, 43, 0.18);
+    overflow: hidden;
+}
+
+.needs-map-panel:focus { outline: none; }
+
+.needs-map-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.needs-map-panel-title { margin: 0; font-size: 1.1rem; color: #1B3B2B; }
+.needs-map-panel-count { margin: 2px 0 0; color: #5A6E5F; font-size: 0.88rem; }
+
+.needs-map-close {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: #F2F5F0;
+    color: #1B3B2B;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.needs-map-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.needs-map-item {
+    display: grid;
+    gap: 4px;
+    padding: 12px 0;
+    border-top: 1px solid #E5EAE3;
+}
+
+.needs-map-cat {
+    margin: 0;
+    color: #6F5A2A;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.needs-map-item-title { margin: 0; font-size: 1rem; color: #1B3B2B; }
+
+.needs-map-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0;
+    color: #42504a;
+    font-size: 0.9rem;
+}
+
+.needs-map-price { font-weight: 800; color: #1B3B2B; }
+
+.needs-map-open { justify-self: start; min-height: 44px; margin-top: 6px; }
+
+.needs-map-state {
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    padding: 36px 20px;
+    border: 1px solid #E5EAE3;
+    border-radius: 18px;
+    background: #F7F4EA;
+    text-align: center;
+    color: #5A6E5F;
+}
+
+.needs-map-state p { margin: 0; line-height: 1.5; }
+.needs-map-state-title { color: #1B3B2B; font-weight: 800; font-size: 1.05rem; }
+
+.needs-map-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.needs-map-actions .btn { min-height: 44px; }
+
+@media (min-width: 800px) {
+    .needs-map-canvas { height: clamp(520px, 70vh, 680px); }
+
+    .needs-map-panel {
+        left: auto;
+        top: 12px;
+        right: 12px;
+        bottom: 12px;
+        width: min(360px, 42%);
+        max-height: none;
+        padding-bottom: 14px;
+        border-radius: 16px;
+        box-shadow: 0 8px 28px rgba(27, 59, 43, 0.2);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .needs-map-pin-face,
+    .explorer-view-toggle button { transition: none; }
+}

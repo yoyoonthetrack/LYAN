@@ -631,6 +631,22 @@ button.discover-card {
     padding: 16px;
 }
 
+.discover-map-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 12px;
+    padding: 0 20px;
+    text-decoration: none;
+}
+
+.discover-map-link:focus-visible {
+    outline: 3px solid #E5B345;
+    outline-offset: 2px;
+}
+
 .discover-map-status {
     margin: 12px 0 0;
 }

@@ -25,6 +25,10 @@
                 }
             } catch (_) {}
         }
+        // "Liste / Carte" only exists for annonces; the same filters feed both.
+        let view = params.get('view') === 'map' ? 'map' : 'list';
+        let needsMap = null;
+        let revealMap = view === 'map';
         let leaves = [], records = [], revision = 0, savedArea = '';
         let showAllTrades = false;
         // The delay filter offers the same date modes the cards display, so a chosen
@@ -233,14 +237,54 @@
         function syncUrl() {
             const next = new URLSearchParams();
             next.set('mode', mode);
+            if (mode === 'annonces' && view === 'map') next.set('view', 'map');
             Object.entries(filters).forEach(([key, value]) => {
                 if (value || key === 'area') next.set(key, value);
             });
             history.replaceState(null, '', `${location.pathname}?${next}`);
             try { sessionStorage.setItem('lyann-explorer-filters:' + mode, JSON.stringify(filters)); } catch (_) {}
         }
+        const mapAvailable = () => mode === 'annonces' && view === 'map' && Boolean(window.LYANN_NEEDS_MAP);
+        function setSurface(showMap) {
+            const host = $('explorerMap');
+            if (host) host.hidden = !showMap;
+            $('explorerResults').hidden = showMap;
+            $('explorerRanking').hidden = showMap;
+        }
+        function destroyNeedsMap() {
+            needsMap?.destroy();
+            needsMap = null;
+        }
+        function ensureNeedsMap() {
+            if (!needsMap) {
+                needsMap = window.LYANN_NEEDS_MAP.mount($('explorerMap'), {
+                    onOpen: row => window.openLyannDetailModal(row.id, row),
+                    onShowList: () => setView('list'),
+                    onReset: () => reset()
+                });
+            }
+            return needsMap;
+        }
+        function setView(next) {
+            const target = next === 'map' && window.LYANN_NEEDS_MAP ? 'map' : 'list';
+            if (mode !== 'annonces' || target === view) return;
+            view = target;
+            revealMap = view === 'map';
+            if (view === 'list') destroyNeedsMap();
+            syncControls(); syncUrl();
+            render();
+        }
         function syncControls() {
             root.dataset.mode = mode;
+            const toggle = $('explorerViewToggle');
+            if (toggle) {
+                toggle.hidden = mode !== 'annonces' || !window.LYANN_NEEDS_MAP;
+                toggle.querySelectorAll('button[data-view]').forEach(button => {
+                    const active = button.dataset.view === (mapAvailable() ? 'map' : 'list');
+                    button.classList.toggle('is-active', active);
+                    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+                });
+            }
             document.body.dataset.explorerMode = mode;
             const title = $('explorerTitle');
             const subtitle = $('explorerSubtitle');
@@ -341,6 +385,21 @@
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             const container = $('explorerResults');
             window.LYANN_SKELETON?.clear(container);
+            if (mapAvailable()) {
+                // Same filtered, already-authorised results as the list: the map never widens them.
+                setSurface(true);
+                container.replaceChildren();
+                ensureNeedsMap().update({ rows: results, leaves });
+                if (revealMap) {
+                    // Bring the map under the reader's eyes once, after a deep link or a toggle.
+                    revealMap = false;
+                    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+                    requestAnimationFrame(() => $('explorerMap')?.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' }));
+                }
+                return;
+            }
+            setSurface(false);
+            destroyNeedsMap();
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
             if (!results.length) {
                 container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>' : ''}</div>${refineCard()}`;
@@ -355,7 +414,12 @@
             const token = ++revision;
             syncControls();
             $('explorerResults').setAttribute('aria-busy', 'true');
-            if (!quiet) {
+            if (!quiet && mapAvailable()) {
+                setSurface(true);
+                ensureNeedsMap().setLoading();
+                $('explorerSummary').textContent = '';
+            } else if (!quiet) {
+                setSurface(false);
                 $('explorerResults').dataset.state = 'LOADING';
                 window.LYANN_SKELETON?.show($('explorerResults'), mode === 'annonces' ? 'annonce' : 'profile', 4);
                 $('explorerSummary').textContent = '';
@@ -370,6 +434,9 @@
                 render();
             } catch (error) {
                 if (token !== revision) return;
+                // A failed load is reported by the list surface, with its retry button.
+                destroyNeedsMap();
+                setSurface(false);
                 window.LYANN_SKELETON?.clear($('explorerResults'));
                 $('explorerResults').dataset.state = 'ERROR';
                 $('explorerResults').innerHTML = '<div class="explorer-state" role="alert"><h2>Impossible de charger les résultats.</h2><p>La recherche est momentanément indisponible. Réessayez dans un instant.</p><button class="btn btn-primary" data-action="retry">Réessayer</button></div>';
@@ -397,6 +464,7 @@
                 renderCategoryPills();
                 return;
             }
+            if (button.dataset.view && button.closest('#explorerViewToggle')) { setView(button.dataset.view); return; }
             if (button.dataset.mode) { mode = button.dataset.mode; showAllTrades = false; search(); return; }
             if (button.dataset.remove) {
                 filters[button.dataset.remove] = '';
