@@ -33,6 +33,8 @@ assert.match(router, /register\('home', \(\) => hardNavigate\('discover\.html'\)
 assert.match(router, /register\('bienvenue'/);
 assert.match(router, /hardNavigate\('discover\.html#login'\)/);
 assert.match(router, /discover\.html\?\$\{params\.toString\(\)\}/);
+assert.match(router, /dest === lastHardNavTarget && now - lastHardNavAt < 450/);
+assert.match(router, /if \(dest === here\) return true/);
 
 assert.match(shell, /isLegacyEntry/);
 assert.match(shell, /replace\('discover\.html'/);

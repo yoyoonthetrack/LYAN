@@ -18,6 +18,16 @@
   }
 
   let lastHardNavAt = 0;
+  let lastHardNavTarget = '';
+
+  function normalizeNavTarget(target) {
+    try {
+      const url = new URL(target, window.location.href);
+      return url.pathname + url.search + (url.hash || '');
+    } catch (_) {
+      return String(target || '');
+    }
+  }
 
   function releasePageScrollLock() {
     document.documentElement.classList.remove('lyann-scroll-lock');
@@ -49,20 +59,27 @@
 
   function hardNavigate(target) {
     if (!target) return false;
+    const dest = normalizeNavTarget(target);
+    const here = window.location.pathname + window.location.search + (window.location.hash || '');
+    if (dest === here) return true;
     const now = Date.now();
-    if (now - lastHardNavAt < 450) return false;
+    // Only dedupe identical destinations; rapid tab switches must not be swallowed.
+    if (dest === lastHardNavTarget && now - lastHardNavAt < 450) return false;
     lastHardNavAt = now;
+    lastHardNavTarget = dest;
     releasePageScrollLock();
     document.querySelectorAll('video').forEach((video) => {
       try { video.pause(); } catch (_) {}
     });
     const goNow = () => { window.location.assign(target); };
+    const native = window.Capacitor?.isNativePlatform?.() === true
+      || document.documentElement?.classList?.contains('is-native-app');
     try {
       // Overlay fade — do not touch body opacity/transform (breaks fixed chat).
       const veil = ensurePageVeil();
       veil.classList.add('is-on');
     } catch (_) {}
-    window.setTimeout(goNow, 140);
+    window.setTimeout(goNow, native ? 0 : 140);
     return true;
   }
 

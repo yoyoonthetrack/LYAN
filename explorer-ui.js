@@ -394,7 +394,12 @@
                     // Bring the map under the reader's eyes once, after a deep link or a toggle.
                     revealMap = false;
                     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                    requestAnimationFrame(() => $('explorerMap')?.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' }));
+                    const native = window.Capacitor?.isNativePlatform?.() === true
+                        || document.body?.classList?.contains('is-native-app');
+                    requestAnimationFrame(() => $('explorerMap')?.scrollIntoView({
+                        block: 'start',
+                        behavior: calm || native ? 'auto' : 'smooth'
+                    }));
                 }
                 return;
             }
