@@ -23,7 +23,8 @@
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261027v26">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
-    <link rel="stylesheet" href="needs-map.css?v=20261104a">
+    <link rel="stylesheet" href="needs-map.css?v=20261105ux">
+    <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261105ux">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -160,10 +161,10 @@
                         <span class="badge-bubble">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="#3D7D54"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><circle cx="8" cy="12" r="1.2" fill="#fff"/><circle cx="12" cy="12" r="1.2" fill="#fff"/><circle cx="16" cy="12" r="1.2" fill="#fff"/></svg>
                         </span>
-                        <span class="badge-text">DES BESOINS, DES SOLUTIONS</span>
+                        <span class="badge-text">ANNONCES</span>
                     </div>
-                    <h1 class="banner-title annonces-title">Annonces</h1>
-                    <p class="banner-subtitle annonces-subtitle">Un besoin ? Trouvez la solution dans votre commune.</p>
+                    <h1 class="banner-title annonces-title">Des voisins ont besoin de vous</h1>
+                    <p class="banner-subtitle annonces-subtitle">Parcourez les demandes des habitants et proposez vos services.</p>
                 </div>
                 <div class="banner-illustration">
                     <img src="assets/universe/annonces-hero-character@2x.webp" alt="Annonces" width="344" height="236">
@@ -201,29 +202,38 @@
             </div>
         </header>
         <section id="explorerPanel" aria-labelledby="explorerTitle">
-            <form id="explorerSearchForm" class="explorer-search" role="search">
-                <label class="sr-only" for="explorerSearchInput">Rechercher</label>
-                <input id="explorerSearchInput" type="search" placeholder="Nom, activité ou commune" autocomplete="off">
-                <button type="submit" class="btn lyann-cta-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
-            </form>
-            <div class="explorer-tools">
-                <div id="explorerCategoryPills" class="lyann-pills" aria-label="Catégories"></div>
+            <div class="explorer-search-row">
+                <form id="explorerSearchForm" class="explorer-search" role="search">
+                    <label class="sr-only" for="explorerSearchInput">Rechercher</label>
+                    <input id="explorerSearchInput" type="search" placeholder="Nom, activité ou commune" autocomplete="off">
+                    <button type="submit" class="btn lyann-cta-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
+                </form>
+                <button type="button" id="explorerFiltersIcon" class="explorer-filters-icon explorer-annonces-list-only" aria-label="Filtres et zone" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button>
+            </div>
+            <div class="explorer-tools explorer-tools--annonces explorer-annonces-list-only">
+                <div class="explorer-category-rail-wrap">
+                    <div id="explorerCategoryPills" class="lyann-pills" aria-label="Catégories"></div>
+                </div>
                 <label class="explorer-category lyann-category-native">Catégorie
                     <select id="explorerCategory"><option value="">Toutes les catégories</option></select>
                 </label>
-                <button id="explorerFiltersButton" class="btn btn-outline" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Filtres et zone</button>
+                <button id="explorerFiltersButton" class="btn btn-outline explorer-filters-inline" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Filtres et zone</button>
             </div>
-            <div id="explorerActiveFilters" class="explorer-active-filters" aria-label="Filtres actifs"></div>
+            <div id="explorerActiveFilters" class="explorer-active-filters explorer-annonces-list-only" aria-label="Filtres actifs"></div>
             <div id="explorerViewToggle" class="explorer-view-toggle" role="group" aria-label="Affichage des annonces" hidden>
                 <button type="button" data-view="list" class="is-active" aria-pressed="true"><i class="ph ph-list-bullets" aria-hidden="true"></i> Liste</button>
                 <button type="button" data-view="map" aria-pressed="false"><i class="ph ph-map-trifold" aria-hidden="true"></i> Carte</button>
             </div>
-            <div class="explorer-results-heading">
-                <button class="explorer-publish btn lyann-cta-primary" type="button" hidden><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>
+            <div class="explorer-annonces-meta explorer-annonces-list-only">
                 <p id="explorerSummary" role="status" aria-live="polite"></p>
             </div>
-            <div id="explorerMap" class="explorer-map" hidden></div>
-            <div id="explorerResults" class="explorer-grid" aria-busy="true"></div>
+            <div class="explorer-results-heading explorer-annonces-list-only">
+                <button class="explorer-publish btn lyann-cta-primary" type="button" hidden><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>
+            </div>
+            <div class="explorer-map-shell">
+                <div id="explorerMap" class="explorer-map" hidden></div>
+            </div>
+            <div id="explorerResults" class="explorer-grid explorer-annonces-list-only" aria-busy="true"></div>
             <p id="explorerRanking" class="explorer-ranking">Annonces les plus récentes en premier.</p>
         </section>
         <dialog id="explorerFilters" class="explorer-filter-sheet" aria-labelledby="explorerFilterTitle">
@@ -1260,7 +1270,7 @@
     <script src="needs-map.js?v=20261104a"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
-    <script src="explorer-ui.js?v=20261025skel" defer></script>
+    <script src="explorer-ui.js?v=20261105ux" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

@@ -31,6 +31,8 @@
         let revealMap = view === 'map';
         let leaves = [], records = [], revision = 0, savedArea = '';
         let showAllTrades = false;
+        let listScrollY = 0;
+        let lastSearchArea = filters.area;
         // The delay filter offers the same date modes the cards display, so a chosen
         // option always matches what a reader sees on the results.
         const dateModeLabel = value => window.LYANN_ANNONCE_FORMAT?.dateModeLabel(value) || value;
@@ -84,7 +86,7 @@
             const distanceKnown = Boolean(window.LYANN_GEO?.referencePoint?.());
             // The card carries the short title only; the full description the author
             // wrote is the payload of the Détails surface.
-            return `<article class="explorer-card explorer-annonce" data-request-id="${escape(r.id)}">
+            return `<article class="explorer-card explorer-annonce explorer-annonce-compact" data-request-id="${escape(r.id)}">
                 <div class="explorer-card-top explorer-annonce-head">
                     <div class="explorer-annonce-labels">
                         ${showType ? typePill('annonce') : ''}
@@ -100,7 +102,7 @@
                     ${annonceFact('ph-calendar-blank', 'Date', format()?.dateLabel(r), '', 'explorer-fact-date')}
                 </ul>
                 <div class="explorer-person explorer-person-zone explorer-annonce-author">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
-                <div class="explorer-card-actions explorer-annonce-actions"><button class="btn btn-primary" data-action="detail" data-id="${escape(r.id)}">Voir l'annonce</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
+                <div class="explorer-card-actions explorer-annonce-actions"><button class="btn btn-primary" data-action="detail" data-id="${escape(r.id)}">Voir l'annonce →</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
             </article>`;
         }
         function formatDisplayName(p) {
@@ -265,14 +267,22 @@
             }
             return needsMap;
         }
+        function applyMapViewLayout() {
+            document.body.classList.toggle('explorer-annonces-map-view', mapAvailable());
+            root.dataset.explorerView = mode === 'annonces' ? view : 'list';
+        }
         function setView(next) {
             const target = next === 'map' && window.LYANN_NEEDS_MAP ? 'map' : 'list';
             if (mode !== 'annonces' || target === view) return;
+            if (view === 'list') listScrollY = window.scrollY;
             view = target;
-            revealMap = view === 'map';
-            if (view === 'list') destroyNeedsMap();
-            syncControls(); syncUrl();
-            render();
+            revealMap = false;
+            syncControls();
+            syncUrl();
+            render({ quiet: true });
+            if (view === 'list' && listScrollY) {
+                requestAnimationFrame(() => window.scrollTo({ top: listScrollY, behavior: 'auto' }));
+            }
         }
         function syncControls() {
             root.dataset.mode = mode;
@@ -289,7 +299,7 @@
             const title = $('explorerTitle');
             const subtitle = $('explorerSubtitle');
             const copy = mode === 'annonces'
-                ? { title: 'Annonces', subtitle: 'Publiez un besoin et recevez des réponses près de chez vous.', art: 'annonces' }
+                ? { title: 'Des voisins ont besoin de vous', subtitle: 'Parcourez les demandes des habitants et proposez vos services.', art: 'annonces' }
                 : { title: 'Lyanneurs', subtitle: 'Des talents et des pros tout près de chez vous.', art: 'lyanneurs' };
             if (title) title.textContent = copy.title;
             if (subtitle) subtitle.textContent = copy.subtitle;
@@ -310,7 +320,7 @@
                 link.classList.toggle('active', link.getAttribute('data-explorer-nav') === mode);
             });
             $('explorerPanel').setAttribute('aria-labelledby', 'explorerTitle');
-            $('explorerSearchInput').placeholder = mode === 'annonces' ? 'De quoi avez-vous besoin ?' : 'Nom, activité ou commune';
+            $('explorerSearchInput').placeholder = mode === 'annonces' ? 'Rechercher une mission…' : 'Nom, activité ou commune';
             const publishBtn = root.querySelector('.explorer-results-heading .explorer-publish');
             if (publishBtn) publishBtn.hidden = mode === 'lyanneurs';
             root.querySelector('label[for="explorerSearchInput"]').textContent = `Rechercher dans les ${mode}`;
@@ -346,6 +356,12 @@
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
             }
             $('explorerActiveFilters').innerHTML = chips.join('');
+            const filterIcon = $('explorerFiltersIcon');
+            if (filterIcon) {
+                const active = chips.length > 0 || Boolean(filters.category || filters.service || filters.urgency || filters.budget);
+                filterIcon.classList.toggle('has-active-filters', active);
+                filterIcon.hidden = mode !== 'annonces';
+            }
         }
         function renderCategoryPills() {
             const host = $('explorerCategoryPills');
@@ -354,7 +370,10 @@
             const options = [...select.options];
             const selected = options.find((option) => (option.value || '') === (filters.category || ''));
             let visible = options;
-            if (mode === 'lyanneurs' && !showAllTrades) {
+            if (mode === 'annonces') {
+                visible = options.slice(0, 4);
+                if (selected && !visible.includes(selected)) visible = [options[0], selected].filter(Boolean);
+            } else if (mode === 'lyanneurs' && !showAllTrades) {
                 visible = options.slice(0, 3);
                 if (selected && !visible.includes(selected)) visible = [options[0], selected].filter(Boolean);
             }
@@ -364,9 +383,12 @@
                 const active = (filters.category || '') === value;
                 return `<button type="button" class="lyann-pill${active ? ' is-active' : ''}" data-category="${escape(value)}" aria-pressed="${active ? 'true' : 'false'}">${escape(label)}</button>`;
             }).join('');
-            const more = mode === 'lyanneurs' && !showAllTrades && options.length > 3
-                ? `<button type="button" class="lyann-pill lyann-pill-more" data-action="more-trades">Voir plus</button>`
-                : '';
+            let more = '';
+            if (mode === 'annonces') {
+                more = '<button type="button" class="lyann-pill lyann-pill-more" data-action="all-categories">Toutes les catégories</button>';
+            } else if (mode === 'lyanneurs' && !showAllTrades && options.length > 3) {
+                more = '<button type="button" class="lyann-pill lyann-pill-more" data-action="more-trades">Voir plus</button>';
+            }
             host.innerHTML = pills + more;
         }
         function refineCard() {
@@ -375,8 +397,10 @@
             }
             return `<article class="explorer-refine"><h2>Vous cherchez un talent en particulier ?</h2><p>Affinez votre recherche par métier, commune ou disponibilité.</p><button type="button" class="btn lyann-cta-primary" data-action="refine">Affiner ma recherche</button></article>`;
         }
-        function render() {
-            syncControls(); syncUrl();
+        function render(options = {}) {
+            syncControls();
+            syncUrl();
+            applyMapViewLayout();
             const results = repo.discover(records, leaves, filters, mode);
             const countLabel = mode === 'annonces'
                 ? (results.length <= 1 ? 'annonce' : 'annonces')
@@ -389,34 +413,39 @@
                 // Same filtered, already-authorised results as the list: the map never widens them.
                 setSurface(true);
                 container.replaceChildren();
-                ensureNeedsMap().update({ rows: results, leaves });
-                if (revealMap) {
-                    // Bring the map under the reader's eyes once, after a deep link or a toggle.
+                ensureNeedsMap().update({
+                    rows: results,
+                    leaves,
+                    area: filters.area,
+                    reframe: options.reframe === true
+                });
+                if (revealMap && !document.body.classList.contains('explorer-annonces-map-view')) {
                     revealMap = false;
                     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-                    const native = window.Capacitor?.isNativePlatform?.() === true
-                        || document.body?.classList?.contains('is-native-app');
                     requestAnimationFrame(() => $('explorerMap')?.scrollIntoView({
                         block: 'start',
-                        behavior: calm || native ? 'auto' : 'smooth'
+                        behavior: calm ? 'auto' : 'smooth'
                     }));
+                } else if (revealMap) {
+                    revealMap = false;
                 }
                 return;
             }
             setSurface(false);
-            destroyNeedsMap();
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
             if (!results.length) {
                 container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>' : ''}</div>${refineCard()}`;
             } else {
                 const cards = results.map(mode === 'annonces' ? requestCard : profileCard);
-                cards.splice(Math.min(5, cards.length), 0, refineCard());
+                if (mode !== 'annonces') cards.splice(Math.min(5, cards.length), 0, refineCard());
                 container.innerHTML = cards.join('');
             }
             window.syncFavoriteButtonStates?.();
         }
         async function search(force = false, quiet = false) {
             const token = ++revision;
+            const areaChanged = filters.area !== lastSearchArea;
+            if (!quiet) lastSearchArea = filters.area;
             syncControls();
             $('explorerResults').setAttribute('aria-busy', 'true');
             if (!quiet && mapAvailable()) {
@@ -436,7 +465,7 @@
                 if (token !== revision) return;
                 records = data; leaves = taxonomy;
                 if (mode === 'annonces') $('explorerUrgency').innerHTML = '<option value="">Tous les délais</option>' + [...new Set(data.map(r => format()?.dateMode(r)).filter(Boolean))].map(u => `<option value="${escape(u)}">${escape(dateModeLabel(u))}</option>`).join('');
-                render();
+                render({ quiet, reframe: !quiet && areaChanged });
             } catch (error) {
                 if (token !== revision) return;
                 // A failed load is reported by the list surface, with its retry button.
@@ -469,8 +498,25 @@
                 renderCategoryPills();
                 return;
             }
+            if (button.dataset.action === 'all-categories') {
+                syncControls();
+                $('explorerFilters').showModal();
+                $('explorerCategory')?.focus();
+                return;
+            }
             if (button.dataset.view && button.closest('#explorerViewToggle')) { setView(button.dataset.view); return; }
-            if (button.dataset.mode) { mode = button.dataset.mode; showAllTrades = false; search(); return; }
+            if (button.dataset.mode) {
+                const nextMode = button.dataset.mode;
+                if (mode === 'annonces' && nextMode !== 'annonces') {
+                    destroyNeedsMap();
+                    view = 'list';
+                    applyMapViewLayout();
+                }
+                mode = nextMode;
+                showAllTrades = false;
+                search();
+                return;
+            }
             if (button.dataset.remove) {
                 filters[button.dataset.remove] = '';
                 if (button.dataset.remove === 'territory') filters.commune = '';
@@ -517,7 +563,9 @@
             search();
         });
         $('explorerCategory').addEventListener('change', () => { filters.category = $('explorerCategory').value; filters.service = ''; search(); });
-        $('explorerFiltersButton').addEventListener('click', () => { syncControls(); $('explorerFilters').showModal(); });
+        const openFilters = () => { syncControls(); $('explorerFilters').showModal(); };
+        $('explorerFiltersButton').addEventListener('click', openFilters);
+        $('explorerFiltersIcon')?.addEventListener('click', openFilters);
         $('explorerFiltersClose').addEventListener('click', () => $('explorerFilters').close());
         const readFilterSheet = () => {
             const keys = mode === 'annonces' ? ['service','area','urgency','budget'] : ['service','territory','commune'];

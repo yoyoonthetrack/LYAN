@@ -14,6 +14,13 @@
 
     const root = typeof window !== 'undefined' ? window : globalThis;
     const MAX_PINS = 120;
+    const TERRITORY_BOUNDS = Object.freeze({
+        guadeloupe: { south: 15.83, north: 16.52, west: -61.82, east: -61.00 },
+        martinique: { south: 14.38, north: 14.90, west: -61.24, east: -60.81 },
+        guyane: { south: 2.10, north: 5.78, west: -54.60, east: -51.60 },
+        reunion: { south: -21.40, north: -20.87, west: 55.20, east: 55.84 },
+        'saint-martin': { south: 18.00, north: 18.13, west: -63.16, east: -62.97 }
+    });
     const VENDOR = Object.freeze({
         leafletCss: 'vendor/leaflet/leaflet.css?v=1.9.4',
         maplibreCss: 'vendor/maplibre/maplibre-gl.css?v=5.6.1',
@@ -83,6 +90,16 @@
         return `${count} annonce${count > 1 ? 's' : ''}`;
     }
 
+    function resolveTerritoryKey(area) {
+        const text = String(area || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        if (text.includes('martinique') || text.includes('(972)')) return 'martinique';
+        if (text.includes('guyane') || text.includes('(973)')) return 'guyane';
+        if (text.includes('reunion') || text.includes('(974)')) return 'reunion';
+        if (text.includes('saint-martin') || text.includes('(978)')) return 'saint-martin';
+        if (text.includes('guadeloupe') || text.includes('(971)')) return 'guadeloupe';
+        return '';
+    }
+
     // Une fiche par annonce : catégorie, titre, commune, prix, action.
     function renderPanel(group, deps = {}) {
         const format = deps.format || {};
@@ -95,10 +112,10 @@
                 ${category ? `<p class="needs-map-cat">${escapeHtml(category)}</p>` : ''}
                 <h4 class="needs-map-item-title">${escapeHtml(title)}</h4>
                 <p class="needs-map-meta"><span>${escapeHtml(group.label)}</span><span class="needs-map-price">${escapeHtml(price)}</span></p>
-                <button type="button" class="btn btn-primary needs-map-open" data-needs-map-open="${escapeHtml(row.id)}">Voir l'annonce</button>
+                <button type="button" class="btn btn-primary needs-map-open" data-needs-map-open="${escapeHtml(row.id)}">Voir l'annonce →</button>
             </li>`;
         }).join('');
-        return `<header class="needs-map-panel-head">
+        return `<div class="needs-map-panel-handle" aria-hidden="true"></div><header class="needs-map-panel-head">
                 <div><h3 class="needs-map-panel-title">${escapeHtml(group.label)}</h3><p class="needs-map-panel-count">${countLabel(group.items.length)}</p></div>
                 <button type="button" class="needs-map-close" data-needs-map-close aria-label="Fermer la liste de ${escapeHtml(group.label)}">×</button>
             </header>
@@ -226,6 +243,8 @@
         let selectedKey = null;
         let paintedSignature = '';
         let framedSignature = '';
+        let userMovedMap = false;
+        let lastTerritoryKey = '';
         const markers = new Map();
 
         host.innerHTML = `<div class="needs-map" data-state="loading">
@@ -325,13 +344,22 @@
             addBasemap(map, canvas, notice);
             markerLayer = L.layerGroup().addTo(map);
             map.on('click', () => { if (selectedKey) closePanel(false); });
+            map.on('dragend', () => { userMovedMap = true; });
+            map.on('zoomend', () => { userMovedMap = true; });
             if (typeof root.ResizeObserver === 'function') {
                 observer = new root.ResizeObserver(() => { if (map && !stage.hidden) map.invalidateSize({ animate: false }); });
                 observer.observe(stage);
             }
         }
 
-        function frame(groups) {
+        function frame(groups, territoryKey) {
+            const L = root.L;
+            const boundsDef = territoryKey && TERRITORY_BOUNDS[territoryKey];
+            if (boundsDef) {
+                const bounds = L.latLngBounds([[boundsDef.south, boundsDef.west], [boundsDef.north, boundsDef.east]]);
+                map.fitBounds(bounds, { maxZoom: 11, animate: false, paddingTopLeft: [16, 16], paddingBottomRight: [16, 16] });
+                return;
+            }
             // Cadre le territoire le plus représenté : mélanger l'Hexagone et
             // l'outre-mer ne doit pas dézoomer sur le monde entier.
             const byCode = new Map();
@@ -341,7 +369,7 @@
             });
             const dominant = [...byCode.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
             const subset = groups.filter((group) => (group.code || String(group.key)) === dominant);
-            const bounds = root.L.latLngBounds(subset.map((group) => [group.lat, group.lng]));
+            const bounds = L.latLngBounds(subset.map((group) => [group.lat, group.lng]));
             if (!bounds.isValid()) return;
             map.fitBounds(bounds.pad(0.25), { maxZoom: 12, animate: false, paddingTopLeft: [24, 24], paddingBottomRight: [24, 24] });
         }
@@ -402,6 +430,15 @@
                 return;
             }
 
+            const territoryKey = resolveTerritoryKey(data.area || '');
+            if (data.reframe === true) {
+                if (territoryKey && territoryKey !== lastTerritoryKey) {
+                    userMovedMap = false;
+                    lastTerritoryKey = territoryKey;
+                } else if (!territoryKey) {
+                    userMovedMap = false;
+                }
+            }
             const signature = result.groups.map((group) => `${group.key}:${group.items.map((row) => row.id).join(',')}`).join('|');
             const note = result.unmapped
                 ? ` · ${result.unmapped} sans commune précise (voir la liste)`
@@ -416,11 +453,11 @@
                 if (signature !== paintedSignature) {
                     paintedSignature = signature;
                     paint(result.groups);
-                    const framing = result.groups.map((group) => group.key).sort().join('|');
-                    if (framing !== framedSignature) {
-                        framedSignature = framing;
-                        frame(result.groups);
-                    }
+                }
+                const framing = territoryKey || result.groups.map((group) => group.key).sort().join('|');
+                if (!userMovedMap && (data.reframe === true || framing !== framedSignature)) {
+                    framedSignature = framing;
+                    frame(result.groups, territoryKey);
                 }
                 // Une commune sélectionnée qui disparaît des filtres referme le panneau ;
                 // sinon la liste de la commune se met à jour.
@@ -489,7 +526,10 @@
         return { setLoading, update: trackedUpdate, destroy, closePanel: () => closePanel(false) };
     }
 
-    const api = Object.freeze({ eligibleRequest, communeOf, groupByCommune, renderPanel, ensureMapLibraries, mount, MAX_PINS });
+    const api = Object.freeze({
+        eligibleRequest, communeOf, groupByCommune, renderPanel, resolveTerritoryKey,
+        ensureMapLibraries, mount, MAX_PINS, TERRITORY_BOUNDS
+    });
     root.LYANN_NEEDS_MAP = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

@@ -143,6 +143,15 @@
     transform: scale(1.14);
 }
 
+.needs-map-panel-handle {
+    flex: none;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: 999px;
+    background: #d8dfd4;
+}
+
 .needs-map-panel {
     position: absolute;
     z-index: 900;
@@ -152,7 +161,7 @@
     display: flex;
     flex-direction: column;
     max-height: 56%;
-    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px));
     border-radius: 18px 18px 0 0;
     background: #FFFFFF;
     box-shadow: 0 -6px 24px rgba(27, 59, 43, 0.18);

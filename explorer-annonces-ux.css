@@ -1,0 +1,297 @@
+/* Annonces — Liste compacte & Carte plein écran (marketplace UX v2) */
+
+.explorer-page[data-mode="annonces"] .lyann-universe-banner.banner-annonces .banner-subtitle {
+    max-width: 18em;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-search-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-search {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-search input {
+    width: 100%;
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 16px;
+    border: 1px solid #e5eae3;
+    background: #fff;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-search .btn.lyann-cta-primary {
+    display: none;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-filters-icon {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    min-height: 48px;
+    padding: 0;
+    border-radius: 14px;
+    border: 1px solid #e5eae3;
+    background: #fff;
+    color: #1b3b2b;
+    position: relative;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-filters-icon.has-active-filters::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e5b345;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-tools--annonces {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-category-rail-wrap {
+    position: relative;
+    min-width: 0;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-category-rail-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 28px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, #faf7f2 85%);
+}
+
+.explorer-page[data-mode="annonces"] #explorerCategoryPills {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px 24px 2px 2px;
+}
+
+.explorer-page[data-mode="annonces"] #explorerCategoryPills::-webkit-scrollbar {
+    display: none;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-category.lyann-category-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.explorer-page[data-mode="annonces"] #explorerFiltersButton.explorer-filters-inline {
+    display: none;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonces-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 4px 0 10px;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonces-meta #explorerSummary {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #5a6e5f;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-results-heading .explorer-publish {
+    display: none !important;
+}
+
+.explorer-page[data-mode="annonces"] #explorerRanking {
+    display: none;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-view-toggle {
+    display: inline-flex;
+    width: 100%;
+    max-width: 100%;
+    justify-content: stretch;
+    margin: 0 0 10px;
+    padding: 4px;
+    background: #fff;
+    border: 1px solid #e5eae3;
+    border-radius: 999px;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-view-toggle button {
+    flex: 1;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-card.explorer-annonce-compact {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid #e8dcc4;
+    background: #fffcf7;
+    box-shadow: 0 4px 16px rgba(36, 56, 43, 0.06);
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonce-compact .explorer-annonce-head {
+    margin: 0;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonce-compact .explorer-annonce-title {
+    font-size: 1.05rem;
+    margin: 0;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonce-compact .explorer-annonce-facts {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 0.82rem;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonce-compact .explorer-annonce-author {
+    display: none;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonce-compact .explorer-annonce-actions {
+    flex-direction: row;
+    padding: 0;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonce-compact .explorer-annonce-actions .btn-primary {
+    flex: 1;
+    min-height: 44px;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-annonce-compact .explorer-btn-lyanner {
+    display: none;
+}
+
+.explorer-page[data-mode="annonces"] .explorer-active-filters:not(:empty) {
+    margin-bottom: 8px;
+}
+
+/* —— Carte plein écran —— */
+
+body.results-page.explorer-annonces-map-view {
+    overflow: hidden;
+    height: 100dvh;
+}
+
+body.results-page.explorer-annonces-map-view .footer {
+    display: none;
+}
+
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] {
+    display: flex;
+    flex-direction: column;
+    max-width: none;
+    margin: 0;
+    padding: calc(72px + env(safe-area-inset-top, 0px)) 12px calc(68px + env(safe-area-inset-bottom, 0px));
+    height: 100dvh;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .lyann-universe-header {
+    display: none;
+}
+
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] #explorerPanel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .explorer-annonces-list-only,
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] #explorerResults,
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .explorer-annonces-meta,
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] #explorerActiveFilters,
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .explorer-category-rail-wrap {
+    display: none !important;
+}
+
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .explorer-map-shell {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .explorer-map {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    scroll-margin: 0;
+}
+
+body.results-page.explorer-annonces-map-view .needs-map,
+body.results-page.explorer-annonces-map-view .needs-map-stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    border-radius: 16px;
+}
+
+body.results-page.explorer-annonces-map-view .needs-map-canvas {
+    flex: 1;
+    min-height: 0;
+    height: auto !important;
+    border-radius: 16px;
+}
+
+body.results-page.explorer-annonces-map-view .needs-map-summary {
+    flex: none;
+    margin: 0 0 6px;
+}
+
+@media (min-width: 800px) {
+    body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+
+    body.results-page.explorer-annonces-map-view .footer {
+        display: block;
+    }
+
+    body.results-page.explorer-annonces-map-view .needs-map-canvas {
+        min-height: 520px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .explorer-page[data-mode="annonces"] .explorer-view-toggle button {
+        transition: none;
+    }
+}
