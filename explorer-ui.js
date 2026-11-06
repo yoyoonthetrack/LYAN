@@ -568,6 +568,9 @@
         }
         function reset() {
             filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:''};
+            mapFamilyFilter = null;
+            mapFamilyDraft = null;
+            closeMapCategorySheet();
             search();
         }
         root.addEventListener('click', event => {
