@@ -251,6 +251,10 @@
             <p class="needs-map-summary" role="status" aria-live="polite" hidden></p>
             <div class="needs-map-stage" hidden>
                 <div class="needs-map-canvas" role="region" aria-label="Carte des besoins par commune"></div>
+                <button type="button" class="needs-map-categories-btn" data-needs-map-categories aria-haspopup="dialog" aria-controls="explorerMapCategorySheet">
+                    <i class="ph ph-sliders-horizontal" aria-hidden="true"></i><span>Catégories</span>
+                    <span class="needs-map-categories-badge" hidden aria-hidden="true"></span>
+                </button>
                 <section class="needs-map-panel" hidden tabindex="-1" aria-live="polite"></section>
             </div>
             <div class="needs-map-state" role="status"></div>
@@ -323,8 +327,43 @@
             panel.focus({ preventScroll: true });
         }
 
-        function glyph() {
-            return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.4-6-10a6 6 0 0 1 12 0c0 4.6-6 10-6 10Z"/><circle cx="12" cy="11" r="2.2"/></svg>';
+        const familiesApi = () => root.LYANN_MAP_CATEGORY_FAMILIES;
+
+        const FAMILY_ICON = Object.freeze({
+            plomberie: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M9 3h6v2h-1v3.1c1.2.4 2.1 1.3 2.5 2.5H19v2h-1.1c-.4 2.2-2.2 3.9-4.5 4.1V19h3v2H7v-2h3v-2.3c-2.3-.2-4.1-1.9-4.5-4.1H4v-2h2.5c.4-1.2 1.3-2.1 2.5-2.5V5H9V3z"/></svg>',
+            electricite: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M13 2 4 14h7l-1 8 10-14h-7l0-6z"/></svg>',
+            bricolage: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M2 20.5 14.5 8l2.5 2.5L4.5 23 2 20.5Zm14.9-9.4 1.4-1.4 2.1 2.1-1.4 1.4-2.1-2.1ZM16 4l4 4-2 2-4-4 2-2Zm-2 6 2 2-1.4 1.4-2-2L14 10Z"/></svg>',
+            jardinage: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22c-1.5-3-2-6-1-9 1-3 4-5 7-5-1 4-3 7-6 9 0 3 0 5 0 5s-2-2-2-5c-3-2-5-5-6-9 3 0 6 2 7 5 1 3 .5 6-1 9Z"/></svg>',
+            menage: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 20v-2h16v2H4Zm2-3 2.5-9h7L18 17H6Zm3.5-7 1 3h3l1-3h-5Z"/></svg>',
+            beaute: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2c2 3 2 5 0 7-2-2-2-4 0-7Zm-6 8c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5Zm12 0c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5Z"/></svg>',
+            numerique: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 5h16v10H4V5Zm2 12h12v2H6v-2Zm2-10v6h8V7H8Z"/></svg>',
+            quotidien: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2H7V3Zm-2 4h14v12H5V7Zm2 2v8h10V9H7Zm1 1h3v2H8v-2Zm0 3h5v2H8v-2Z"/></svg>'
+        });
+
+        function groupVisualFamily(items) {
+            const api = familiesApi();
+            if (!api) return 'mixed';
+            const counts = new Map();
+            items.forEach((row) => {
+                const id = api.familyForRow(row, leaves);
+                counts.set(id, (counts.get(id) || 0) + 1);
+            });
+            if (counts.size !== 1) return 'mixed';
+            return [...counts.keys()][0];
+        }
+
+        function pinFaceHtml(group) {
+            const count = group.items.length;
+            const visual = groupVisualFamily(group.items);
+            const api = familiesApi();
+            const meta = api?.familyMeta(visual === 'mixed' ? 'quotidien' : visual) || { tone: 'green' };
+            const tone = meta.tone === 'yellow' ? 'is-tone-yellow' : 'is-tone-green';
+            if (visual === 'mixed') {
+                return `<span class="needs-map-pin-face is-multi is-tone-neutral is-mixed" aria-hidden="true">${count}</span>`;
+            }
+            const icon = FAMILY_ICON[visual] || FAMILY_ICON.quotidien;
+            const countBadge = count > 1 ? `<span class="needs-map-pin-count">${count}</span>` : '';
+            return `<span class="needs-map-pin-face ${tone} is-family-${visual}${count > 1 ? ' has-count' : ''}" aria-hidden="true">${icon}${countBadge}</span>`;
         }
 
         function ensureMap() {
@@ -382,8 +421,8 @@
                 const count = group.items.length;
                 const name = `${group.label} : ${countLabel(count)}`;
                 const icon = L.divIcon({
-                    className: `needs-map-pin${count > 1 ? ' is-multi' : ''}`,
-                    html: `<span class="needs-map-pin-face" aria-hidden="true">${count > 1 ? count : glyph()}</span>`,
+                    className: 'needs-map-pin',
+                    html: pinFaceHtml(group),
                     iconSize: [44, 44], iconAnchor: [22, 22]
                 });
                 const marker = L.marker([group.lat, group.lng], { icon, title: name, alt: name, keyboard: true, riseOnHover: true });
@@ -408,7 +447,32 @@
         function update(data = {}) {
             const current = ++token;
             leaves = data.leaves || [];
-            const result = groupByCommune(data.rows, geo);
+            let rows = Array.isArray(data.rows) ? data.rows : [];
+            const api = familiesApi();
+            if (api && Array.isArray(data.mapFamilyFilter) && data.mapFamilyFilter.length > 0
+                && data.mapFamilyFilter.length < api.FAMILIES.length) {
+                rows = api.filterRowsByFamilies(rows, data.mapFamilyFilter, leaves);
+            }
+            const result = groupByCommune(rows, geo);
+            const categoriesBtn = shell.querySelector('[data-needs-map-categories]');
+            const badge = shell.querySelector('.needs-map-categories-badge');
+            const activeCount = Array.isArray(data.mapFamilyFilter) ? data.mapFamilyFilter.length : 0;
+            const filterActive = activeCount > 0 && activeCount < (api?.FAMILIES.length || 8);
+            if (categoriesBtn) {
+                categoriesBtn.classList.toggle('has-active-filters', filterActive);
+                categoriesBtn.setAttribute('aria-expanded', data.categorySheetOpen ? 'true' : 'false');
+            }
+            if (badge) {
+                badge.hidden = !filterActive;
+                badge.textContent = filterActive ? String(activeCount) : '';
+            }
+
+            if (!result.total && rows.length === 0 && Array.isArray(data.rows) && data.rows.length > 0) {
+                showState('empty-filter', `<p class="needs-map-state-title">Aucune annonce dans cette catégorie pour le moment.</p>
+                    <p>Essayez d'autres catégories ou réinitialisez les filtres.</p>
+                    <div class="needs-map-actions"><button type="button" class="btn btn-primary" data-needs-map-clear-categories>Réinitialiser les filtres</button>${listButton}</div>`);
+                return;
+            }
             rowsById = new Map();
             groupsByKey = new Map();
             result.groups.forEach((group) => {
@@ -498,6 +562,10 @@
                 if (lastData) trackedUpdate(lastData);
             } else if (button.hasAttribute('data-needs-map-login')) {
                 document.querySelector('.open-login-trigger')?.click();
+            } else if (button.hasAttribute('data-needs-map-categories')) {
+                options.onCategoriesOpen?.();
+            } else if (button.hasAttribute('data-needs-map-clear-categories')) {
+                options.onClearCategoryFilter?.();
             }
         }
         function onKeydown(event) {

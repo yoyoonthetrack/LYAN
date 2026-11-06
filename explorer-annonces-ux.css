@@ -295,3 +295,47 @@ body.results-page.explorer-annonces-map-view .needs-map-summary {
         transition: none;
     }
 }
+
+.explorer-map-category-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.explorer-map-category-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 2px solid #d8e3dc;
+    border-radius: 14px;
+    background: #fff;
+    color: #1B3B2B;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.explorer-map-category-chip.is-tone-green { background: #eef6ef; }
+.explorer-map-category-chip.is-tone-yellow { background: #fffbeb; }
+
+.explorer-map-category-chip.is-active {
+    border-color: #1B3B2B;
+    box-shadow: 0 0 0 1px #1B3B2B;
+}
+
+.explorer-map-category-chip i {
+    font-size: 1.25rem;
+    color: #1B3B2B;
+}
+
+body.explorer-map-category-sheet-open .needs-map-canvas {
+    pointer-events: none;
+}
+
+#explorerMapCategorySheet.explorer-map-category-sheet[open] {
+    z-index: 1200;
+}

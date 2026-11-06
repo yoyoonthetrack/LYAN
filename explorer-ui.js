@@ -33,6 +33,10 @@
         let showAllTrades = false;
         let listScrollY = 0;
         let lastSearchArea = filters.area;
+        /** @type {string[]|null} null = toutes les familles visuelles */
+        let mapFamilyFilter = null;
+        let mapFamilyDraft = null;
+        let mapCategorySheetOpen = false;
         // The delay filter offers the same date modes the cards display, so a chosen
         // option always matches what a reader sees on the results.
         const dateModeLabel = value => window.LYANN_ANNONCE_FORMAT?.dateModeLabel(value) || value;
@@ -257,12 +261,90 @@
             needsMap?.destroy();
             needsMap = null;
         }
+        const mapFamiliesApi = () => window.LYANN_MAP_CATEGORY_FAMILIES;
+        function mapFamiliesActive() {
+            const api = mapFamiliesApi();
+            if (!api || !Array.isArray(mapFamilyFilter) || !mapFamilyFilter.length) return false;
+            return mapFamilyFilter.length < api.FAMILIES.length;
+        }
+        function rowsForMapFamilies(results) {
+            const api = mapFamiliesApi();
+            if (!api || !mapFamiliesActive()) return results;
+            return api.filterRowsByFamilies(results, mapFamilyFilter, leaves);
+        }
+        function closeMapCategorySheet() {
+            mapCategorySheetOpen = false;
+            document.body.classList.remove('explorer-map-category-sheet-open');
+            $('explorerMapCategorySheet')?.close();
+        }
+        function openMapCategorySheet() {
+            const api = mapFamiliesApi();
+            if (!api) return;
+            mapFamilyDraft = mapFamilyFilter ? [...mapFamilyFilter] : [...api.ALL_FAMILY_IDS];
+            mapCategorySheetOpen = true;
+            document.body.classList.add('explorer-map-category-sheet-open');
+            renderMapCategoryGrid();
+            const sheet = $('explorerMapCategorySheet');
+            sheet?.showModal();
+            render({ quiet: true });
+        }
+        function renderMapCategoryGrid() {
+            const api = mapFamiliesApi();
+            const host = $('explorerMapCategoryGrid');
+            if (!api || !host) return;
+            const draft = mapFamilyDraft ?? mapFamilyFilter ?? api.ALL_FAMILY_IDS;
+            const allOn = draft.length >= api.FAMILIES.length;
+            const toggle = (id) => {
+                if (id === '__all__') {
+                    mapFamilyDraft = [...api.ALL_FAMILY_IDS];
+                    return;
+                }
+                const set = new Set(draft);
+                if (set.has(id)) set.delete(id); else set.add(id);
+                mapFamilyDraft = [...set];
+                if (mapFamilyDraft.length >= api.FAMILIES.length) mapFamilyDraft = [...api.ALL_FAMILY_IDS];
+            };
+            const familyIcon = {
+                plomberie: 'ph-drop', electricite: 'ph-lightning', bricolage: 'ph-hammer', jardinage: 'ph-plant',
+                menage: 'ph-broom', beaute: 'ph-flower', numerique: 'ph-laptop', quotidien: 'ph-calendar-blank'
+            };
+            host.innerHTML = `<button type="button" class="explorer-map-category-chip${allOn ? ' is-active' : ''}" data-family="__all__" aria-pressed="${allOn ? 'true' : 'false'}">Toutes</button>`
+                + api.FAMILIES.map((family) => {
+                    const active = !allOn && draft.includes(family.id);
+                    const tone = family.tone === 'yellow' ? 'is-tone-yellow' : 'is-tone-green';
+                    const icon = familyIcon[family.id] || 'ph-calendar-blank';
+                    return `<button type="button" class="explorer-map-category-chip ${tone}${active ? ' is-active' : ''}" data-family="${escape(family.id)}" aria-pressed="${active ? 'true' : 'false'}"><i class="ph ${icon}" aria-hidden="true"></i><span>${escape(family.label)}</span></button>`;
+                }).join('');
+            host.querySelectorAll('[data-family]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    toggle(button.dataset.family);
+                    renderMapCategoryGrid();
+                });
+            });
+        }
+        function applyMapCategoryFilter() {
+            const api = mapFamiliesApi();
+            if (!api) return;
+            const draft = mapFamilyDraft ?? api.ALL_FAMILY_IDS;
+            if (!draft.length || draft.length >= api.FAMILIES.length) mapFamilyFilter = null;
+            else mapFamilyFilter = [...draft];
+            closeMapCategorySheet();
+            render({ quiet: true });
+        }
+        function clearMapCategoryFilter() {
+            mapFamilyFilter = null;
+            mapFamilyDraft = mapFamiliesApi()?.ALL_FAMILY_IDS ? [...mapFamiliesApi().ALL_FAMILY_IDS] : null;
+            renderMapCategoryGrid();
+            render({ quiet: true });
+        }
         function ensureNeedsMap() {
             if (!needsMap) {
                 needsMap = window.LYANN_NEEDS_MAP.mount($('explorerMap'), {
                     onOpen: row => window.openLyannDetailModal(row.id, row),
                     onShowList: () => setView('list'),
-                    onReset: () => reset()
+                    onReset: () => reset(),
+                    onCategoriesOpen: () => openMapCategorySheet(),
+                    onClearCategoryFilter: () => { mapFamilyFilter = null; closeMapCategorySheet(); render({ quiet: true }); }
                 });
             }
             return needsMap;
@@ -402,10 +484,12 @@
             syncUrl();
             applyMapViewLayout();
             const results = repo.discover(records, leaves, filters, mode);
+            const mapScoped = mode === 'annonces' && mapAvailable() ? rowsForMapFamilies(results) : results;
             const countLabel = mode === 'annonces'
-                ? (results.length <= 1 ? 'annonce' : 'annonces')
+                ? (mapScoped.length <= 1 ? 'annonce' : 'annonces')
                 : (results.length <= 1 ? 'Lyanneur' : 'Lyanneurs');
-            $('explorerSummary').textContent = `${results.length} ${countLabel} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
+            const displayCount = mode === 'annonces' && mapAvailable() ? mapScoped.length : results.length;
+            $('explorerSummary').textContent = `${displayCount} ${countLabel} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             const container = $('explorerResults');
             window.LYANN_SKELETON?.clear(container);
@@ -417,7 +501,9 @@
                     rows: results,
                     leaves,
                     area: filters.area,
-                    reframe: options.reframe === true
+                    reframe: options.reframe === true,
+                    mapFamilyFilter: mapFamilyFilter || undefined,
+                    categorySheetOpen: mapCategorySheetOpen
                 });
                 if (revealMap && !document.body.classList.contains('explorer-annonces-map-view')) {
                     revealMap = false;
@@ -584,6 +670,17 @@
         });
         $('explorerFilters').addEventListener('click', event => { if (event.target === $('explorerFilters')) $('explorerFilters').close(); });
         $('explorerReset').addEventListener('click', () => { $('explorerFilters').close(); reset(); });
+        $('explorerMapCategoryClose')?.addEventListener('click', closeMapCategorySheet);
+        $('explorerMapCategoryApply')?.addEventListener('click', applyMapCategoryFilter);
+        $('explorerMapCategoryClear')?.addEventListener('click', clearMapCategoryFilter);
+        $('explorerMapCategorySheet')?.addEventListener('click', (event) => {
+            if (event.target === $('explorerMapCategorySheet')) closeMapCategorySheet();
+        });
+        $('explorerMapCategorySheet')?.addEventListener('close', () => {
+            mapCategorySheetOpen = false;
+            document.body.classList.remove('explorer-map-category-sheet-open');
+            render({ quiet: true });
+        });
         $('explorerSavedArea').addEventListener('click', () => {
             if (!savedArea) return;
             filters.area = savedArea;

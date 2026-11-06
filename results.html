@@ -23,7 +23,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261027v26">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
-    <link rel="stylesheet" href="needs-map.css?v=20261105ux">
+    <link rel="stylesheet" href="needs-map.css?v=20261105pins">
     <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261105ux">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
@@ -252,6 +252,21 @@
                     </div>
                 </div>
                 <div class="explorer-sheet-actions"><button type="button" id="explorerReset" class="btn btn-outline">Réinitialiser</button><button value="apply" class="btn btn-primary">Afficher les résultats</button></div>
+            </form>
+        </dialog>
+        <dialog id="explorerMapCategorySheet" class="explorer-filter-sheet explorer-map-category-sheet" aria-labelledby="explorerMapCategoryTitle">
+            <form method="dialog" id="explorerMapCategoryForm">
+                <div class="explorer-sheet-heading">
+                    <div><h2 id="explorerMapCategoryTitle">Catégories sur la carte</h2><p class="explorer-sheet-sub">Filtrez les missions par famille de service.</p></div>
+                    <button type="button" id="explorerMapCategoryClose" aria-label="Fermer les catégories">×</button>
+                </div>
+                <div class="explorer-sheet-body">
+                    <div id="explorerMapCategoryGrid" class="explorer-map-category-grid" role="group" aria-label="Familles de catégories"></div>
+                </div>
+                <div class="explorer-sheet-actions">
+                    <button type="button" id="explorerMapCategoryClear" class="btn btn-outline">Effacer</button>
+                    <button type="button" id="explorerMapCategoryApply" class="btn btn-primary">Appliquer</button>
+                </div>
             </form>
         </dialog>
     </main>
@@ -1267,7 +1282,8 @@
     <script src="annonce-format.js?v=20260922g"></script>
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20261019-drom5"></script>
-    <script src="needs-map.js?v=20261104a"></script>
+    <script src="needs-map-category-families.js?v=20261105pins"></script>
+    <script src="needs-map.js?v=20261105pins"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
     <script src="explorer-ui.js?v=20261105ux" defer></script>
