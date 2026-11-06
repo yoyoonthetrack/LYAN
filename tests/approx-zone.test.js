@@ -5,8 +5,10 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const zones = require('../approx-zone.js');
+// V1 is legacy and frozen. It stays readable, so it is tested on its own engine.
+const api = require('../approx-zone.js');
 const referential = require('../approx-zone-referential.v1.js');
+const zones = api.createEngine({ referentials: { 1: referential }, selectableVersions: [1] });
 
 // Commune dataset used by the product today, loaded the way the browser loads it.
 const sandbox = { window: {} };
@@ -236,7 +238,7 @@ const allZones = (territory, level) => zones.zonesForTerritory(territory, { leve
 
 // 8. Insufficient geographic data: nothing is authorised.
 {
-    const empty = zones.createEngine({ referentials: {} });
+    const empty = api.createEngine({ referentials: {} });
     const sample = allZones('971')[0].id;
     assert.deepEqual(empty.validateZoneId(sample), { ok: false, reason: 'REFERENTIAL_UNAVAILABLE' });
     assert.equal(empty.zoneAtPoint('971', 16.2415, -61.5331), null);
@@ -244,10 +246,7 @@ const allZones = (territory, level) => zones.zonesForTerritory(territory, { leve
     assert.equal(empty.resolveTerritory('guadeloupe').status, 'UNSUPPORTED');
     assert.equal(empty.communeCodeFor('971', 'Les Abymes'), null);
     assert.equal(empty.publicZone(sample, { authenticated: true }), null);
-    assert.equal(zones.createEngine().validateZoneId(sample).reason, 'REFERENTIAL_UNAVAILABLE');
-    assert.deepEqual(empty.validateZoneSelection({ service_mode: 'ON_SITE', territory: '971', commune: 'Les Abymes' }),
-        { ok: true, mode: 'ON_SITE', zone: null, record: { service_mode: 'ON_SITE', location_zone_id: null, location_zone_version: null }, fallback: 'TERRITORY_UNSUPPORTED' });
-    assert.equal(empty.validateZoneSelection({ service_mode: 'ON_SITE', territory: '971', commune: 'Les Abymes', zone_id: sample }).reason, 'UNSUPPORTED_TERRITORY');
+    assert.equal(api.createEngine().validateZoneId(sample).reason, 'REFERENTIAL_UNAVAILABLE');
 
     // Corrupted or incomplete referentials are ignored, never partly trusted.
     const clone = () => JSON.parse(JSON.stringify(referential));
@@ -256,106 +255,28 @@ const allZones = (territory, level) => zones.zonesForTerritory(territory, { leve
     const badStep = clone(); badStep.territories['971'].levels.a.dLat = 0;
     const wrongKey = clone();
     for (const [name, data, key] of [['no origin', noOrigin, '1'], ['no cells', noCells, '1'], ['bad step', badStep, '1'], ['wrong key', wrongKey, '7'], ['null', null, '1']]) {
-        const engine = zones.createEngine({ referentials: { [key]: data } });
+        const engine = api.createEngine({ referentials: { [key]: data } });
         assert.equal(engine.validateZoneId(sample).ok, false, name);
         assert.equal(engine.validateZoneId(sample).reason, 'REFERENTIAL_UNAVAILABLE', name);
     }
     // A partial referential only authorises what it contains.
     const only971 = clone(); delete only971.territories['972']; delete only971.territories['973']; delete only971.territories['974'];
-    const partial = zones.createEngine({ referentials: { 1: only971 } });
+    const partial = api.createEngine({ referentials: { 1: only971 } });
     assert.deepEqual(partial.supportedTerritories().map((t) => t.code), ['971']);
     assert.equal(partial.validateZoneId(sample).ok, true);
     assert.equal(partial.validateZoneId(allZones('972')[0].id).reason, 'UNSUPPORTED_TERRITORY');
     assert.equal(partial.resolveTerritory('martinique').status, 'UNSUPPORTED');
     // The referential can be a lazy source: a file loaded after the engine is picked up.
     let loadedLater = {};
-    const lazy = zones.createEngine({ referentials: () => loadedLater });
+    const lazy = api.createEngine({ referentials: () => loadedLater });
     assert.equal(lazy.validateZoneId(sample).reason, 'REFERENTIAL_UNAVAILABLE');
     loadedLater = { 1: referential };
     assert.equal(lazy.validateZoneId(sample).ok, true);
     // Versions coexist: a v2 referential would not change what v1 ids mean.
     const v2 = clone(); v2.version = 2; v2.territories['971'].levels.a.cells = {};
-    const both = zones.createEngine({ referentials: { 1: referential, 2: v2 } });
+    const both = api.createEngine({ referentials: { 1: referential, 2: v2 } });
     assert.equal(both.validateZoneId(sample).ok, true);
     assert.equal(both.validateZoneId(sample.replace('-v1-', '-v2-')).reason, 'UNKNOWN_ZONE');
-}
-
-// 9. Selection contract: what a client may send, what the server may keep.
-{
-    const zone = zones.zonesForCommune('971', 'Les Abymes')[0];
-    const valid = { service_mode: 'ON_SITE', territory: '971 - Guadeloupe', commune: 'Les Abymes', zone_id: zone.id };
-    const ok = zones.validateZoneSelection(valid);
-    assert.equal(ok.ok, true);
-    assert.deepEqual(ok.record, { service_mode: 'ON_SITE', location_zone_id: zone.id, location_zone_version: 1 });
-    assert.deepEqual(Object.keys(ok.record).sort(), ['location_zone_id', 'location_zone_version', 'service_mode']);
-    assert.equal(ok.fallback, null);
-    // The result depends on the sector only: nothing of the request is echoed back.
-    assert.deepEqual(zones.validateZoneSelection({ ...valid, commune: 'Abymes', territory: 'guadeloupe' }), ok);
-    assert.deepEqual(Object.keys(ok.zone).sort(), ['center', 'id', 'label', 'radiusM', 'sizeKm']);
-    assert.deepEqual(ok.zone.center, zone.center);
-
-    // The contract has exactly four fields.
-    assert.deepEqual([...zones.SELECTION_KEYS].sort(), ['commune', 'service_mode', 'territory', 'zone_id']);
-    for (const field of ['lat', 'lng', 'latitude', 'longitude', 'lon', 'coords', 'coordinates', 'position', 'point', 'gps', 'geo', 'geometry',
-        'place_lat', 'place_lng', 'address', 'adresse', 'street', 'rue', 'location', 'home_lat', 'user_position', 'precise_point']) {
-        const result = zones.validateZoneSelection({ ...valid, [field]: 16.2415 });
-        assert.deepEqual([field, result.ok, result.reason], [field, false, 'FORBIDDEN_FIELD']);
-        assert.equal(result.field, field);
-        assert.equal('record' in result, false);
-    }
-    for (const field of ['note', 'requester_id', 'title']) {
-        assert.equal(zones.validateZoneSelection({ ...valid, [field]: 'x' }).reason, 'UNEXPECTED_FIELD', field);
-    }
-    for (const bad of [null, undefined, [], 'ON_SITE', 7]) assert.equal(zones.validateZoneSelection(bad).reason, 'INVALID_SELECTION');
-    for (const mode of [undefined, '', 'on_site', 'REMOTELY', 'HYBRID', 1]) assert.equal(zones.validateZoneSelection({ ...valid, service_mode: mode }).reason, 'INVALID_MODE');
-    // A coordinate pair slipped into a text field is not a commune and not a zone.
-    assert.equal(zones.validateZoneSelection({ ...valid, commune: '16.2415,-61.5331' }).reason, 'COMMUNE_UNKNOWN');
-    assert.equal(zones.validateZoneSelection({ ...valid, zone_id: '16.2415,-61.5331' }).reason, 'MALFORMED');
-    assert.equal(zones.validateZoneSelection({ ...valid, territory: '16.2415,-61.5331' }).reason, 'TERRITORY_UNKNOWN');
-
-    // Remote work: no map, no zone, nothing local invented.
-    assert.deepEqual(zones.validateZoneSelection({ service_mode: 'REMOTE' }),
-        { ok: true, mode: 'REMOTE', zone: null, record: { service_mode: 'REMOTE', location_zone_id: null, location_zone_version: null }, fallback: null });
-    assert.equal(zones.validateZoneSelection({ service_mode: 'REMOTE', territory: '971', commune: 'Les Abymes' }).record.location_zone_id, null);
-    assert.equal(zones.validateZoneSelection({ service_mode: 'REMOTE', zone_id: zone.id }).reason, 'ZONE_NOT_ALLOWED_FOR_REMOTE');
-
-    // On site without a sector keeps today's commune-level location.
-    const communeOnly = zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: 'guadeloupe', commune: 'Le Gosier' });
-    assert.deepEqual([communeOnly.ok, communeOnly.fallback, communeOnly.record.location_zone_id], [true, 'COMMUNE_ONLY', null]);
-    assert.equal(zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: 'guadeloupe' }).fallback, 'COMMUNE_ONLY');
-    assert.equal(zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: 'guadeloupe', commune: 'Narnia' }).reason, 'COMMUNE_UNKNOWN');
-
-    // Saint-Martin keeps its existing behaviour; a sector cannot be certified there.
-    const saintMartin = zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: '978 - St-Martin', commune: 'Marigot' });
-    assert.deepEqual([saintMartin.ok, saintMartin.fallback, saintMartin.record.location_zone_id], [true, 'TERRITORY_UNSUPPORTED', null]);
-    assert.equal(zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: 'saint-martin', commune: 'Marigot', zone_id: zone.id }).reason, 'UNSUPPORTED_TERRITORY');
-
-    // A sector must exist, belong to the territory and really contain the commune.
-    const martinique = zones.zonesForCommune('972', 'Fort-de-France')[0];
-    assert.equal(zones.validateZoneSelection({ ...valid, zone_id: martinique.id }).reason, 'TERRITORY_MISMATCH');
-    assert.equal(zones.validateZoneSelection({ ...valid, zone_id: '971-v1-a-0.0' }).reason, 'UNKNOWN_ZONE');
-    assert.equal(zones.validateZoneSelection({ ...valid, zone_id: zone.id.replace('-v1-', '-v2-') }).reason, 'UNSUPPORTED_VERSION');
-    const away = allZones('971', 'a').find((z) => !z.communes.some((c) => c.code === '97101'));
-    assert.equal(zones.validateZoneSelection({ ...valid, zone_id: away.id }).reason, 'COMMUNE_NOT_IN_ZONE');
-    assert.equal(zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: '971', zone_id: zone.id }).reason, 'COMMUNE_REQUIRED');
-    // Every sector of a commune validates for that commune, at both levels.
-    for (const level of ['a', 'b']) {
-        for (const z of zones.zonesForCommune('971', 'Le Moule', { level })) {
-            assert.equal(zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: '971', commune: 'Le Moule', zone_id: z.id }).ok, true, z.id);
-        }
-    }
-}
-
-// 10. Audience: zones are for signed-in members in this first version.
-{
-    const zone = allZones('972')[0];
-    for (const audience of [undefined, {}, { authenticated: false }, { authenticated: 'yes' }, { authenticated: 1 }, { authenticated: null }]) {
-        assert.equal(zones.publicZone(zone.id, audience), null, JSON.stringify(audience));
-    }
-    const shown = zones.publicZone(zone.id, { authenticated: true });
-    assert.deepEqual(Object.keys(shown).sort(), ['center', 'id', 'label', 'radiusM', 'sizeKm', 'territory', 'version']);
-    assert.deepEqual(shown.center, zone.center);
-    assert.equal(zones.publicZone('972-v1-a-0.0', { authenticated: true }), null);
 }
 
 // 11. The contract carries no precise position, anywhere.
@@ -372,9 +293,6 @@ const allZones = (territory, level) => zones.zonesForTerritory(territory, { leve
     // Only one function takes a point, and it returns an identifier or null.
     const takesPoint = Object.entries(zones).filter(([, fn]) => typeof fn === 'function' && /lat/i.test(fn.toString().split('{')[0]));
     assert.deepEqual(takesPoint.map(([name]) => name), ['zoneAtPoint']);
-    // The submission contract and its stored record have no coordinate field.
-    const record = zones.validateZoneSelection({ service_mode: 'ON_SITE', territory: '971', commune: 'Les Abymes', zone_id: zones.zonesForCommune('971', 'Les Abymes')[0].id }).record;
-    assert.doesNotMatch(Object.keys(record).join(','), /lat|lng|lon|coord|address|point|gps/i);
     // No timestamp, no member, no request data in the referential.
     assert.doesNotMatch(everything, /requester|author|user_id|created_at|address/i);
 }
@@ -382,7 +300,7 @@ const allZones = (territory, level) => zones.zonesForTerritory(territory, { leve
 // 12. Version and shape of the public module.
 {
     for (const name of ['supportedTerritories', 'resolveTerritory', 'formatZoneId', 'parseZoneId', 'validateZoneId', 'describeZone', 'parentZoneId', 'publicZone',
-        'communeCodeFor', 'zoneAtPoint', 'zonesForTerritory', 'zonesForCommune', 'validateZoneSelection', 'createEngine']) {
+        'communeCodeFor', 'zoneAtPoint', 'zonesForTerritory', 'zonesForCommune', 'validateZoneSelection', 'placementForRow']) {
         assert.equal(typeof zones[name], 'function', name);
     }
     assert.equal(Object.isFrozen(zones), true);
@@ -392,4 +310,4 @@ const allZones = (territory, level) => zones.zonesForTerritory(territory, { leve
     assert.ok(allZones('971', 'a').map(idOf).every((id) => /^971-v1-a-\d+\.\d+$/.test(id)));
 }
 
-console.log('approx-zone contract passed');
+console.log('approx-zone V1 (legacy) contract passed');

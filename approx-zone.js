@@ -9,9 +9,18 @@
  *  - An id is accepted only if it is listed in the versioned referential, which is built
  *    from official commune contours (see scripts/build-approx-zone-referential.js). A
  *    well-formed id is never enough, and a distance to a commune centre is never a proof.
- *  - Territories without a referential (Saint-Martin, Mayotte, Saint-Barthélemy) are
- *    refused for zones. The existing commune-level location keeps working there.
+ *  - Territories without a selectable referential (Guyane, Saint-Martin, Mayotte,
+ *    Saint-Barthélemy) are refused for zones. Their existing commune-level location
+ *    keeps working unchanged.
  *  - Nothing here is random.
+ *
+ * Versions. Every loaded referential stays readable, so a stored id keeps its meaning.
+ * Only the versions listed in `selectableVersions` (V2 by default) may be chosen for a
+ * new announcement: V1 is legacy, read-only.
+ *
+ * Two independent choices describe a location:
+ *  - service_mode:        ON_SITE | REMOTE   (is the work done on site?)
+ *  - location_visibility: STANDARD | DISCREET (how precisely is the place shown?)
  *
  * Runs unchanged in the browser and in Node. The referential is data: a later version
  * can change cell sizes or sectors without changing this engine.
@@ -38,8 +47,23 @@
 
     // Keys that would carry a precise position. They are refused outright, not ignored.
     const PRECISE_KEY = /lat|lng|lon|coord|gps|geo|point|position|addr|adres|street|rue|place_|location/i;
-    const SELECTION_KEYS = Object.freeze(['service_mode', 'territory', 'commune', 'zone_id']);
+    const SELECTION_KEYS = Object.freeze(['service_mode', 'location_visibility', 'location_confirmed', 'territory', 'commune', 'zone_id']);
     const SERVICE_MODES = Object.freeze(['ON_SITE', 'REMOTE']);
+    const VISIBILITIES = Object.freeze(['STANDARD', 'DISCREET']);
+    const SELECTABLE_VERSIONS = Object.freeze([2]);
+
+    // Texts of the publication step, kept with the contract they describe.
+    const LOCATION_COPY = Object.freeze({
+        title: "Où avez-vous besoin d'aide ?",
+        modes: Object.freeze({
+            STANDARD: Object.freeze({ label: 'Localisation standard', hint: 'Indiquez approximativement le secteur de votre mission.' }),
+            DISCREET: Object.freeze({ label: 'Annonce discrète', hint: 'Seule votre commune sera affichée.' }),
+            REMOTE: Object.freeze({ label: 'À distance', hint: 'Cette mission peut être réalisée sans déplacement.' })
+        }),
+        preview: 'Voici la localisation approximative visible par les autres membres.',
+        confirm: 'Je confirme cette localisation',
+        notice: "La zone est indicative : elle ne garantit pas l'anonymat."
+    });
 
     const fold = (value) => String(value ?? '')
         .normalize('NFD')
@@ -75,6 +99,7 @@
     function createEngine(options = {}) {
         const source = options.referentials;
         const indexCache = new WeakMap();
+        const selectablePolicy = options.selectableVersions;
 
         function loaded() {
             const raw = typeof source === 'function' ? source() : source;
@@ -84,6 +109,16 @@
                 if (wellFormedReferential(data) && String(data.version) === String(version)) map.set(Number(version), data);
             }
             return map;
+        }
+
+        // Versions a member may pick for a new announcement. Everything else stays readable.
+        function selectable() {
+            const all = loaded();
+            const wanted = typeof selectablePolicy === 'function' ? selectablePolicy() : selectablePolicy;
+            const versions = Array.isArray(wanted) ? wanted : (all.size ? [Math.max(...all.keys())] : []);
+            const out = new Map();
+            for (const version of versions) if (all.has(version)) out.set(version, all.get(version));
+            return out;
         }
 
         function communeIndex(referential, territoryCode) {
@@ -118,14 +153,17 @@
                 }));
             }
             if (!entry) return { status: 'UNKNOWN', code: null, reason: 'TERRITORY_UNKNOWN' };
-            const supported = [...loaded().values()].some((r) => r.territories[entry.code]);
-            return supported
-                ? { status: 'SUPPORTED', code: entry.code, key: entry.key, name: entry.name, reason: null }
-                : { status: 'UNSUPPORTED', code: entry.code, key: entry.key, name: entry.name, reason: 'UNSUPPORTED_TERRITORY' };
+            const enabled = [...selectable().values()];
+            if (enabled.some((r) => r.territories[entry.code])) {
+                return { status: 'SUPPORTED', code: entry.code, key: entry.key, name: entry.name, reason: null };
+            }
+            // `detail` tells why, when the referential says so (e.g. Guyane: granularity not validated).
+            const detail = enabled.map((r) => r.meta?.unsupported?.[entry.code]).find(Boolean) || null;
+            return { status: 'UNSUPPORTED', code: entry.code, key: entry.key, name: entry.name, reason: 'UNSUPPORTED_TERRITORY', detail };
         }
 
         function supportedTerritories() {
-            const latest = [...loaded().entries()].sort((a, b) => b[0] - a[0])[0];
+            const latest = [...selectable().entries()].sort((a, b) => b[0] - a[0])[0];
             if (!latest) return [];
             const [version, referential] = latest;
             return TERRITORIES.filter((t) => referential.territories[t.code]).map((t) => {
@@ -177,6 +215,10 @@
             const west = lng0 + parsed.ix * level.dLng;
             const halfLat = level.dLat * METERS_PER_DEGREE / 2;
             const halfLng = level.dLng * METERS_PER_DEGREE * Math.cos(territory.refLat * Math.PI / 180) / 2;
+            const cosRef = Math.cos(territory.refLat * Math.PI / 180);
+            // Farthest corner from the representative centre: the circle that really covers the sector.
+            const coverM = Math.max(...[[south, west], [south, west + level.dLng], [south + level.dLat, west], [south + level.dLat, west + level.dLng]]
+                .map(([la, lo]) => Math.hypot((la - cell[1]) * METERS_PER_DEGREE, (lo - cell[2]) * METERS_PER_DEGREE * cosRef)));
             const communes = cell[3].map(([code, share]) => ({ code, name: territory.communes[code], share }));
             const named = communes.filter((c) => c.share >= 25).slice(0, 2);
             const labelled = (named.length ? named : communes.slice(0, 1)).map((c) => deContraction(c.name));
@@ -198,8 +240,9 @@
                 sizeKm: level.sizeKm,
                 center: { lat: cell[1], lng: cell[2] },
                 bounds: { south: round(south, 5), north: round(south + level.dLat, 5), west: round(west, 5), east: round(west + level.dLng, 5) },
-                // Circle that covers the whole sector, rounded: "about 4 km" for 5.5 km cells.
+                // Nominal radius (centre of the cell to a corner), rounded: about 2 km for the V2 standard sector.
                 radiusM: Math.round(Math.hypot(halfLat, halfLng) / 100) * 100,
+                coverRadiusM: Math.ceil(coverM / 100) * 100,
                 landPct: cell[0],
                 label: `Secteur ${labelled.join(' et ')}`,
                 communes,
@@ -226,14 +269,14 @@
             if (!zone) return null;
             return {
                 id: zone.id, version: zone.version, territory: zone.territory, sizeKm: zone.sizeKm,
-                label: zone.label, center: { ...zone.center }, radiusM: zone.radiusM
+                label: zone.label, center: { ...zone.center }, radiusM: zone.radiusM, coverRadiusM: zone.coverRadiusM
             };
         }
 
         function communeCodeFor(territoryInput, commune) {
             const territory = resolveTerritory(territoryInput);
             if (territory.status !== 'SUPPORTED') return null;
-            const referentials = [...loaded().entries()].sort((a, b) => b[0] - a[0]);
+            const referentials = [...selectable().entries()].sort((a, b) => b[0] - a[0]);
             const referential = referentials.find(([, r]) => r.territories[territory.code])?.[1];
             if (!referential) return null;
             const text = String(commune ?? '').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
@@ -251,7 +294,7 @@
         }
 
         function latestFor(code) {
-            const found = [...loaded().entries()].sort((a, b) => b[0] - a[0]).find(([, r]) => r.territories[code]);
+            const found = [...selectable().entries()].sort((a, b) => b[0] - a[0]).find(([, r]) => r.territories[code]);
             return found ? { version: found[0], referential: found[1] } : null;
         }
 
@@ -303,9 +346,14 @@
         }
 
         /**
-         * The only shape a client may submit: mode, territory, commune and a zone id.
+         * The only shape a client may submit:
+         *   service_mode         ON_SITE | REMOTE
+         *   location_visibility  STANDARD (confirmed sector) | DISCREET (commune only); STANDARD when omitted
+         *   location_confirmed   true once the member has seen and confirmed the preview
+         *   territory, commune, zone_id
          * Any other field is refused, and fields that look like a position are refused by
-         * name. The record returned is what may be stored: no coordinate, no address.
+         * name. The record returned is the only thing that may be stored: no coordinate,
+         * no address, no free text.
          */
         function validateZoneSelection(input) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) return { ok: false, reason: 'INVALID_SELECTION' };
@@ -315,63 +363,150 @@
             }
             const mode = input.service_mode;
             if (!SERVICE_MODES.includes(mode)) return { ok: false, reason: 'INVALID_MODE' };
-            const hasZone = input.zone_id !== undefined && input.zone_id !== null && input.zone_id !== '';
-            const none = (extra = {}) => ({
-                ok: true, mode, zone: null,
-                record: { service_mode: mode, location_zone_id: null, location_zone_version: null }, ...extra
+            const given = (value) => value !== undefined && value !== null && value !== '';
+            const hasVisibility = given(input.location_visibility);
+            if (hasVisibility && !VISIBILITIES.includes(input.location_visibility)) return { ok: false, reason: 'INVALID_VISIBILITY' };
+            if (input.location_confirmed !== undefined && typeof input.location_confirmed !== 'boolean') return { ok: false, reason: 'INVALID_CONFIRMATION' };
+            const hasZone = given(input.zone_id);
+            const record = (extra = {}) => ({
+                service_mode: mode, location_visibility: null, location_commune_code: null,
+                location_zone_id: null, location_zone_version: null, ...extra
             });
-            if (mode === 'REMOTE') return hasZone ? { ok: false, reason: 'ZONE_NOT_ALLOWED_FOR_REMOTE' } : none({ fallback: null });
+
+            // Remote work needs no place at all: nothing local is recorded or invented.
+            if (mode === 'REMOTE') {
+                if (hasVisibility) return { ok: false, reason: 'VISIBILITY_NOT_ALLOWED_FOR_REMOTE' };
+                if (hasZone) return { ok: false, reason: 'ZONE_NOT_ALLOWED_FOR_REMOTE' };
+                return { ok: true, mode, visibility: null, zone: null, fallback: null, record: record() };
+            }
 
             const territory = resolveTerritory(input.territory);
             if (territory.status === 'UNKNOWN') return { ok: false, reason: 'TERRITORY_UNKNOWN' };
             if (territory.status === 'UNSUPPORTED') {
-                // Existing commune-level location stays as it is; no zone can be certified.
-                return hasZone ? { ok: false, reason: 'UNSUPPORTED_TERRITORY' } : none({ fallback: 'TERRITORY_UNSUPPORTED' });
+                // Guyane, Saint-Martin...: the existing commune-level location keeps working.
+                if (hasZone) return { ok: false, reason: 'UNSUPPORTED_TERRITORY' };
+                return { ok: true, mode, visibility: null, zone: null, fallback: 'TERRITORY_UNSUPPORTED', record: record() };
             }
-            const hasCommune = input.commune !== undefined && input.commune !== null && String(input.commune).trim() !== '';
-            const communeCode = hasCommune ? communeCodeFor(territory.code, input.commune) : null;
-            if (hasCommune && !communeCode) return { ok: false, reason: 'COMMUNE_UNKNOWN' };
-            if (!hasZone) return none({ fallback: 'COMMUNE_ONLY' });
-            if (!communeCode) return { ok: false, reason: 'COMMUNE_REQUIRED' };
 
+            const visibility = hasVisibility ? input.location_visibility : 'STANDARD';
+            if (!given(input.commune)) return { ok: false, reason: 'COMMUNE_REQUIRED' };
+            const communeCode = communeCodeFor(territory.code, input.commune);
+            if (!communeCode) return { ok: false, reason: 'COMMUNE_UNKNOWN' };
+            // Standard is the default, never silent: the member confirms what will be shown.
+            if (input.location_confirmed !== true) return { ok: false, reason: 'CONFIRMATION_REQUIRED' };
+
+            if (visibility === 'DISCREET') {
+                if (hasZone) return { ok: false, reason: 'ZONE_NOT_ALLOWED_FOR_DISCREET' };
+                return {
+                    ok: true, mode, visibility, zone: null, fallback: null,
+                    record: record({ location_visibility: 'DISCREET', location_commune_code: communeCode })
+                };
+            }
+
+            if (!hasZone) return { ok: false, reason: 'ZONE_REQUIRED' };
             const checked = validateZoneId(input.zone_id);
             if (!checked.ok) return { ok: false, reason: checked.reason };
+            if (!selectable().has(checked.zone.version)) return { ok: false, reason: 'VERSION_NOT_SELECTABLE' };
             if (checked.zone.territory !== territory.code) return { ok: false, reason: 'TERRITORY_MISMATCH' };
             if (!checked.zone.communes.some((c) => c.code === communeCode)) return { ok: false, reason: 'COMMUNE_NOT_IN_ZONE' };
             return {
-                ok: true, mode, fallback: null,
-                zone: { id: checked.zone.id, label: checked.zone.label, center: { ...checked.zone.center }, radiusM: checked.zone.radiusM, sizeKm: checked.zone.sizeKm },
-                record: { service_mode: mode, location_zone_id: checked.zone.id, location_zone_version: checked.zone.version }
+                ok: true, mode, visibility, fallback: null,
+                zone: {
+                    id: checked.zone.id, label: checked.zone.label, center: { ...checked.zone.center },
+                    radiusM: checked.zone.radiusM, coverRadiusM: checked.zone.coverRadiusM, sizeKm: checked.zone.sizeKm
+                },
+                record: record({
+                    location_visibility: 'STANDARD', location_commune_code: communeCode,
+                    location_zone_id: checked.zone.id, location_zone_version: checked.zone.version
+                })
             };
+        }
+
+        function communeNameFor(code) {
+            if (typeof code !== 'string' || !/^\d{5}$/.test(code)) return null;
+            for (const referential of loaded().values()) {
+                const name = referential.territories[code.slice(0, 3)]?.communes[code];
+                if (name) return name;
+            }
+            return null;
+        }
+
+        // Same eligibility as the public list and the needs map: a location is never read
+        // from an announcement that is private, masked, closed or not moderated.
+        function publicRow(row) {
+            if (!row || !row.id) return false;
+            if (row.visibility && row.visibility !== 'PUBLIC') return false;
+            if (row.status && row.status !== 'OPEN') return false;
+            if (row.safety_status && row.safety_status !== 'SAFE') return false;
+            if (row.target_user_id) return false;
+            if (row.classification_status && !['CLASSIFIED', 'UNCLASSIFIED'].includes(row.classification_status)) return false;
+            if (row.public_moderation_status != null && row.public_moderation_status !== 'approved') return false;
+            return true;
+        }
+
+        /**
+         * Where the needs map may place a stored announcement. Reads the stored record only,
+         * never a coordinate. kinds:
+         *   ZONE    standard sector, drawn at its representative centre
+         *   COMMUNE discreet announcement, drawn on the commune
+         *   LEGACY  announcement without structured location: the map keeps today's grouping
+         *   REMOTE  no marker
+         *   NONE    nothing may be shown (audience or eligibility)
+         * Inconsistent stored data degrades to the less precise option, never to a guess.
+         */
+        function placementForRow(row, { authenticated = false } = {}) {
+            if (authenticated !== true) return { kind: 'NONE', reason: 'AUDIENCE' };
+            if (!publicRow(row)) return { kind: 'NONE', reason: 'NOT_PUBLIC' };
+            if (row.service_mode === 'REMOTE') return { kind: 'REMOTE' };
+            if (row.service_mode !== 'ON_SITE') return { kind: 'LEGACY' };
+            const commune = communeNameFor(row.location_commune_code);
+            if (row.location_visibility === 'STANDARD') {
+                const zone = describeZone(row.location_zone_id);
+                const consistent = zone && commune && zone.version === row.location_zone_version
+                    && zone.communes.some((c) => c.code === row.location_commune_code);
+                if (consistent) return { kind: 'ZONE', zone: publicZone(zone.id, { authenticated: true }) };
+                return commune
+                    ? { kind: 'COMMUNE', communeCode: row.location_commune_code, communeName: commune, reason: 'ZONE_INVALID' }
+                    : { kind: 'LEGACY', reason: 'LOCATION_INVALID' };
+            }
+            if (row.location_visibility === 'DISCREET' && commune) {
+                return { kind: 'COMMUNE', communeCode: row.location_commune_code, communeName: commune, reason: null };
+            }
+            return { kind: 'LEGACY', reason: row.location_visibility ? 'LOCATION_INVALID' : null };
         }
 
         return Object.freeze({
             supportedTerritories, resolveTerritory, formatZoneId, parseZoneId, validateZoneId, describeZone,
             parentZoneId, publicZone, communeCodeFor, zoneAtPoint, zonesForTerritory, zonesForCommune,
-            validateZoneSelection
+            validateZoneSelection, placementForRow
         });
     }
 
-    // Default engine: the referential is data loaded by the page (browser) or required (Node).
+    // Default engine: the referentials are data loaded by the page (browser) or required (Node).
     function defaultReferentials() {
         const found = {};
         if (root.LYANN_APPROX_ZONE_REFERENTIALS) Object.assign(found, root.LYANN_APPROX_ZONE_REFERENTIALS);
         if (typeof module !== 'undefined' && module.exports && typeof require === 'function') {
-            try {
-                const data = require('./approx-zone-referential.v1.js');
-                if (data && !found[data.version]) found[data.version] = data;
-            } catch (_) { /* Missing referential means "unavailable", never a guess. */ }
+            for (const file of ['./approx-zone-referential.v1.js', './approx-zone-referential.v2.js']) {
+                try {
+                    const data = require(file);
+                    if (data && !found[data.version]) found[data.version] = data;
+                } catch (_) { /* Missing referential means "unavailable", never a guess. */ }
+            }
         }
         return found;
     }
 
     const api = Object.freeze({
-        ...createEngine({ referentials: defaultReferentials }),
+        ...createEngine({ referentials: defaultReferentials, selectableVersions: SELECTABLE_VERSIONS }),
         createEngine,
         ZONE_ID_PATTERN: ZONE_ID,
         TERRITORIES,
         SELECTION_KEYS,
-        SERVICE_MODES
+        SERVICE_MODES,
+        VISIBILITIES,
+        SELECTABLE_VERSIONS,
+        LOCATION_COPY
     });
 
     root.LYANN_APPROX_ZONE = api;
