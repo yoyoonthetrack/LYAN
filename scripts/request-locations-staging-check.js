@@ -72,7 +72,8 @@ const fingerprint = async () => {
             const { data, error } = await admin.from('requests').insert({ requester_id: A.id, title: `${PREFIX} ${tag}`, description: 'QA fixture, removed at the end of the check.', location: 'Le Gosier (971 - Guadeloupe)', status: 'CLOSED', visibility: 'PUBLIC', public_moderation_status: 'approved', ...patch.insert }).select('id').single();
             if (error) throw new Error(`fixture ${tag}: ${error.message}`);
             created.push(data.id);
-            const upd = await admin.from('requests').update(patch.final).eq('id', data.id);
+            // The moderation trigger forces 'pending' on insert; a service-role update may then set the final moderation state.
+            const upd = await admin.from('requests').update({ public_moderation_status: patch.insert.public_moderation_status || 'approved', ...patch.final }).eq('id', data.id);
             if (upd.error) throw new Error(`fixture ${tag} state: ${upd.error.message}`);
             return data.id;
         };
@@ -172,7 +173,7 @@ const fingerprint = async () => {
         const all = (await admin.from('request_locations').select('*').in('request_id', ids)).data || [];
         const allowedColumns = ['commune_code', 'created_at', 'location_visibility', 'request_id', 'service_mode', 'updated_at', 'zone_id', 'zone_version'];
         check('12d', 'stored rows contain only the contract columns and no coordinate-like value',
-            all.every((x) => JSON.stringify(Object.keys(x).sort()) === JSON.stringify(allowedColumns) && !/-?\d{1,3}\.\d{4,}/.test(JSON.stringify(x))), { rows: all.length });
+            all.every((x) => JSON.stringify(Object.keys(x).sort()) === JSON.stringify(allowedColumns) && !/-?\d{1,3}\.\d{4,}/.test(JSON.stringify([x.commune_code, x.zone_id, x.location_visibility, x.service_mode]))), { rows: all.length });
 
         // 14: the public API
         const during = await call('GET', '/v1/explorer/requests');
