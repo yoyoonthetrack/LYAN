@@ -83,7 +83,7 @@ BEGIN
     PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_author, 'role', 'authenticated')::text, true);
     SET LOCAL ROLE authenticated;
     SELECT count(*) INTO v_own_visible FROM public.requests WHERE requester_id = v_author;
-    INSERT INTO public.requests (requester_id, title) VALUES (v_author, 'privilege check (rolled back)') RETURNING id INTO v_new_id;
+    INSERT INTO public.requests (requester_id, title, description) VALUES (v_author, 'privilege check (rolled back)', 'privilege check') RETURNING id INTO v_new_id;
     UPDATE public.requests SET title = 'privilege check edited' WHERE id = v_new_id;
     GET DIAGNOSTICS v_updated = ROW_COUNT;
     UPDATE public.requests SET title = title WHERE id = v_other;
@@ -101,7 +101,7 @@ BEGIN
     PERFORM set_config('request.jwt.claims', '', true);
     BEGIN
         SET LOCAL ROLE anon;
-        INSERT INTO public.requests (title) VALUES ('anon insert (must fail)');
+        INSERT INTO public.requests (title, description) VALUES ('anon insert (must fail)', 'x');
         r_anon_insert := 'PERMITTED';
     EXCEPTION WHEN insufficient_privilege THEN r_anon_insert := 'denied';
     END;
