@@ -347,6 +347,13 @@ app.use((req, res, next) => {
 const { createRequestSummaryHandler } = require('./request-summary');
 app.post('/v1/requests/summary', createRequestSummaryHandler({ getSupabaseClient }));
 
+// Approximate location of an announcement: the only writer of public.request_locations (service role, server only).
+const { createRequestLocationHandler } = require('./request-location-routes');
+app.put('/v1/requests/:id/location', createRequestLocationHandler({
+    db: supabaseAdmin,
+    requireUser: (req) => requireBearerUser(req)
+}));
+
 // STRICT PRODUCTION MODE FINANCIAL GUARD
 if (process.env.NODE_ENV === 'production' && !process.env.STRIPE_SECRET_KEY) {
     console.error("❌ FATAL CONFIGURATION ERROR: STRIPE_SECRET_KEY is missing under NODE_ENV=production. PAYMENT_MODE=mock is strictly forbidden in production.");
