@@ -8,6 +8,11 @@
     <link rel="canonical" href="/discover">
     <script>
         (function () {
+            // In the app the fallback link is never shown: the next page decides between the welcome flow and Découvrir.
+            try {
+                var cap = window.Capacitor;
+                if (cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()) document.documentElement.style.visibility = 'hidden';
+            } catch (e) {}
             var target = 'discover.html' + (window.location.search || '') + (window.location.hash || '');
             window.location.replace(target);
         })();

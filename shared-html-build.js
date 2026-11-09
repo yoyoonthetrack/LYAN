@@ -112,6 +112,25 @@ function injectProductionHygiene(html) {
   return injectScriptOnce(html, HYGIENE_SCRIPT_TAG, 'production-hygiene.js');
 }
 
+// Phase 3.0A. Mobile bundle only: the website never receives the gate. It must be the first script of <head>,
+// so the member page stays hidden from the very first paint.
+const MOBILE_AUTH_GATE_TAG = '<script src="mobile-auth-gate.js"></script>';
+
+function injectMobileAuthGate(html) {
+  const out = String(html || '');
+  if (out.includes('mobile-auth-gate.js')) return out;
+  if (isAuthCallbackPage(out) || out.includes('admin-style.css')) return out;
+  if (!/<head[^>]*>/i.test(out)) return out;
+  // After <meta charset> (it must stay within the first bytes of the document), otherwise right after <head>.
+  const charset = out.match(/<meta[^>]+charset[^>]*>/i);
+  const headOpen = out.match(/<head[^>]*>/i);
+  if (charset && charset.index > headOpen.index) {
+    const at = charset.index + charset[0].length;
+    return `${out.slice(0, at)}\n    ${MOBILE_AUTH_GATE_TAG}${out.slice(at)}`;
+  }
+  return out.replace(/<head[^>]*>/i, (open) => `${open}\n    ${MOBILE_AUTH_GATE_TAG}`);
+}
+
 function injectSharedStylesheet(html) {
   let out = String(html || '');
   if (isAuthCallbackPage(out)) return out;
@@ -400,6 +419,8 @@ function buildHtmlFile(sourcePath, destinationPath = sourcePath) {
 }
 
 module.exports = {
+  MOBILE_AUTH_GATE_TAG,
+  injectMobileAuthGate,
   HYGIENE_SCRIPT_TAG,
   SHARED_RUNTIME_TAGS,
   SHARED_RUNTIME_ANCHORS,

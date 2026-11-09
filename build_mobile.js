@@ -6,7 +6,7 @@ process.env.LYANN_MOBILE_BUILD = '1';
 process.env.LYANN_NATIVE_BUILD_AT = new Date().toISOString();
 process.env.LYANN_NATIVE_BUILD_ID = process.env.LYANN_NATIVE_BUILD_ID
   || ('ios-' + Date.now().toString(36) + '-' + crypto.randomBytes(3).toString('hex'));
-const { buildHtml, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin, nativeBuildIdentity, assertRecipeNativeBundle } = require('./shared-html-build');
+const { buildHtml, injectMobileAuthGate, injectIsolatedSupabaseConfig, resolveInjectedBackendOrigin, nativeBuildIdentity, assertRecipeNativeBundle } = require('./shared-html-build');
 try {
   process.env.LYANN_NATIVE_GIT_SHA = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: __dirname, encoding: 'utf8' }).trim();
 } catch (_) {
@@ -55,7 +55,7 @@ function resetDir(dir) {
 function copyFileBuilt(sourcePath, destinationPath) {
   const ext = path.extname(sourcePath).toLowerCase();
   if (ext === '.html') {
-    const html = injectIsolatedSupabaseConfig(buildHtml(fs.readFileSync(sourcePath, 'utf8')));
+    const html = injectMobileAuthGate(injectIsolatedSupabaseConfig(buildHtml(fs.readFileSync(sourcePath, 'utf8'))));
     fs.writeFileSync(destinationPath, html, 'utf8');
   } else {
     fs.copyFileSync(sourcePath, destinationPath);

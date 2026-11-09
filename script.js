@@ -6455,9 +6455,17 @@ safeDomReady(() => {
                     ? window.LYANN_API_CLIENT.normalizeAuthError(err) 
                     : err;
                 if (window.lyannAlert) {
-                    window.lyannAlert(normErr.message || 'Adresse email ou mot de passe incorrect.');
+                    await window.lyannAlert(normErr.message || 'Adresse email ou mot de passe incorrect.');
                 } else {
                     alert(normErr.message || 'Adresse email ou mot de passe incorrect.');
+                }
+                // Unconfirmed address: offer a new confirmation link (cooldown and hourly cap in the API client).
+                if (normErr.code === 'email_not_confirmed' && window.lyannConfirm && window.LYANN_API_CLIENT?.resendSignupConfirmation) {
+                    const again = await window.lyannConfirm(`Recevoir un nouveau lien de confirmation à ${email} ?`, 'info', 'Adresse non confirmée');
+                    if (again) {
+                        const sent = await window.LYANN_API_CLIENT.resendSignupConfirmation(email);
+                        window.lyannAlert(sent.error ? sent.error.message : 'Si cette adresse attend une confirmation, un nouveau lien vient d’être envoyé.');
+                    }
                 }
             } finally {
                 if (submitBtn) {
@@ -9693,24 +9701,7 @@ safeDomReady(() => {
         }, 400);
     } else if (chatActionParam === 'resend_confirmation') {
         setTimeout(async () => {
-            const email = await window.lyannPrompt('Veuillez saisir votre adresse email pour recevoir un nouveau lien de confirmation :');
-            if (email && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
-                const { error } = await window.LYANN_API_CLIENT.supabase.auth.resend({
-                    type: 'signup',
-                    email: email,
-                    options: {
-                        emailRedirectTo: (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
-                            ? 'app.lyann.dom://confirm-signup'
-                            : window.location.origin + '/confirm-signup.html'
-                    }
-                });
-                if (error) {
-                    console.error('[LYANN AUTH DEBUG]', error);
-                    window.lyannAlert('❌ ' + (error.message || 'Erreur lors du renvoi de l’email.'));
-                } else {
-                    window.lyannAlert(`📩 Un nouveau lien de confirmation a été envoyé à l'adresse ${email}.`);
-                }
-            }
+            if (typeof window.lyannOfferConfirmationResend === 'function') await window.lyannOfferConfirmationResend('request');
             window.history.replaceState({}, document.title, window.location.pathname);
         }, 400);
     }

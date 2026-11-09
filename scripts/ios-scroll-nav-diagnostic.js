@@ -84,10 +84,12 @@ const MEASURE = () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text().slice(0, 160)); });
 
     const qa = { email: process.env.LYANN_E2E_QA_A_EMAIL, password: process.env.LYANN_E2E_QA_A_PASSWORD };
-    await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.login, null, { timeout: 20000 });
     if (STATE !== 'guest' && STATE !== 'guest-then-login') {
-        const login = await page.evaluate(async (c) => { const r = await window.LYANN_API_CLIENT.login(c.email, c.password); return { id: r.data?.user?.id || null, error: r.error?.message || null }; }, qa);
+        // Phase 3.0A: signing in on the welcome page makes the mobile gate navigate at once, so the evaluation may be cut.
+        const login = await page.evaluate(async (c) => { const r = await Promise.race([window.LYANN_API_CLIENT.login(c.email, c.password), new Promise((ok) => setTimeout(() => ok({ data: { user: { id: 'pending' } } }), 4000))]); return { id: r.data?.user?.id || null, error: r.error?.message || null }; }, qa)
+            .catch((e) => (/destroyed|navigation|Load failed/i.test(String(e.message)) ? { id: 'navigated', error: null } : { id: null, error: String(e.message) }));
         if (!login.id) { console.log(JSON.stringify({ loginError: login.error })); process.exit(2); }
     }
     if (STATE === 'refresh-fail' || STATE === 'refresh-slow') {

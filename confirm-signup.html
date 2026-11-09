@@ -390,14 +390,15 @@
                 badgeNotice.textContent = '✅ Validation Réussie';
                 confirmTitle.textContent = 'Adresse email confirmée !';
                 confirmDesc.textContent = 'Votre adresse email a été confirmée avec succès. Vous pouvez maintenant vous connecter à votre compte LYANN.';
-                actionContainer.innerHTML = `
-                    <a href="index.html?action=email_confirmed" class="btn-confirm-action">
-                        <i class="ph ph-sign-in"></i> Se connecter
-                    </a>
-                `;
+                // In the app, verifyOtp has already opened the session: go straight to Découvrir, no login screen.
+                const inApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+                const successTarget = inApp ? 'discover.html' : 'index.html?action=email_confirmed';
+                actionContainer.innerHTML = inApp
+                    ? `<a href="${successTarget}" class="btn-confirm-action"><i class="ph ph-arrow-right"></i> Ouvrir LYANN</a>`
+                    : `<a href="${successTarget}" class="btn-confirm-action"><i class="ph ph-sign-in"></i> Se connecter</a>`;
                 setTimeout(() => {
-                    window.location.href = 'index.html?action=email_confirmed';
-                }, 2500);
+                    window.location.href = successTarget;
+                }, inApp ? 800 : 2500);
             }
 
             function renderExpiredState() {

@@ -119,9 +119,13 @@ window.openLyannPasswordRecovery = function() {
             </div>
         </form>`;
     document.body.appendChild(overlay);
+    window.__lyannRecoveryPending = true;
 
     const close = () => {
         overlay.remove();
+        // Lets the mobile auth gate move on to Découvrir once the member is done with the password form.
+        window.__lyannRecoveryPending = false;
+        window.dispatchEvent(new Event('lyann:recovery-closed'));
         const url = new URL(window.location.href);
         if (url.searchParams.get('action') === 'reset_password') {
             url.searchParams.delete('action');

@@ -468,7 +468,7 @@ function normalizeAuthError(error) {
         return { message: 'Adresse email ou mot de passe incorrect.' };
     }
     if (msg.includes('email not confirmed')) {
-        return { message: 'Votre compte est créé. Ouvrez le lien reçu par email pour activer la connexion, puis réessayez.' };
+        return { code: 'email_not_confirmed', message: 'Votre compte est créé. Ouvrez le lien reçu par email pour activer la connexion, puis réessayez.' };
     }
     if (msg.includes('email rate limit') || msg.includes('over_email_send_rate_limit')) {
         return { message: 'L’envoi des emails est momentanément saturé. Réessayez dans une heure, ou connectez-vous si vous avez déjà un compte.' };
@@ -562,6 +562,47 @@ const LYANN_API_CLIENT = {
             res.error = normalizeAuthError(res.error);
         }
         return res;
+    },
+
+    // Resends the sign-up confirmation link. Anti-abuse: one send per address every 60 s and six per hour on this
+    // device (Supabase applies its own server-side limit on top). The answer never says whether the address exists.
+    async resendSignupConfirmation(email) {
+        const clean = String(email || '').trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+            return { error: { code: 'invalid_email', message: 'Indique une adresse email valide.' } };
+        }
+        if (!this.supabase) return { error: { code: 'unavailable', message: 'Service indisponible. Réessaie dans un instant.' } };
+        const COOLDOWN_MS = 60 * 1000;
+        const HOUR_MS = 60 * 60 * 1000;
+        const MAX_PER_HOUR = 6;
+        const KEY = 'lyann_resend_log';
+        const now = Date.now();
+        let log = [];
+        try { log = (JSON.parse(localStorage.getItem(KEY) || '[]') || []).filter((e) => e && now - e.t < HOUR_MS); } catch (_) { log = []; }
+        const last = log.filter((e) => e.e === clean).reduce((max, e) => Math.max(max, e.t), 0);
+        if (last && now - last < COOLDOWN_MS) {
+            const retryAfter = Math.ceil((COOLDOWN_MS - (now - last)) / 1000);
+            return { error: { code: 'cooldown', retryAfter, message: `Un lien vient d’être envoyé. Patiente ${retryAfter} s avant d’en demander un autre.` } };
+        }
+        if (log.length >= MAX_PER_HOUR) {
+            return { error: { code: 'too_many', retryAfter: 3600, message: 'Trop de demandes. Réessaie dans une heure.' } };
+        }
+        log.push({ e: clean, t: now });
+        try { localStorage.setItem(KEY, JSON.stringify(log)); } catch (_) {}
+        const res = await this.supabase.auth.resend({
+            type: 'signup',
+            email: clean,
+            options: {
+                emailRedirectTo: isCapacitorRuntime()
+                    ? 'app.lyann.dom://confirm-signup'
+                    : window.location.origin + '/confirm-signup.html'
+            }
+        });
+        if (res.error) {
+            res.error = normalizeAuthError(res.error);
+            return { error: res.error };
+        }
+        return { data: { sent: true }, error: null };
     },
 
     async deleteMyAccount() {

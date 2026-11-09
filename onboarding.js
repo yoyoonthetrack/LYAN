@@ -266,6 +266,12 @@ runOnDomReady(() => {
                         const normalizedUrl = data.url.replace(/^app\.lyann\.dom:\/\//i, 'https://app.lyann.dom/');
                         const urlObj = new URL(normalizedUrl);
                         const code = urlObj.searchParams.get('code');
+                        const tokenHash = urlObj.searchParams.get('token_hash');
+                        const linkError = urlObj.searchParams.get('error_description') || urlObj.searchParams.get('error')
+                            || new URLSearchParams((urlObj.hash || '').replace(/^#/, '')).get('error_description');
+                        // A recovery link signs the member in to let them choose a password: keep the welcome page open
+                        // until the password form is done (mobile-auth-gate).
+                        if (/reset_password|type=recovery/i.test(data.url)) window.__lyannRecoveryPending = true;
                         
                         if (code && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                             console.log('[NATIVE_OAUTH] Exchanging PKCE code for session...');
@@ -275,6 +281,22 @@ runOnDomReady(() => {
                                 showGoogleFailure(sessionErr);
                             } else {
                                 console.log('[NATIVE_OAUTH] Session established via PKCE code exchange!', sessionData?.session?.user?.id);
+                            }
+                        } else if (linkError) {
+                            window.__lyannRecoveryPending = false;
+                            if (typeof window.lyannOfferConfirmationResend === 'function') window.lyannOfferConfirmationResend('expired');
+                        } else if (tokenHash && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
+                            // E-mail confirmation or recovery link opened in the app (universal link or custom scheme).
+                            const allowed = ['signup', 'email', 'recovery', 'magiclink', 'invite', 'email_change'];
+                            const requested = urlObj.searchParams.get('type') || 'email';
+                            const { error: otpError } = await window.LYANN_API_CLIENT.supabase.auth.verifyOtp({
+                                token_hash: tokenHash,
+                                type: allowed.includes(requested) ? requested : 'email'
+                            });
+                            if (otpError) {
+                                window.__lyannRecoveryPending = false;
+                                console.error('[NATIVE_OAUTH] verifyOtp error:', otpError);
+                                if (typeof window.lyannOfferConfirmationResend === 'function') window.lyannOfferConfirmationResend('expired');
                             }
                         } else if (urlObj.hash && window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase) {
                             const hashParams = new URLSearchParams(urlObj.hash.substring(1));
@@ -307,6 +329,21 @@ runOnDomReady(() => {
             console.warn('[NATIVE_OAUTH] Failed to attach Capacitor appUrlOpen listener:', err);
         }
     }
+
+    // Expired or already used confirmation link, or "resend" requested from a deep link: ask for the address and resend.
+    window.lyannOfferConfirmationResend = async function (reason) {
+        const intro = reason === 'expired'
+            ? 'Ce lien n’est plus valide : il a expiré ou a déjà été utilisé. Indique ton adresse email pour recevoir un nouveau lien de confirmation (si ton compte est déjà confirmé, connecte-toi simplement) :'
+            : 'Indique ton adresse email pour recevoir un nouveau lien de confirmation :';
+        const email = window.lyannPrompt ? await window.lyannPrompt(intro) : null;
+        if (!email) return;
+        const res = await window.LYANN_API_CLIENT.resendSignupConfirmation(email);
+        if (res.error) {
+            if (window.lyannAlert) window.lyannAlert(res.error.message);
+            return;
+        }
+        if (window.lyannAlert) window.lyannAlert('Si cette adresse attend une confirmation, un nouveau lien vient d’être envoyé.');
+    };
 
     function ensureCguAcceptRow() {
         if (document.getElementById('obAcceptCgu')) return;
@@ -419,8 +456,96 @@ runOnDomReady(() => {
         });
     }
 
+    function isNativeRuntime() {
+        return (typeof window.isNativePlatform === 'function' && window.isNativePlatform())
+            || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function removeEmailPending() {
+        const panel = document.getElementById('obEmailPending');
+        if (panel) panel.remove();
+    }
+
+    // "Check your mailbox" state after an e-mail sign-up that needs confirmation (mobile app).
+    function showEmailPending(email) {
+        const body = document.getElementById('obModalBody');
+        if (!body) return;
+        removeEmailPending();
+        steps.forEach((step) => { step.classList.remove('active'); step.style.display = 'none'; });
+        if (obModalFooter) obModalFooter.style.display = 'none';
+        if (obStepCountText) obStepCountText.textContent = 'Confirmation';
+        if (obProgressBarFill) obProgressBarFill.style.width = '100%';
+        const panel = document.createElement('div');
+        panel.id = 'obEmailPending';
+        panel.className = 'success-screen';
+        panel.style.cssText = 'text-align:center;padding:1.5rem 1rem;display:grid;gap:12px;';
+        panel.innerHTML = `
+            <div style="margin:0 auto;width:64px;height:64px;border-radius:50%;background:rgba(74,124,89,.1);display:flex;align-items:center;justify-content:center;color:var(--primary);">
+                <i class="ph-fill ph-envelope-simple-open" style="font-size:2rem;" aria-hidden="true"></i>
+            </div>
+            <h3 class="step-title" style="margin:0;">Vérifie ta boîte mail</h3>
+            <p class="step-desc" style="margin:0;">Nous avons envoyé un lien de confirmation à <strong>${escapeHtml(email)}</strong>. Ouvre-le depuis ce téléphone : tu reviens directement dans LYANN.</p>
+            <p class="step-desc" style="margin:0;font-size:.85rem;">Rien reçu ? Regarde dans les courriers indésirables, ou renvoie le lien. Si tu as déjà un compte avec cette adresse, connecte-toi.</p>
+            <p id="obResendStatus" role="status" style="margin:0;min-height:1.2em;font-size:.88rem;color:#4A5568;"></p>
+            <button type="button" class="btn btn-primary btn-lg" id="obResendBtn" style="width:100%;justify-content:center;">Renvoyer le lien</button>
+            <button type="button" class="btn btn-outline" id="obEditEmailBtn" style="width:100%;justify-content:center;">Modifier l’adresse</button>
+            <a href="#" id="obPendingLogin" style="color:var(--primary);font-weight:700;">J’ai confirmé, me connecter</a>`;
+        body.appendChild(panel);
+
+        const resendBtn = panel.querySelector('#obResendBtn');
+        const status = panel.querySelector('#obResendStatus');
+        let timer = null;
+        const cooldown = (seconds) => {
+            clearInterval(timer);
+            let left = seconds;
+            resendBtn.disabled = true;
+            const tick = () => {
+                if (left <= 0) { clearInterval(timer); resendBtn.disabled = false; resendBtn.textContent = 'Renvoyer le lien'; return; }
+                resendBtn.textContent = `Renvoyer le lien (${left} s)`;
+                left -= 1;
+            };
+            tick();
+            timer = setInterval(tick, 1000);
+        };
+        cooldown(60);
+        resendBtn.addEventListener('click', async () => {
+            resendBtn.disabled = true;
+            status.textContent = 'Envoi…';
+            const res = await window.LYANN_API_CLIENT.resendSignupConfirmation(email);
+            if (res.error) {
+                status.textContent = res.error.message;
+                if (res.error.code === 'cooldown') cooldown(res.error.retryAfter || 60);
+                else if (res.error.code === 'too_many') resendBtn.disabled = true;
+                else resendBtn.disabled = false;
+                return;
+            }
+            status.textContent = 'Un nouveau lien vient d’être envoyé.';
+            cooldown(60);
+        });
+        panel.querySelector('#obEditEmailBtn').addEventListener('click', () => {
+            clearInterval(timer);
+            removeEmailPending();
+            currentStep = 0;
+            updateStepsUI();
+        });
+        panel.querySelector('#obPendingLogin').addEventListener('click', (event) => {
+            event.preventDefault();
+            clearInterval(timer);
+            removeEmailPending();
+            if (onboardingModal) onboardingModal.classList.remove('active');
+            window.openLogin();
+            const loginEmail = document.getElementById('loginEmail');
+            if (loginEmail) loginEmail.value = email;
+        });
+    }
+
     // === NAVIGATION LOGIC ===
     function updateStepsUI() {
+        removeEmailPending();
         // Hide all steps
         steps.forEach((step, idx) => {
             if (step) {
@@ -549,6 +674,12 @@ runOnDomReady(() => {
 
                         if (error) throw error;
 
+                        // Mobile app (Phase 3.0A): e-mail confirmation stays mandatory. No server-side auto-confirmation:
+                        // the member confirms from the link, which brings them straight back into the app.
+                        if (!data?.session && isNativeRuntime()) {
+                            showEmailPending(onboardingData.email);
+                            return;
+                        }
                         if (!data?.session && data?.user?.id && typeof window.LYANN_API_CLIENT.continueSignup === 'function') {
                             const continued = await window.LYANN_API_CLIENT.continueSignup(data.user.id);
                             if (!continued.error) {
