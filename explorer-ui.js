@@ -691,6 +691,11 @@
         });
         window.addEventListener('lyann_request_created', () => { mode = 'annonces'; search(true); });
         window.addEventListener('pageshow', event => { if (event.persisted) search(true); });
+        // Leaving the page (tab, back swipe, app switch into the page cache) always releases the Carte lock;
+        // a restored page re-applies it from its own state through search() above.
+        window.addEventListener('pagehide', () => {
+            document.body.classList.remove('explorer-annonces-map-view', 'explorer-map-category-sheet-open');
+        });
         async function refreshSavedArea(id) {
             savedArea = '';
             $('explorerSavedArea').hidden = true;

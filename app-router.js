@@ -47,6 +47,13 @@
     document.body.style.overflow = '';
   }
 
+  // Full-screen Carte (Annonces) locks the document. It must never outlive the page, whatever
+  // the way out: tab, back swipe or a restored page. Kept apart from releasePageScrollLock(),
+  // which also runs on pageshow and would otherwise cancel a Carte that is legitimately open.
+  function releaseMapMode() {
+    document.body.classList.remove('explorer-annonces-map-view', 'explorer-map-category-sheet-open');
+  }
+
   function ensurePageVeil() {
     let veil = document.getElementById('lyann-page-veil');
     if (veil) return veil;
@@ -68,6 +75,7 @@
     lastHardNavAt = now;
     lastHardNavTarget = dest;
     releasePageScrollLock();
+    releaseMapMode();
     document.querySelectorAll('video').forEach((video) => {
       try { video.pause(); } catch (_) {}
     });

@@ -211,7 +211,8 @@ body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"
     flex-direction: column;
     max-width: none;
     margin: 0;
-    padding: calc(72px + env(safe-area-inset-top, 0px)) 12px calc(68px + env(safe-area-inset-bottom, 0px));
+    /* Bottom: the member bar is 72px plus the safe area; keep the map clear of it. */
+    padding: calc(72px + env(safe-area-inset-top, 0px)) 12px calc(var(--m-bottom-nav-height, 72px) + 8px + env(safe-area-inset-bottom, 0px));
     height: 100dvh;
     box-sizing: border-box;
     overflow: hidden;
@@ -240,6 +241,12 @@ body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"
 body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .explorer-map-shell {
     flex: 1;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body.results-page.explorer-annonces-map-view .explorer-page[data-mode="annonces"] .explorer-map:not([hidden]) {
+    /* Flex column: without it the children's flex:1 below is ignored and the map canvas collapses to 0px. */
     display: flex;
     flex-direction: column;
 }

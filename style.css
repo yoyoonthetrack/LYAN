@@ -19077,9 +19077,13 @@ html.is-native-shell .lyann-footer {
     display: none !important;
 }
 html.is-native-shell body:not(.user-is-logged-in) {
+    background: #F7F5F0;
+}
+/* Only the guest landing is a fixed single screen. Every other native page (Découvrir,
+   Lyanneurs, Annonces, ...) must scroll while the session is resolving, failed, or absent. */
+html.is-native-shell body:not(.user-is-logged-in):has(#nativeGuestHome:not([hidden])) {
     overflow: hidden;
     height: 100dvh;
-    background: #F7F5F0;
 }
 html.is-native-shell body:not(.user-is-logged-in)::before {
     /* Guest home paints its own hero layer on #nativeGuestHome */

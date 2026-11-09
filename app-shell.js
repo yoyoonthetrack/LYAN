@@ -211,6 +211,17 @@ async function injectMobileInterface() {
 
     document.body.classList.add('is-native-app');
     document.documentElement.classList.add('is-native-shell');
+
+    // The first pass can run while the session is absent or failed (slow token refresh, offline start).
+    // When the session becomes authenticated later, mount the member bar then: it used to stay missing
+    // until the next full page load.
+    if (!window.__lyannMemberNavAuthBound) {
+        window.__lyannMemberNavAuthBound = true;
+        window.addEventListener('lyann:auth-state', () => {
+            const authed = window.LYANN_AUTH_STATE && window.LYANN_AUTH_STATE.isAuthenticated();
+            if (authed && !document.querySelector('.mobile-bottom-nav')) injectMobileInterface();
+        });
+    }
     if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.bodyIsNativeAppApplied = document.body.classList.contains('is-native-app');
 
     const path = window.location.pathname;
