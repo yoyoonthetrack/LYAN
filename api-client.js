@@ -622,22 +622,6 @@ const LYANN_API_CLIENT = {
         return body;
     },
 
-    async continueSignup(userId) {
-        if (!userId) return { error: { message: 'Compte introuvable.' } };
-        try {
-            const res = await lyannBackendFetch('/v1/auth/continue-signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) return { error: { message: body.error || 'Impossible d’ouvrir la session pour le moment.' } };
-            return { data: body };
-        } catch (_) {
-            return { error: { message: 'Connexion au serveur impossible.' } };
-        }
-    },
-
     async login(email, password) {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const res = await this.supabase.auth.signInWithPassword({ email, password });
@@ -691,7 +675,10 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) return { error: { message: 'Supabase non initialisé.' } };
         const res = await this.supabase.auth.resetPasswordForEmail(email, {
             redirectTo: isCapacitorRuntime()
-                ? 'app.lyann.dom://confirm-signup?action=reset_password'
+                // Supabase matches the redirect against its allow-list exactly, query included: Staging accepts
+                // app.lyann.dom://confirm-signup but not the variant with ?action=reset_password, which fell back to the
+                // Site URL (Safari instead of the app). The recovery link is recognised by its own type=recovery.
+                ? 'app.lyann.dom://confirm-signup'
                 : window.location.origin + '/index.html?action=reset_password'
         });
         if (res.error) res.error = normalizeAuthError(res.error);

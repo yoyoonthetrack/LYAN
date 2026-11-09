@@ -1073,33 +1073,17 @@ app.get(['/', '/v1', '/v1/', '/api', '/api/server'], (req, res) => {
     });
 });
 
-// Lets a just-created account enter the app before the confirmation email is opened.
-// Only a user id returned by signup, and only for 30 minutes, can be confirmed here.
-app.post('/v1/auth/continue-signup', async (req, res) => {
-    const userId = String(req.body?.userId || '');
-    if (!/^[0-9a-f-]{36}$/i.test(userId)) {
-        return res.status(400).json({ error: 'Compte introuvable.' });
-    }
-    try {
-        const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
-        if (error || !data?.user) {
-            return res.status(404).json({ error: 'Compte introuvable.' });
-        }
-        const created = new Date(data.user.created_at).getTime();
-        if (!Number.isFinite(created) || Date.now() - created > 30 * 60 * 1000) {
-            return res.status(403).json({ error: 'Ouvre le lien reçu par email pour te connecter.' });
-        }
-        if (!data.user.email_confirmed_at) {
-            const updated = await supabaseAdmin.auth.admin.updateUserById(userId, { email_confirm: true });
-            if (updated.error) {
-                return res.status(500).json({ error: 'Impossible d’ouvrir la session pour le moment.' });
-            }
-        }
-        return res.json({ ok: true });
-    } catch (err) {
-        console.error('[continue-signup]', err);
-        return res.status(500).json({ error: 'Impossible d’ouvrir la session pour le moment.' });
-    }
+// Closed (Phase 3.0B). This route used to mark an address as confirmed (Auth admin update of the confirmation
+// flag) for any user id younger than 30 minutes, without authentication and without proof that the
+// caller owns the address. An e-mail address is now confirmed only by the official Supabase Auth link (verifyOtp or the
+// /auth/v1/verify redirect). The route stays answerable so that already-installed app builds get a clean refusal
+// instead of a 404; it never reads or writes Supabase Auth.
+app.post('/v1/auth/continue-signup', (req, res) => {
+    return res.status(410).json({
+        success: false,
+        code: 'EMAIL_CONFIRMATION_REQUIRED',
+        error: 'Ouvre le lien reçu par email pour confirmer ton adresse.'
+    });
 });
 
 // Account deletion starts inside the app, as required for App Store review.

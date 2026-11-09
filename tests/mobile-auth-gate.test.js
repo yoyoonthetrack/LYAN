@@ -59,8 +59,8 @@ assert.ok(!/mobile-auth-gate/.test(read('api/render.js')), 'api/render.js (websi
 
 // 7. Native sign-up keeps the e-mail confirmation: no server-side auto-confirm, resend with anti-abuse limits.
 const onboarding = read('onboarding.js');
-assert.match(onboarding, /!data\?\.session && isNativeRuntime\(\)[\s\S]*showEmailPending/);
-assert.ok(onboarding.indexOf('showEmailPending(onboardingData.email)') < onboarding.indexOf('continueSignup(data.user.id)'), 'native path must return before continue-signup');
+assert.match(onboarding, /if \(!data\?\.session\) \{\s*showEmailPending\(onboardingData\.email\);\s*return;/);
+assert.ok(!/continueSignup|continue-signup/.test(onboarding), 'sign-up must not call continue-signup (Phase 3.0B)');
 const api = read('api-client.js');
 assert.match(api, /resendSignupConfirmation[\s\S]*COOLDOWN_MS = 60 \* 1000[\s\S]*MAX_PER_HOUR = 6/);
 assert.match(api, /code: 'email_not_confirmed'/);

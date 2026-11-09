@@ -389,16 +389,24 @@
                 iconEl.className = 'ph ph-check-circle';
                 badgeNotice.textContent = '✅ Validation Réussie';
                 confirmTitle.textContent = 'Adresse email confirmée !';
-                confirmDesc.textContent = 'Votre adresse email a été confirmée avec succès. Vous pouvez maintenant vous connecter à votre compte LYANN.';
-                // In the app, verifyOtp has already opened the session: go straight to Découvrir, no login screen.
+                confirmDesc.textContent = 'Votre adresse email a été confirmée avec succès.';
                 const inApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-                const successTarget = inApp ? 'discover.html' : 'index.html?action=email_confirmed';
-                actionContainer.innerHTML = inApp
-                    ? `<a href="${successTarget}" class="btn-confirm-action"><i class="ph ph-arrow-right"></i> Ouvrir LYANN</a>`
-                    : `<a href="${successTarget}" class="btn-confirm-action"><i class="ph ph-sign-in"></i> Se connecter</a>`;
-                setTimeout(() => {
-                    window.location.href = successTarget;
-                }, inApp ? 800 : 2500);
+                // The link has just proven that the address is the member's. When it also opened a session (verifyOtp or the
+                // Supabase redirect), go straight into LYANN with it. Otherwise ask to sign in.
+                const show = (signedIn) => {
+                    const target = (signedIn || inApp) ? 'discover.html' : 'index.html?action=email_confirmed';
+                    actionContainer.innerHTML = (signedIn || inApp)
+                        ? `<a href="${target}" class="btn-confirm-action"><i class="ph ph-arrow-right"></i> Ouvrir LYANN</a>`
+                        : `<a href="${target}" class="btn-confirm-action"><i class="ph ph-sign-in"></i> Se connecter</a>`;
+                    setTimeout(() => { window.location.href = target; }, signedIn || inApp ? 800 : 2500);
+                };
+                let sessionCheck = null;
+                try { sessionCheck = window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.supabase && window.LYANN_API_CLIENT.supabase.auth.getSession(); } catch (_) {}
+                if (sessionCheck && typeof sessionCheck.then === 'function') {
+                    sessionCheck.then((res) => show(!!(res && res.data && res.data.session))).catch(() => show(false));
+                } else {
+                    show(false);
+                }
             }
 
             function renderExpiredState() {

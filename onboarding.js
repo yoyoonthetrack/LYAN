@@ -488,7 +488,7 @@ runOnDomReady(() => {
                 <i class="ph-fill ph-envelope-simple-open" style="font-size:2rem;" aria-hidden="true"></i>
             </div>
             <h3 class="step-title" style="margin:0;">Vérifie ta boîte mail</h3>
-            <p class="step-desc" style="margin:0;">Nous avons envoyé un lien de confirmation à <strong>${escapeHtml(email)}</strong>. Ouvre-le depuis ce téléphone : tu reviens directement dans LYANN.</p>
+            <p class="step-desc" style="margin:0;">Nous avons envoyé un lien de confirmation à <strong>${escapeHtml(email)}</strong>. Ouvre-le : tu reviens directement dans LYANN, connecté.</p>
             <p class="step-desc" style="margin:0;font-size:.85rem;">Rien reçu ? Regarde dans les courriers indésirables, ou renvoie le lien. Si tu as déjà un compte avec cette adresse, connecte-toi.</p>
             <p id="obResendStatus" role="status" style="margin:0;min-height:1.2em;font-size:.88rem;color:#4A5568;"></p>
             <button type="button" class="btn btn-primary btn-lg" id="obResendBtn" style="width:100%;justify-content:center;">Renvoyer le lien</button>
@@ -674,17 +674,11 @@ runOnDomReady(() => {
 
                         if (error) throw error;
 
-                        // Mobile app (Phase 3.0A): e-mail confirmation stays mandatory. No server-side auto-confirmation:
-                        // the member confirms from the link, which brings them straight back into the app.
-                        if (!data?.session && isNativeRuntime()) {
+                        // E-mail confirmation is mandatory on every platform (Phase 3.0B): the address is confirmed only by the
+                        // official Supabase link, never by the app or a server route. No session yet -> "check your mailbox".
+                        if (!data?.session) {
                             showEmailPending(onboardingData.email);
                             return;
-                        }
-                        if (!data?.session && data?.user?.id && typeof window.LYANN_API_CLIENT.continueSignup === 'function') {
-                            const continued = await window.LYANN_API_CLIENT.continueSignup(data.user.id);
-                            if (!continued.error) {
-                                await window.LYANN_API_CLIENT.login(onboardingData.email, onboardingData.password);
-                            }
                         }
                         if (typeof window.updateHeaderAuthState === 'function') {
                             await window.updateHeaderAuthState();
@@ -705,7 +699,7 @@ runOnDomReady(() => {
                     }
                     localStorage.setItem('lyan_user_profile', JSON.stringify(userProfile));
 
-                    const reminder = `Compte créé. Tu peux utiliser LYANN tout de suite. Un email de confirmation a été envoyé à ${onboardingData.email} : tu pourras le valider plus tard.`;
+                    const reminder = 'Compte créé. Bienvenue sur LYANN !';
                     if (window.NotificationService && typeof window.NotificationService.showToast === 'function') {
                         window.NotificationService.showToast('info', reminder);
                     } else if (window.lyannAlert) {
@@ -715,6 +709,11 @@ runOnDomReady(() => {
                     currentStep = 2;
                     updateStepsUI();
                 } catch (err) {
+                    // Same screen whether or not the address already has an account: sign-up must not reveal it.
+                    if (/already registered|already exists|already in use|user_already_exists/i.test(String(err?.message || '') + ' ' + String(err?.code || ''))) {
+                        showEmailPending(onboardingData.email);
+                        return;
+                    }
                     const normErr = (window.LYANN_API_CLIENT && window.LYANN_API_CLIENT.normalizeAuthError)
                         ? window.LYANN_API_CLIENT.normalizeAuthError(err)
                         : err;

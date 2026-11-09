@@ -127,6 +127,23 @@ async function mintToken(type, email) {
 }
 async function appUrl(page, url) { await page.evaluate((u) => window.__appUrlHandlers.forEach((fn) => fn({ url: u })), url); }
 
+
+// Follows the official Supabase verification link the way a mail client would, without opening any page: the answer
+// is the redirect (303) that the browser would follow, carrying the session in its fragment or an error.
+async function followOfficialLink(actionLink) {
+    const res = await fetch(actionLink, { redirect: 'manual' });
+    return res.headers.get('location') || '';
+}
+const userState = async (id) => { const u = await admin.auth.admin.getUserById(id); return { confirmed: !!u.data?.user?.email_confirmed_at, error: u.error && u.error.message }; };
+const anonClient = () => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+async function newUnconfirmedUser(redirectTo) {
+    const email = `qa-3b-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@lyann-test.invalid`;
+    const password = `Qa-${Math.random().toString(36).slice(2)}-Aa1`;
+    const link = await admin.auth.admin.generateLink({ type: 'signup', email, password, options: redirectTo ? { redirectTo } : undefined });
+    if (link.error) throw new Error('generateLink signup: ' + link.error.message);
+    return { id: link.data.user.id, email, password, actionLink: link.data.properties.action_link, hashedToken: link.data.properties.hashed_token };
+}
+
 const scenarios = {
     // 1. Direct links to member pages without session -> welcome flow, nothing of the member UI is ever painted.
     async 'guest-direct-links'({ browser, origin }) {
@@ -378,6 +395,149 @@ const scenarios = {
         check('email-signup', 'resend: hourly cap per device (changing the address does not bypass it)', capped.error && capped.error.code === 'too_many', capped);
         check('email-signup', 'resend: only the allowed requests reached Supabase', calls.resend === 6, calls);
         await context.close();
+    },
+
+
+
+    // 6a. Website: the old sign-up path (which called continue-signup and logged the member in) is gone.
+    async 'email-signup-web'({ browser, origin }) {
+        const { context, page } = await newPhone(browser, { web: true });
+        const calls = { signup: 0, continueSignup: 0, token: 0 };
+        await context.route('**/auth/v1/signup**', (route) => { calls.signup += 1; route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000003', aud: 'authenticated', email: 'qa-web@lyann-test.invalid', identities: [], user_metadata: {}, app_metadata: {}, created_at: new Date().toISOString() }) }); });
+        await context.route('**/v1/auth/continue-signup**', (route) => { calls.continueSignup += 1; route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
+        await context.route('**/auth/v1/token?grant_type=password**', (route) => { calls.token += 1; route.continue(); });
+        await page.goto(`${origin}/discover.html`, { waitUntil: 'domcontentloaded' });
+        await ready(page);
+        await page.evaluate(() => window.openOnboarding());
+        await page.fill('#obFirstName', 'Qa');
+        await page.fill('#obEmail', 'qa-web@lyann-test.invalid');
+        await page.fill('#obPassword', 'QaPhase3b-Pass1');
+        await page.evaluate(() => { const c = document.getElementById('obAcceptCgu'); if (c) c.checked = true; });
+        await page.click('#obNextBtn');
+        await wait(page, 600);
+        await page.click('#obNextBtn');
+        await page.waitForSelector('#obEmailPending', { timeout: 15000 }).catch(() => {});
+        await wait(page, 1500);
+        const pending = await page.evaluate(() => ({ shown: !!document.getElementById('obEmailPending'), text: (document.getElementById('obEmailPending') || {}).innerText || '', session: null }));
+        const session = await page.evaluate(async () => !!(await LYANN_API_CLIENT.supabase.auth.getSession()).data.session);
+        check('email-signup-web', 'web sign-up: "check your mailbox", for an address that already has an account too (identities empty) - same screen', pending.shown && /qa-web@lyann-test\.invalid/.test(pending.text), pending);
+        check('email-signup-web', 'web sign-up: continue-signup never called, no automatic password login, no session', calls.continueSignup === 0 && calls.token === 0 && !session && calls.signup === 1, { calls, session });
+        await context.close();
+    },
+
+    // 6b. Real Staging HTTP: the official Supabase flow is the only way to confirm an address.
+    async 'official-confirmation'({ browser, origin }) {
+        const created = [];
+        try {
+            // -- redirect URLs used by the clients are accepted by the Staging allow-list (real GoTrue answer)
+            const probe = await newPhone(browser);
+            const sent = { recover: [], signup: [], resend: [] };
+            await probe.context.route('**/auth/v1/recover**', (route) => { sent.recover.push(new URL(route.request().url()).searchParams.get('redirect_to')); route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); });
+            await probe.context.route('**/auth/v1/signup**', (route) => { sent.signup.push(new URL(route.request().url()).searchParams.get('redirect_to')); route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', aud: 'authenticated', email: 'x@lyann-test.invalid', identities: [], user_metadata: {}, app_metadata: {}, created_at: new Date().toISOString() }) }); });
+            await probe.context.route('**/auth/v1/resend**', (route) => { sent.resend.push(JSON.parse(route.request().postData() || '{}')); route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }); });
+            await probe.page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
+            await ready(probe.page);
+            await probe.page.evaluate(() => LYANN_API_CLIENT.resetPasswordForEmail('qa@lyann-test.invalid'));
+            await probe.page.evaluate(() => LYANN_API_CLIENT.signUp('qa@lyann-test.invalid', 'Qa-Pass-12345', {}));
+            await probe.page.evaluate(() => LYANN_API_CLIENT.resendSignupConfirmation('qa@lyann-test.invalid'));
+            const urls = { recoveryNative: sent.recover[0], signupNative: sent.signup[0] };
+            for (const [name, url] of Object.entries(urls)) {
+                const res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/verify?token=qa-invalid-token&type=signup&redirect_to=${encodeURIComponent(url)}`, { headers: { apikey: process.env.SUPABASE_ANON_KEY }, redirect: 'manual' });
+                const loc = res.headers.get('location') || '';
+                check('official-confirmation', `native ${name} return URL (${url}) is accepted by the Staging Auth allow-list`, loc.startsWith(url), { url, landsOn: loc.split('#')[0] });
+            }
+            await probe.context.close();
+
+            // -- A. no proof, no confirmation (invalid token, web page)
+            const a = await newUnconfirmedUser('https://staging.lyann.app/confirm-signup.html');
+            created.push(a.id);
+            const web = await newPhone(browser, { web: true });
+            await web.page.goto(`${origin}/confirm-signup.html?token_hash=not-a-real-token&type=signup`, { waitUntil: 'domcontentloaded' });
+            await web.page.waitForSelector('#btnConfirm', { timeout: 20000 });
+            await web.page.click('#btnConfirm');
+            await web.page.waitForFunction(() => /Lien expiré|déjà utilisé|n.est plus valide/i.test(document.body.innerText), null, { timeout: 20000 }).catch(() => {});
+            const expiredUi = await web.page.evaluate(() => /Lien expiré|déjà utilisé/i.test(document.body.innerText));
+            const stillUnconfirmed = await userState(a.id);
+            check('official-confirmation', 'web: invalid link -> "expired" state, address stays unconfirmed', expiredUi && !stillUnconfirmed.confirmed, { expiredUi, stillUnconfirmed });
+            const loginBefore = await anonClient().auth.signInWithPassword({ email: a.email, password: a.password });
+            check('official-confirmation', 'unconfirmed account cannot sign in (email_not_confirmed)', loginBefore.error && /email_not_confirmed/.test(loginBefore.error.code || loginBefore.error.message), loginBefore.error && loginBefore.error.code);
+
+            // -- B. web: valid official link (token_hash page) -> confirmed -> LYANN opens with the verified session
+            await web.page.goto(`${origin}/confirm-signup.html?token_hash=${a.hashedToken}&type=signup`, { waitUntil: 'domcontentloaded' });
+            await ready(web.page);
+            await web.page.waitForSelector('#btnConfirm', { timeout: 20000 });
+            await web.page.click('#btnConfirm');
+            const webOpened = await waitPath(web.page, /discover\.html/, 30000);
+            const confirmedNow = await userState(a.id);
+            check('official-confirmation', 'web: valid link confirms the address and opens Découvrir with a session', webOpened && confirmedNow.confirmed, { url: web.page.url(), confirmedNow });
+            await wait(web.page, 3000);
+            const webSession = await web.page.evaluate(async () => !!(await LYANN_API_CLIENT.supabase.auth.getSession()).data.session);
+            check('official-confirmation', 'web: the session is a real, verified one', webSession, null);
+            await web.context.close();
+            const loginAfter = await anonClient().auth.signInWithPassword({ email: a.email, password: a.password });
+            check('official-confirmation', 'sign-in works after confirmation', !loginAfter.error, loginAfter.error && loginAfter.error.message);
+
+            // -- C. mobile: official link, redirect to the app scheme, session in the fragment -> Découvrir, five tabs
+            const m = await newUnconfirmedUser('app.lyann.dom://confirm-signup');
+            created.push(m.id);
+            const mobile = await newPhone(browser);
+            await mobile.page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
+            await ready(mobile.page);
+            await mobile.page.waitForFunction(() => window.__appUrlHandlers.length > 0, null, { timeout: 15000 });
+            const returnUrl = await followOfficialLink(m.actionLink);
+            check('official-confirmation', 'official link answers with a redirect to the app scheme carrying a session', /^app\.lyann\.dom:\/\/confirm-signup#access_token=/.test(returnUrl), returnUrl.split('#')[0]);
+            await appUrl(mobile.page, returnUrl);
+            const inApp = await waitPath(mobile.page, /discover\.html/, 30000);
+            await wait(mobile.page, 4000);
+            const nav = await navInfo(mobile.page);
+            const mState = await userState(m.id);
+            check('official-confirmation', 'mobile: link confirms and opens Découvrir with five tabs', inApp && mState.confirmed && JSON.stringify(nav.tabs) === JSON.stringify(TABS) && nav.count === 1, { inApp, mState, nav });
+            // reopen the app: a second page of the same context keeps the session
+            const reopened = await mobile.context.newPage();
+            await reopened.goto(`${origin}/discover.html`, { waitUntil: 'domcontentloaded' });
+            await wait(reopened, 4500);
+            check('official-confirmation', 'mobile: session kept after closing and reopening', /discover\.html/.test(reopened.url()), reopened.url());
+            await reopened.close();
+            // same link a second time: used -> explained, nothing changes
+            await logout(mobile.page);
+            await waitPath(mobile.page, /bienvenue\.html/);
+            await ready(mobile.page);
+            await mobile.page.waitForFunction(() => window.__appUrlHandlers.length > 0, null, { timeout: 15000 });
+            const replay = await followOfficialLink(m.actionLink);
+            check('official-confirmation', 'used link: Supabase answers with an error, no session', /error/.test(replay) && !/access_token/.test(replay), replay.split('#')[0] + '#' + (replay.split('#')[1] || '').slice(0, 80));
+            await appUrl(mobile.page, replay);
+            await mobile.page.waitForFunction(() => /n’est plus valide/.test(document.body.innerText), null, { timeout: 15000 }).catch(() => {});
+            check('official-confirmation', 'used / expired link opened in the app: explained with a way to get a new one', await mobile.page.evaluate(() => /n’est plus valide/.test(document.body.innerText)), null);
+            await mobile.context.close();
+
+            // -- D. password recovery through the official flow, with the redirect the native client really uses
+            const r = await newUnconfirmedUser('app.lyann.dom://confirm-signup');
+            created.push(r.id);
+            await admin.auth.admin.updateUserById(r.id, { email_confirm: true }); // QA fixture only (admin tooling), so that recovery can be tested
+            const rec = await admin.auth.admin.generateLink({ type: 'recovery', email: r.email, options: { redirectTo: urls.recoveryNative } });
+            const recReturn = await followOfficialLink(rec.data.properties.action_link);
+            check('official-confirmation', 'recovery: official link answers with the app scheme and type=recovery', /^app\.lyann\.dom:\/\/confirm-signup#access_token=.*type=recovery/.test(recReturn), recReturn.split('#')[0]);
+            const ph = await newPhone(browser);
+            await ph.page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
+            await ready(ph.page);
+            await ph.page.waitForFunction(() => window.__appUrlHandlers.length > 0, null, { timeout: 15000 });
+            await appUrl(ph.page, recReturn);
+            await ph.page.waitForSelector('#lyannPasswordRecoveryOverlay', { timeout: 20000 }).catch(() => {});
+            await wait(ph.page, 2000);
+            const overlay = await ph.page.evaluate(() => ({ overlay: !!document.getElementById('lyannPasswordRecoveryOverlay'), url: location.pathname.split('/').pop() }));
+            check('official-confirmation', 'recovery: the password form opens and stays on top of the welcome page', overlay.overlay && overlay.url === 'bienvenue.html', overlay);
+            const newPassword = `New-${Math.random().toString(36).slice(2)}-Bb2`;
+            await ph.page.fill('#lyannRecoveryPassword', newPassword);
+            await ph.page.fill('#lyannRecoveryPasswordConfirm', newPassword);
+            await ph.page.click('#lyannRecoverySubmit');
+            const afterRecovery = await waitPath(ph.page, /discover\.html/, 30000);
+            const relog = await anonClient().auth.signInWithPassword({ email: r.email, password: newPassword });
+            check('official-confirmation', 'recovery: new password saved, Découvrir opens, sign-in works with it', afterRecovery && !relog.error, { afterRecovery, error: relog.error && relog.error.message });
+            await ph.context.close();
+        } finally {
+            for (const id of created) await admin.auth.admin.deleteUser(id);
+            check('official-confirmation', `QA users removed (${created.length})`, true, null);
+        }
     },
 
     // 7. Website is not restricted; Android specifics.
