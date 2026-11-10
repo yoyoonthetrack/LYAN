@@ -186,9 +186,9 @@ const scenarios = {
         const { context, page } = await newPhone(browser);
         await page.goto(`${origin}/results.html?mode=annonces`, { waitUntil: 'domcontentloaded' });
         await waitPath(page, /bienvenue\.html/);
-        await page.waitForFunction(() => document.getElementById('nativeGuestLoginForm'), null, { timeout: 20000 });
-        await page.evaluate(() => { const p = document.getElementById('nativeGuestPager'); if (p) p.scrollTo({ left: p.scrollWidth }); });
-        await wait(page, 600);
+        await page.click('#btnNativeLogin');
+        await page.waitForFunction(() => !document.getElementById('nativeGuestAuthSheet')?.hidden, null, { timeout: 20000 });
+        await wait(page, 300);
         await page.fill('#nativeGuestLoginEmail', QA.email);
         await page.fill('#nativeGuestLoginPassword', QA.password);
         await page.click('#nativeGuestLoginForm button[type="submit"]');
@@ -308,6 +308,8 @@ const scenarios = {
         await page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
         await ready(page);
         await page.waitForFunction(() => window.__appUrlHandlers.length > 0, null, { timeout: 15000 });
+        await page.click('#btnNativeLogin');
+        await wait(page, 400);
         // Google
         await page.evaluate(() => { window.open = () => ({}); });
         await page.evaluate(() => document.getElementById('btnGuestGoogle').click());
@@ -366,9 +368,8 @@ const scenarios = {
         await context.route('**/v1/auth/continue-signup**', (route) => { calls.continueSignup += 1; route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
         await page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
         await ready(page);
-        await page.evaluate(() => { const p = document.getElementById('nativeGuestPager'); if (p) p.scrollTo({ left: p.scrollWidth }); });
-        await wait(page, 600);
-        await page.click('#btnGuestSignup');
+        await page.click('#btnNativeJoin');
+        await wait(page, 400);
         await page.waitForSelector('#obFirstName', { state: 'visible', timeout: 10000 });
         await page.fill('#obFirstName', 'Qa');
         await page.fill('#obEmail', 'qa-phase3a@lyann-test.invalid');

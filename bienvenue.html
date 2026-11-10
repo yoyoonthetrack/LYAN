@@ -47,6 +47,7 @@
     <style>html.lyann-boot-splash-skip .lyann-boot-splash{display:none!important}</style>
     <script>(function(){try{var skip=sessionStorage.getItem('lyann_boot_splash_seen')==='1'||/Playwright|HeadlessChrome/i.test(navigator.userAgent);if(skip)document.documentElement.classList.add('lyann-boot-splash-skip');}catch(e){}})();</script>
 <link rel="stylesheet" href="business.css">
+<link rel="stylesheet" href="native-guest-premium.css">
 </head>
 <body>
 <div id="lyannBootSplash" class="lyann-boot-splash" role="status" aria-label="Chargement de LYANN" style="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#F8F8F5;border:0;margin:0;padding:0;box-shadow:none;">
@@ -175,227 +176,201 @@
         </div>
     </div>
 
-    <!-- Native guest landing. Hidden on the website. Horizontal slides between header and CTA. -->
-    <div id="nativeGuestHome" class="native-guest-home" hidden>
+    <!-- Native guest landing — premium onboarding V1 (Capacitor only). -->
+    <div id="nativeGuestHome" class="native-guest-home native-guest-premium-v1" hidden>
         <div class="native-guest-pager" id="nativeGuestPager" role="region" aria-label="Présentation LYANN" tabindex="0">
-            <section class="native-guest-slide native-guest-hero" data-slide="0" aria-label="Qui peut vous aider aujourd'hui ?">
-                <div class="native-guest-slide-inner">
-                    <h1>Qui peut vous aider<br><span class="text-gradient">aujourd'hui ?</span></h1>
-                    <p>Le réseau de confiance qui relie les habitants aux talents près de chez eux dans les DOM.</p>
-                    <div id="nativeGuestVideoSlot"></div>
-                </div>
-            </section>
 
-            <section class="native-guest-slide native-guest-demo-slide" data-slide="1" aria-label="Bokantaj, la vie du quartier">
+            <section class="native-guest-slide native-guest-premium" data-slide="0" aria-labelledby="ngp-title-0">
                 <div class="native-guest-slide-inner">
-                    <h2>Bokantaj, la vie du quartier</h2>
-                    <p class="native-guest-lead">Partagez vos idées, vos bons plans et vos petits coups de main avec les habitants près de chez vous.</p>
-                    <div class="native-guest-stage">
-                        <div class="native-guest-stage-body">
-                            <p class="native-guest-here"><i class="ph-fill ph-broadcast" aria-hidden="true"></i><span>Vous êtes dans Bokantaj</span><span class="sr-only">. Illustration de l’onglet sélectionné. Ces messages ne sont pas de vraies publications.</span></p>
-                            <article class="native-guest-post">
-                                <header>
-                                    <img src="onboarding-avatar-luc.jpg" alt="" width="44" height="44">
-                                    <div>
-                                        <strong>Luc V. <i class="ph-fill ph-check-circle" aria-hidden="true"></i></strong>
-                                        <span><i class="ph ph-map-pin" aria-hidden="true"></i> Saint-François · Aujourd’hui</span>
-                                    </div>
-                                </header>
-                                <em>Bon plan</em>
-                                <p>Je donne des avocats à Saint-François. Si ça intéresse quelqu’un, faites-moi signe !</p>
-                                <img class="native-guest-photo" src="onboarding-avocats.jpg" alt="Photo d’avocats, illustration">
-                                <div class="native-guest-social" aria-hidden="true"><span><i class="ph-fill ph-heart"></i> 12 J’aime</span><span><i class="ph ph-chat-circle"></i> Commenter</span><span><i class="ph ph-share-network"></i> Partager</span></div>
-                            </article>
-                            <article class="native-guest-post">
-                                <header>
-                                    <img src="onboarding-avatar-nadia.jpg" alt="" width="44" height="44">
-                                    <div>
-                                        <strong>Nadia M. <i class="ph-fill ph-check-circle" aria-hidden="true"></i></strong>
-                                        <span><i class="ph ph-map-pin" aria-hidden="true"></i> Sainte-Anne · Hier</span>
-                                    </div>
-                                </header>
-                                <em>Coup de main</em>
-                                <p>Quelqu’un pourrait m’acheter une bouteille de gaz et me la ramener dans le bourg de Sainte-Anne ? Je n’ai pas de voiture.</p>
-                                <div class="native-guest-social" aria-hidden="true"><span><i class="ph-fill ph-heart"></i> 4 J’aime</span><span><i class="ph ph-chat-circle"></i> Commenter</span><span><i class="ph ph-share-network"></i> Partager</span></div>
-                            </article>
-                            <article class="native-guest-post">
-                                <header>
-                                    <img src="onboarding-avatar-jean.jpg" alt="" width="44" height="44">
-                                    <div>
-                                        <strong>Jean L. <i class="ph-fill ph-check-circle" aria-hidden="true"></i></strong>
-                                        <span><i class="ph ph-map-pin" aria-hidden="true"></i> Petit-Bourg · Cette semaine</span>
-                                    </div>
-                                </header>
-                                <em>Bon plan</em>
-                                <p>Le jus de canne du monsieur au rond-point de Petit-Bourg est excellent !</p>
-                                <img class="native-guest-photo" src="onboarding-jus-canne.jpg" alt="Photo d’un jus de canne, illustration">
-                                <div class="native-guest-social" aria-hidden="true"><span><i class="ph-fill ph-heart"></i> 9 J’aime</span><span><i class="ph ph-chat-circle"></i> Commenter</span><span><i class="ph ph-share-network"></i> Partager</span></div>
-                            </article>
+                    <header class="ngp-brand">
+                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
+                        <img src="assets/brand/lyann-wordmark.png" alt="LYANN" class="ngp-brand-wordmark" height="26" decoding="async">
+                    </header>
+                    <p class="ngp-tag"># Découvrir</p>
+                    <h2 class="ngp-title" id="ngp-title-0">Des talents et des pros près de chez vous<span class="ngp-title-accent" aria-hidden="true"></span></h2>
+                    <p class="ngp-desc">Trouvez la bonne personne pour vos besoins du quotidien&nbsp;: jardinage, bricolage, coiffure, cuisine, transport, garde d'enfants… et bien plus.</p>
+                    <div class="ngp-visual">
+                        <div class="ngp-mosaic" role="img" aria-label="Illustration&nbsp;: mise en relation locale entre besoins et talents">
+                            <img src="assets/discover/categories/bricolage.jpg" alt="" width="320" height="240" loading="lazy" decoding="async">
+                            <img src="assets/discover/categories/beaute.jpg" alt="" width="320" height="240" loading="lazy" decoding="async">
+                            <img src="assets/discover/categories/menage.jpg" alt="" width="320" height="240" loading="lazy" decoding="async">
+                            <img src="assets/discover/categories/jardinage.jpg" alt="" width="320" height="240" loading="lazy" decoding="async">
                         </div>
-                        <div class="native-guest-tabbar" aria-hidden="true">
-                            <span class="native-guest-tab is-active"><i class="ph-fill ph-broadcast"></i><span>Bokantaj</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-users-three"></i><span>Lyanneurs</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-list"></i><span>Annonces</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-chat-circle-dots"></i><span>Messages</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
+                        <div class="ngp-chips">
+                            <span class="ngp-chip"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Un projet à réaliser</span>
+                            <span class="ngp-chip"><i class="ph ph-map-pin" aria-hidden="true"></i> Un talent à proximité</span>
+                        </div>
+                        <div class="ngp-cats" aria-hidden="true">
+                            <span class="ngp-cat">Travaux</span>
+                            <span class="ngp-cat">Beauté</span>
+                            <span class="ngp-cat">Garde d'enfants</span>
+                            <span class="ngp-cat">Et bien plus</span>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-demo-slide" data-slide="2" aria-label="Les talents sont tout près">
+            <section class="native-guest-slide native-guest-premium" data-slide="1" aria-labelledby="ngp-title-1">
                 <div class="native-guest-slide-inner">
-                    <h2>Les talents sont tout près</h2>
-                    <p class="native-guest-lead">Trouvez la bonne personne, découvrez ses compétences et contactez-la directement.</p>
-                    <div class="native-guest-stage">
-                        <div class="native-guest-stage-body">
-                            <p class="native-guest-here"><i class="ph-fill ph-users-three" aria-hidden="true"></i><span>Vous êtes dans Lyanneurs</span><span class="sr-only">. Illustration de l’onglet sélectionné. Ces profils sont des exemples.</span></p>
-                            <div class="native-guest-search" aria-hidden="true"><i class="ph ph-magnifying-glass"></i><span>Rechercher un talent</span></div>
-                            <article class="native-guest-person">
-                                <img src="onboarding-avatar-aline.jpg" alt="" width="44" height="44">
-                                <div>
-                                    <strong>Aline</strong>
-                                    <p>Jardinage · Sainte-Anne</p>
-                                </div>
-                                <span class="native-guest-chip">Voir le profil</span>
-                            </article>
-                            <article class="native-guest-person">
-                                <img src="onboarding-avatar-patrick.jpg" alt="" width="44" height="44">
-                                <div>
-                                    <strong>Patrick</strong>
-                                    <p>Plomberie · Baie-Mahault</p>
-                                </div>
-                                <span class="native-guest-chip">Contacter</span>
-                            </article>
-                            <article class="native-guest-person">
-                                <img src="onboarding-avatar-sophie.jpg" alt="" width="44" height="44">
-                                <div>
-                                    <strong>Sophie</strong>
-                                    <p>Coiffure · Le Lamentin</p>
-                                </div>
-                                <span class="native-guest-chip">Voir le profil</span>
-                            </article>
-                        </div>
-                        <div class="native-guest-tabbar" aria-hidden="true">
-                            <span class="native-guest-tab"><i class="ph ph-broadcast"></i><span>Bokantaj</span></span>
-                            <span class="native-guest-tab is-active"><i class="ph-fill ph-users-three"></i><span>Lyanneurs</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-list"></i><span>Annonces</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-chat-circle-dots"></i><span>Messages</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
+                    <header class="ngp-brand">
+                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
+                        <img src="assets/brand/lyann-wordmark.png" alt="LYANN" class="ngp-brand-wordmark" height="26" decoding="async">
+                    </header>
+                    <p class="ngp-tag"># Proposer</p>
+                    <h2 class="ngp-title" id="ngp-title-1">Votre savoir-faire a sa place ici<span class="ngp-title-accent" aria-hidden="true"></span></h2>
+                    <p class="ngp-desc">Répondez à des besoins réels autour de vous et développez votre activité à votre rythme, avec des missions claires et locales.</p>
+                    <div class="ngp-visual">
+                        <figure class="ngp-pro-hero">
+                            <img src="maison-mickael-a.jpg" alt="Un professionnel sur le terrain, en intervention" width="640" height="420" loading="lazy" decoding="async">
+                            <div class="ngp-pro-badges">
+                                <span class="ngp-pro-badge">Pour les talents indépendants</span>
+                                <span class="ngp-pro-badge">Pour les professionnels</span>
+                            </div>
+                        </figure>
+                        <div class="ngp-service-grid" aria-hidden="true">
+                            <div class="ngp-service-item"><i class="ph ph-wrench" aria-hidden="true"></i> Plomberie</div>
+                            <div class="ngp-service-item"><i class="ph ph-lightning" aria-hidden="true"></i> Électricité</div>
+                            <div class="ngp-service-item"><i class="ph ph-plant" aria-hidden="true"></i> Jardinage</div>
+                            <div class="ngp-service-item"><i class="ph ph-truck" aria-hidden="true"></i> Transport et déménagement</div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-demo-slide" data-slide="3" aria-label="Un besoin ? Publiez-le !">
+            <section class="native-guest-slide native-guest-premium" data-slide="2" aria-labelledby="ngp-title-2">
                 <div class="native-guest-slide-inner">
-                    <h2>Un besoin ? Publiez-le !</h2>
-                    <p class="native-guest-lead">Expliquez ce que vous recherchez et trouvez quelqu’un pour vous aider.</p>
-                    <div class="native-guest-stage">
-                        <div class="native-guest-stage-body">
-                            <p class="native-guest-here"><i class="ph-fill ph-list" aria-hidden="true"></i><span>Vous êtes dans Annonces</span><span class="sr-only">. Illustration de l’onglet sélectionné. Ces demandes sont des exemples.</span></p>
-                            <article class="native-guest-annonce">
-                                <span>Maison</span>
-                                <h3>Je cherche quelqu’un pour monter un meuble</h3>
-                                <p><i class="ph ph-map-pin" aria-hidden="true"></i> Le Gosier</p>
-                                <b>80 €</b>
-                            </article>
-                            <article class="native-guest-annonce">
-                                <span>Jardin</span>
-                                <h3>Besoin d’aide pour entretenir mon jardin</h3>
-                                <p><i class="ph ph-map-pin" aria-hidden="true"></i> Fort-de-France</p>
-                                <b>60 €</b>
-                            </article>
-                            <span class="native-guest-publish">Publier un besoin</span>
+                    <header class="ngp-brand">
+                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
+                        <img src="assets/brand/lyann-wordmark.png" alt="LYANN" class="ngp-brand-wordmark" height="26" decoding="async">
+                    </header>
+                    <p class="ngp-tag"># Sécuriser</p>
+                    <h2 class="ngp-title" id="ngp-title-2">Paiement sécurisé, mission sereine<span class="ngp-title-accent" aria-hidden="true"></span></h2>
+                    <p class="ngp-desc">Le paiement est sécurisé avant la prestation. Une fois la mission réalisée et validée, les fonds sont libérés selon les conditions convenues.</p>
+                    <div class="ngp-visual">
+                        <div class="ngp-flow" aria-label="Schéma du parcours de paiement">
+                            <div class="ngp-flow-step"><i class="ph ph-clipboard-text" aria-hidden="true"></i>Demande</div>
+                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
+                            <div class="ngp-flow-step"><i class="ph ph-handshake" aria-hidden="true"></i>Devis ou tarif convenu</div>
+                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
+                            <div class="ngp-flow-step is-secure"><i class="ph ph-lock" aria-hidden="true"></i>Paiement sécurisé</div>
+                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
+                            <div class="ngp-flow-step"><i class="ph ph-check-circle" aria-hidden="true"></i>Prestation et validation</div>
+                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
+                            <div class="ngp-flow-step"><i class="ph ph-coins" aria-hidden="true"></i>Paiement libéré</div>
                         </div>
-                        <div class="native-guest-tabbar" aria-hidden="true">
-                            <span class="native-guest-tab"><i class="ph ph-broadcast"></i><span>Bokantaj</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-users-three"></i><span>Lyanneurs</span></span>
-                            <span class="native-guest-tab is-active"><i class="ph-fill ph-list"></i><span>Annonces</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-chat-circle-dots"></i><span>Messages</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
+                        <div class="ngp-values">
+                            <div class="ngp-value"><i class="ph ph-shield-check" aria-hidden="true"></i>Budget sécurisé</div>
+                            <div class="ngp-value"><i class="ph ph-handshake" aria-hidden="true"></i>Confiance mutuelle</div>
+                            <div class="ngp-value"><i class="ph ph-credit-card" aria-hidden="true"></i>Paiement encadré</div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-demo-slide" data-slide="4" aria-label="Tout se passe dans la conversation">
+            <section class="native-guest-slide native-guest-premium" data-slide="3" aria-labelledby="ngp-title-3">
                 <div class="native-guest-slide-inner">
-                    <h2>Tout se passe dans la conversation</h2>
-                    <p class="native-guest-lead">Discutez, validez votre devis et suivez votre mission au même endroit.</p>
-                    <div class="native-guest-stage">
-                        <div class="native-guest-stage-body">
-                            <p class="native-guest-here"><i class="ph-fill ph-chat-circle-dots" aria-hidden="true"></i><span>Vous êtes dans Messages</span><span class="sr-only">. Illustration de l’onglet sélectionné. Aucun paiement n’est lancé.</span></p>
-                            <div class="native-guest-thread">
-                                <p class="is-sent">Bonjour, vous seriez disponible samedi ?</p>
-                                <p class="is-received">Oui, je peux intervenir samedi matin.</p>
-                                <article class="native-guest-deal">
-                                    <header><strong>Devis proposé</strong><b>100 €</b></header>
-                                    <span>Voir le devis</span>
-                                </article>
-                                <p class="native-guest-step-line">Devis accepté</p>
-                                <article class="native-guest-deal">
-                                    <header><strong>Payer en toute sécurité</strong></header>
-                                </article>
-                                <p class="native-guest-step-line">Prestation terminée</p>
-                                <p class="native-guest-step-line is-done">Tout est bon</p>
+                    <header class="ngp-brand">
+                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
+                        <img src="assets/brand/lyann-wordmark.png" alt="LYANN" class="ngp-brand-wordmark" height="26" decoding="async">
+                    </header>
+                    <p class="ngp-tag"># Confiance</p>
+                    <h2 class="ngp-title" id="ngp-title-3">La confiance au cœur de LYANN<span class="ngp-title-accent" aria-hidden="true"></span></h2>
+                    <p class="ngp-desc">Profils, avis et commentaires aident chacun à travailler dans le respect, la clarté et la confiance.</p>
+                    <div class="ngp-visual">
+                        <div class="ngp-trust-layout">
+                            <div class="ngp-trust-photo">
+                                <img src="onboarding-avatar-sophie.jpg" alt="Une professionnelle en situation de service" width="400" height="480" loading="lazy" decoding="async">
+                            </div>
+                            <div class="ngp-trust-cards">
+                                <div class="ngp-trust-card"><strong>Profil membre</strong> Coiffure · proximité</div>
+                                <div class="ngp-trust-card"><span class="ngp-stars" aria-hidden="true">★★★★★</span> <strong>4,9</strong> <span class="ngp-illus-label">(exemple d'affichage)</span></div>
+                                <div class="ngp-trust-card ngp-mock-note">«&nbsp;Une lyanneuse sérieuse et professionnelle. Je recommande&nbsp;!&nbsp;»</div>
+                                <p class="ngp-illus-label">Éléments d'interface illustratifs, sans données réelles.</p>
                             </div>
                         </div>
-                        <div class="native-guest-tabbar" aria-hidden="true">
-                            <span class="native-guest-tab"><i class="ph ph-broadcast"></i><span>Bokantaj</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-users-three"></i><span>Lyanneurs</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-list"></i><span>Annonces</span></span>
-                            <span class="native-guest-tab is-active"><i class="ph-fill ph-chat-circle-dots"></i><span>Messages</span></span>
-                            <span class="native-guest-tab"><i class="ph ph-user"></i><span>Profil</span></span>
-                        </div>
                     </div>
                 </div>
             </section>
 
-            <section class="native-guest-slide native-guest-how native-guest-login-slide" data-slide="5" aria-label="Prêt à rejoindre LYANN ?">
+            <section class="native-guest-slide native-guest-premium" data-slide="4" aria-labelledby="ngp-title-4">
                 <div class="native-guest-slide-inner">
-                    <h2>Prêt à rejoindre<br><span class="text-gradient">LYANN ?</span></h2>
-                    <p class="native-guest-lead">Rejoignez une communauté qui partage ses talents, ses idées et ses coups de main.</p>
-                    <div class="native-guest-welcome" id="nativeGuestWelcome">
-                        <div class="native-guest-auth">
-                            <button type="button" class="btn btn-primary btn-lg" id="btnGuestSignup">S'inscrire</button>
-                            <p class="native-guest-auth-foot">Déjà un compte ?</p>
-                            <button type="button" class="btn btn-apple-auth"><i class="ph-fill ph-apple-logo" aria-hidden="true"></i> Continuer avec Apple</button>
-                            <button type="button" class="btn btn-google btn-google-auth" id="btnGuestGoogle">
-                                <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/></svg>
-                                Continuer avec Google
-                            </button>
-                            <div class="auth-divider"><span>ou avec votre email</span></div>
-                            <form id="nativeGuestLoginForm">
-                                <label for="nativeGuestLoginEmail">Adresse email</label>
-                                <input type="email" id="nativeGuestLoginEmail" autocomplete="username" placeholder="votre.email@exemple.com" aria-label="Adresse email de connexion" required>
-                                <label for="nativeGuestLoginPassword">Mot de passe</label>
-                                <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" aria-label="Mot de passe de connexion" required>
-                                <button type="submit" id="btnNativeGuestSubmit" class="btn btn-primary btn-lg" aria-label="Valider la connexion">Se connecter</button>
-                            </form>
-                            <p class="native-guest-signoff">LYANN — Sé Lyann a lòt.</p>
+                    <header class="ngp-brand">
+                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
+                        <img src="assets/brand/lyann-wordmark.png" alt="LYANN" class="ngp-brand-wordmark" height="26" decoding="async">
+                    </header>
+                    <p class="ngp-tag"># Explorer</p>
+                    <h2 class="ngp-title" id="ngp-title-4">Explorez votre île, votre quartier, autrement<span class="ngp-title-accent" aria-hidden="true"></span></h2>
+                    <p class="ngp-desc">Repérez les besoins et les talents autour de vous, grâce à une carte simple, lisible et pensée pour la proximité.</p>
+                    <div class="ngp-visual">
+                        <div class="ngp-map-card">
+                            <svg class="ngp-map-svg" viewBox="0 0 320 200" role="img" aria-label="Carte stylisée avec des repères de catégories">
+                                <ellipse cx="160" cy="105" rx="118" ry="72" fill="#8BC99A" opacity="0.55"/>
+                                <ellipse cx="160" cy="102" rx="95" ry="58" fill="#6AB07A"/>
+                                <circle cx="118" cy="92" r="11" fill="#FFFFFF" stroke="#2D5A39" stroke-width="2"/>
+                                <text x="118" y="96" text-anchor="middle" font-size="10" fill="#2D5A39">✂</text>
+                                <circle cx="198" cy="78" r="11" fill="#FFFFFF" stroke="#2D5A39" stroke-width="2"/>
+                                <text x="198" y="82" text-anchor="middle" font-size="10" fill="#2D5A39">🔧</text>
+                                <circle cx="210" cy="128" r="11" fill="#FFFFFF" stroke="#2D5A39" stroke-width="2"/>
+                                <text x="210" y="132" text-anchor="middle" font-size="10" fill="#2D5A39">🌱</text>
+                                <circle cx="155" cy="115" r="16" fill="#FFFFFF" opacity="0.95"/>
+                                <circle cx="155" cy="115" r="5" fill="#3B82F6"/>
+                                <circle cx="155" cy="115" r="18" fill="none" stroke="#3B82F6" stroke-width="2" opacity="0.35"/>
+                            </svg>
+                            <div class="ngp-map-features" aria-hidden="true">
+                                <div class="ngp-map-feat"><i class="ph ph-map-pin" aria-hidden="true"></i>Autour de vous</div>
+                                <div class="ngp-map-feat"><i class="ph ph-map-trifold" aria-hidden="true"></i>Carte simple</div>
+                                <div class="ngp-map-feat"><i class="ph ph-users-three" aria-hidden="true"></i>Talents</div>
+                                <div class="ngp-map-feat"><i class="ph ph-briefcase" aria-hidden="true"></i>Besoins</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
         </div>
+
         <div class="native-guest-progress">
-        <div class="native-guest-swipe" id="nativeGuestSwipe" hidden>
-            <span class="native-guest-swipe-finger" aria-hidden="true">
-                <span class="native-guest-swipe-trail"></span>
-                <svg viewBox="0 0 24 24" width="26" height="26" focusable="false">
-                    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M14.6 3.2a1.5 1.5 0 0 1 1.5 1.5V11c1.5.4 2.6 1.8 2.6 3.5 0 2.7-2.3 4.8-5.3 4.8-2.6 0-4.6-1.5-5.1-3.7-.2-.8.4-1.6 1.2-1.6h1.2V7.2a1.4 1.4 0 0 1 2.8 0V11h.1V4.7a1.5 1.5 0 0 1 1-1.5z"/>
-                </svg>
-            </span>
-            <span class="native-guest-swipe-label">Faites glisser pour découvrir LYANN</span>
-        </div>
-        <div class="native-guest-dots" id="nativeGuestDots" role="tablist" aria-label="Slides"></div>
+            <div class="native-guest-swipe" id="nativeGuestSwipe" hidden>
+                <span class="native-guest-swipe-finger" aria-hidden="true">
+                    <span class="native-guest-swipe-trail"></span>
+                    <svg viewBox="0 0 24 24" width="26" height="26" focusable="false">
+                        <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M14.6 3.2a1.5 1.5 0 0 1 1.5 1.5V11c1.5.4 2.6 1.8 2.6 3.5 0 2.7-2.3 4.8-5.3 4.8-2.6 0-4.6-1.5-5.1-3.7-.2-.8.4-1.6 1.2-1.6h1.2V7.2a1.4 1.4 0 0 1 2.8 0V11h.1V4.7a1.5 1.5 0 0 1 1-1.5z"/>
+                    </svg>
+                </span>
+                <span class="native-guest-swipe-label">Faites glisser pour découvrir LYANN</span>
+            </div>
+            <div class="native-guest-dots" id="nativeGuestDots" role="tablist" aria-label="Slides"></div>
         </div>
         <div class="native-guest-cta">
             <button type="button" class="btn btn-outline btn-lg" id="btnNativeLogin">Se connecter</button>
-            <button type="button" class="btn btn-primary btn-lg" id="btnNativeJoin">S'inscrire</button>
+            <button type="button" class="btn btn-primary btn-lg" id="btnNativeJoin">Créer mon compte</button>
         </div>
     </div>
+
+    <div id="nativeGuestAuthSheet" class="native-guest-auth-sheet" hidden aria-hidden="true">
+        <div class="native-guest-auth-backdrop" data-ngp-close></div>
+        <div class="native-guest-welcome" id="nativeGuestWelcome" role="dialog" aria-modal="true" aria-label="Connexion à LYANN">
+            <button type="button" class="native-guest-auth-close" id="btnNativeGuestAuthClose" aria-label="Fermer"><i class="ph ph-x" aria-hidden="true"></i></button>
+            <div class="native-guest-auth">
+                <button type="button" class="btn btn-primary btn-lg" id="btnGuestSignup">Créer mon compte</button>
+                <p class="native-guest-auth-foot">Déjà un compte&nbsp;?</p>
+                <button type="button" class="btn btn-apple-auth"><i class="ph-fill ph-apple-logo" aria-hidden="true"></i> Continuer avec Apple</button>
+                <button type="button" class="btn btn-google btn-google-auth" id="btnGuestGoogle">
+                    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.66 0 6.6 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.6 42.62 14.66 48 24 48z"/></svg>
+                    Continuer avec Google
+                </button>
+                <div class="auth-divider"><span>ou avec votre email</span></div>
+                <form id="nativeGuestLoginForm">
+                    <label for="nativeGuestLoginEmail">Adresse email</label>
+                    <input type="email" id="nativeGuestLoginEmail" autocomplete="username" placeholder="votre.email@exemple.com" aria-label="Adresse email de connexion" required>
+                    <label for="nativeGuestLoginPassword">Mot de passe</label>
+                    <input type="password" id="nativeGuestLoginPassword" autocomplete="current-password" placeholder="••••••••" aria-label="Mot de passe de connexion" required>
+                    <button type="button" class="forgot-link" id="btnNativeGuestForgot">Mot de passe oublié&nbsp;?</button>
+                    <button type="submit" id="btnNativeGuestSubmit" class="btn btn-primary btn-lg" aria-label="Valider la connexion">Se connecter</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
 
     <!-- ========== SECTION 1 : HERO ========== -->
     <header class="hero">
@@ -945,20 +920,28 @@
             if (document.documentElement.dataset.nativeGuestMounted === '1') return;
             var home = document.getElementById('nativeGuestHome');
             if (!home) return;
-            var story = document.querySelector('.hero .hero-story');
-            var videoSlot = document.getElementById('nativeGuestVideoSlot');
-            if (story && videoSlot && !videoSlot.contains(story)) videoSlot.appendChild(story);
-            if (typeof window.playHeroStoryVideo === 'function') window.playHeroStoryVideo();
-            var stories = document.getElementById('testimonials');
-            var storiesSlot = document.getElementById('nativeGuestStoriesSlot');
-            if (stories && storiesSlot && !storiesSlot.contains(stories)) {
-                var title = stories.querySelector('h2');
-                if (title) title.textContent = "Ils ont trouvé bien plus qu'un service.";
-                storiesSlot.appendChild(stories);
-            }
-            var flashes = document.querySelector('.feed-preview-section .flash-feed-list');
-            var boka = document.getElementById('nativeGuestBokantajSlot');
-            if (flashes && boka && !boka.contains(flashes)) boka.appendChild(flashes);
+            var authSheet = document.getElementById('nativeGuestAuthSheet');
+            var openNativeGuestAuth = function () {
+                if (!authSheet) return;
+                authSheet.hidden = false;
+                authSheet.setAttribute('aria-hidden', 'false');
+                if (typeof window.ensureAppleSignInButtons === 'function') window.ensureAppleSignInButtons();
+                var email = document.getElementById('nativeGuestLoginEmail');
+                if (email) window.setTimeout(function () { email.focus(); }, 80);
+            };
+            var closeNativeGuestAuth = function () {
+                if (!authSheet) return;
+                authSheet.hidden = true;
+                authSheet.setAttribute('aria-hidden', 'true');
+            };
+            authSheet?.querySelectorAll('[data-ngp-close]').forEach(function (el) {
+                el.addEventListener('click', closeNativeGuestAuth);
+            });
+            document.getElementById('btnNativeGuestAuthClose')?.addEventListener('click', closeNativeGuestAuth);
+            document.getElementById('btnNativeGuestForgot')?.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector('.forgot-link:not(#btnNativeGuestForgot)')?.click();
+            });
 
             var pager = document.getElementById('nativeGuestPager');
             var dotsWrap = document.getElementById('nativeGuestDots');
@@ -991,9 +974,7 @@
                         dot.classList.toggle('is-active', on);
                         dot.setAttribute('aria-selected', on ? 'true' : 'false');
                     });
-                    var onLast = activeIndex === slides.length - 1;
-                    document.querySelector('.native-guest-cta')?.classList.toggle('is-hidden', onLast);
-                    dotsWrap.classList.toggle('is-last', onLast);
+                    dotsWrap.classList.toggle('is-last', activeIndex === slides.length - 1);
                     if (activeIndex !== 0 && typeof dismissDiscoveryPeek === 'function') dismissDiscoveryPeek();
                     else if (typeof armSwipeHint === 'function') armSwipeHint();
                 };
@@ -1063,7 +1044,7 @@
                 };
                 var placeSwipeHint = function () {
                     if (!swipeHint || swipeHint.hidden) return;
-                    var story = document.querySelector('#nativeGuestVideoSlot .hero-story, #nativeGuestVideoSlot video, #nativeGuestVideoSlot img');
+                    var story = document.querySelector('.native-guest-premium[data-slide="0"] .ngp-visual');
                     var dots = document.getElementById('nativeGuestDots');
                     if (!story || !dots) return;
                     var storyBottom = story.getBoundingClientRect().bottom;
@@ -1218,10 +1199,7 @@
                     schedulePeek(2000);
                 }
                 armSwipeHint();
-                document.getElementById('btnNativeLogin')?.addEventListener('click', function () {
-                    var last = slides.indexOf(document.querySelector('.native-guest-login-slide'));
-                    if (last >= 0) goToSlide(last);
-                });
+                document.getElementById('btnNativeLogin')?.addEventListener('click', openNativeGuestAuth);
             }
 
             home.hidden = false;
@@ -1240,8 +1218,12 @@
                 if (loginForm) loginForm.requestSubmit();
             });
             document.getElementById('btnGuestSignup')?.addEventListener('click', function () {
+                closeNativeGuestAuth();
                 if (typeof window.openOnboarding === 'function') window.openOnboarding();
             });
+            if (/[?&]action=open_login(?:&|$)/.test(window.location.search || '')) {
+                window.setTimeout(openNativeGuestAuth, 120);
+            }
             document.documentElement.dataset.nativeGuestMounted = '1';
         };
         if (document.readyState === 'loading') {
