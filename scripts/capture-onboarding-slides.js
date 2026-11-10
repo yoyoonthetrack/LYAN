@@ -53,9 +53,16 @@ function serve() {
         await page.evaluate((index) => {
             const pager = document.getElementById('nativeGuestPager');
             const w = pager?.clientWidth || 1;
-            pager.scrollLeft = Math.round(index * w);
+            const target = Math.round(index * w);
+            pager.scrollTo({ left: target, behavior: 'auto' });
+            pager.scrollLeft = target;
         }, i);
-        await page.waitForTimeout(400);
+        await page.waitForFunction((index) => {
+            const pager = document.getElementById('nativeGuestPager');
+            const w = pager?.clientWidth || 1;
+            return Math.round(pager.scrollLeft / w) === index;
+        }, i, { timeout: 5000 });
+        await page.waitForTimeout(250);
         await page.screenshot({ path: path.join(outDir, `slide-${i + 1}-${names[i]}.png`), fullPage: false });
     }
     await browser.close();
