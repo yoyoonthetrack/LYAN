@@ -176,149 +176,214 @@
         </div>
     </div>
 
-    <!-- Native guest landing — premium onboarding V1 (Capacitor only). -->
+    <!-- Native guest landing — premium onboarding V1 (Capacitor only).
+         3.0C-2: one single LYANN header (official symbol) outside the pager, five slides on one shared grid. -->
     <div id="nativeGuestHome" class="native-guest-home native-guest-premium-v1" hidden>
+        <header class="ngp-app-header" id="ngpAppHeader">
+            <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="40" height="43" decoding="async">
+            <span class="ngp-brand-wordmark">LYANN</span>
+        </header>
+
         <div class="native-guest-pager" id="nativeGuestPager" role="region" aria-label="Présentation LYANN" tabindex="0">
 
+            <!-- 1 — Découvrir -->
             <section class="native-guest-slide native-guest-premium" data-slide="0" aria-labelledby="ngp-title-0">
                 <div class="native-guest-slide-inner">
-                    <header class="ngp-brand">
-                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
-                        <span class="ngp-brand-wordmark logo-title" aria-hidden="false">LYANN</span>
-                    </header>
                     <p class="ngp-tag"># Découvrir</p>
                     <h2 class="ngp-title" id="ngp-title-0">Des talents et des pros près de chez vous<span class="ngp-title-accent" aria-hidden="true"></span></h2>
                     <p class="ngp-desc">Trouvez la bonne personne pour vos besoins du quotidien&nbsp;: jardinage, bricolage, coiffure, cuisine, transport, garde d'enfants… et bien plus.</p>
                     <div class="ngp-visual">
-                        <figure class="ngp-hero-photo">
-                            <img src="assets/onboarding/slide-01-connection.jpg" alt="Une professionnelle et une cliente, en pleine mise en relation" width="820" height="1024" loading="lazy" decoding="async">
-                        </figure>
-                        <div class="ngp-chips">
-                            <span class="ngp-chip"><i class="ph ph-clipboard-text" aria-hidden="true"></i> Un projet à réaliser</span>
-                            <span class="ngp-chip"><i class="ph ph-map-pin" aria-hidden="true"></i> Un talent à proximité</span>
+                        <div class="ngp-mosaic">
+                            <figure class="ngp-mosaic-tile">
+                                <img src="assets/onboarding/photo-gardener.webp" alt="Un jardinier taillant une haie fleurie" width="640" height="800" loading="lazy" decoding="async" style="object-position: 50% 24%;">
+                                <span class="ngp-badge" aria-hidden="true"><i class="ph-fill ph-plant"></i></span>
+                            </figure>
+                            <figure class="ngp-mosaic-tile">
+                                <img src="assets/onboarding/photo-chef.webp" alt="Une cheffe dressant un plat" width="640" height="800" loading="lazy" decoding="async" style="object-position: 50% 26%;">
+                                <span class="ngp-badge" aria-hidden="true"><i class="ph-fill ph-cooking-pot"></i></span>
+                            </figure>
+                            <figure class="ngp-mosaic-tile">
+                                <img src="assets/onboarding/photo-electrician.webp" alt="Un artisan installant un luminaire en rotin" width="640" height="800" loading="lazy" decoding="async" style="object-position: 50% 34%;">
+                                <span class="ngp-badge" aria-hidden="true"><i class="ph-fill ph-wrench"></i></span>
+                            </figure>
+                            <figure class="ngp-mosaic-tile">
+                                <img src="assets/onboarding/photo-cleaner.webp" alt="Une professionnelle de l'entretien nettoyant une table" width="640" height="800" loading="lazy" decoding="async" style="object-position: 50% 24%;">
+                                <span class="ngp-badge" aria-hidden="true"><i class="ph-fill ph-broom"></i></span>
+                            </figure>
                         </div>
-                        <div class="ngp-cats" aria-hidden="true">
-                            <span class="ngp-cat">Travaux</span>
-                            <span class="ngp-cat">Beauté</span>
-                            <span class="ngp-cat">Garde d'enfants</span>
-                            <span class="ngp-cat">Et bien plus</span>
+                        <div class="ngp-link-row">
+                            <span class="ngp-chip"><i class="ph ph-clipboard-text" aria-hidden="true"></i>Un projet à réaliser</span>
+                            <span class="ngp-link" aria-hidden="true"><i class="ph-fill ph-handshake"></i></span>
+                            <span class="ngp-chip"><i class="ph ph-map-pin" aria-hidden="true"></i>Un talent à proximité</span>
                         </div>
+                        <p class="ngp-cats" aria-hidden="true"><span>Travaux</span><span>Beauté</span><span>Garde d'enfants</span><span>Et bien plus</span></p>
                     </div>
                 </div>
             </section>
 
+            <!-- 2 — Proposer -->
             <section class="native-guest-slide native-guest-premium" data-slide="1" aria-labelledby="ngp-title-1">
                 <div class="native-guest-slide-inner">
-                    <header class="ngp-brand">
-                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
-                        <span class="ngp-brand-wordmark logo-title" aria-hidden="false">LYANN</span>
-                    </header>
                     <p class="ngp-tag"># Proposer</p>
-                    <h2 class="ngp-title" id="ngp-title-1">Votre savoir-faire a sa place ici<span class="ngp-title-accent" aria-hidden="true"></span></h2>
+                    <h2 class="ngp-title" id="ngp-title-1">Votre <span class="ngp-nowrap">savoir-faire</span> a sa place ici<span class="ngp-title-accent" aria-hidden="true"></span></h2>
                     <p class="ngp-desc">Répondez à des besoins réels autour de vous et développez votre activité à votre rythme, avec des missions claires et locales.</p>
                     <div class="ngp-visual">
-                        <figure class="ngp-pro-hero">
-                            <img src="assets/onboarding/slide-02-professional.jpg" alt="Un plombier en intervention, dans un cadre local" width="820" height="1024" loading="lazy" decoding="async">
-                            <div class="ngp-pro-badges">
-                                <span class="ngp-pro-badge">Pour les talents indépendants</span>
-                                <span class="ngp-pro-badge">Pour les professionnels</span>
+                        <figure class="ngp-photo ngp-photo--plumber">
+                            <img src="assets/onboarding/photo-plumber.webp" alt="Un plombier en intervention sous un évier, sourire et gestes visibles" width="819" height="1024" loading="lazy" decoding="async">
+                            <div class="ngp-photo-badges">
+                                <span class="ngp-photo-badge"><i class="ph ph-user-check" aria-hidden="true"></i>Pour les talents indépendants</span>
+                                <span class="ngp-photo-badge"><i class="ph ph-briefcase" aria-hidden="true"></i>Pour les professionnels</span>
                             </div>
                         </figure>
-                        <div class="ngp-service-grid" aria-hidden="true">
-                            <div class="ngp-service-item"><i class="ph ph-wrench" aria-hidden="true"></i> Plomberie</div>
-                            <div class="ngp-service-item"><i class="ph ph-lightning" aria-hidden="true"></i> Électricité</div>
-                            <div class="ngp-service-item"><i class="ph ph-plant" aria-hidden="true"></i> Jardinage</div>
-                            <div class="ngp-service-item"><i class="ph ph-truck" aria-hidden="true"></i> Transport et déménagement</div>
+                        <div class="ngp-tiles ngp-tiles--4" aria-hidden="true">
+                            <div class="ngp-tile"><i class="ph ph-wrench"></i>Plomberie</div>
+                            <div class="ngp-tile"><i class="ph ph-lightning"></i>Électricité</div>
+                            <div class="ngp-tile"><i class="ph ph-plant"></i>Jardinage</div>
+                            <div class="ngp-tile"><i class="ph ph-truck"></i>Transport et déménagement</div>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <!-- 3 — Sécuriser -->
             <section class="native-guest-slide native-guest-premium" data-slide="2" aria-labelledby="ngp-title-2">
                 <div class="native-guest-slide-inner">
-                    <header class="ngp-brand">
-                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
-                        <span class="ngp-brand-wordmark logo-title" aria-hidden="false">LYANN</span>
-                    </header>
                     <p class="ngp-tag"># Sécuriser</p>
                     <h2 class="ngp-title" id="ngp-title-2">Paiement sécurisé, mission sereine<span class="ngp-title-accent" aria-hidden="true"></span></h2>
                     <p class="ngp-desc">Le paiement est sécurisé avant la prestation. Une fois la mission réalisée et validée, les fonds sont libérés selon les conditions convenues.</p>
                     <div class="ngp-visual">
-                        <div class="ngp-flow" aria-label="Schéma du parcours de paiement">
-                            <div class="ngp-flow-step"><i class="ph ph-clipboard-text" aria-hidden="true"></i>Demande</div>
-                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
-                            <div class="ngp-flow-step"><i class="ph ph-handshake" aria-hidden="true"></i>Devis ou tarif convenu</div>
-                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
-                            <div class="ngp-flow-step is-secure"><i class="ph ph-lock" aria-hidden="true"></i>Paiement sécurisé</div>
-                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
-                            <div class="ngp-flow-step"><i class="ph ph-check-circle" aria-hidden="true"></i>Prestation et validation</div>
-                            <span class="ngp-flow-arrow" aria-hidden="true">→</span>
-                            <div class="ngp-flow-step"><i class="ph ph-coins" aria-hidden="true"></i>Paiement libéré</div>
-                        </div>
-                        <div class="ngp-values">
-                            <div class="ngp-value"><i class="ph ph-shield-check" aria-hidden="true"></i>Budget sécurisé</div>
-                            <div class="ngp-value"><i class="ph ph-handshake" aria-hidden="true"></i>Confiance mutuelle</div>
-                            <div class="ngp-value"><i class="ph ph-credit-card" aria-hidden="true"></i>Paiement encadré</div>
+                        <ol class="ngp-pay" aria-label="Parcours de paiement : demande, devis ou tarif convenu, paiement sécurisé, prestation et validation, paiement libéré">
+                            <li class="ngp-step ngp-step--1"><span class="ngp-step-num">1</span><i class="ph ph-clipboard-text" aria-hidden="true"></i><span class="ngp-step-label">Demande</span></li>
+                            <li class="ngp-step ngp-step--2"><span class="ngp-step-num">2</span><i class="ph ph-handshake" aria-hidden="true"></i><span class="ngp-step-label">Devis ou tarif convenu</span></li>
+                            <li class="ngp-step ngp-step--3">
+                                <span class="ngp-secure-badge" aria-hidden="true"><i class="ph-fill ph-shield-check"></i></span>
+                                <span class="ngp-step-num">3</span>
+                                <span class="ngp-step-label">Paiement sécurisé</span>
+                                <span class="ngp-secure-note"><i class="ph ph-lock-key" aria-hidden="true"></i>Avant la prestation</span>
+                            </li>
+                            <li class="ngp-step ngp-step--4"><span class="ngp-step-num">4</span><i class="ph ph-check-circle" aria-hidden="true"></i><span class="ngp-step-label">Prestation et validation</span></li>
+                            <li class="ngp-step ngp-step--5"><span class="ngp-step-num">5</span><i class="ph ph-wallet" aria-hidden="true"></i><span class="ngp-step-label">Paiement libéré</span></li>
+                        </ol>
+                        <div class="ngp-tiles ngp-tiles--3" aria-hidden="true">
+                            <div class="ngp-tile"><i class="ph ph-shield-check"></i>Budget sécurisé</div>
+                            <div class="ngp-tile"><i class="ph ph-handshake"></i>Confiance mutuelle</div>
+                            <div class="ngp-tile"><i class="ph ph-credit-card"></i>Paiement encadré</div>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <!-- 4 — Confiance -->
             <section class="native-guest-slide native-guest-premium" data-slide="3" aria-labelledby="ngp-title-3">
                 <div class="native-guest-slide-inner">
-                    <header class="ngp-brand">
-                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
-                        <span class="ngp-brand-wordmark logo-title" aria-hidden="false">LYANN</span>
-                    </header>
                     <p class="ngp-tag"># Confiance</p>
                     <h2 class="ngp-title" id="ngp-title-3">La confiance au cœur de LYANN<span class="ngp-title-accent" aria-hidden="true"></span></h2>
                     <p class="ngp-desc">Profils, avis et commentaires aident chacun à travailler dans le respect, la clarté et la confiance.</p>
-                    <div class="ngp-visual">
-                        <div class="ngp-trust-layout">
-                            <div class="ngp-trust-photo">
-                                <img src="assets/onboarding/slide-04-trust.jpg" alt="Une cheffe en activité, image illustrant un profil de talent" width="820" height="1024" loading="lazy" decoding="async">
+                    <div class="ngp-visual ngp-trust">
+                        <figure class="ngp-photo ngp-photo--hair">
+                            <img src="assets/onboarding/photo-hairdresser.webp" alt="Une coiffeuse réalisant des tresses chez une cliente" width="819" height="1024" loading="lazy" decoding="async">
+                        </figure>
+                        <div class="ngp-profile-card">
+                            <span class="ngp-avatar" aria-hidden="true"></span>
+                            <div class="ngp-profile-meta">
+                                <strong>Profil membre</strong>
+                                <span>Coiffure · proximité</span>
                             </div>
-                            <div class="ngp-trust-cards">
-                                <div class="ngp-trust-card"><strong>Profil membre</strong> Coiffure · proximité</div>
-                                <div class="ngp-trust-card"><span class="ngp-stars" aria-hidden="true">★★★★★</span> <strong>4,9</strong> <span class="ngp-illus-label">(exemple d'affichage)</span></div>
-                                <div class="ngp-trust-card ngp-mock-note">«&nbsp;Une lyanneuse sérieuse et professionnelle. Je recommande&nbsp;!&nbsp;»</div>
-                                <p class="ngp-illus-label">Éléments d'interface illustratifs, sans données réelles.</p>
+                            <div class="ngp-rating" aria-label="Exemple : note de 4,9 sur 5">
+                                <span class="ngp-stars" aria-hidden="true"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i></span>
+                                <strong>4,9</strong>
                             </div>
                         </div>
+                        <blockquote class="ngp-review">
+                            <span class="ngp-review-mark" aria-hidden="true">“</span>
+                            <p>Une lyanneuse sérieuse et professionnelle. Je recommande&nbsp;!</p>
+                        </blockquote>
+                        <p class="ngp-illus-label">Exemple d'affichage, sans données réelles.</p>
                     </div>
                 </div>
             </section>
 
+            <!-- 5 — Explorer -->
             <section class="native-guest-slide native-guest-premium" data-slide="4" aria-labelledby="ngp-title-4">
                 <div class="native-guest-slide-inner">
-                    <header class="ngp-brand">
-                        <img src="assets/brand/lyann-symbol.png" alt="" class="ngp-brand-icon" width="44" height="44" decoding="async">
-                        <span class="ngp-brand-wordmark logo-title" aria-hidden="false">LYANN</span>
-                    </header>
                     <p class="ngp-tag"># Explorer</p>
                     <h2 class="ngp-title" id="ngp-title-4">Explorez votre île, votre quartier, autrement<span class="ngp-title-accent" aria-hidden="true"></span></h2>
                     <p class="ngp-desc">Repérez les besoins et les talents autour de vous, grâce à une carte simple, lisible et pensée pour la proximité.</p>
                     <div class="ngp-visual">
-                        <div class="ngp-map-card">
-                            <svg class="ngp-map-svg" viewBox="0 0 320 200" role="img" aria-label="Carte stylisée avec des repères de catégories">
-                                <ellipse cx="160" cy="105" rx="118" ry="72" fill="#8BC99A" opacity="0.55"/>
-                                <ellipse cx="160" cy="102" rx="95" ry="58" fill="#6AB07A"/>
-                                <circle cx="118" cy="92" r="11" fill="#FFFFFF" stroke="#2D5A39" stroke-width="2"/>
-                                <text x="118" y="96" text-anchor="middle" font-size="10" fill="#2D5A39">✂</text>
-                                <circle cx="198" cy="78" r="11" fill="#FFFFFF" stroke="#2D5A39" stroke-width="2"/>
-                                <text x="198" y="82" text-anchor="middle" font-size="10" fill="#2D5A39">🔧</text>
-                                <circle cx="210" cy="128" r="11" fill="#FFFFFF" stroke="#2D5A39" stroke-width="2"/>
-                                <text x="210" y="132" text-anchor="middle" font-size="10" fill="#2D5A39">🌱</text>
-                                <circle cx="155" cy="115" r="16" fill="#FFFFFF" opacity="0.95"/>
-                                <circle cx="155" cy="115" r="5" fill="#3B82F6"/>
-                                <circle cx="155" cy="115" r="18" fill="none" stroke="#3B82F6" stroke-width="2" opacity="0.35"/>
+                        <div class="ngp-map" role="img" aria-label="Carte illustrée d'une île habitée, avec quatre repères de catégories et la position de l'utilisateur">
+                            <svg class="ngp-map-svg" viewBox="0 0 340 260" preserveAspectRatio="xMidYMid slice" focusable="false" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="ngpSea" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#D5ECF1"/>
+                                        <stop offset="1" stop-color="#C4E3EC"/>
+                                    </linearGradient>
+                                    <path id="ngpIsland" d="M52 140C40 112 70 92 104 86C128 70 160 76 182 64C212 48 248 58 268 76C298 84 316 108 308 134C300 160 272 170 256 190C236 214 202 208 178 198C152 190 134 206 108 192C82 180 62 168 52 140Z"/>
+                                </defs>
+                                <rect width="340" height="260" fill="url(#ngpSea)"/>
+                                <g fill="none" stroke="#EAF7F9" stroke-width="2" stroke-linecap="round" opacity="0.9">
+                                    <path d="M18 34c10-6 20-6 30 0s20 6 30 0"/>
+                                    <path d="M262 22c10-6 20-6 30 0s20 6 30 0"/>
+                                    <path d="M14 232c10-6 20-6 30 0s20 6 30 0"/>
+                                    <path d="M240 236c10-6 20-6 30 0s20 6 30 0"/>
+                                    <path d="M290 160c8-5 16-5 24 0"/>
+                                </g>
+                                <use href="#ngpIsland" fill="none" stroke="#EAF7F9" stroke-width="16" stroke-linejoin="round" opacity="0.85"/>
+                                <use href="#ngpIsland" fill="#EFE3B8" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round"/>
+                                <g transform="translate(180 135) scale(0.93) translate(-180 -135)">
+                                    <use href="#ngpIsland" fill="#A9D6A3"/>
+                                </g>
+                                <ellipse cx="46" cy="218" rx="15" ry="8" fill="#EFE3B8" stroke="#FFFFFF" stroke-width="2"/>
+                                <ellipse cx="46" cy="216" rx="9" ry="4.5" fill="#A9D6A3"/>
+                                <ellipse cx="302" cy="50" rx="9" ry="5" fill="#EFE3B8" stroke="#FFFFFF" stroke-width="2"/>
+                                <circle cx="96" cy="126" r="11" fill="#8CC592"/>
+                                <circle cx="112" cy="106" r="9" fill="#8CC592"/>
+                                <circle cx="228" cy="170" r="12" fill="#8CC592"/>
+                                <circle cx="252" cy="142" r="9" fill="#8CC592"/>
+                                <circle cx="132" cy="176" r="9" fill="#8CC592"/>
+                                <path d="M126 130Q148 84 172 122Q190 80 216 126Q228 102 246 130Z" fill="#6DAA7B"/>
+                                <path d="M158 108Q171 94 181 112Q170 104 158 108Z" fill="#8FC799"/>
+                                <path d="M198 106Q212 92 222 112Q210 104 198 106Z" fill="#8FC799"/>
+                                <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M92 152C128 142 150 162 182 152S238 142 264 122" stroke="#D9CCA0" stroke-width="5.2"/>
+                                    <path d="M182 152C188 172 176 184 190 198" stroke="#D9CCA0" stroke-width="5.2"/>
+                                    <path d="M92 152C128 142 150 162 182 152S238 142 264 122" stroke="#FFFAEB" stroke-width="3.2"/>
+                                    <path d="M182 152C188 172 176 184 190 198" stroke="#FFFAEB" stroke-width="3.2"/>
+                                </g>
+                                <g fill="#FBF3DC" stroke="#CDBB88" stroke-width="0.7">
+                                    <rect x="94" y="158" width="6" height="4.5" rx="1"/><rect x="103" y="160" width="5" height="4" rx="1"/><rect x="88" y="162" width="5" height="4" rx="1"/>
+                                    <rect x="262" y="128" width="6" height="4.5" rx="1"/><rect x="271" y="126" width="5" height="4" rx="1"/>
+                                    <rect x="194" y="190" width="6" height="4.5" rx="1"/><rect x="203" y="192" width="5" height="4" rx="1"/>
+                                    <rect x="214" y="150" width="5" height="4" rx="1"/>
+                                </g>
+                                <circle cx="180" cy="148" r="16" fill="#2F7BEA" opacity="0.22"/>
+                                <circle cx="180" cy="148" r="7.5" fill="#2F7BEA" stroke="#FFFFFF" stroke-width="3"/>
+                                <g class="ngp-pin ngp-pin--beaute" transform="translate(110 135)">
+                                    <ellipse cx="0" cy="1" rx="8" ry="3" fill="#0F3D2A" opacity="0.22"/>
+                                    <path class="ngp-pin-body" d="M0 0C-5-9-16-15-16-27a16 16 0 1 1 32 0C16-15 5-9 0 0Z" stroke="#FFFFFF" stroke-width="2.5"/>
+                                    <g transform="translate(-8.5 -29) scale(0.7)" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"><circle cx="6" cy="6.5" r="2.6"/><circle cx="6" cy="17.5" r="2.6"/><path d="M8 8l12 9M8 16l12-9"/></g>
+                                </g>
+                                <g class="ngp-pin ngp-pin--travaux" transform="translate(200 101)">
+                                    <ellipse cx="0" cy="1" rx="8" ry="3" fill="#0F3D2A" opacity="0.22"/>
+                                    <path class="ngp-pin-body" d="M0 0C-5-9-16-15-16-27a16 16 0 1 1 32 0C16-15 5-9 0 0Z" stroke="#FFFFFF" stroke-width="2.5"/>
+                                    <text class="ngp-pin-glyph" x="0" y="-20.5" text-anchor="middle" dominant-baseline="central" font-family="Phosphor-Fill">&#xe5d4;</text>
+                                </g>
+                                <g class="ngp-pin ngp-pin--jardin" transform="translate(240 155)">
+                                    <ellipse cx="0" cy="1" rx="8" ry="3" fill="#0F3D2A" opacity="0.22"/>
+                                    <path class="ngp-pin-body" d="M0 0C-5-9-16-15-16-27a16 16 0 1 1 32 0C16-15 5-9 0 0Z" stroke="#FFFFFF" stroke-width="2.5"/>
+                                    <text class="ngp-pin-glyph" x="0" y="-20.5" text-anchor="middle" dominant-baseline="central" font-family="Phosphor-Fill">&#xebae;</text>
+                                </g>
+                                <g class="ngp-pin ngp-pin--transport" transform="translate(150 177)">
+                                    <ellipse cx="0" cy="1" rx="8" ry="3" fill="#0F3D2A" opacity="0.22"/>
+                                    <path class="ngp-pin-body" d="M0 0C-5-9-16-15-16-27a16 16 0 1 1 32 0C16-15 5-9 0 0Z" stroke="#FFFFFF" stroke-width="2.5"/>
+                                    <text class="ngp-pin-glyph" x="0" y="-20.5" text-anchor="middle" dominant-baseline="central" font-family="Phosphor-Fill">&#xe4b4;</text>
+                                </g>
                             </svg>
-                            <div class="ngp-map-features" aria-hidden="true">
-                                <div class="ngp-map-feat"><i class="ph ph-map-pin" aria-hidden="true"></i>Autour de vous</div>
-                                <div class="ngp-map-feat"><i class="ph ph-map-trifold" aria-hidden="true"></i>Carte simple</div>
-                                <div class="ngp-map-feat"><i class="ph ph-users-three" aria-hidden="true"></i>Talents</div>
-                                <div class="ngp-map-feat"><i class="ph ph-briefcase" aria-hidden="true"></i>Besoins</div>
-                            </div>
+                        </div>
+                        <div class="ngp-tiles ngp-tiles--4" aria-hidden="true">
+                            <div class="ngp-tile"><i class="ph ph-map-pin"></i>Autour de vous</div>
+                            <div class="ngp-tile"><i class="ph ph-map-trifold"></i>Carte simple</div>
+                            <div class="ngp-tile"><i class="ph ph-briefcase"></i>Besoins locaux</div>
+                            <div class="ngp-tile"><i class="ph ph-sliders-horizontal"></i>Par catégorie</div>
                         </div>
                     </div>
                 </div>
@@ -338,8 +403,8 @@
             <div class="native-guest-dots" id="nativeGuestDots" role="tablist" aria-label="Slides"></div>
         </div>
         <div class="native-guest-cta">
-            <button type="button" class="btn btn-outline btn-lg" id="btnNativeLogin">Se connecter</button>
             <button type="button" class="btn btn-primary btn-lg" id="btnNativeJoin">Créer mon compte</button>
+            <button type="button" class="btn btn-outline btn-lg" id="btnNativeLogin">Se connecter</button>
         </div>
     </div>
 

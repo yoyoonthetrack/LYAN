@@ -1,356 +1,608 @@
-/* Phase 3.0C — Premium mobile onboarding (native shell guest landing only). */
+/* Phase 3.0C-2 — Premium mobile onboarding (native shell guest landing only).
+   One LYANN header, five slides on one shared grid, solid CTAs. Never loaded visually on the website:
+   every rule is scoped to #nativeGuestHome / html.is-native-shell. */
+
+#nativeGuestHome.native-guest-premium-v1 {
+    --ngp-cream: #F7F2E8;
+    --ngp-ink: #0F3D2A;
+    --ngp-green: #1F5A3D;
+    --ngp-green-mid: #2E7D52;
+    --ngp-pastel: #E4EFDF;
+    --ngp-pastel-deep: #D6E6D1;
+    --ngp-text: #55665B;
+    --ngp-gold: #E5B345;
+    --ngp-gutter: 22px;
+    --ngp-safe-top: env(safe-area-inset-top, 0px);
+    --ngp-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* §1 — Only the guest landing is visible: no website header/hero/sections under it, no native navbar logo. */
+html.is-native-shell body:not(.user-is-logged-in):has(#nativeGuestHome.native-guest-premium-v1:not([hidden])) :is(
+    .navbar,
+    #how,
+    #app-preview,
+    #download-app,
+    .app-preview-section,
+    .app-download-section,
+    .how-it-works-short-section
+) {
+    display: none !important;
+}
 
 html.is-native-shell body:not(.user-is-logged-in) #nativeGuestHome.native-guest-premium-v1:not([hidden]) {
-    background: #F7F2E8;
+    top: 0;
+    bottom: 0;
+    padding-top: calc(var(--ngp-safe-top) + 10px);
+    background: var(--ngp-cream);
+    z-index: 30;
 }
 html.is-native-shell body:not(.user-is-logged-in) #nativeGuestHome.native-guest-premium-v1:not([hidden])::before {
     display: none;
 }
 
-.native-guest-premium-v1 .native-guest-slide-inner {
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-    padding: 4px 18px 8px;
-    text-align: left;
-}
-
-.ngp-brand {
+/* Single header */
+.ngp-app-header {
+    position: relative;
+    z-index: 2;
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin: 0 0 10px;
-    flex: none;
+    height: 46px;
 }
 .ngp-brand-icon {
-    width: 44px;
-    height: 44px;
+    height: 40px;
+    width: auto;
     object-fit: contain;
     flex: none;
 }
 .ngp-brand-wordmark {
     font-family: 'Outfit', sans-serif;
-    font-size: 1.55rem;
+    font-size: 1.9rem;
     font-weight: 800;
-    letter-spacing: 0.06em;
-    color: #1B3B2B;
+    letter-spacing: 0.035em;
+    color: var(--ngp-ink);
     line-height: 1;
 }
 
+/* Shared grid: tag / title / description / visual, same gutters on every slide */
+.native-guest-premium-v1 .native-guest-slide-inner {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: 6px var(--ngp-gutter) 10px;
+    text-align: left;
+}
 .ngp-tag {
-    align-self: flex-start;
-    margin: 0 0 8px;
-    padding: 5px 12px;
+    align-self: center;
+    margin: 4px 0 14px;
+    padding: 4px 13px;
     border-radius: 999px;
-    background: #E4F0E7;
-    color: #2D5A39;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    background: var(--ngp-pastel);
+    color: var(--ngp-green);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
 }
-
 .ngp-title {
-    margin: 0 0 6px;
+    margin: 0;
     font-family: 'Outfit', sans-serif;
-    font-size: clamp(1.35rem, 4.8vw, 1.55rem);
+    font-size: clamp(1.5rem, 7vw, 1.9rem);
     font-weight: 800;
-    line-height: 1.18;
-    letter-spacing: -0.02em;
-    color: #1B3B2B;
-    max-width: 22rem;
+    line-height: 1.14;
+    letter-spacing: -0.015em;
+    color: var(--ngp-ink);
+    text-wrap: balance;
 }
+.ngp-nowrap { white-space: nowrap; }
 .ngp-title-accent {
     display: block;
-    width: 2.5rem;
-    height: 3px;
-    margin: 6px 0 0;
-    border-radius: 2px;
-    background: #E5C76B;
+    width: 3.4rem;
+    height: 4px;
+    margin: 12px 0 0;
+    border-radius: 3px;
+    background: var(--ngp-gold);
 }
-
 .ngp-desc {
-    margin: 0 0 10px;
-    font-size: clamp(0.9rem, 3.6vw, 0.98rem);
-    line-height: 1.45;
-    color: #5A6E5F;
-    max-width: 22.5rem;
+    margin: 14px 0 16px;
+    font-size: clamp(0.88rem, 3.9vw, 0.98rem);
+    line-height: 1.48;
+    color: var(--ngp-text);
+    text-wrap: pretty;
 }
-
 .ngp-visual {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: min(42vh, 340px);
+    gap: 12px;
 }
 
-/* Slide 1 — hero photo */
-.ngp-hero-photo {
-    flex: 1;
-    min-height: 120px;
+/* Shared photo frame */
+.ngp-photo,
+.ngp-mosaic-tile {
+    position: relative;
     margin: 0;
-    border-radius: 18px;
     overflow: hidden;
+    border-radius: 22px;
+    background: var(--ngp-pastel);
+    box-shadow: 0 8px 22px rgba(15, 61, 42, 0.12);
 }
-.ngp-hero-photo img {
+.ngp-photo img,
+.ngp-mosaic-tile img {
+    display: block;
     width: 100%;
     height: 100%;
-    min-height: 140px;
-    max-height: 220px;
     object-fit: cover;
-    object-position: center 30%;
-    display: block;
 }
-.ngp-chips {
+
+/* Shared tiles (pastel green, vector icon + label) */
+.ngp-tiles {
+    flex: none;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.ngp-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ngp-tile {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    min-height: 74px;
+    padding: 11px 4px 9px;
+    border-radius: 16px;
+    background: var(--ngp-pastel);
+    color: var(--ngp-green);
+    font-size: 0.66rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    hyphens: none;
+}
+.ngp-tile i {
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--ngp-green-mid);
+}
+
+/* ---------- Slide 1 — mosaic of distinct talents ---------- */
+.ngp-mosaic {
+    flex: 1 1 200px;
+    min-height: 190px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+.ngp-badge {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--ngp-green);
+    font-size: 1.05rem;
+    box-shadow: 0 3px 10px rgba(15, 61, 42, 0.2);
+}
+.ngp-link-row {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 6px;
 }
 .ngp-chip {
+    flex: 1 1 0;
+    min-width: 0;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
-    padding: 6px 10px;
+    padding: 8px 8px;
     border-radius: 999px;
     background: #FFFFFF;
-    border: 1px solid rgba(74, 124, 89, 0.18);
-    color: #1F3827;
+    border: 1px solid rgba(46, 125, 82, 0.28);
+    color: var(--ngp-ink);
     font-size: 0.74rem;
     font-weight: 700;
+    line-height: 1.15;
+    white-space: nowrap;
 }
-.ngp-chip i { color: #4A7C59; font-size: 0.95rem; }
+.ngp-chip i { color: var(--ngp-green-mid); font-size: 1rem; flex: none; }
+.ngp-link {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--ngp-gold);
+    color: var(--ngp-ink);
+    font-size: 0.9rem;
+}
 .ngp-cats {
+    flex: none;
+    margin: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    justify-content: center;
+    gap: 2px 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ngp-green);
 }
-.ngp-cat {
-    padding: 5px 10px;
-    border-radius: 10px;
-    background: #E8F3EB;
-    color: #2D5A39;
-    font-size: 0.72rem;
-    font-weight: 700;
+.ngp-cats span + span::before {
+    content: "·";
+    margin: 0 8px;
+    color: var(--ngp-gold);
+    font-weight: 800;
 }
 
-/* Slide 2 — pro hero */
-.ngp-pro-hero {
-    position: relative;
-    border-radius: 18px;
-    overflow: hidden;
-    flex: 1;
-    min-height: 140px;
-    max-height: 220px;
+/* ---------- Slide 2 — professional photo, never cropped to a fragment ---------- */
+.ngp-photo--plumber {
+    flex: 1 1 250px;
+    min-height: 230px;
 }
-.ngp-pro-hero img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-.ngp-pro-badges {
+.ngp-photo--plumber img { object-position: 50% 30%; }
+.ngp-photo-badges {
     position: absolute;
     left: 10px;
     bottom: 10px;
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-width: calc(100% - 20px);
+    max-width: 58%;
 }
-.ngp-pro-badge {
-    padding: 6px 10px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.94);
-    color: #1F3827;
-    font-size: 0.72rem;
-    font-weight: 700;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-}
-.ngp-service-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-}
-.ngp-service-item {
+.ngp-photo-badge {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 8px 4px;
-    border-radius: 12px;
-    background: #E8F3EB;
-    text-align: center;
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: #2D5A39;
-    line-height: 1.2;
-}
-.ngp-service-item i {
-    font-size: 1.15rem;
-    color: #4A7C59;
-}
-
-/* Slide 3 — payment flow */
-.ngp-flow {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: stretch;
-    justify-content: center;
     gap: 6px;
-    padding: 12px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--ngp-ink);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.2;
+    box-shadow: 0 4px 14px rgba(15, 61, 42, 0.14);
+}
+.ngp-photo-badge i { color: var(--ngp-green-mid); font-size: 1.05rem; flex: none; }
+
+/* ---------- Slide 3 — premium payment infographic ---------- */
+.ngp-pay {
+    flex: 1 1 auto;
+    margin: 0;
+    padding: 14px 12px 12px;
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+        "s1 s2"
+        "s3 s3"
+        "s4 s5";
+    gap: 8px 14px;
+    align-content: space-between;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #EBF3E6 0%, #F1F6EC 100%);
+    border: 1px solid rgba(46, 125, 82, 0.14);
+    position: relative;
+}
+.ngp-step {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px 10px 10px 10px;
     border-radius: 16px;
     background: #FFFFFF;
-    border: 1px solid rgba(74, 124, 89, 0.14);
+    box-shadow: 0 3px 12px rgba(15, 61, 42, 0.08);
+    color: var(--ngp-ink);
 }
-.ngp-flow-step {
-    flex: 1 1 calc(33% - 8px);
-    min-width: 88px;
-    max-width: 110px;
-    padding: 8px 6px;
-    border-radius: 12px;
-    background: #F4F8F5;
-    text-align: center;
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: #2D5A39;
-    line-height: 1.25;
-}
-.ngp-flow-step.is-secure {
-    background: #E4F0E7;
-    border: 1.5px solid #4A7C59;
-}
-.ngp-flow-step i {
-    display: block;
-    margin: 0 auto 4px;
-    font-size: 1.1rem;
-    color: #4A7C59;
-}
-.ngp-flow-arrow {
+.ngp-step i {
     flex: none;
-    align-self: center;
-    color: #9BB5A4;
-    font-size: 0.75rem;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--ngp-pastel);
+    color: var(--ngp-green-mid);
+    font-size: 1.1rem;
+}
+.ngp-step-label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.ngp-step-num {
+    position: absolute;
+    top: -7px;
+    left: -5px;
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--ngp-ink);
+    color: #FFFFFF;
+    font-size: 0.66rem;
     font-weight: 800;
 }
-.ngp-values {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+.ngp-step--1 { grid-area: s1; }
+.ngp-step--2 { grid-area: s2; }
+.ngp-step--4 { grid-area: s4; }
+.ngp-step--5 { grid-area: s5; }
+/* arrows 1→2, 4→5 and vertical connectors, drawn with pseudo elements (no extra DOM) */
+.ngp-step--1::after,
+.ngp-step--4::after {
+    content: "";
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid var(--ngp-green-mid);
+    border-right: 2px solid var(--ngp-green-mid);
+    transform: translateY(-50%) rotate(45deg);
 }
-.ngp-value {
-    padding: 8px 6px;
-    border-radius: 12px;
-    background: #E8F3EB;
+.ngp-step--2::after,
+.ngp-step--3::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -9px;
+    width: 8px;
+    height: 8px;
+    border-bottom: 2px solid var(--ngp-green-mid);
+    border-right: 2px solid var(--ngp-green-mid);
+    transform: translateX(-50%) rotate(45deg);
+}
+.ngp-step--3 {
+    grid-area: s3;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    margin: 8px 2px 8px;
+    padding: 24px 12px 12px;
     text-align: center;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #2D5A39;
-    line-height: 1.2;
+    background: #FFFFFF;
+    border: 2px solid var(--ngp-green-mid);
+    border-radius: 20px;
+    box-shadow: 0 10px 26px rgba(15, 61, 42, 0.16);
 }
-.ngp-value i {
-    display: block;
-    margin-bottom: 4px;
-    font-size: 1.1rem;
-    color: #4A7C59;
+.ngp-step--3 .ngp-step-label {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.12rem;
+    font-weight: 800;
+}
+.ngp-step--3 .ngp-step-num { left: 14px; top: 14px; }
+.ngp-secure-badge {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translateX(-50%);
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--ngp-ink);
+    color: var(--ngp-gold);
+    font-size: 1.5rem;
+    border: 3px solid #FFFFFF;
+    box-shadow: 0 6px 16px rgba(15, 61, 42, 0.28);
+}
+.ngp-step--3 .ngp-secure-badge i {
+    width: auto;
+    height: auto;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+}
+.ngp-secure-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: #FBF0CF;
+    color: #7A5A0C;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+.ngp-step--3 .ngp-secure-note i {
+    width: auto;
+    height: auto;
+    background: none;
+    color: inherit;
+    font-size: 0.9rem;
 }
 
-/* Slide 4 — trust */
-.ngp-trust-layout {
-    display: grid;
-    grid-template-columns: 1fr 1.05fr;
-    gap: 8px;
+/* ---------- Slide 4 — trust: photo + light profile/review UI ---------- */
+.ngp-trust { gap: 0; }
+.ngp-photo--hair {
+    flex: 1 1 210px;
+    min-height: 190px;
+}
+.ngp-photo--hair img { object-position: 50% 34%; }
+.ngp-profile-card {
+    position: relative;
+    z-index: 1;
+    flex: none;
+    margin: -34px 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 18px;
+    background: #FFFFFF;
+    box-shadow: 0 8px 22px rgba(15, 61, 42, 0.16);
+}
+.ngp-avatar {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 0 0 1.5px var(--ngp-green-mid);
+    background-image: url('assets/onboarding/photo-hairdresser.webp');
+    background-repeat: no-repeat;
+    background-size: 310% auto;
+    background-position: 72% 12%;
+}
+.ngp-profile-meta {
     flex: 1;
-    min-height: 0;
-    align-items: stretch;
-}
-.ngp-trust-photo {
-    border-radius: 16px;
-    overflow: hidden;
-    min-height: 120px;
-}
-.ngp-trust-photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-.ngp-trust-cards {
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    justify-content: center;
+    gap: 1px;
+    font-size: 0.7rem;
+    color: var(--ngp-text);
 }
-.ngp-trust-card {
-    padding: 8px 10px;
-    border-radius: 12px;
-    background: #FFFFFF;
-    border: 1px solid rgba(74, 124, 89, 0.12);
-    font-size: 0.72rem;
-    color: #1F3827;
+.ngp-profile-meta strong { font-size: 0.82rem; color: var(--ngp-ink); }
+.ngp-rating {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    font-size: 0.8rem;
+    color: var(--ngp-ink);
 }
-.ngp-trust-card strong { display: block; font-size: 0.78rem; margin-bottom: 2px; }
-.ngp-stars { color: #E5B345; letter-spacing: 1px; }
-.ngp-mock-note {
-    font-style: italic;
-    color: #5A6E5F;
-    line-height: 1.35;
+.ngp-stars { display: inline-flex; gap: 1px; color: var(--ngp-gold); font-size: 0.78rem; }
+.ngp-review {
+    flex: none;
+    margin: 8px 0 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 11px 14px;
+    border-radius: 18px;
+    background: var(--ngp-pastel);
+}
+.ngp-review-mark {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 0.8;
+    color: var(--ngp-green-mid);
+}
+.ngp-review p {
+    margin: 0;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--ngp-ink);
 }
 .ngp-illus-label {
-    font-size: 0.62rem;
-    color: #8A9A90;
-    margin: 4px 0 0;
+    flex: none;
+    margin: 7px 0 0;
+    text-align: center;
+    font-size: 0.66rem;
+    color: #7C8C82;
 }
 
-/* Slide 5 — map */
-.ngp-map-card {
-    flex: 1;
-    min-height: 0;
-    border-radius: 18px;
-    background: linear-gradient(180deg, #D8EEF5 0%, #E8F6FA 100%);
-    border: 1px solid rgba(74, 124, 89, 0.12);
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+/* ---------- Slide 5 — illustrated island ---------- */
+.ngp-map {
+    position: relative;
+    flex: 1 1 230px;
+    min-height: 200px;
+    overflow: hidden;
+    border-radius: 22px;
+    background: #CDE8EE;
+    box-shadow: 0 8px 22px rgba(15, 61, 42, 0.12);
 }
 .ngp-map-svg {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    flex: 1;
-    min-height: 120px;
-}
-.ngp-map-features {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-}
-.ngp-map-feat {
-    text-align: center;
-    font-size: 0.6rem;
-    font-weight: 700;
-    color: #2D5A39;
-}
-.ngp-map-feat i {
+    height: 100%;
     display: block;
+}
+.ngp-pin .ngp-pin-body { fill: var(--pin, #1F5A3D); }
+.ngp-pin-glyph { font-size: 17px; fill: #FFFFFF; }
+.ngp-pin--beaute { --pin: #E9A23B; }
+.ngp-pin--travaux { --pin: #1F5A3D; }
+.ngp-pin--jardin { --pin: #4E9D63; }
+.ngp-pin--transport { --pin: #2F82A8; }
+
+/* ---------- Fixed footer: pagination + actions ---------- */
+.native-guest-premium-v1 .native-guest-swipe { display: none !important; }
+.native-guest-premium-v1 .native-guest-progress { padding-top: 2px; }
+.native-guest-premium-v1 .native-guest-dots {
+    gap: 0;
+    padding: 0 var(--ngp-gutter);
+}
+.native-guest-premium-v1 .native-guest-dots.is-last { padding-bottom: 0; }
+.native-guest-premium-v1 .native-guest-dot {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    transition: none;
+}
+.native-guest-premium-v1 .native-guest-dot::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #C3D7C0;
+    transform: translate(-50%, -50%);
+    transition: width 160ms ease, height 160ms ease, background-color 160ms ease;
+}
+.native-guest-premium-v1 .native-guest-dot.is-active { background: transparent; width: 22px; }
+.native-guest-premium-v1 .native-guest-dot.is-active::after {
+    width: 11px;
+    height: 11px;
+    background: var(--ngp-green);
+}
+.native-guest-premium-v1 .native-guest-cta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 6px var(--ngp-gutter) calc(var(--ngp-safe-bottom) + 10px);
+}
+html.is-native-shell body:not(.user-is-logged-in) .native-guest-premium-v1 .native-guest-cta .btn {
+    min-height: 52px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-family: 'Outfit', sans-serif;
     font-size: 1rem;
-    color: #4A7C59;
-    margin-bottom: 2px;
+    font-weight: 700;
+    letter-spacing: 0;
+    box-shadow: none;
+    transform: none;
+    justify-content: center;
+    white-space: nowrap;
+}
+html.is-native-shell body:not(.user-is-logged-in) .native-guest-premium-v1 .native-guest-cta .btn-primary {
+    background: var(--ngp-green) !important;
+    background-image: none !important;
+    border: 2px solid var(--ngp-green);
+    color: #FFFFFF;
+}
+html.is-native-shell body:not(.user-is-logged-in) .native-guest-premium-v1 .native-guest-cta .btn-outline {
+    background: #FFFFFF !important;
+    background-image: none !important;
+    border: 2px solid var(--ngp-green);
+    color: var(--ngp-green);
 }
 
-/* Fixed footer controls */
-.native-guest-premium-v1 .native-guest-cta .btn-primary {
-    background: #2D5A39;
-    border-color: #2D5A39;
-}
-.native-guest-premium-v1 .native-guest-cta .btn-outline {
-    border-color: #2D5A39;
-    color: #2D5A39;
-    background: #FFFFFF;
-}
-
-/* Auth sheet (login without a 6th slide) */
+/* ---------- Auth sheet (login without a 6th slide) ---------- */
 .native-guest-auth-sheet {
     position: fixed;
     inset: 0;
@@ -395,16 +647,38 @@ html.is-native-shell body:not(.user-is-logged-in) #nativeGuestHome.native-guest-
     z-index: 2;
 }
 
-@media (max-height: 700px) {
-    .ngp-visual { max-height: min(36vh, 260px); }
-    .ngp-title { font-size: 1.28rem; }
-    .ngp-desc { font-size: 0.86rem; margin-bottom: 6px; }
+/* ---------- Compact heights (iPhone SE / small viewports) ---------- */
+@media (max-height: 760px) {
+    #nativeGuestHome.native-guest-premium-v1 { --ngp-gutter: 20px; }
+    .ngp-tag { margin-bottom: 10px; }
+    .ngp-title { font-size: clamp(1.4rem, 6.4vw, 1.65rem); }
+    .ngp-title-accent { margin-top: 9px; }
+    .ngp-desc { margin: 10px 0 12px; font-size: 0.86rem; line-height: 1.42; }
+    .ngp-visual { gap: 9px; }
+    .ngp-tile { min-height: 58px; gap: 4px; padding: 8px 3px 7px; font-size: 0.62rem; }
+    .ngp-tile i { font-size: 1.15rem; }
+    .ngp-mosaic { min-height: 150px; gap: 8px; }
+    .ngp-photo--plumber,
+    .ngp-photo--hair,
+    .ngp-map { min-height: 150px; }
+    .ngp-step { padding: 7px 8px; }
+    .ngp-step--3 { padding-top: 22px; }
+    .ngp-pay { gap: 6px 12px; padding: 12px 10px 10px; }
 }
-@media (max-width: 360px) {
-    .ngp-service-grid,
-    .ngp-map-features { grid-template-columns: repeat(2, 1fr); }
-    .ngp-flow-step { min-width: 76px; font-size: 0.58rem; }
+@media (max-height: 700px) {
+    .ngp-photo--hair { flex-basis: 118px; min-height: 118px; }
+    .ngp-desc { line-height: 1.38; margin-bottom: 10px; }
+    .ngp-profile-card { margin-top: -28px; padding: 8px 10px; }
+    .ngp-review { padding: 8px 12px; margin-top: 6px; }
+    .ngp-illus-label { margin-top: 5px; }
+}
+@media (max-width: 370px) {
+    .ngp-chip i { display: none; }
+    .ngp-chip { font-size: 0.7rem; }
+    .ngp-tile { font-size: 0.6rem; }
+    .ngp-step-label { font-size: 0.7rem; }
+    .ngp-photo-badges { max-width: 70%; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .native-guest-premium-v1 .native-guest-dot { transition: none; }
+    .native-guest-premium-v1 .native-guest-dot::after { transition: none; }
 }

@@ -1,0 +1,258 @@
+{
+  "viewport": "375x667",
+  "safeTop": 20,
+  "safeBottom": 0,
+  "fontOutfit": true,
+  "slides": [
+    {
+      "slide": 1,
+      "name": "decouvrir",
+      "visibleEtapesSimples": 0,
+      "navbarVisible": false,
+      "visibleLogoElements": [
+        "img.ngp-brand-icon",
+        "span.ngp-brand-wordmark"
+      ],
+      "header": {
+        "top": 30,
+        "bottom": 76,
+        "left": 0,
+        "right": 375,
+        "h": 46
+      },
+      "join": {
+        "top": 611,
+        "bottom": 657,
+        "left": 20,
+        "right": 182,
+        "h": 46
+      },
+      "login": {
+        "top": 611,
+        "bottom": 657,
+        "left": 194,
+        "right": 355,
+        "h": 46
+      },
+      "dots": {
+        "top": 583,
+        "bottom": 605,
+        "left": 0,
+        "right": 375,
+        "h": 22
+      },
+      "activeDots": 1,
+      "dotCount": 5,
+      "joinBg": "none",
+      "scrollable": 0,
+      "tagTop": 86,
+      "titleTop": 120,
+      "titleH": 68,
+      "titleLeft": 20,
+      "visualTop": 265,
+      "visualBottom": 571,
+      "titleFont": "24px",
+      "innerPad": "20px"
+    },
+    {
+      "slide": 2,
+      "name": "proposer",
+      "visibleEtapesSimples": 0,
+      "navbarVisible": false,
+      "visibleLogoElements": [
+        "img.ngp-brand-icon",
+        "span.ngp-brand-wordmark"
+      ],
+      "header": {
+        "top": 30,
+        "bottom": 76,
+        "left": 0,
+        "right": 375,
+        "h": 46
+      },
+      "join": {
+        "top": 611,
+        "bottom": 657,
+        "left": 20,
+        "right": 182,
+        "h": 46
+      },
+      "login": {
+        "top": 611,
+        "bottom": 657,
+        "left": 194,
+        "right": 355,
+        "h": 46
+      },
+      "dots": {
+        "top": 583,
+        "bottom": 605,
+        "left": 0,
+        "right": 375,
+        "h": 22
+      },
+      "activeDots": 1,
+      "dotCount": 5,
+      "joinBg": "none",
+      "scrollable": 0,
+      "tagTop": 86,
+      "titleTop": 120,
+      "titleH": 41,
+      "titleLeft": 20,
+      "visualTop": 237,
+      "visualBottom": 571,
+      "titleFont": "24px",
+      "innerPad": "20px"
+    },
+    {
+      "slide": 3,
+      "name": "securiser",
+      "visibleEtapesSimples": 0,
+      "navbarVisible": false,
+      "visibleLogoElements": [
+        "img.ngp-brand-icon",
+        "span.ngp-brand-wordmark"
+      ],
+      "header": {
+        "top": 30,
+        "bottom": 76,
+        "left": 0,
+        "right": 375,
+        "h": 46
+      },
+      "join": {
+        "top": 611,
+        "bottom": 657,
+        "left": 20,
+        "right": 182,
+        "h": 46
+      },
+      "login": {
+        "top": 611,
+        "bottom": 657,
+        "left": 194,
+        "right": 355,
+        "h": 46
+      },
+      "dots": {
+        "top": 583,
+        "bottom": 605,
+        "left": 0,
+        "right": 375,
+        "h": 22
+      },
+      "activeDots": 1,
+      "dotCount": 5,
+      "joinBg": "none",
+      "scrollable": 0,
+      "tagTop": 86,
+      "titleTop": 120,
+      "titleH": 68,
+      "titleLeft": 20,
+      "visualTop": 265,
+      "visualBottom": 571,
+      "titleFont": "24px",
+      "innerPad": "20px"
+    },
+    {
+      "slide": 4,
+      "name": "confiance",
+      "visibleEtapesSimples": 0,
+      "navbarVisible": false,
+      "visibleLogoElements": [
+        "img.ngp-brand-icon",
+        "span.ngp-brand-wordmark"
+      ],
+      "header": {
+        "top": 30,
+        "bottom": 76,
+        "left": 0,
+        "right": 375,
+        "h": 46
+      },
+      "join": {
+        "top": 611,
+        "bottom": 657,
+        "left": 20,
+        "right": 182,
+        "h": 46
+      },
+      "login": {
+        "top": 611,
+        "bottom": 657,
+        "left": 194,
+        "right": 355,
+        "h": 46
+      },
+      "dots": {
+        "top": 583,
+        "bottom": 605,
+        "left": 0,
+        "right": 375,
+        "h": 22
+      },
+      "activeDots": 1,
+      "dotCount": 5,
+      "joinBg": "none",
+      "scrollable": 0,
+      "tagTop": 86,
+      "titleTop": 120,
+      "titleH": 68,
+      "titleLeft": 20,
+      "visualTop": 246,
+      "visualBottom": 571,
+      "titleFont": "24px",
+      "innerPad": "20px"
+    },
+    {
+      "slide": 5,
+      "name": "explorer",
+      "visibleEtapesSimples": 0,
+      "navbarVisible": false,
+      "visibleLogoElements": [
+        "img.ngp-brand-icon",
+        "span.ngp-brand-wordmark"
+      ],
+      "header": {
+        "top": 30,
+        "bottom": 76,
+        "left": 0,
+        "right": 375,
+        "h": 46
+      },
+      "join": {
+        "top": 611,
+        "bottom": 657,
+        "left": 20,
+        "right": 182,
+        "h": 46
+      },
+      "login": {
+        "top": 611,
+        "bottom": 657,
+        "left": 194,
+        "right": 355,
+        "h": 46
+      },
+      "dots": {
+        "top": 583,
+        "bottom": 605,
+        "left": 0,
+        "right": 375,
+        "h": 22
+      },
+      "activeDots": 1,
+      "dotCount": 5,
+      "joinBg": "none",
+      "scrollable": 0,
+      "tagTop": 86,
+      "titleTop": 120,
+      "titleH": 68,
+      "titleLeft": 20,
+      "visualTop": 246,
+      "visualBottom": 571,
+      "titleFont": "24px",
+      "innerPad": "20px"
+    }
+  ]
+}
