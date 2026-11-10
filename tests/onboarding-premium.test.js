@@ -14,8 +14,11 @@ const guestEnd = bienvenue.indexOf('id="nativeGuestAuthSheet"');
 const guest = bienvenue.slice(guestStart, guestEnd);
 
 assert.match(bienvenue, /native-guest-premium-v1/);
-assert.match(bienvenue, /assets\/brand\/lyann-symbol\.png/);
-assert.match(bienvenue, /assets\/brand\/lyann-wordmark\.png/);
+assert.match(guest, /assets\/brand\/lyann-symbol\.png/);
+assert.match(guest, /ngp-brand-wordmark/);
+assert.match(guest, /assets\/onboarding\/slide-01-connection\.jpg/);
+assert.match(guest, /assets\/onboarding\/slide-02-professional\.jpg/);
+assert.match(guest, /assets\/onboarding\/slide-04-trust\.jpg/);
 assert.equal((guest.match(/class="native-guest-slide native-guest-premium"/g) || []).length, 5, 'five premium slides');
 
 const titles = [
