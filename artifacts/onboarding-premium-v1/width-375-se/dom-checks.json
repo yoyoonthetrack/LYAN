@@ -21,38 +21,72 @@
         "h": 46
       },
       "join": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 20,
         "right": 182,
         "h": 46
       },
       "login": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 194,
         "right": 355,
         "h": 46
       },
       "dots": {
-        "top": 583,
-        "bottom": 605,
+        "top": 563,
+        "bottom": 599,
         "left": 0,
         "right": 375,
-        "h": 22
+        "h": 36
       },
       "activeDots": 1,
       "dotCount": 5,
       "joinBg": "none",
       "scrollable": 0,
-      "tagTop": 86,
-      "titleTop": 120,
+      "hashtags": 0,
+      "headerTop": 30,
+      "headerBottom": 76,
+      "logoCenterOffset": 0,
+      "titleTop": 96,
       "titleH": 68,
       "titleLeft": 20,
-      "visualTop": 265,
-      "visualBottom": 571,
       "titleFont": "24px",
-      "innerPad": "20px"
+      "titleWeight": "800",
+      "descBottom": 233,
+      "visualTop": 259,
+      "visualBottom": 533,
+      "gapDescToVisual": 26,
+      "gapVisualToDots": 30,
+      "navTop": 563,
+      "clippedOrUnderNav": 0,
+      "frames": [
+        {
+          "src": "photo-gardener.webp",
+          "w": 164,
+          "h": 111,
+          "visiblePct": 54
+        },
+        {
+          "src": "photo-chef.webp",
+          "w": 164,
+          "h": 111,
+          "visiblePct": 54
+        },
+        {
+          "src": "photo-electrician.webp",
+          "w": 164,
+          "h": 111,
+          "visiblePct": 54
+        },
+        {
+          "src": "photo-cleaner.webp",
+          "w": 164,
+          "h": 111,
+          "visiblePct": 54
+        }
+      ]
     },
     {
       "slide": 2,
@@ -71,38 +105,54 @@
         "h": 46
       },
       "join": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 20,
         "right": 182,
         "h": 46
       },
       "login": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 194,
         "right": 355,
         "h": 46
       },
       "dots": {
-        "top": 583,
-        "bottom": 605,
+        "top": 563,
+        "bottom": 599,
         "left": 0,
         "right": 375,
-        "h": 22
+        "h": 36
       },
       "activeDots": 1,
       "dotCount": 5,
       "joinBg": "none",
       "scrollable": 0,
-      "tagTop": 86,
-      "titleTop": 120,
+      "hashtags": 0,
+      "headerTop": 30,
+      "headerBottom": 76,
+      "logoCenterOffset": 0,
+      "titleTop": 96,
       "titleH": 41,
       "titleLeft": 20,
-      "visualTop": 237,
-      "visualBottom": 571,
       "titleFont": "24px",
-      "innerPad": "20px"
+      "titleWeight": "800",
+      "descBottom": 205,
+      "visualTop": 240,
+      "visualBottom": 524,
+      "gapDescToVisual": 35,
+      "gapVisualToDots": 39,
+      "navTop": 563,
+      "clippedOrUnderNav": 0,
+      "frames": [
+        {
+          "src": "photo-plumber.webp",
+          "w": 335,
+          "h": 213,
+          "visiblePct": 51
+        }
+      ]
     },
     {
       "slide": 3,
@@ -121,38 +171,47 @@
         "h": 46
       },
       "join": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 20,
         "right": 182,
         "h": 46
       },
       "login": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 194,
         "right": 355,
         "h": 46
       },
       "dots": {
-        "top": 583,
-        "bottom": 605,
+        "top": 563,
+        "bottom": 599,
         "left": 0,
         "right": 375,
-        "h": 22
+        "h": 36
       },
       "activeDots": 1,
       "dotCount": 5,
       "joinBg": "none",
       "scrollable": 0,
-      "tagTop": 86,
-      "titleTop": 120,
+      "hashtags": 0,
+      "headerTop": 30,
+      "headerBottom": 76,
+      "logoCenterOffset": 0,
+      "titleTop": 96,
       "titleH": 68,
       "titleLeft": 20,
-      "visualTop": 265,
-      "visualBottom": 571,
       "titleFont": "24px",
-      "innerPad": "20px"
+      "titleWeight": "800",
+      "descBottom": 233,
+      "visualTop": 248,
+      "visualBottom": 544,
+      "gapDescToVisual": 15,
+      "gapVisualToDots": 19,
+      "navTop": 563,
+      "clippedOrUnderNav": 0,
+      "frames": []
     },
     {
       "slide": 4,
@@ -171,38 +230,54 @@
         "h": 46
       },
       "join": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 20,
         "right": 182,
         "h": 46
       },
       "login": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 194,
         "right": 355,
         "h": 46
       },
       "dots": {
-        "top": 583,
-        "bottom": 605,
+        "top": 563,
+        "bottom": 599,
         "left": 0,
         "right": 375,
-        "h": 22
+        "h": 36
       },
       "activeDots": 1,
       "dotCount": 5,
       "joinBg": "none",
       "scrollable": 0,
-      "tagTop": 86,
-      "titleTop": 120,
+      "hashtags": 0,
+      "headerTop": 30,
+      "headerBottom": 76,
+      "logoCenterOffset": 0,
+      "titleTop": 96,
       "titleH": 68,
       "titleLeft": 20,
-      "visualTop": 246,
-      "visualBottom": 571,
       "titleFont": "24px",
-      "innerPad": "20px"
+      "titleWeight": "800",
+      "descBottom": 213,
+      "visualTop": 229,
+      "visualBottom": 543,
+      "gapDescToVisual": 16,
+      "gapVisualToDots": 20,
+      "navTop": 563,
+      "clippedOrUnderNav": 0,
+      "frames": [
+        {
+          "src": "photo-hairdresser.webp",
+          "w": 335,
+          "h": 171,
+          "visiblePct": 41
+        }
+      ]
     },
     {
       "slide": 5,
@@ -221,38 +296,47 @@
         "h": 46
       },
       "join": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 20,
         "right": 182,
         "h": 46
       },
       "login": {
-        "top": 611,
-        "bottom": 657,
+        "top": 609,
+        "bottom": 655,
         "left": 194,
         "right": 355,
         "h": 46
       },
       "dots": {
-        "top": 583,
-        "bottom": 605,
+        "top": 569,
+        "bottom": 599,
         "left": 0,
         "right": 375,
-        "h": 22
+        "h": 30
       },
       "activeDots": 1,
       "dotCount": 5,
       "joinBg": "none",
       "scrollable": 0,
-      "tagTop": 86,
-      "titleTop": 120,
+      "hashtags": 0,
+      "headerTop": 30,
+      "headerBottom": 76,
+      "logoCenterOffset": 0,
+      "titleTop": 96,
       "titleH": 68,
       "titleLeft": 20,
-      "visualTop": 246,
-      "visualBottom": 571,
       "titleFont": "24px",
-      "innerPad": "20px"
+      "titleWeight": "800",
+      "descBottom": 213,
+      "visualTop": 248,
+      "visualBottom": 530,
+      "gapDescToVisual": 35,
+      "gapVisualToDots": 39,
+      "navTop": 569,
+      "clippedOrUnderNav": 0,
+      "frames": []
     }
   ]
 }

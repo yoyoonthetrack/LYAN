@@ -151,16 +151,40 @@ async function captureSet({ w, h, safeTop, safeBottom }, outDir) {
         }, { vw: w, vh: h });
         const slideOverflow = await page.evaluate((index) => {
             const s = document.querySelectorAll('.native-guest-slide')[index];
-            const tag = s.querySelector('.ngp-tag').getBoundingClientRect();
             const title = s.querySelector('.ngp-title').getBoundingClientRect();
+            const desc = s.querySelector('.ngp-desc').getBoundingClientRect();
             const visual = s.querySelector('.ngp-visual').getBoundingClientRect();
-            const inner = s.querySelector('.native-guest-slide-inner');
+            const nav = document.querySelector('.ngp-nav').getBoundingClientRect();
+            const dots = document.getElementById('nativeGuestDots').getBoundingClientRect();
+            const header = document.getElementById('ngpAppHeader').getBoundingClientRect();
+            const symbol = document.querySelector('.ngp-brand-icon').getBoundingClientRect();
+            const word = document.querySelector('.ngp-brand-wordmark').getBoundingClientRect();
+            const groupCenter = (Math.min(symbol.left, word.left) + Math.max(symbol.right, word.right)) / 2;
+            // Share of each photograph that stays visible with object-fit: cover (1 = nothing cropped).
+            const frames = Array.from(s.querySelectorAll('img')).map((img) => {
+                const r = img.getBoundingClientRect();
+                const scale = Math.max(r.width / img.naturalWidth, r.height / img.naturalHeight);
+                const visibleShare = Math.min(1, (r.width / scale) / img.naturalWidth) * Math.min(1, (r.height / scale) / img.naturalHeight);
+                return { src: img.getAttribute('src').split('/').pop(), w: Math.round(r.width), h: Math.round(r.height), visiblePct: Math.round(visibleShare * 100) };
+            });
+            const hashtags = Array.from(document.querySelectorAll('#nativeGuestHome *')).filter((el) => el.children.length === 0 && /^#\s?[A-Za-zÀ-ÿ]/.test((el.textContent || '').trim())).length
+                + document.querySelectorAll('#nativeGuestHome .ngp-tag').length;
+            const clipped = Array.from(s.querySelectorAll('.ngp-visual *')).filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && (r.bottom > nav.top + 0.5 || r.right > window.innerWidth + 0.5 || r.left < -0.5); }).length;
             return {
                 scrollable: s.scrollHeight - s.clientHeight,
-                tagTop: Math.round(tag.top), titleTop: Math.round(title.top), titleH: Math.round(title.height),
-                titleLeft: Math.round(title.left), visualTop: Math.round(visual.top), visualBottom: Math.round(visual.bottom),
+                hashtags,
+                headerTop: Math.round(header.top), headerBottom: Math.round(header.bottom),
+                logoCenterOffset: Math.round((groupCenter - window.innerWidth / 2) * 10) / 10,
+                titleTop: Math.round(title.top), titleH: Math.round(title.height), titleLeft: Math.round(title.left),
                 titleFont: getComputedStyle(s.querySelector('.ngp-title')).fontSize,
-                innerPad: getComputedStyle(inner).paddingLeft
+                titleWeight: getComputedStyle(s.querySelector('.ngp-title')).fontWeight,
+                descBottom: Math.round(desc.bottom),
+                visualTop: Math.round(visual.top), visualBottom: Math.round(visual.bottom),
+                gapDescToVisual: Math.round(visual.top - desc.bottom),
+                gapVisualToDots: Math.round(dots.top - visual.bottom),
+                navTop: Math.round(nav.top),
+                clippedOrUnderNav: clipped,
+                frames
             };
         }, i);
         checks.slides.push({ slide: i + 1, name: NAMES[i], ...dom, ...slideOverflow });

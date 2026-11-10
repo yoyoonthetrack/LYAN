@@ -1,6 +1,6 @@
 'use strict';
 
-// Phase 3.0C-2 contract for the premium guest onboarding (static checks only: the visual conformity itself is
+// Phase 3.0C-2 / 3.0C-3 contract for the premium guest onboarding (static checks only: the visual conformity itself is
 // verified by real WebKit captures, see scripts/capture-onboarding-slides.js and artifacts/onboarding-premium-v1/).
 
 const assert = require('assert');
@@ -62,10 +62,19 @@ const titles = [
     'Explorez votre île, votre quartier, autrement'
 ];
 titles.forEach((t, i) => assert.ok(strip(slides[i]).includes(t), 'title: ' + t));
-['# Découvrir', '# Proposer', '# Sécuriser', '# Confiance', '# Explorer'].forEach((t, i) => assert.ok(strip(slides[i]).includes(t), 'hashtag ' + t));
-['Un projet à réaliser', 'Un talent à proximité', 'Travaux', 'Beauté', 'Garde d\'enfants', 'Et bien plus'].forEach((t) => assert.ok(strip(slides[0]).includes(t), t));
+// 3.0C-3 §1 — the five hashtag pills are gone, nothing replaces them, no empty margin left for them.
+['# Découvrir', '# Proposer', '# Sécuriser', '# Confiance', '# Explorer'].forEach((t) => assert.ok(!guest.includes(t), 'no hashtag ' + t));
+assert.ok(!/ngp-tag/.test(guest) && !/\.ngp-tag/.test(css), 'no ngp-tag element or style');
+slides.forEach((s, i) => assert.match(s, /<div class="native-guest-slide-inner">\s*<h2 class="ngp-title"/, 'title is the first element of slide ' + (i + 1)));
+// 3.0C-3 §4 — slide 1 keeps only the relationship cues, not the redundant category row.
+['Un projet à réaliser', 'Un talent à proximité'].forEach((t) => assert.ok(strip(slides[0]).includes(t), t));
+assert.ok(!/ngp-cats/.test(guest), 'redundant category labels removed under the mosaic');
 ['Pour les talents indépendants', 'Pour les professionnels', 'Plomberie', 'Électricité', 'Jardinage', 'Transport et déménagement'].forEach((t) => assert.ok(strip(slides[1]).includes(t), t));
-['Demande', 'Devis ou tarif convenu', 'Paiement sécurisé', 'Prestation et validation', 'Paiement libéré', 'Budget sécurisé', 'Confiance mutuelle', 'Paiement encadré'].forEach((t) => assert.ok(strip(slides[2]).includes(t), t));
+// 3.0C-3 §6 — three big moments, detailed business steps as secondary legends.
+assert.equal((slides[2].match(/class="ngp-moment ngp-moment--/g) || []).length, 3, 'three moments');
+['Accord sur la prestation', 'Paiement sécurisé', 'Avant intervention', 'Mission réalisée, validée, puis paiement libéré'].forEach((t) => assert.ok(strip(slides[2]).includes(t), t));
+['Demande', 'Devis ou tarif convenu', 'Prestation', 'Validation', 'Libération'].forEach((t) => assert.ok(new RegExp('ngp-legend-item">' + t + '<').test(slides[2]), 'legend ' + t));
+assert.match(css, /\.ngp-moment--2 \{[^}]*border: 2px solid/, 'secure payment is the visually central card');
 assert.doesNotMatch(strip(slides[2]), /garanti|100\s?%|sans risque|aucun risque/i, 'no absolute guarantee promise');
 
 // Slide 4 — no verified badge, review clearly an illustration.
@@ -93,6 +102,11 @@ assert.equal((guest.match(/class="native-guest-dot"/g) || []).length, 0, 'dots a
 assert.match(css, /#F7F2E8/);
 assert.match(css, /\.ngp-title/);
 assert.match(css, /--ngp-safe-top: env\(safe-area-inset-top/);
+// 3.0C-3 §9 — one common bottom zone for pagination and actions, outside the pager.
+assert.ok(guest.indexOf('id="nativeGuestPager"') < guest.indexOf('class="ngp-nav"'), 'nav zone follows the pager');
+const nav = guest.slice(guest.indexOf('class="ngp-nav"'));
+assert.ok(nav.includes('id="nativeGuestDots"') && nav.includes('id="btnNativeJoin"') && nav.includes('id="btnNativeLogin"'), 'dots and both actions live in the common bottom zone');
+assert.match(css, /\.ngp-nav \{[^}]*flex: none/, 'bottom zone never shrinks under the content');
 assert.match(css, /--ngp-safe-bottom: env\(safe-area-inset-bottom/);
 
 console.log('onboarding-premium contract ok');
