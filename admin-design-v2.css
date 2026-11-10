@@ -978,3 +978,18 @@ button.is-unavailable,
     opacity: 0.55;
     cursor: not-allowed;
 }
+
+
+/* En-tête du back-office : le titre de section, la recherche et les actions ne se chevauchent plus. */
+.admin-header { flex-wrap: wrap; row-gap: 8px; }
+.admin-header-left { flex: 1 1 360px; flex-wrap: nowrap; min-width: 0; }
+.admin-header-context { flex: 0 1 auto; min-width: 0; max-width: 240px; }
+.admin-header-context .admin-crumb,
+.admin-header-context #adminHeaderTitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-header .admin-search-bar { flex: 1 1 160px; min-width: 150px; width: auto; max-width: 340px; }
+.admin-header .admin-search-bar input { padding-right: 52px; text-overflow: ellipsis; }
+.admin-header-right { flex: 0 0 auto; flex-wrap: nowrap; margin-left: auto; }
+.admin-header-right .admin-env-pill { max-width: 170px; }
+.admin-header-right .admin-env-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-header-right .admin-btn { white-space: nowrap; }
+.admin-header-right .admin-user-profile, .admin-header-right #adminOwnerProfileBadge { max-width: 230px; min-width: 0; }

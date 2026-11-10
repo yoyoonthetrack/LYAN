@@ -29,7 +29,7 @@
         let view = params.get('view') === 'map' ? 'map' : 'list';
         let needsMap = null;
         let revealMap = view === 'map';
-        let leaves = [], records = [], revision = 0, savedArea = '';
+        let leaves = [], records = [], revision = 0, savedArea = '', viewerTerritory = '';
         let listScrollY = 0;
         let lastSearchArea = filters.area;
         /** @type {string[]|null} null = toutes les familles visuelles */
@@ -505,6 +505,8 @@
             syncControls();
             syncUrl();
             applyMapViewLayout();
+            // Non-enumerable: read by the Lyanneurs ordering only, never written to the URL or the stored filters.
+            Object.defineProperty(filters, 'viewerTerritory', { value: viewerTerritory, enumerable: false, writable: true, configurable: true });
             let results = repo.discover(records, leaves, filters, mode);
             if (filters.family && mapFamiliesApi()) results = results.filter(record => recordFamilies(record).includes(filters.family));
             const mapScoped = mode === 'annonces' && mapAvailable() ? rowsForMapFamilies(results) : results;
@@ -713,6 +715,7 @@
         });
         async function refreshSavedArea(id) {
             savedArea = '';
+            viewerTerritory = '';
             $('explorerSavedArea').hidden = true;
             if (!id) return;
             try {
@@ -720,6 +723,7 @@
                 if (id !== currentUserId()) return;
                 if (!error) {
                     savedArea = data?.city || data?.territory || '';
+                    viewerTerritory = data?.territory || '';
                     // The commune already collected by the profile gives a distance
                     // reference without ever prompting for device location.
                     window.LYANN_GEO?.setViewerLocation(data?.city, data?.territory);

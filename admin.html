@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=5.6.1">
     <link rel="stylesheet" href="bokantaj-map.css?v=20261028place">
     <link rel="stylesheet" href="admin-style.css">
-    <link rel="stylesheet" href="editorial-highlights.css?v=20261110a">
+    <link rel="stylesheet" href="editorial-highlights.css?v=20261111a">
     <link rel="stylesheet" href="admin-design-v2.css">
     <link rel="stylesheet" href="finance-desk.css?v=20261015a">
 <link rel="stylesheet" href="business.css">
@@ -1407,23 +1407,45 @@
                         <div class="editorial-toolbar"><button type="button" class="admin-btn admin-btn-primary" id="hlNew">Nouvelle carte</button></div>
                     </div>
                 </div>
-                <form id="hlForm" class="admin-card" hidden style="padding:16px; margin-bottom:16px;">
-                    <h2 id="hlFormTitle" style="grid-column:1/-1; margin:0;">Nouvelle carte</h2>
-                    <label>Titre (48 max)<input id="hlTitle" class="admin-input" maxlength="48" required></label>
-                    <label>Accroche (80 max)<input id="hlTeaser" class="admin-input" maxlength="80" required></label>
-                    <label>Repère court (facultatif, 24 max)<input id="hlLabel" class="admin-input" maxlength="24"></label>
-                    <label>Image (JPEG, PNG, WebP, 1 Mo)<input id="hlFile" type="file" accept="image/jpeg,image/png,image/webp"><small id="hlImageInfo"></small></label>
-                    <label>Texte alternatif de l’image<input id="hlAlt" class="admin-input" maxlength="120"></label>
-                    <label>Territoire<select id="hlTerritory" class="admin-select"></select></label>
-                    <label>Thème / saison<select id="hlTheme" class="admin-select"></select></label>
-                    <label>Destination<select id="hlTarget" class="admin-select"></select></label>
-                    <label id="hlCategoryRow" hidden>Catégorie ciblée<input id="hlCategory" class="admin-input" maxlength="60" placeholder="Ex. Entretien Jardin"></label>
-                    <label>Début (facultatif)<input id="hlStart" type="datetime-local" class="admin-input"></label>
-                    <label>Fin (facultatif)<input id="hlEnd" type="datetime-local" class="admin-input"></label>
-                    <label>Priorité (0 = en premier)<input id="hlPriority" type="number" min="0" max="1000" value="100" class="admin-input"></label>
-                    <label>Statut<select id="hlStatus" class="admin-select"><option value="draft">Brouillon</option><option value="published">Publiée</option><option value="archived">Archivée</option></select></label>
-                    <div style="grid-column:1/-1;"><strong>Aperçu (tel que sur Découvrir)</strong><div id="hlPreview" style="margin-top:8px; max-width:200px;"></div></div>
-                    <div style="grid-column:1/-1; display:flex; gap:8px;"><button type="submit" class="admin-btn admin-btn-primary" id="hlSave">Enregistrer</button><button type="button" class="admin-btn" id="hlCancel">Annuler</button></div>
+                <form id="hlForm" class="admin-card hl-form" hidden>
+                    <h2 id="hlFormTitle" class="hl-form-title">Nouvelle carte</h2>
+                    <fieldset class="hl-group">
+                        <legend>Contenu</legend>
+                        <div class="hl-fields hl-fields-content">
+                            <label>Titre (48 max)<input id="hlTitle" class="admin-input" maxlength="48" required></label>
+                            <label>Accroche (80 max)<input id="hlTeaser" class="admin-input" maxlength="80" required></label>
+                            <label>Repère court (facultatif, 24 max)<input id="hlLabel" class="admin-input" maxlength="24"></label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="hl-group">
+                        <legend>Image et aperçu</legend>
+                        <div class="hl-image-row">
+                            <div class="hl-fields hl-fields-stack">
+                                <label>Image (JPEG, PNG, WebP, 1 Mo)<input id="hlFile" type="file" accept="image/jpeg,image/png,image/webp"><small id="hlImageInfo"></small></label>
+                                <label>Texte alternatif de l’image<input id="hlAlt" class="admin-input" maxlength="120"></label>
+                            </div>
+                            <div class="hl-preview-box"><strong>Aperçu (tel que sur Découvrir)</strong><div id="hlPreview"></div></div>
+                        </div>
+                    </fieldset>
+                    <fieldset class="hl-group">
+                        <legend>Diffusion</legend>
+                        <div class="hl-fields hl-fields-4">
+                            <label>Territoire<select id="hlTerritory" class="admin-select"></select></label>
+                            <label>Thème / saison<select id="hlTheme" class="admin-select"></select></label>
+                            <label>Destination<select id="hlTarget" class="admin-select"></select></label>
+                            <label id="hlCategoryRow" hidden>Catégorie ciblée<input id="hlCategory" class="admin-input" maxlength="60" placeholder="Ex. Entretien Jardin"></label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="hl-group">
+                        <legend>Planification</legend>
+                        <div class="hl-fields hl-fields-4">
+                            <label>Début (facultatif)<input id="hlStart" type="datetime-local" class="admin-input"></label>
+                            <label>Fin (facultatif)<input id="hlEnd" type="datetime-local" class="admin-input"></label>
+                            <label>Priorité (0 = en premier)<input id="hlPriority" type="number" min="0" max="1000" value="100" class="admin-input"></label>
+                            <label>Statut<select id="hlStatus" class="admin-select"><option value="draft">Brouillon</option><option value="published">Publiée</option><option value="archived">Archivée</option></select></label>
+                        </div>
+                    </fieldset>
+                    <div class="hl-actions"><button type="submit" class="admin-btn admin-btn-primary" id="hlSave">Enregistrer</button><button type="button" class="admin-btn" id="hlCancel">Annuler</button></div>
                 </form>
                 <div id="hlList" class="admin-card"></div>
             </section>

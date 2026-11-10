@@ -111,6 +111,8 @@ const SCREENS = {
                 navVisible: vis(nav), navTop: nav ? Math.round(nav.getBoundingClientRect().top) : null, navTabs: nav ? [...nav.querySelectorAll('.nav-tab')].map((t) => t.id) : [],
                 firstResult: r(firstCard), firstResultInViewport: !!firstCard && vis(firstCard) && firstCard.getBoundingClientRect().top < (nav ? nav.getBoundingClientRect().top : vh),
                 mapRect: r(document.querySelector('#explorerMap')),
+                mapMarkers: Array.from(document.querySelectorAll('#explorerMap .leaflet-marker-icon')).map((m) => { const b = m.getBoundingClientRect(); return { label: (m.getAttribute('aria-label') || m.getAttribute('title') || '').slice(0, 80), x: Math.round(b.left + b.width / 2), y: Math.round(b.top + b.height / 2) }; }),
+                mapSummary: (document.querySelector('.needs-map-summary, #explorerMapSummary') || {}).textContent || null,
                 docScroll: document.documentElement.scrollHeight - vh,
                 bodyOverflow: getComputedStyle(document.body).overflow,
                 forbiddenOnResults: ['Talents près de chez vous', 'Annonces du moment', 'Explorer les services', 'Voir plus'].filter((t) => /results\.html/.test(location.pathname) && (document.querySelector('main')?.innerText || '').includes(t))

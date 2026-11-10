@@ -80,6 +80,27 @@
         return { groups, total, mapped, unmapped: total - mapped };
     }
 
+    // Territoire d'un point : boîtes des territoires d'outre-mer, sinon Hexagone, sinon « autre ».
+    function territoryOfPoint(lat, lng) {
+        for (const [key, box] of Object.entries(TERRITORY_BOUNDS)) {
+            if (lat >= box.south && lat <= box.north && lng >= box.west && lng <= box.east) return key;
+        }
+        if (lat >= 41 && lat <= 51.5 && lng >= -5.5 && lng <= 10) return 'hexagone';
+        return 'autre';
+    }
+
+    // Communes du territoire qui compte le plus d'annonces (les annonces, pas les communes, font le poids).
+    function dominantTerritoryGroups(groups) {
+        const weight = new Map();
+        const list = Array.isArray(groups) ? groups : [];
+        list.forEach((group) => {
+            const key = territoryOfPoint(group.lat, group.lng);
+            weight.set(key, (weight.get(key) || 0) + group.items.length);
+        });
+        const dominant = [...weight.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+        return list.filter((group) => territoryOfPoint(group.lat, group.lng) === dominant);
+    }
+
     function escapeHtml(value) {
         return String(value ?? '').replace(/[&<>"']/g, (c) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -399,18 +420,18 @@
                 map.fitBounds(bounds, { maxZoom: 11, animate: false, paddingTopLeft: [16, 16], paddingBottomRight: [16, 16] });
                 return;
             }
-            // Cadre le territoire le plus représenté : mélanger l'Hexagone et
-            // l'outre-mer ne doit pas dézoomer sur le monde entier.
-            const byCode = new Map();
-            groups.forEach((group) => {
-                const code = group.code || String(group.key);
-                byCode.set(code, (byCode.get(code) || 0) + group.items.length);
-            });
-            const dominant = [...byCode.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-            const subset = groups.filter((group) => (group.code || String(group.key)) === dominant);
+            // Cadre le territoire le plus représenté : mélanger l'Hexagone et l'outre-mer
+            // ne doit pas dézoomer sur le monde entier. Toutes les communes d'un même
+            // territoire restent dans le cadre (une commune sans code n'est pas un territoire à elle seule).
+            const subset = dominantTerritoryGroups(groups);
             const bounds = L.latLngBounds(subset.map((group) => [group.lat, group.lng]));
             if (!bounds.isValid()) return;
-            map.fitBounds(bounds.pad(0.25), { maxZoom: 12, animate: false, paddingTopLeft: [24, 24], paddingBottomRight: [24, 24] });
+            // Marges : épingles (≈ 44 px de haut) au-dessus du point, bouton « Catégories » en bas à gauche.
+            // Un quart de niveau de zoom pour le cadrage seulement : les communes remplissent la carte au lieu de flotter au centre.
+            const snap = map.options.zoomSnap;
+            map.options.zoomSnap = 0.25;
+            map.fitBounds(bounds.pad(0.1), { maxZoom: 12, animate: false, paddingTopLeft: [28, 56], paddingBottomRight: [28, 64] });
+            map.options.zoomSnap = snap;
         }
 
         function paint(groups) {
@@ -504,9 +525,8 @@
                 }
             }
             const signature = result.groups.map((group) => `${group.key}:${group.items.map((row) => row.id).join(',')}`).join('|');
-            const note = result.unmapped
-                ? ` · ${result.unmapped} sans commune précise (voir la liste)`
-                : '';
+            // Une ligne courte : le détail des annonces sans commune reste dans la liste.
+            const note = result.unmapped ? ` · +${result.unmapped} dans la liste` : '';
             ensureMapLibraries().then(() => {
                 if (destroyed || current !== token) return;
                 showMap();
@@ -596,7 +616,7 @@
 
     const api = Object.freeze({
         eligibleRequest, communeOf, groupByCommune, renderPanel, resolveTerritoryKey,
-        ensureMapLibraries, mount, MAX_PINS, TERRITORY_BOUNDS
+        ensureMapLibraries, mount, MAX_PINS, TERRITORY_BOUNDS, territoryOfPoint, dominantTerritoryGroups
     });
     root.LYANN_NEEDS_MAP = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

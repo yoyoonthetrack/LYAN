@@ -123,6 +123,16 @@
         const terms = query.split(' ').filter(Boolean);
         const selectedLeaves = leaves.filter(t => (!filters.category || t.category === filters.category) && (!filters.service || t.id === filters.service));
         const areaTerms = normalize(filters.area).split(' ').filter(Boolean);
+        // Lyanneurs: when nothing narrows the territory, the reader's own territory comes first, otherwise the territory
+        // with the most Lyanneurs. Guadeloupe and Martinique profiles are grouped, never interleaved alphabetically.
+        const territoryKey = value => normalize(String(value || '').replace(/\s*\(\d+\)/g, ''));
+        const territoryCounts = new Map();
+        if (mode === 'lyanneurs') records.forEach(record => { const key = territoryKey(record.territory); territoryCounts.set(key, (territoryCounts.get(key) || 0) + 1); });
+        const viewerTerritory = territoryKey(filters.viewerTerritory);
+        const territoryRank = record => {
+            const key = territoryKey(record.territory);
+            return viewerTerritory && key === viewerTerritory ? -Infinity : -(territoryCounts.get(key) || 0);
+        };
         return records.filter(record => {
             const services = mode === 'annonces' ? [record] : record.services;
             const related = leaves.filter(t => services.some(s => matchesTaxonomy(s, t)));
@@ -163,7 +173,8 @@
             if (mode === 'annonces') return new Date(b.created_at) - new Date(a.created_at);
             // A published service title match comes before a biography-only match.
             const score = p => terms.length && p.services.some(s => terms.every(t => normalize(s.title).includes(t))) ? 1 : 0;
-            return score(b) - score(a) || a.name.localeCompare(b.name, 'fr');
+            const rankA = territoryRank(a), rankB = territoryRank(b);
+            return score(b) - score(a) || (rankA === rankB ? 0 : rankA < rankB ? -1 : 1) || territoryKey(a.territory).localeCompare(territoryKey(b.territory), 'fr') || a.name.localeCompare(b.name, 'fr');
         });
     }
 

@@ -14,7 +14,7 @@ body.results-page { background: #F7F2E8; }
 main#explorer .results-v3-header {
     position: relative;
     display: block;
-    height: 132px;
+    height: 138px;
     margin: 0 calc(50% - 50vw) 12px;
     width: 100vw;
     overflow: hidden;
@@ -22,15 +22,23 @@ main#explorer .results-v3-header {
     border-radius: 0;
 }
 main#explorer .results-v3-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
-main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; object-position: center 38%; }
-main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; object-position: 30% 35%; }
+/* Lyanneurs : cadrage haut, les trois visages entiers ; le titre repose sur les vêtements, sous les visages. */
+main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; object-position: center 0%; }
+/* Annonces : la voisine à gauche, le texte à droite sur le mur et l'évier. */
+main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; object-position: center 8%; }
 main#explorer .results-v3-overlay {
-    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 18px;
-    background: linear-gradient(90deg, rgba(10, 36, 25, 0.62) 0%, rgba(10, 36, 25, 0.28) 55%, rgba(10, 36, 25, 0.05) 100%);
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 18px 9px;
+    background: linear-gradient(0deg, rgba(10, 36, 25, 0.66) 0%, rgba(10, 36, 25, 0.26) 38%, rgba(10, 36, 25, 0) 62%);
     color: #fff;
 }
-main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: 1.9rem; line-height: 1.05; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
-main#explorer .results-v3-overlay p { margin: 4px 0 0; max-width: 15em; font-size: 0.86rem; line-height: 1.25; font-weight: 600; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
+main#explorer[data-mode="annonces"] .results-v3-overlay {
+    justify-content: center; align-items: flex-end; text-align: right; padding: 0 18px;
+    background: linear-gradient(270deg, rgba(10, 36, 25, 0.58) 0%, rgba(10, 36, 25, 0.22) 52%, rgba(10, 36, 25, 0) 80%);
+}
+main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: 1.6rem; line-height: 1.05; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); }
+main#explorer[data-mode="annonces"] .results-v3-overlay h1 { font-size: 1.9rem; }
+main#explorer .results-v3-overlay p { margin: 2px 0 0; max-width: none; font-size: 0.82rem; line-height: 1.25; font-weight: 600; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
+main#explorer[data-mode="annonces"] .results-v3-overlay p { max-width: 11.5em; margin-top: 4px; font-size: 0.86rem; }
 body.is-native-app[data-explorer-mode] main#explorer #explorerPanel { margin-top: 0; }
 
 /* Recherche */
@@ -132,4 +140,17 @@ body.results-page.explorer-annonces-map-view main#explorer .results-v3-header { 
 /* Petits écrans (≤ 400 px) : le placeholder doit rester entier */
 @media (max-width: 400px) {
     main#explorer .explorer-search input::placeholder { font-size: 13px; }
+}
+
+/* Annonces : cartes blanches sur fond crème, bordure très légère et ombre douce. */
+main#explorer .explorer-annonce.explorer-card { background: #fff; border: 1px solid rgba(15, 61, 42, 0.07); box-shadow: 0 6px 20px rgba(15, 61, 42, 0.07); }
+main#explorer .explorer-annonce .explorer-annonce-facts { background: #FBF8F2; border-color: rgba(15, 61, 42, 0.06); }
+
+/* Carte : une seule ligne d'information, discrète. */
+body.results-page.explorer-annonces-map-view .needs-map-summary { margin: 0 2px 6px; font-size: 0.8rem; line-height: 1.2; font-weight: 700; color: rgba(15, 61, 42, 0.72); }
+
+/* ≤ 380 px : les six entrées du rail restent visibles sans défilement. */
+@media (max-width: 380px) {
+    main#explorer .lyann-pills { gap: 5px; }
+    main#explorer .lyann-pill { min-width: 0; padding: 8px 1px; font-size: 0.62rem; }
 }
