@@ -786,6 +786,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'sec-action': { title: 'À traiter', crumb: 'Pilotage' },
         'sec-marketplace': { title: 'Analytics marketplace', crumb: 'Pilotage' },
         'sec-editorial': { title: 'Comptes éditoriaux', crumb: 'Bokantaj & rédaction' },
+        'sec-highlights': { title: 'À la une (Découvrir)', crumb: 'Bokantaj & rédaction' },
         'sec-users': { title: 'Utilisateurs', crumb: 'Communauté' },
         'sec-maison': { title: 'Profils maison', crumb: 'Communauté' },
         'sec-user-detail': { title: 'Fiche utilisateur', crumb: 'Communauté' },

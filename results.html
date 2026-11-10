@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
     <link rel="stylesheet" href="needs-map.css?v=20261105pins">
     <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261105ux">
+    <link rel="stylesheet" href="results-v3.css?v=20261110c">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -147,66 +148,22 @@
     </div>
 
     <main id="explorer" class="explorer-page lyann-universe" data-mode="lyanneurs" data-universe="lyanneurs">
-        <header class="lyann-universe-header" data-universe="lyanneurs">
-            <!-- Annonces Banner -->
-            <div class="lyann-universe-banner banner-annonces">
-                <div class="banner-watermarks" aria-hidden="true">
-                    <svg class="wm-icon wm-bubble-1" viewBox="0 0 54 44"><path d="M6 38l6-4h32a8 8 0 0 0 8-8V10a8 8 0 0 0-8-8H10a8 8 0 0 0-8 8v18a8 8 0 0 0 4 6.8z" fill="#F4E2B8"/><circle cx="16" cy="19" r="2.5" fill="#FCF6E6"/><circle cx="27" cy="19" r="2.5" fill="#FCF6E6"/><circle cx="38" cy="19" r="2.5" fill="#FCF6E6"/></svg>
-                    <svg class="wm-icon wm-bubble-2" viewBox="0 0 64 52"><path d="M56 46l-7-5H12a10 10 0 0 1-10-10V12A10 10 0 0 1 12 2h40a10 10 0 0 1 10 10v24a10 10 0 0 1-6 8.5z" fill="#F4E2B8"/><circle cx="21" cy="24" r="3" fill="#FCF6E6"/><circle cx="32" cy="24" r="3" fill="#FCF6E6"/><circle cx="43" cy="24" r="3" fill="#FCF6E6"/></svg>
-                    <svg class="wm-icon wm-search" viewBox="0 0 40 40" fill="none" stroke="#F0DEBA" stroke-width="3" stroke-linecap="round"><circle cx="17" cy="17" r="10"/><line x1="24.5" y1="24.5" x2="35" y2="35" stroke-width="4.5"/></svg>
-                    <svg class="wm-icon wm-cloud-annonces" viewBox="0 0 110 50" fill="#FFFFFF"><path d="M22 46h66a18 18 0 0 0 5-35.3 24 24 0 0 0-47-2A16 16 0 0 0 22 46z"/></svg>
-                </div>
-                <div class="banner-content">
-                    <div class="banner-badge badge-annonces">
-                        <span class="badge-bubble">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="#3D7D54"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><circle cx="8" cy="12" r="1.2" fill="#fff"/><circle cx="12" cy="12" r="1.2" fill="#fff"/><circle cx="16" cy="12" r="1.2" fill="#fff"/></svg>
-                        </span>
-                        <span class="badge-text">ANNONCES</span>
-                    </div>
-                    <h1 class="banner-title annonces-title">Des voisins ont besoin de vous</h1>
-                    <p class="banner-subtitle annonces-subtitle">Parcourez les demandes des habitants et proposez vos services.</p>
-                </div>
-                <div class="banner-illustration">
-                    <img src="assets/universe/annonces-hero-character@2x.webp" alt="Annonces" width="344" height="236">
-                </div>
-            </div>
-
-            <!-- Lyanneurs Banner -->
-            <div class="lyann-universe-banner banner-lyanneurs">
-                <div class="banner-watermarks" aria-hidden="true">
-                    <svg class="wm-icon wm-roller" viewBox="0 0 44 44" fill="#B7D7BE"><rect x="8" y="4" width="28" height="12" rx="4"/><path d="M22 16v8a4 4 0 0 1-4 4h-4v12h4" fill="none" stroke="#B7D7BE" stroke-width="3"/></svg>
-                    <svg class="wm-icon wm-screwdriver" viewBox="0 0 40 40" fill="#B7D7BE" transform="rotate(35 20 20)"><rect x="16" y="2" width="8" height="16" rx="2"/><rect x="18" y="18" width="4" height="18"/><polygon points="17,36 23,36 21,39 19,39"/></svg>
-                    <svg class="wm-icon wm-drill" viewBox="0 0 44 36" fill="#B7D7BE"><path d="M4 12h20v8H16v12h-8V20H4z"/><line x1="24" y1="16" x2="38" y2="16" stroke="#B7D7BE" stroke-width="3"/></svg>
-                </div>
-                <div class="banner-content">
-                    <div class="banner-badge badge-lyanneurs">
-                        <span class="badge-icon">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                            </svg>
-                        </span>
-                        <span class="badge-text">LES TALENTS D'ICI</span>
-                    </div>
-                    <h1 class="banner-title lyanneurs-title">Lyanneurs</h1>
-                    <p class="banner-subtitle lyanneurs-subtitle">Des talents et des pros tout près de chez vous.</p>
-                </div>
-                <div class="banner-illustration">
-                    <img src="assets/universe/lyanneurs-hero-character@2x.webp" alt="Lyanneurs" width="349" height="236">
-                </div>
-            </div>
-
-            <!-- Hidden semantic copy for accessibility & test selectors -->
-            <div class="lyann-universe-copy sr-only">
+        <script>(function(){var m=new URLSearchParams(location.search).get('mode')==='annonces'?'annonces':'lyanneurs';var e=document.getElementById('explorer');e.dataset.mode=m;e.dataset.universe=m;})();</script>
+        <header class="lyann-universe-header results-v3-header" data-universe="lyanneurs">
+            <img class="results-v3-photo is-lyanneurs" src="assets/universe-v3/header-lyanneurs.webp" alt="" width="780" height="314" decoding="async" fetchpriority="high">
+            <img class="results-v3-photo is-annonces" src="assets/universe-v3/header-annonces.webp" alt="" width="780" height="341" decoding="async" loading="lazy">
+            <div class="results-v3-overlay">
                 <h1 id="explorerTitle">Lyanneurs</h1>
-                <p id="explorerSubtitle">Des talents et des pros tout près de chez vous.</p>
+                <p id="explorerSubtitle">Des talents et des pros près de chez vous</p>
             </div>
         </header>
         <section id="explorerPanel" aria-labelledby="explorerTitle">
             <div class="explorer-search-row">
                 <form id="explorerSearchForm" class="explorer-search" role="search">
                     <label class="sr-only" for="explorerSearchInput">Rechercher</label>
-                    <input id="explorerSearchInput" type="search" placeholder="Nom, activité ou commune" autocomplete="off">
-                    <button type="submit" class="btn lyann-cta-primary" aria-label="Rechercher"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Rechercher</span></button>
+                    <i class="ph ph-magnifying-glass explorer-search-icon" aria-hidden="true"></i>
+                    <input id="explorerSearchInput" type="search" placeholder="Rechercher un talent, un service…" autocomplete="off" enterkeyhint="search">
+                    <button type="submit" class="explorer-search-submit" aria-label="Rechercher"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
                 </form>
                 <button type="button" id="explorerFiltersIcon" class="explorer-filters-icon explorer-annonces-list-only" aria-label="Filtres et zone" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button>
             </div>
@@ -221,11 +178,11 @@
             </div>
             <div id="explorerActiveFilters" class="explorer-active-filters explorer-annonces-list-only" aria-label="Filtres actifs"></div>
             <div id="explorerViewToggle" class="explorer-view-toggle" role="group" aria-label="Affichage des annonces" hidden>
-                <button type="button" data-view="list" class="is-active" aria-pressed="true"><i class="ph ph-list-bullets" aria-hidden="true"></i> Liste</button>
-                <button type="button" data-view="map" aria-pressed="false"><i class="ph ph-map-trifold" aria-hidden="true"></i> Carte</button>
+                <button type="button" data-view="list" class="is-active" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true" class="explorer-toggle-icon"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>Liste</span></button>
+                <button type="button" data-view="map" aria-pressed="false"><i class="ph ph-map-trifold" aria-hidden="true"></i><span>Carte</span></button>
             </div>
             <div class="explorer-annonces-meta explorer-annonces-list-only">
-                <p id="explorerSummary" role="status" aria-live="polite"></p>
+                <p id="explorerSummary" role="status" aria-live="polite" class="sr-only"></p>
             </div>
             <div class="explorer-results-heading explorer-annonces-list-only">
                 <button class="explorer-publish btn lyann-cta-primary" type="button" hidden><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>
@@ -253,6 +210,10 @@
                 </div>
                 <div class="explorer-sheet-actions"><button type="button" id="explorerReset" class="btn btn-outline">Réinitialiser</button><button value="apply" class="btn btn-primary">Afficher les résultats</button></div>
             </form>
+        </dialog>
+        <dialog id="explorerCategorySheet" class="explorer-filter-sheet explorer-category-sheet" aria-labelledby="explorerCategorySheetTitle">
+            <div class="explorer-sheet-heading"><div><h2 id="explorerCategorySheetTitle">Toutes les catégories</h2><p class="explorer-sheet-sub">Choisissez un domaine ou une catégorie précise.</p></div><button type="button" id="explorerCategorySheetClose" aria-label="Fermer">×</button></div>
+            <div class="explorer-sheet-body" id="explorerCategorySheetBody"></div>
         </dialog>
         <dialog id="explorerMapCategorySheet" class="explorer-filter-sheet explorer-map-category-sheet" aria-labelledby="explorerMapCategoryTitle">
             <form method="dialog" id="explorerMapCategoryForm">
@@ -1286,7 +1247,7 @@
     <script src="needs-map.js?v=20261105pins"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
-    <script src="explorer-ui.js?v=20261105ux" defer></script>
+    <script src="explorer-ui.js?v=20261110b" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

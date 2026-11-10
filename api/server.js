@@ -338,7 +338,8 @@ app.use((req, res, next) => {
         express.raw({ type: '*/*' })(req, res, next);
     } else {
         const maisonMedia = url.includes('/v1/admin/maison/');
-        express.json({ limit: req.path === '/v1/business/documents' ? '3mb' : maisonMedia ? '16mb' : '1mb' })(req, res, next);
+        const highlightImage = req.path === '/v1/admin/editorial/highlights/image';
+        express.json({ limit: req.path === '/v1/business/documents' ? '3mb' : maisonMedia ? '16mb' : highlightImage ? '2mb' : '1mb' })(req, res, next);
     }
 });
 
@@ -1829,6 +1830,8 @@ async function actOnMaisonQuote(req, res, action) {
 
 const { collectEditorial, publishEditorialTask, providerConfig, editorialDeskExtras } = require('./editorial-run');
 const { EDITORIAL_BOTS, EDITORIAL_BADGE, reviewEditorialText } = require('./editorial-engine');
+// Cartes « À la une près de chez vous » (Découvrir) : back-office, permission serveur agents.approve, audit, image contrôlée.
+require('./editorial-highlights').registerEditorialHighlightRoutes(app, { supabaseAdmin, verifyAdminPermission });
 
 function editorialAuthorized(req) {
     const expected = String(process.env.EDITORIAL_CRON_SECRET || process.env.CRON_SECRET || '');

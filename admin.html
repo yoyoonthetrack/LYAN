@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css?v=5.6.1">
     <link rel="stylesheet" href="bokantaj-map.css?v=20261028place">
     <link rel="stylesheet" href="admin-style.css">
+    <link rel="stylesheet" href="editorial-highlights.css?v=20261110a">
     <link rel="stylesheet" href="admin-design-v2.css">
     <link rel="stylesheet" href="finance-desk.css?v=20261015a">
 <link rel="stylesheet" href="business.css">
@@ -218,6 +219,9 @@
                 <a href="#comptes-editoriaux" class="admin-nav-item" data-section="sec-editorial" data-pole="bokantaj" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-newspaper"></i> <span>Comptes éditoriaux</span></div>
                     <span class="admin-nav-badge" id="sidebarEditorialBadge">—</span>
+                </a>
+                <a href="#a-la-une" class="admin-nav-item" data-section="sec-highlights" data-pole="bokantaj" data-nav-primary="1">
+                    <div class="admin-nav-item-left"><i class="ph-bold ph-star"></i> <span>À la une (Découvrir)</span></div>
                 </a>
                 <a href="#" class="admin-nav-item" data-section="sec-bokantaj" data-pole="bokantaj" data-nav-primary="1">
                     <div class="admin-nav-item-left"><i class="ph-bold ph-chat-teardrop-text"></i> <span>Fil Bokantaj</span></div>
@@ -1394,6 +1398,35 @@
                 <div id="editorialHistory" class="admin-card" style="margin-bottom: 16px;"></div>
                 <div id="editorialProposals" class="admin-card"></div>
             </section>
+            <section id="sec-highlights" class="admin-section">
+                <div class="admin-page-header">
+                    <div>
+                        <h1 class="admin-page-title">À la une près de chez vous</h1>
+                        <p class="admin-page-sub">Cartes affichées uniquement sur Découvrir, selon leur statut, leur territoire et leurs dates. Aucune carte de démonstration n’est publiée.</p>
+                        <p id="hlNotice" role="status" style="min-height: 1.4em; font-weight: 700;"></p>
+                        <div class="editorial-toolbar"><button type="button" class="admin-btn admin-btn-primary" id="hlNew">Nouvelle carte</button></div>
+                    </div>
+                </div>
+                <form id="hlForm" class="admin-card" hidden style="padding:16px; margin-bottom:16px;">
+                    <h2 id="hlFormTitle" style="grid-column:1/-1; margin:0;">Nouvelle carte</h2>
+                    <label>Titre (48 max)<input id="hlTitle" class="admin-input" maxlength="48" required></label>
+                    <label>Accroche (80 max)<input id="hlTeaser" class="admin-input" maxlength="80" required></label>
+                    <label>Repère court (facultatif, 24 max)<input id="hlLabel" class="admin-input" maxlength="24"></label>
+                    <label>Image (JPEG, PNG, WebP, 1 Mo)<input id="hlFile" type="file" accept="image/jpeg,image/png,image/webp"><small id="hlImageInfo"></small></label>
+                    <label>Texte alternatif de l’image<input id="hlAlt" class="admin-input" maxlength="120"></label>
+                    <label>Territoire<select id="hlTerritory" class="admin-select"></select></label>
+                    <label>Thème / saison<select id="hlTheme" class="admin-select"></select></label>
+                    <label>Destination<select id="hlTarget" class="admin-select"></select></label>
+                    <label id="hlCategoryRow" hidden>Catégorie ciblée<input id="hlCategory" class="admin-input" maxlength="60" placeholder="Ex. Entretien Jardin"></label>
+                    <label>Début (facultatif)<input id="hlStart" type="datetime-local" class="admin-input"></label>
+                    <label>Fin (facultatif)<input id="hlEnd" type="datetime-local" class="admin-input"></label>
+                    <label>Priorité (0 = en premier)<input id="hlPriority" type="number" min="0" max="1000" value="100" class="admin-input"></label>
+                    <label>Statut<select id="hlStatus" class="admin-select"><option value="draft">Brouillon</option><option value="published">Publiée</option><option value="archived">Archivée</option></select></label>
+                    <div style="grid-column:1/-1;"><strong>Aperçu (tel que sur Découvrir)</strong><div id="hlPreview" style="margin-top:8px; max-width:200px;"></div></div>
+                    <div style="grid-column:1/-1; display:flex; gap:8px;"><button type="submit" class="admin-btn admin-btn-primary" id="hlSave">Enregistrer</button><button type="button" class="admin-btn" id="hlCancel">Annuler</button></div>
+                </form>
+                <div id="hlList" class="admin-card"></div>
+            </section>
             <section id="sec-mika" class="admin-section">
                 <!-- HEADER MIKA CONTROL ROOM -->
                 <div class="mika-header-card">
@@ -2466,5 +2499,7 @@
     <script src="commune-geo.js?v=20261028place"></script>
     <script src="bokantaj-map.js?v=20261028place"></script>
     <script src="admin-script.js?v=20261029opsdesk"></script>
+    <script src="editorial-highlights-view.js?v=20261110a"></script>
+    <script src="admin-highlights.js?v=20261110a"></script>
 </body>
 </html>

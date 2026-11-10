@@ -11,8 +11,8 @@
         let filters = { query: params.get('query') || params.get('searchInput') || '',
             category: params.get('category') || '', service: params.get('service') || '',
             area: params.get('area') ?? params.get('citySelect') ?? params.get('locationSelect') ?? '',
-            territory: params.get('territory') || '', commune: params.get('commune') || '', urgency: params.get('urgency') || '', budget: params.get('budget') || '' };
-        const explicitFilter = ['query','searchInput','category','service','area','citySelect','locationSelect','territory','commune','urgency','budget'].some(key => params.has(key));
+            territory: params.get('territory') || '', commune: params.get('commune') || '', urgency: params.get('urgency') || '', budget: params.get('budget') || '', family: params.get('family') || '' };
+        const explicitFilter = ['query','searchInput','category','service','area','citySelect','locationSelect','territory','commune','urgency','budget','family'].some(key => params.has(key));
         if (!explicitFilter) {
             try {
                 const saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + mode) || 'null');
@@ -20,7 +20,7 @@
                     filters = {
                         query: saved.query || '', category: saved.category || '', service: saved.service || '',
                         area: saved.area || '', territory: saved.territory || '', commune: saved.commune || '',
-                        urgency: saved.urgency || '', budget: saved.budget || ''
+                        urgency: saved.urgency || '', budget: saved.budget || '', family: saved.family || ''
                     };
                 }
             } catch (_) {}
@@ -30,7 +30,6 @@
         let needsMap = null;
         let revealMap = view === 'map';
         let leaves = [], records = [], revision = 0, savedArea = '';
-        let showAllTrades = false;
         let listScrollY = 0;
         let lastSearchArea = filters.area;
         /** @type {string[]|null} null = toutes les familles visuelles */
@@ -177,53 +176,33 @@
             return parts.join(' · ');
         }
 
+        // Compact row: photo, public name, main skill, rating only when it is real, approximate zone, favourite and chevron.
         function profileCard(p, showType = false) {
             const displayName = formatDisplayName(p);
-            const place = window.formatProfileLocation
+            const place = (window.formatProfileLocation
                 ? window.formatProfileLocation(p.city, p.territory)
-                : ([p.city, p.territory].filter(Boolean).join(' · ') || 'Guadeloupe');
-            const badgeText = window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' ? (window.LYANN_PLANS?.badgeLabel(p) || '') : p.badge || (p.is_pro_verified ? 'PRO VÉRIFIÉ' : (p.is_verified || p.kyc_verified ? 'PROFIL VÉRIFIÉ' : ''));
+                : ([p.city, p.territory].filter(Boolean).join(' · ') || ''))
+                // Some profiles store the territory in lower case ("martinique"): show it as a proper name.
+                .replace(/( · )(\p{Ll})/u, (_, sep, first) => sep + first.toUpperCase());
             const rawSkills = Array.isArray(p.skills) && p.skills.length ? p.skills : (Array.isArray(p.intervention_zone) && p.intervention_zone.length ? p.intervention_zone : (p.services || []).map(s => s.title || s.name).filter(Boolean));
             const primarySkill = rawSkills[0] || '';
-            const secondarySkills = rawSkills.slice(1, 3);
-            const skillsSnippet = rawSkills.slice(0, 3).join(' · ');
-            const bioPlain = formatBioQuote(p, skillsSnippet).replace(/^«\s*|\s*»$/g, '').trim();
-            const radiusLine = formatRadiusText(p);
             const seed = getSeedProfileMetadata(p);
-            const ratingSource = {
+            const ratingLabel = format()?.ratingLabel({
                 ...p,
                 average_rating: seed?.rating ?? p.average_rating ?? p.rating ?? p.avg_rating,
                 reviews_count: seed?.reviews_count ?? p.reviews_count ?? p.reviewsCount
-            };
-            const ratingLabel = format()?.ratingLabel(ratingSource);
-            const speed = seed?.response_speed || p.response_speed || p.response_rate_text || '';
-            const isSelf = p.id === currentUserId();
-
-            return `<article class="explorer-card explorer-profile-card" data-member-id="${escape(p.id)}">
+            });
+            return `<article class="explorer-card explorer-profile-card explorer-profile-row" data-member-id="${escape(p.id)}">
                 ${showType ? typePill('profile') : ''}
-                <div class="explorer-card-top explorer-profile-head">
-                    <div class="explorer-person explorer-person-zone explorer-profile-identity">
-                        ${profileZoneTrigger(p.id, displayName)}
-                        <img class="explorer-profile-avatar" src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)">
-                        <div class="explorer-profile-id-text">
-                            <h2 class="explorer-profile-name">${escape(displayName)}</h2>
-                            ${badgeText ? `<span class="explorer-profile-verified">${escape(badgeText)}</span>` : ''}
-                        </div>
-                    </div>
-                    ${favorite('PROFILE', p.id)}
+                ${profileZoneTrigger(p.id, displayName)}
+                <img class="explorer-profile-avatar" src="${avatar(p)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)">
+                <div class="explorer-profile-main">
+                    <h2 class="explorer-profile-name">${escape(displayName)}</h2>
+                    ${primarySkill ? `<p class="explorer-profile-primary-skill">${escape(primarySkill)}</p>` : ''}
+                    <p class="explorer-profile-meta">${ratingLabel ? `<span class="explorer-profile-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(ratingLabel)}</span>` : ''}${place ? `<span class="explorer-profile-place"><i class="ph ph-map-pin" aria-hidden="true"></i><span>${escape(place)}</span></span>` : ''}</p>
                 </div>
-                ${primarySkill ? `<p class="explorer-skills-text explorer-profile-primary-skill">${escape(primarySkill)}</p>` : ''}
-                <p class="explorer-profile-place"><i class="ph ph-map-pin" aria-hidden="true"></i><span>${escape(place)}</span></p>
-                ${secondarySkills.length ? `<ul class="explorer-profile-secondary-skills" aria-label="Autres compétences">${secondarySkills.map((skill) => `<li>${escape(skill)}</li>`).join('')}</ul>` : ''}
-                <div class="explorer-profile-stats">
-                    ${ratingLabel ? `<span class="explorer-profile-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(ratingLabel)}</span>` : '<span class="explorer-profile-rating is-new">Nouveau sur LYANN</span>'}
-                    ${speed ? `<span class="explorer-profile-speed">${escape(speed)}</span>` : ''}
-                </div>
-                ${bioPlain ? `<p class="explorer-quote-text explorer-profile-bio explorer-card-description">${escape(bioPlain)}</p>` : ''}
-                <p class="explorer-profile-radius">${escape(radiusLine)}</p>
-                <div class="explorer-card-actions explorer-profile-actions">
-                    ${!isSelf ? `<button class="btn btn-primary explorer-btn-contact" data-action="contact" data-id="${escape(p.id)}">Contacter</button>` : ''}
-                </div>
+                ${favorite('PROFILE', p.id)}
+                <i class="ph ph-caret-right explorer-row-chevron" aria-hidden="true"></i>
             </article>`;
         }
         const territories = () => Object.keys(window.LYANN_TERRITORY_DATASET || {}).filter(t => /\((971|972|973|974)\)/.test(t));
@@ -381,8 +360,8 @@
             const title = $('explorerTitle');
             const subtitle = $('explorerSubtitle');
             const copy = mode === 'annonces'
-                ? { title: 'Des voisins ont besoin de vous', subtitle: 'Parcourez les demandes des habitants et proposez vos services.', art: 'annonces' }
-                : { title: 'Lyanneurs', subtitle: 'Des talents et des pros tout près de chez vous.', art: 'lyanneurs' };
+                ? { title: 'Annonces', subtitle: 'Des besoins réels autour de vous', art: 'annonces' }
+                : { title: 'Lyanneurs', subtitle: 'Des talents et des pros près de chez vous', art: 'lyanneurs' };
             if (title) title.textContent = copy.title;
             if (subtitle) subtitle.textContent = copy.subtitle;
             const filterTitle = $('explorerFilterTitle');
@@ -402,7 +381,7 @@
                 link.classList.toggle('active', link.getAttribute('data-explorer-nav') === mode);
             });
             $('explorerPanel').setAttribute('aria-labelledby', 'explorerTitle');
-            $('explorerSearchInput').placeholder = mode === 'annonces' ? 'Rechercher une mission…' : 'Nom, activité ou commune';
+            $('explorerSearchInput').placeholder = mode === 'annonces' ? 'Rechercher une annonce, un besoin…' : 'Rechercher un talent, un service…';
             const publishBtn = root.querySelector('.explorer-results-heading .explorer-publish');
             if (publishBtn) publishBtn.hidden = mode === 'lyanneurs';
             root.querySelector('label[for="explorerSearchInput"]').textContent = `Rechercher dans les ${mode}`;
@@ -432,7 +411,7 @@
                 syncCommunes(filters.territory, filters.commune);
             }
             const chips = [];
-            for (const key of ['query','category','service','area','territory','commune','urgency','budget']) {
+            for (const key of ['query','service','area','territory','commune','urgency','budget']) {
                 if (!filters[key] || mode === 'lyanneurs' && ['area','urgency','budget'].includes(key) || mode === 'annonces' && ['territory','commune'].includes(key)) continue;
                 const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : key === 'urgency' ? dateModeLabel(filters[key]) : filters[key];
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
@@ -440,50 +419,94 @@
             $('explorerActiveFilters').innerHTML = chips.join('');
             const filterIcon = $('explorerFiltersIcon');
             if (filterIcon) {
-                const active = chips.length > 0 || Boolean(filters.category || filters.service || filters.urgency || filters.budget);
+                const active = chips.length > 0 || Boolean(filters.service || filters.urgency || filters.budget);
                 filterIcon.classList.toggle('has-active-filters', active);
-                filterIcon.hidden = mode !== 'annonces';
+                filterIcon.hidden = false;
             }
+        }
+        // One horizontal rail, six entries at most: Tous, the four domains that really have results, then Plus.
+        // Domains come from the existing map families, so List, Map and the rail share one taxonomy.
+        const RAIL_PRIORITY = ['bricolage', 'jardinage', 'menage', 'beaute', 'plomberie', 'electricite', 'numerique', 'quotidien'];
+        const RAIL_LABEL = { menage: 'Maison & ménage', quotidien: 'Au quotidien' };
+        const RAIL_ICON = {
+            all: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
+            bricolage: '<path d="M14.5 6.5a4 4 0 0 0 5 5l.5.5-3 3-1-1-8 8-3-3 8-8-1-1 3-3z" transform="scale(.9) translate(1 0)"/>',
+            jardinage: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19c3-5 6-8 10-10"/>',
+            menage: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',
+            beaute: '<circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="18" r="2.5"/><path d="M8.5 16.5L19 5M15.5 16.5L5 5"/>',
+            plomberie: '<path d="M12 3c3 4 5 7 5 10a5 5 0 0 1-10 0c0-3 2-6 5-10z"/>',
+            electricite: '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
+            numerique: '<rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>',
+            quotidien: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+            more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+            tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1"/>'
+        };
+        const railIcon = key => `<svg viewBox="0 0 24 24" aria-hidden="true" class="lyann-pill-icon">${RAIL_ICON[key] || RAIL_ICON.tag}</svg>`;
+        const familyLabel = id => RAIL_LABEL[id] || mapFamiliesApi()?.familyMeta(id)?.label || id;
+        function serviceFamily(service) {
+            const api = mapFamiliesApi();
+            const category = String(service?.category || '').trim();
+            if (service?.taxonomy_id || (category && category.toLowerCase() !== 'general')) return api.familyForRow(service, leaves);
+            return api.familyForCategory(service?.title);
+        }
+        const recordFamilies = record => {
+            const api = mapFamiliesApi();
+            if (!api) return [];
+            return mode === 'annonces' ? [api.familyForRow(record, leaves)] : [...new Set((record.services || []).map(serviceFamily))];
+        };
+        function familyCounts() {
+            const counts = {};
+            for (const record of records) for (const id of recordFamilies(record)) counts[id] = (counts[id] || 0) + 1;
+            return counts;
         }
         function renderCategoryPills() {
             const host = $('explorerCategoryPills');
-            const select = $('explorerCategory');
-            if (!host || !select) return;
-            const options = [...select.options];
-            const selected = options.find((option) => (option.value || '') === (filters.category || ''));
-            let visible = options;
-            if (mode === 'annonces') {
-                visible = options.slice(0, 4);
-                if (selected && !visible.includes(selected)) visible = [options[0], selected].filter(Boolean);
-            } else if (mode === 'lyanneurs' && !showAllTrades) {
-                visible = options.slice(0, 3);
-                if (selected && !visible.includes(selected)) visible = [options[0], selected].filter(Boolean);
+            const api = mapFamiliesApi();
+            if (!host || !api) return;
+            const counts = familyCounts();
+            const ranked = [...RAIL_PRIORITY].sort((a, b) => (counts[b] ? 1 : 0) - (counts[a] ? 1 : 0) || RAIL_PRIORITY.indexOf(a) - RAIL_PRIORITY.indexOf(b));
+            let domains = ranked.slice(0, 4);
+            const entries = [];
+            const selectedFamily = filters.family || (filters.category ? api.familyForCategory(filters.category) : '');
+            if (selectedFamily && !domains.includes(selectedFamily)) domains = [...domains.slice(0, 3), selectedFamily];
+            for (const id of domains) {
+                const exact = filters.category && !filters.family && id === selectedFamily;
+                entries.push({ key: id, label: exact ? filters.category : familyLabel(id), family: id, active: filters.family === id || (!!exact) });
             }
-            const pills = visible.map((option) => {
-                const value = option.value || '';
-                const label = value ? option.textContent : 'Tout';
-                const active = (filters.category || '') === value;
-                return `<button type="button" class="lyann-pill${active ? ' is-active' : ''}" data-category="${escape(value)}" aria-pressed="${active ? 'true' : 'false'}">${escape(label)}</button>`;
-            }).join('');
-            let more = '';
-            if (mode === 'annonces') {
-                more = '<button type="button" class="lyann-pill lyann-pill-more" data-action="all-categories">Toutes les catégories</button>';
-            } else if (mode === 'lyanneurs' && !showAllTrades && options.length > 3) {
-                more = '<button type="button" class="lyann-pill lyann-pill-more" data-action="more-trades">Voir plus</button>';
-            }
-            host.innerHTML = pills + more;
+            const pill = (attrs, active, icon, label, extra = '') => `<button type="button" class="lyann-pill${active ? ' is-active' : ''}${extra}" ${attrs} aria-pressed="${active ? 'true' : 'false'}">${railIcon(icon)}<span>${escape(label)}</span></button>`;
+            host.innerHTML = pill('data-family=""', !filters.family && !filters.category, 'all', 'Tous')
+                + entries.map(e => pill(`data-family="${escape(e.family)}"${e.label !== familyLabel(e.family) ? ` data-category="${escape(filters.category)}"` : ''}`, e.active, e.family, e.label)).join('')
+                + pill('data-action="more-categories"', false, 'more', 'Plus', ' lyann-pill-more');
         }
-        function refineCard() {
-            if (mode === 'annonces') {
-                return `<article class="explorer-refine"><h2>Vous cherchez un besoin précis ?</h2><p>Affinez votre recherche par mot-clé, catégorie, commune ou budget.</p><button type="button" class="btn lyann-cta-primary" data-action="refine">Affiner ma recherche</button></article>`;
-            }
-            return `<article class="explorer-refine"><h2>Vous cherchez un talent en particulier ?</h2><p>Affinez votre recherche par métier, commune ou disponibilité.</p><button type="button" class="btn lyann-cta-primary" data-action="refine">Affiner ma recherche</button></article>`;
+        function renderCategorySheet() {
+            const api = mapFamiliesApi();
+            const body = $('explorerCategorySheetBody');
+            if (!body || !api) return;
+            const counts = familyCounts();
+            const chip = (attrs, label, active) => `<button type="button" class="explorer-map-category-chip${active ? ' is-active' : ''}" ${attrs} aria-pressed="${active ? 'true' : 'false'}"><span>${escape(label)}</span></button>`;
+            const categories = [...new Set(leaves.map(t => t.category))].sort((a, b) => a.localeCompare(b, 'fr'));
+            body.innerHTML = `<div class="explorer-map-category-grid">${chip('data-sheet-family=""', 'Tous', !filters.family && !filters.category)}`
+                + api.FAMILIES.filter(f => counts[f.id] || filters.family === f.id).map(f => chip(`data-sheet-family="${escape(f.id)}"`, familyLabel(f.id), filters.family === f.id)).join('')
+                + `</div><h3 class="explorer-sheet-group">Catégories</h3><div class="explorer-map-category-grid">`
+                + categories.map(c => chip(`data-sheet-category="${escape(c)}"`, c, filters.category === c && !filters.family)).join('') + '</div>';
+        }
+        function openCategorySheet() {
+            renderCategorySheet();
+            $('explorerCategorySheet')?.showModal();
+        }
+        function chooseCategory({ family = '', category = '' }) {
+            filters.family = family;
+            filters.category = category;
+            filters.service = '';
+            $('explorerCategorySheet')?.close();
+            search();
         }
         function render(options = {}) {
             syncControls();
             syncUrl();
             applyMapViewLayout();
-            const results = repo.discover(records, leaves, filters, mode);
+            let results = repo.discover(records, leaves, filters, mode);
+            if (filters.family && mapFamiliesApi()) results = results.filter(record => recordFamilies(record).includes(filters.family));
             const mapScoped = mode === 'annonces' && mapAvailable() ? rowsForMapFamilies(results) : results;
             const countLabel = mode === 'annonces'
                 ? (mapScoped.length <= 1 ? 'annonce' : 'annonces')
@@ -520,10 +543,9 @@
             setSurface(false);
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
             if (!results.length) {
-                container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>' : ''}</div>${refineCard()}`;
+                container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>' : ''}</div>`;
             } else {
-                const cards = results.map(mode === 'annonces' ? requestCard : profileCard);
-                if (mode !== 'annonces') cards.splice(Math.min(5, cards.length), 0, refineCard());
+                const cards = results.map(record => (mode === 'annonces' ? requestCard(record) : profileCard(record)));
                 container.innerHTML = cards.join('');
             }
             window.syncFavoriteButtonStates?.();
@@ -567,7 +589,7 @@
             }
         }
         function reset() {
-            filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:''};
+            filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:'',family:''};
             mapFamilyFilter = null;
             mapFamilyDraft = null;
             closeMapCategorySheet();
@@ -582,17 +604,9 @@
             }
             const button = event.target.closest('button');
             if (!button) return;
-            if (button.dataset.action === 'more-trades') {
-                showAllTrades = true;
-                renderCategoryPills();
-                return;
-            }
-            if (button.dataset.action === 'all-categories') {
-                syncControls();
-                $('explorerFilters').showModal();
-                $('explorerCategory')?.focus();
-                return;
-            }
+            if (button.dataset.action === 'more-categories') { openCategorySheet(); return; }
+            if (button.dataset.sheetFamily !== undefined) { chooseCategory({ family: button.dataset.sheetFamily }); return; }
+            if (button.dataset.sheetCategory !== undefined) { chooseCategory({ category: button.dataset.sheetCategory }); return; }
             if (button.dataset.view && button.closest('#explorerViewToggle')) { setView(button.dataset.view); return; }
             if (button.dataset.mode) {
                 const nextMode = button.dataset.mode;
@@ -602,7 +616,6 @@
                     applyMapViewLayout();
                 }
                 mode = nextMode;
-                showAllTrades = false;
                 search();
                 return;
             }
@@ -613,9 +626,9 @@
                 search(); return;
             }
             if (button.classList.contains('lyann-pill')) {
-                filters.category = button.dataset.category || '';
-                filters.service = '';
-                search();
+                // Selecting the active entry again goes back to Tous.
+                const wasActive = button.classList.contains('is-active');
+                chooseCategory(wasActive ? {} : { family: button.dataset.category ? '' : (button.dataset.family || ''), category: button.dataset.category || '' });
                 return;
             }
             if (button.classList.contains('explorer-publish')) { window.openLyannWizard(filters.query); return; }
@@ -651,7 +664,7 @@
             $('explorerFilters')?.close();
             search();
         });
-        $('explorerCategory').addEventListener('change', () => { filters.category = $('explorerCategory').value; filters.service = ''; search(); });
+        $('explorerCategory').addEventListener('change', () => { filters.category = $('explorerCategory').value; filters.family = ''; filters.service = ''; search(); });
         const openFilters = () => { syncControls(); $('explorerFilters').showModal(); };
         $('explorerFiltersButton').addEventListener('click', openFilters);
         $('explorerFiltersIcon')?.addEventListener('click', openFilters);
@@ -673,6 +686,8 @@
         });
         $('explorerFilters').addEventListener('click', event => { if (event.target === $('explorerFilters')) $('explorerFilters').close(); });
         $('explorerReset').addEventListener('click', () => { $('explorerFilters').close(); reset(); });
+        $('explorerCategorySheetClose')?.addEventListener('click', () => $('explorerCategorySheet').close());
+        $('explorerCategorySheet')?.addEventListener('click', event => { if (event.target === $('explorerCategorySheet')) $('explorerCategorySheet').close(); });
         $('explorerMapCategoryClose')?.addEventListener('click', closeMapCategorySheet);
         $('explorerMapCategoryApply')?.addEventListener('click', applyMapCategoryFilter);
         $('explorerMapCategoryClear')?.addEventListener('click', clearMapCategoryFilter);
@@ -724,6 +739,7 @@
             if (!params.has('territory') && !params.has('commune') && filters.area) Object.assign(filters, inferGeography(filters.area));
             await refreshSavedArea(identity);
             await search();
+            if (params.get('more') === '1' && mode === 'lyanneurs') openCategorySheet();
             if (params.get('openLyann')) {
                 const request = records.find(r => r.id === params.get('openLyann'));
                 if (mode === 'annonces' && request) window.openLyannDetailModal(request.id, request);

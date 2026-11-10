@@ -1,0 +1,135 @@
+/* Lyanneurs + Annonces V3 (phase 3.1A) — résultats directs.
+ * Ordre Lyanneurs : petit header photo → recherche → rail de filtres → profils.
+ * Ordre Annonces  : petit header photo → recherche → rail de filtres → Liste / Carte → annonces.
+ * Chargé après universe-header.css / explorer-annonces-ux.css / needs-map.css ; tout est préfixé main#explorer. */
+main#explorer.explorer-page {
+    --r3-green: #0F3D2A;
+    --r3-green-2: #1F5A3D;
+    --r3-pastel: #E4EFDF;
+    --r3-ink: #0F3D2A;
+}
+body.results-page { background: #F7F2E8; }
+
+/* Header photo compact, pleine largeur sous l'en-tête natif */
+main#explorer .results-v3-header {
+    position: relative;
+    display: block;
+    height: 132px;
+    margin: 0 calc(50% - 50vw) 12px;
+    width: 100vw;
+    overflow: hidden;
+    background: var(--r3-green);
+    border-radius: 0;
+}
+main#explorer .results-v3-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; object-position: center 38%; }
+main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; object-position: 30% 35%; }
+main#explorer .results-v3-overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 18px;
+    background: linear-gradient(90deg, rgba(10, 36, 25, 0.62) 0%, rgba(10, 36, 25, 0.28) 55%, rgba(10, 36, 25, 0.05) 100%);
+    color: #fff;
+}
+main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: 1.9rem; line-height: 1.05; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
+main#explorer .results-v3-overlay p { margin: 4px 0 0; max-width: 15em; font-size: 0.86rem; line-height: 1.25; font-weight: 600; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
+body.is-native-app[data-explorer-mode] main#explorer #explorerPanel { margin-top: 0; }
+
+/* Recherche */
+main#explorer .explorer-search-row { display: flex; align-items: stretch; gap: 6px; margin: 0 0 10px; }
+main#explorer .explorer-search {
+    position: relative; display: flex; align-items: center; flex: 1; min-width: 0; margin: 0; padding: 0 4px 0 34px;
+    min-height: 46px; background: #fff; border: 1px solid rgba(15, 61, 42, 0.12); border-radius: 16px; box-shadow: 0 6px 18px rgba(15, 61, 42, 0.08);
+}
+main#explorer .explorer-search .explorer-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 1.15rem; color: var(--r3-green-2); }
+main#explorer .explorer-search input,
+main#explorer[data-mode] .explorer-search input { flex: 1; width: auto !important; min-width: 0; padding: 12px 4px; border: 0 !important; border-radius: 0; background: transparent; font-size: 16px; text-overflow: ellipsis; color: var(--r3-ink); box-shadow: none !important; }
+/* La touche Entrée / Rechercher du clavier valide ; le bouton reste dans le DOM pour les lecteurs d'écran. */
+main#explorer .explorer-search-submit { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+main#explorer .explorer-search input::placeholder { font-size: 14px; letter-spacing: -0.01em; color: rgba(15, 61, 42, 0.55); }
+main#explorer .explorer-filters-icon { flex: 0 0 42px; width: 42px; min-height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 16px; border: 1px solid rgba(15, 61, 42, 0.12); background: #fff; color: var(--r3-green); box-shadow: 0 6px 18px rgba(15, 61, 42, 0.08); position: relative; }
+main#explorer .explorer-filters-icon[hidden] { display: none; }
+
+/* Rail de filtres : une seule ligne, six entrées au plus */
+main#explorer .explorer-tools { display: block; margin: 0 0 10px; padding: 0; }
+main#explorer .explorer-tools .explorer-filters-inline,
+main#explorer .explorer-tools .lyann-category-native { display: none !important; }
+main#explorer .explorer-category-rail-wrap { margin: 0; }
+main#explorer .explorer-category-rail-wrap::after { display: none; }
+main#explorer .lyann-pills {
+    display: flex; gap: 8px; padding: 2px 0 4px; overflow-x: auto; scrollbar-width: none;
+    -webkit-mask-image: none; mask-image: none;
+}
+main#explorer .lyann-pill {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    flex: 1 1 0; min-width: 52px; min-height: 62px; padding: 8px 4px; border: 0; border-radius: 16px;
+    background: var(--r3-pastel); color: var(--r3-ink); font-size: 0.66rem; line-height: 1.1; font-weight: 700; text-align: center;
+}
+main#explorer .lyann-pill span { hyphens: none; overflow-wrap: normal; }
+main#explorer .lyann-pill-icon { width: 24px; height: 24px; fill: none; stroke: var(--r3-green-2); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+main#explorer .lyann-pill.is-active { background: var(--r3-green); border: 0; color: #fff; box-shadow: 0 6px 14px rgba(15, 61, 42, 0.22); }
+main#explorer .lyann-pill.is-active .lyann-pill-icon { stroke: #fff; }
+main#explorer .lyann-pill:focus-visible { outline: 3px solid #E5B345; outline-offset: 2px; }
+main#explorer .explorer-active-filters { margin: 0 0 8px; }
+main#explorer .explorer-active-filters:empty { display: none; }
+
+/* Liste / Carte : deux options de même poids */
+main#explorer .explorer-view-toggle,
+main#explorer[data-mode="annonces"] .explorer-view-toggle {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin: 0 0 12px; padding: 0; border: 0; border-radius: 0; background: transparent;
+}
+main#explorer .explorer-view-toggle[hidden] { display: none !important; }
+main#explorer .explorer-view-toggle button,
+main#explorer[data-mode="annonces"] .explorer-view-toggle button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px;
+    border: 1.5px solid var(--r3-green); border-radius: 999px; background: #fff; color: var(--r3-green); font-size: 0.95rem; font-weight: 800;
+}
+main#explorer .explorer-view-toggle button.is-active { background: var(--r3-green); color: #fff; }
+main#explorer .explorer-toggle-icon { width: 18px; height: 18px; fill: currentColor; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+main#explorer .explorer-toggle-icon circle { stroke: none; }
+main#explorer .explorer-view-toggle .ph { font-size: 1.1rem; }
+
+/* Pas de ligne intermédiaire entre le toggle / le rail et les résultats */
+main#explorer .explorer-annonces-meta, main#explorer .explorer-ranking, main#explorer .explorer-results-heading { display: none; }
+main#explorer #explorerSummary { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+
+/* Résultats */
+main#explorer .explorer-grid { display: flex; flex-direction: column; gap: 10px; }
+main#explorer .explorer-profile-row {
+    position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto auto; align-items: center; gap: 12px;
+    padding: 10px 12px 10px 10px; border: 1px solid rgba(15, 61, 42, 0.08); border-radius: 18px; background: #fff; box-shadow: 0 4px 14px rgba(15, 61, 42, 0.07);
+}
+main#explorer .explorer-profile-row .explorer-person-overlay { position: absolute; inset: 0; z-index: 1; border: 0; background: transparent; }
+main#explorer .explorer-profile-row .explorer-profile-avatar { width: 64px; height: 64px; border-radius: 14px; object-fit: cover; background: var(--r3-pastel); }
+main#explorer .explorer-profile-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+main#explorer .explorer-profile-row .explorer-profile-name { margin: 0; font-size: 1rem; line-height: 1.2; font-weight: 800; color: var(--r3-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+main#explorer .explorer-profile-row .explorer-profile-primary-skill { margin: 0; font-size: 0.84rem; color: rgba(15, 61, 42, 0.8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+main#explorer .explorer-profile-meta { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 0.78rem; color: rgba(15, 61, 42, 0.75); }
+main#explorer .explorer-profile-meta:empty { display: none; }
+main#explorer .explorer-profile-rating { display: inline-flex; align-items: center; gap: 3px; font-weight: 800; color: var(--r3-ink); }
+main#explorer .explorer-profile-rating i { color: #E5B345; }
+main#explorer .explorer-profile-meta .explorer-profile-place { display: inline-flex; align-items: center; gap: 3px; margin: 0; min-width: 0; max-width: 100%; }
+main#explorer .explorer-profile-meta .explorer-profile-place span { white-space: normal; overflow-wrap: anywhere; }
+main#explorer .explorer-profile-row .lyann-favorite-btn { position: relative; z-index: 2; }
+main#explorer .explorer-row-chevron { font-size: 1rem; color: var(--r3-green); }
+
+/* Résultats Annonces : cartes existantes, un peu plus denses */
+main#explorer .explorer-annonce-compact { border-radius: 18px; }
+
+/* Feuille « Plus » : toutes les catégories */
+.explorer-category-sheet .explorer-sheet-group { margin: 16px 0 8px; font-size: 0.9rem; color: var(--r3-ink, #0F3D2A); }
+.explorer-category-sheet .explorer-map-category-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.explorer-category-sheet[open] { display: flex; flex-direction: column; }
+.explorer-category-sheet .explorer-sheet-body { overflow-y: auto; padding-bottom: 12px; }
+
+/* Mode Carte : barre de contrôle compacte, carte sur tout l'espace restant */
+body.results-page.explorer-annonces-map-view main#explorer .explorer-search-row { margin-bottom: 8px; }
+body.results-page.explorer-annonces-map-view main#explorer .explorer-view-toggle { margin-bottom: 8px; }
+body.results-page.explorer-annonces-map-view main#explorer .results-v3-header { display: none; }
+
+@media (min-width: 720px) {
+    main#explorer .results-v3-header { width: auto; margin: 0 0 14px; border-radius: 20px; height: 168px; }
+}
+
+/* Petits écrans (≤ 400 px) : le placeholder doit rester entier */
+@media (max-width: 400px) {
+    main#explorer .explorer-search input::placeholder { font-size: 13px; }
+}

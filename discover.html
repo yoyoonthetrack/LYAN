@@ -24,6 +24,8 @@
     <link rel="stylesheet" href="style.css?v=20261027v26">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
     <link rel="stylesheet" href="discover.css?v=20261104a">
+    <link rel="stylesheet" href="editorial-highlights.css?v=20261110a">
+    <link rel="stylesheet" href="discover-v3.css?v=20261110b">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -145,84 +147,64 @@
         </div>
     </div>
 
-    <main id="discover" class="discover-main">
-        <header class="discover-hero">
-            <div class="discover-hero-media" aria-hidden="true">
-                <img src="assets/discover/hero-talents.jpg" alt="" width="640" height="420" loading="eager" decoding="async">
-            </div>
-            <div class="discover-hero-copy">
-                <p class="discover-kicker">Les talents de votre quartier</p>
-                <h1>Un besoin ? Un talent près de vous.</h1>
-                <p class="discover-lead">Trouvez de l'aide pour vos projets du quotidien, ou proposez vos compétences près de chez vous.</p>
-            </div>
-        </header>
-
-        <section class="discover-actions" aria-label="Actions principales">
-            <a class="discover-action-card is-help" href="results.html?mode=lyanneurs">
-                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-hand-heart"></i></span>
-                <span class="discover-action-text">
-                    <strong>Trouver de l'aide</strong>
-                    <span>Je cherche quelqu'un</span>
-                </span>
-                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
-            </a>
-            <a class="discover-action-card is-offer" href="results.html?mode=annonces" id="discoverOfferTalents">
-                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-briefcase"></i></span>
-                <span class="discover-action-text">
-                    <strong>Proposer mes talents</strong>
-                    <span>Je veux trouver des missions</span>
-                </span>
-                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
-            </a>
-        </section>
-
+    <main id="discover" class="discover-main discover-v3">
         <section class="discover-search" aria-label="Rechercher">
             <form id="discoverSearchForm" role="search">
                 <label class="sr-only" for="discoverQuery">Rechercher un service</label>
                 <div class="discover-search-bar">
                     <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
                     <input id="discoverQuery" type="search" name="query" placeholder="Quel service recherchez-vous ?" autocomplete="off" enterkeyhint="search">
-                </div>
-                <div class="discover-search-modes">
-                    <button type="submit" class="discover-search-mode is-active" data-mode="lyanneurs">Rechercher</button>
-                    <button type="submit" class="discover-search-alt" data-mode="annonces">Voir les annonces</button>
+                    <button type="submit" class="discover-search-submit" data-mode="lyanneurs" aria-label="Rechercher un talent"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
                 </div>
             </form>
         </section>
 
+        <section class="discover-actions" aria-label="Actions principales">
+            <a class="discover-action-card is-help" href="results.html?mode=lyanneurs">
+                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-hand-heart"></i></span>
+                <span class="discover-action-text"><strong>Trouver de l'aide</strong></span>
+                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
+            </a>
+            <a class="discover-action-card is-offer" href="results.html?mode=annonces" id="discoverOfferTalents">
+                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-briefcase"></i></span>
+                <span class="discover-action-text"><strong>Proposer mes talents</strong></span>
+                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
+            </a>
+        </section>
+
+        <section id="discoverHighlights" class="discover-block discover-highlights" aria-labelledby="discoverHighlightsTitle" hidden>
+            <div class="discover-block-head">
+                <h2 id="discoverHighlightsTitle" class="discover-section-title">À la une près de chez vous</h2>
+            </div>
+            <div id="discoverHighlightsRail" class="lyann-highlight-rail"></div>
+        </section>
+
         <section class="discover-block discover-categories" aria-labelledby="discoverCategoriesTitle">
-            <h2 id="discoverCategoriesTitle" class="discover-section-title">Explorer les services</h2>
-            <div class="discover-category-grid">
-                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=Entretien%20Jardin">
-                    <img src="assets/discover/categories/jardinage.jpg" alt="" loading="lazy" decoding="async">
-                    <span class="discover-category-label">Jardinage</span>
-                </a>
-                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=Bricolage">
-                    <img src="assets/discover/categories/bricolage.jpg" alt="" loading="lazy" decoding="async">
-                    <span class="discover-category-label">Bricolage</span>
-                </a>
-                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=M%C3%A9nage">
-                    <img src="assets/discover/categories/menage.jpg" alt="" loading="lazy" decoding="async">
-                    <span class="discover-category-label">Maison et ménage</span>
-                </a>
-                <a class="discover-category-card" href="results.html?mode=lyanneurs&amp;category=Coiffure%20%26%20Esth%C3%A9tique">
-                    <img src="assets/discover/categories/beaute.jpg" alt="" loading="lazy" decoding="async">
-                    <span class="discover-category-label">Beauté</span>
-                </a>
+            <div class="discover-block-head">
+                <h2 id="discoverCategoriesTitle" class="discover-section-title">Explorer les services</h2>
+                <a href="results.html?mode=lyanneurs">Tous les services</a>
+            </div>
+            <div class="discover-service-rail">
+                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=jardinage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19c3-5 6-8 10-10"/></svg><span>Jardinage</span></a>
+                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=bricolage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0 5 5L20 12l-3 3-1-1-8 8-3-3 8-8-1-1 3-3z" transform="scale(.86) translate(1.5 0)"/></svg><span>Bricolage</span></a>
+                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=menage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg><span>Maison &amp; ménage</span></a>
+                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=beaute"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="18" r="2.5"/><path d="M8.5 16.5L19 5M15.5 16.5L5 5"/></svg><span>Beauté</span></a>
+                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=numerique"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg><span>Numérique</span></a>
+                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;more=1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg><span>Et plus</span></a>
             </div>
         </section>
 
         <section class="discover-block" aria-labelledby="discoverTalentsTitle">
             <div class="discover-block-head">
                 <h2 id="discoverTalentsTitle" class="discover-section-title">Découvrez nos talents</h2>
-                <a href="results.html?mode=lyanneurs">Tous les lyanneurs</a>
+                <a href="results.html?mode=lyanneurs">Tous les talents</a>
             </div>
             <div id="discoverTalents" class="discover-grid discover-grid-talents" aria-live="polite" aria-busy="true"></div>
         </section>
 
         <section class="discover-block" aria-labelledby="discoverNeedsTitle">
             <div class="discover-block-head">
-                <h2 id="discoverNeedsTitle" class="discover-section-title">Des besoins à découvrir</h2>
+                <h2 id="discoverNeedsTitle" class="discover-section-title">Les annonces du moment</h2>
                 <a href="results.html?mode=annonces">Toutes les annonces</a>
             </div>
             <div id="discoverNeeds" class="discover-grid discover-grid-needs" aria-live="polite" aria-busy="true"></div>
@@ -235,11 +217,11 @@
             <div id="discoverAdviceList" class="discover-grid"></div>
         </section>
 
-        <section class="discover-map" aria-labelledby="discoverMapTitle">
-            <h2 id="discoverMapTitle">Explorer les besoins sur la carte</h2>
-            <p>Repérez les annonces ouvertes commune par commune, puis ouvrez celle qui vous convient.</p>
-            <a class="btn btn-primary discover-map-link" href="results.html?mode=annonces&amp;view=map"><i class="ph ph-map-trifold" aria-hidden="true"></i> Ouvrir la carte</a>
-        </section>
+        <a class="discover-map-banner" href="results.html?mode=annonces&amp;view=map" aria-labelledby="discoverMapTitle">
+            <span class="discover-map-banner-icon" aria-hidden="true"><i class="ph ph-map-pin"></i></span>
+            <strong id="discoverMapTitle">Explorer les besoins sur la carte</strong>
+            <span class="discover-map-banner-go" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
+        </a>
     </main>
 
         <!-- ========== FOOTER ========== -->
@@ -1255,7 +1237,8 @@
     <script src="commune-distance.js?v=20261019-drom5"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
-    <script src="discover-page.js?v=20261103" defer></script>
+    <script src="editorial-highlights-view.js?v=20261110a"></script>
+    <script src="discover-page.js?v=20261110a" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

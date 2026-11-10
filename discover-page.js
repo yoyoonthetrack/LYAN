@@ -90,21 +90,6 @@
         return { items: local.concat(rest), localCount: local.length };
     }
 
-    function updateSectionHeadings(territoryKey, localTalents, localNeeds) {
-        const talentsTitle = document.getElementById('discoverTalentsTitle');
-        const needsTitle = document.getElementById('discoverNeedsTitle');
-        if (talentsTitle) {
-            talentsTitle.textContent = territoryKey && localTalents > 0
-                ? 'Les talents près de vous'
-                : 'Découvrez nos talents';
-        }
-        if (needsTitle) {
-            needsTitle.textContent = territoryKey && localNeeds > 0
-                ? 'Des besoins près de vous'
-                : 'Des besoins à découvrir';
-        }
-    }
-
     function openRequest(row) {
         if (typeof window.openLyannDetailModal === 'function') {
             window.openLyannDetailModal(row.id, row);
@@ -132,12 +117,13 @@
         const format = window.LYANN_ANNONCE_FORMAT;
         const title = format?.shortTitle?.(row.title) || row.title || 'Annonce';
         const price = format?.priceLabel?.(row) || '';
-        const category = String(row.category || '').trim();
-        const badge = category || 'Annonce';
-        return `<button type="button" class="discover-card discover-need-card" data-request-id="${escapeText(row.id)}">
-            <span class="discover-card-badge">${escapeText(badge)}</span>
-            <h3>${escapeText(title)}</h3>
-            <p class="discover-meta">${escapeText(placeLabel(row))}${price ? ` · ${escapeText(price)}` : ''}</p>
+        return `<button type="button" class="discover-need-row" data-request-id="${escapeText(row.id)}">
+            <span class="discover-need-icon" aria-hidden="true"><i class="ph ph-map-pin"></i></span>
+            <span class="discover-need-text">
+                <strong>${escapeText(title)}</strong>
+                <span>${escapeText(placeLabel(row))}${price ? ` · ${escapeText(price)}` : ''}</span>
+            </span>
+            <i class="ph ph-caret-right" aria-hidden="true"></i>
         </button>`;
     }
 
@@ -145,27 +131,20 @@
         const format = window.LYANN_ANNONCE_FORMAT;
         const name = window.formatPublicName?.(profile, null, 'Lyanneur') || profile.name || 'Lyanneur';
         const activity = talentActivity(profile);
-        const place = talentPlace(profile);
         const rating = format?.ratingLabel?.(profile) || '';
         const avatar = window.getLyannAvatarUrl?.(profile.avatar_url) || profile.avatar || '';
         const photo = avatar
-            ? `<img src="${escapeText(avatar)}" alt="" width="72" height="72" loading="lazy">`
+            ? `<img src="${escapeText(avatar)}" alt="" width="52" height="52" loading="lazy">`
             : '<span class="discover-avatar-fallback" aria-hidden="true"></span>';
         const ratingHtml = rating
             ? `<span class="discover-talent-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span>${escapeText(rating)}</span></span>`
             : '';
-        const skillHtml = activity
-            ? `<span class="discover-talent-skill">${escapeText(activity)}</span>`
-            : '';
-        return `<button type="button" class="discover-card discover-talent-card" data-member-id="${escapeText(profile.id)}">
+        return `<button type="button" class="discover-talent-mini" data-member-id="${escapeText(profile.id)}">
             <span class="discover-talent-photo">${photo}</span>
             <span class="discover-talent-body">
-                <span class="discover-talent-title-row">
-                    <h3>${escapeText(name)}</h3>
-                    ${ratingHtml}
-                </span>
-                ${skillHtml}
-                <p class="discover-talent-place"><i class="ph ph-map-pin" aria-hidden="true"></i><span>${escapeText(place || 'Commune non renseignée')}</span></p>
+                <h3>${escapeText(name)}</h3>
+                ${activity ? `<span class="discover-talent-skill">${escapeText(activity)}</span>` : ''}
+                ${ratingHtml}
             </span>
         </button>`;
     }
@@ -216,6 +195,28 @@
 
     function knownLoggedOut() {
         return !window.LYANN_AUTH_STATE?.isAuthenticated?.();
+    }
+
+    // « À la une près de chez vous » : cartes publiées par la rédaction (RLS : publiées et dans leurs dates uniquement).
+    // Aucune carte de démonstration : sans carte réelle, ou si la table est indisponible, la section reste masquée.
+    const HIGHLIGHT_COLUMNS = 'id,title,teaser,label,image_url,image_alt,territory,theme,cta_target,cta_value,starts_at,ends_at,priority,published_at';
+    async function loadHighlights(territoryKey) {
+        const section = document.getElementById('discoverHighlights');
+        const rail = document.getElementById('discoverHighlightsRail');
+        const view = window.LYANN_HIGHLIGHTS;
+        const supabase = (window.LYANN_API_CLIENT || window.apiClient)?.supabase;
+        if (!section || !rail || !view || !supabase) return;
+        try {
+            const { data, error } = await supabase.from('editorial_highlights').select(HIGHLIGHT_COLUMNS).order('priority', { ascending: true }).limit(12);
+            if (error) throw error;
+            const cards = view.select(data || [], territoryKey, 3);
+            if (!cards.length) { section.hidden = true; return; }
+            rail.classList.toggle('is-few', cards.length < 3);
+            rail.innerHTML = cards.map((card) => view.renderCard(card)).join('');
+            section.hidden = false;
+        } catch (_) {
+            section.hidden = true;
+        }
     }
 
     function renderAdvice() {
@@ -307,17 +308,15 @@
             needs.innerHTML = state('Chargement des annonces', 'Les besoins publics arrivent.');
             talents.innerHTML = state('Chargement des talents', 'Les profils publics arrivent.');
             const territoryKey = await resolveDiscoverTerritoryKey();
-            let localTalentCount = 0;
-            let localNeedCount = 0;
+            loadHighlights(territoryKey);
             const [requestResult, talentResult] = await Promise.allSettled([repo.loadRequests(), repo.load()]);
             if (requestResult.status === 'fulfilled') {
                 const eligible = requestResult.value.filter(eligibleRequest);
                 const rankedNeeds = prioritizeTerritory(eligible, territoryKey, requestTerritoryKey);
-                localNeedCount = rankedNeeds.localCount;
                 requests = rankedNeeds.items.slice(0, 4);
                 needs.innerHTML = requests.length
                     ? requests.map(requestCard).join('')
-                    : state('Aucune annonce pour le moment.', 'Parcourez toutes les annonces ou publiez votre besoin depuis le menu.');
+                    : state('Aucune annonce ouverte pour le moment.', 'Revenez bientôt ou consultez toutes les annonces.');
             } else {
                 requests = [];
                 needs.innerHTML = state('Les annonces n\'ont pas pu être chargées.', 'Vérifiez votre connexion, puis réessayez.', 'retry-needs');
@@ -327,16 +326,14 @@
                     .filter(profile => talentActivity(profile))
                     .sort((a, b) => (Number(b.reviews_count) || 0) - (Number(a.reviews_count) || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'fr'));
                 const rankedTalents = prioritizeTerritory(rankedProfiles, territoryKey, profileTerritoryKey);
-                localTalentCount = rankedTalents.localCount;
-                profiles = rankedTalents.items.slice(0, 6);
+                profiles = rankedTalents.items.slice(0, 3);
                 talents.innerHTML = profiles.length
                     ? profiles.map(talentCard).join('')
-                    : state('Aucun talent à afficher.', 'Explorez l\'annuaire Lyanneurs pour trouver de l\'aide.');
+                    : state('Aucun talent à afficher pour le moment.', 'Explorez l\'annuaire Lyanneurs.');
             } else {
                 profiles = [];
                 talents.innerHTML = state('Les talents n\'ont pas pu être chargés.', 'Vérifiez votre connexion, puis réessayez.', 'retry-talents');
             }
-            updateSectionHeadings(territoryKey, localTalentCount, localNeedCount);
             needs.setAttribute('aria-busy', 'false');
             talents.setAttribute('aria-busy', 'false');
         }
