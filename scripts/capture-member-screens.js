@@ -29,6 +29,56 @@ const FONT_FILE = '/tmp/lyann-fonts/outfit-latin.woff2';
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf' };
 const QA = { email: process.env.LYANN_E2E_QA_A_EMAIL, password: process.env.LYANN_E2E_QA_A_PASSWORD };
 
+
+// WCAG 2.1 AA audit run in the page: text (4.5:1, 3:1 for large text), placeholders, icons and glyphs (3:1).
+// Text over a photograph or a map is reported separately (image-backed) and measured by pixel sampling instead.
+function contrastAudit() {
+    const parse = (value) => { const m = /rgba?\(([^)]+)\)/.exec(value || ''); if (!m) return null; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+    const over = (top, bottom) => { const a = top.a + bottom.a * (1 - top.a); return a === 0 ? { r: 0, g: 0, b: 0, a: 0 } : { r: (top.r * top.a + bottom.r * bottom.a * (1 - top.a)) / a, g: (top.g * top.a + bottom.g * bottom.a * (1 - top.a)) / a, b: (top.b * top.a + bottom.b * bottom.a * (1 - top.a)) / a, a }; };
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const visible = (el) => { const cs = getComputedStyle(el); const r = el.getBoundingClientRect(); return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0 && r.width > 2 && r.height > 2 && !(r.width <= 1 || r.height <= 1); };
+    const backdrop = (el) => {
+        const layers = []; let node = el; let imageBacked = false;
+        while (node && node.nodeType === 1) {
+            const cs = getComputedStyle(node);
+            if (cs.backgroundImage && cs.backgroundImage !== 'none') { imageBacked = true; }
+            const bg = parse(cs.backgroundColor);
+            if (bg && bg.a > 0) layers.push(bg);
+            if (bg && bg.a === 1) break;
+            node = node.parentElement;
+        }
+        let acc = { r: 255, g: 255, b: 255, a: 1 };
+        for (let i = layers.length - 1; i >= 0; i--) acc = over(layers[i], acc);
+        return { color: acc, imageBacked };
+    };
+    const effectiveColor = (el, raw) => { let c = parse(raw); if (!c) return null; let node = el; let op = 1; while (node && node.nodeType === 1) { op *= Number(getComputedStyle(node).opacity); node = node.parentElement; } return { ...c, a: c.a * op }; };
+    const label = (el) => { const cls = (el.className && el.className.baseVal === undefined ? String(el.className) : '').trim().split(/\s+/).slice(0, 2).join('.'); return `${el.tagName.toLowerCase()}${cls ? '.' + cls : ''}`; };
+    const fails = []; const imageBacked = []; let checked = 0;
+    const test = (el, fg, kind, text, large) => {
+        const back = backdrop(el); const fgc = effectiveColor(el, fg); if (!fgc || fgc.a === 0) return;
+        const blended = over(fgc, back.color); const need = kind === 'text' && !large ? 4.5 : 3; const got = ratio(blended, back.color);
+        checked += 1;
+        const row = { el: label(el), text: String(text || '').slice(0, 40), ratio: Math.round(got * 100) / 100, need, fg: fg, bg: `rgb(${Math.round(back.color.r)},${Math.round(back.color.g)},${Math.round(back.color.b)})` };
+        if (back.imageBacked) { imageBacked.push(row); return; }
+        if (got < need) fails.push(row);
+    };
+    const root = document.querySelector('main') || document.body;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const seen = new Set();
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const text = n.nodeValue.replace(/\s+/g, ' ').trim(); const el = n.parentElement;
+        if (!text || !el || seen.has(el) || !visible(el) || el.closest('[hidden], script, style, .sr-only, .leaflet-container, dialog:not([open])')) continue;
+        seen.add(el);
+        const cs = getComputedStyle(el); const px = parseFloat(cs.fontSize); const bold = Number(cs.fontWeight) >= 700;
+        test(el, cs.color, 'text', text, px >= 24 || (bold && px >= 18.66));
+    }
+    document.querySelectorAll('main input, main textarea').forEach((el) => { if (!visible(el) || !el.placeholder || el.closest('[hidden]')) return; test(el, getComputedStyle(el, '::placeholder').color, 'text', el.placeholder, false); });
+    document.querySelectorAll('main i.ph, main i.ph-fill, main i.ph-bold').forEach((el) => { if (!visible(el) || el.closest('[hidden], .leaflet-container')) return; test(el, getComputedStyle(el).color, 'icon', el.className, false); });
+    document.querySelectorAll('main svg').forEach((el) => { if (!visible(el) || el.closest('[hidden], .leaflet-container')) return; const cs = getComputedStyle(el); const paint = cs.stroke && cs.stroke !== 'none' ? cs.stroke : cs.fill; if (paint && paint !== 'none') test(el, paint, 'icon', 'svg', false); });
+    return { checked, failCount: fails.length, fails: fails.slice(0, 40), imageBackedCount: imageBacked.length, imageBacked: imageBacked.slice(0, 12) };
+}
+
 function serve() {
     return new Promise((resolve) => {
         const server = http.createServer((req, res) => {
@@ -118,6 +168,28 @@ const SCREENS = {
                 forbiddenOnResults: ['Talents près de chez vous', 'Annonces du moment', 'Explorer les services', 'Voir plus'].filter((t) => /results\.html/.test(location.pathname) && (document.querySelector('main')?.innerText || '').includes(t))
             };
         });
+        checks.screens[name].contrast = await page.evaluate(contrastAudit);
+        if (name === 'lyanneurs' || name === 'annonces') {
+            // White title/subtitle over the header photograph: hide the glyphs, sample the pixels behind them and compare the
+            // brightest 5 % of those pixels (worst case) with white.
+            const boxes = await page.evaluate(() => { document.head.insertAdjacentHTML('beforeend', '<style id="__ink">.results-v3-overlay h1,.results-v3-overlay p{color:transparent!important;text-shadow:none!important}</style>'); return ['.results-v3-overlay h1', '.results-v3-overlay p'].map((q) => { const el = document.querySelector(q); const r = el.getBoundingClientRect(); const range = document.createRange(); range.selectNodeContents(el); const t = range.getBoundingClientRect(); return { q, x: Math.max(0, t.left), y: Math.max(0, t.top), width: Math.max(1, t.width), height: Math.max(1, t.height) }; }); });
+            const samples = [];
+            for (const box of boxes) {
+                const shot = await page.screenshot({ clip: { x: box.x, y: box.y, width: box.width, height: box.height } });
+                const worst = await page.evaluate(async (b64) => {
+                    const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+                    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+                    const d = g.getImageData(0, 0, c.width, c.height).data; const L = [];
+                    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+                    for (let i = 0; i < d.length; i += 4) L.push(0.2126 * f(d[i]) + 0.7152 * f(d[i + 1]) + 0.0722 * f(d[i + 2]));
+                    L.sort((a, b) => a - b); const p95 = L[Math.floor(L.length * 0.95)];
+                    return { p95, ratioWithWhite: Math.round((1.05 / (p95 + 0.05)) * 100) / 100 };
+                }, shot.toString('base64'));
+                samples.push({ element: box.q, ...worst });
+            }
+            await page.evaluate(() => document.getElementById('__ink')?.remove());
+            checks.screens[name].headerTextOverPhoto = samples;
+        }
         const file = path.join(outDir, `${name}.png`);
         await page.screenshot({ path: file, fullPage: false });
         if (full) await page.screenshot({ path: path.join(outDir, `${name}-full.png`), fullPage: true });

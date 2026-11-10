@@ -20,16 +20,16 @@
     max-width: 190px;
     overflow: hidden;
     scroll-snap-align: start;
-    color: #0F3D2A;
+    color: var(--lyann-text-primary, #163D2D);
     text-decoration: none;
-    background: #fff;
-    border: 1px solid rgba(15, 61, 42, 0.08);
+    background: var(--lyann-white, #FFFFFF);
+    border: 1px solid var(--lyann-border, #C6D6CA);
     border-radius: 16px;
-    box-shadow: 0 4px 14px rgba(15, 61, 42, 0.08);
+    box-shadow: var(--lyann-shadow-card, 0 4px 14px rgba(22, 61, 45, 0.07));
     -webkit-tap-highlight-color: transparent;
 }
 .lyann-highlight-rail.is-few .lyann-highlight-card { flex: 1 1 0; max-width: none; }
-.lyann-highlight-media { position: relative; display: block; aspect-ratio: 2 / 1; background: #E4EFDF; overflow: hidden; }
+.lyann-highlight-media { position: relative; display: block; aspect-ratio: 2 / 1; background: var(--lyann-green-pastel, #E5F0E6); overflow: hidden; }
 .lyann-highlight-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .lyann-highlight-body { display: flex; flex-direction: column; gap: 1px; padding: 6px 24px 8px 10px; min-width: 0; }
 .lyann-highlight-label {
@@ -38,12 +38,12 @@
     left: 6px;
     padding: 2px 7px;
     border-radius: 999px;
-    background: rgba(247, 242, 232, 0.92);
+    background: var(--lyann-cream, #F7F3EB);
     font-size: 0.6rem;
     font-weight: 800;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #1F5A3D;
+    color: var(--lyann-text-primary, #163D2D);
 }
 .lyann-highlight-title { font-size: 0.84rem; line-height: 1.15; font-weight: 800; overflow-wrap: anywhere; }
 .lyann-highlight-teaser {
@@ -53,9 +53,9 @@
     overflow: hidden;
     font-size: 0.68rem;
     line-height: 1.22;
-    color: rgba(15, 61, 42, 0.78);
+    color: var(--lyann-text-secondary-aa, #56695E);
 }
-.lyann-highlight-chevron { position: absolute; right: 8px; bottom: 10px; font-size: 0.95rem; color: #0F3D2A; }
+.lyann-highlight-chevron { position: absolute; right: 8px; bottom: 10px; font-size: 0.95rem; color: var(--lyann-green-primary, #246B49); }
 
 /* Back-office : formulaire de carte, en groupes alignés (l'attribut hidden doit rester prioritaire). */
 #hlForm:not([hidden]) { display: flex; flex-direction: column; gap: 14px; padding: 20px; margin-bottom: 16px; }

@@ -1,0 +1,40 @@
+/* LYANN — palette UI/UX V3.1B : source unique des couleurs de Découvrir, Lyanneurs et Annonces.
+ * Les feuilles discover-v3.css, results-v3.css et editorial-highlights.css ne définissent plus de couleur de marque :
+ * elles lisent ces jetons. Le logo officiel, les photographies, les cartes géographiques et les couleurs d'état
+ * (erreur, succès, avertissement) ne sont pas concernés.
+ *
+ * Contrastes mesurés (WCAG 2.1, ratio) :
+ *   blanc / --lyann-green-primary 6,41 · blanc / --lyann-green-action 6,97 · vert profond / jaune 8,39
+ *   vert profond / pastel 10,31 · vert profond / crème 10,91 · vert profond / blanc 12,07
+ *   --lyann-text-secondary (#687F72) : 4,31 sur blanc, 3,90 sur crème, 3,69 sur pastel → INSUFFISANT pour du texte.
+ *   --lyann-text-secondary-aa (#56695E) : 5,87 blanc · 5,30 crème · 5,01 pastel · 4,56 vert doux → AA.
+ *   --lyann-border (#C6D6CA) : 1,51 sur blanc → réservé aux contours décoratifs des cartes (non interactives) ;
+ *   --lyann-border-control (#6D9677) : 3,34 blanc · 3,02 crème → contour des champs et contrôles (WCAG 1.4.11). */
+:root {
+    /* Identité */
+    --lyann-green-deep: #163D2D;
+    --lyann-green-primary: #246B49;
+    --lyann-green-action: #176640;
+    --lyann-green-pastel: #E5F0E6;
+    --lyann-green-soft: #D7E7DA;
+
+    /* Jaune intermédiaire validé */
+    --lyann-yellow: #F4D570;
+
+    /* Fonds */
+    --lyann-cream: #F7F3EB;
+    --lyann-white: #FFFFFF;
+
+    /* Bordures et textes */
+    --lyann-border: #C6D6CA;
+    --lyann-text-primary: #163D2D;
+    --lyann-text-secondary: #687F72;
+
+    /* Dérivés conformes WCAG AA (voir ci-dessus) */
+    --lyann-text-secondary-aa: #56695E;
+    --lyann-border-control: #6D9677;
+    --lyann-shadow-card: 0 4px 14px rgba(22, 61, 45, 0.07);
+    --lyann-focus: #176640;
+    /* Étoile de note : l'ancien or #E5B345 ne faisait que 1,93:1 sur blanc ; #A87B00 fait 3,82:1 (blanc) et 3,45:1 (crème). */
+    --lyann-star: #A87B00;
+}

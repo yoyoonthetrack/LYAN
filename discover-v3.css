@@ -1,18 +1,19 @@
 /* Découvrir V3 (phase 3.1A) — accueil compact: recherche, deux actions, À la une, services, talents, annonces, carte.
  * Chargé après discover.css : seules les règles sous .discover-v3 changent. Palette: crème, vert profond, jaune doux. */
 .discover-v3 {
-    --d3-green: #0F3D2A;
-    --d3-green-2: #1F5A3D;
-    --d3-pastel: #E4EFDF;
-    --d3-yellow: #F5D77A;
-    --d3-cream: #F7F2E8;
-    --d3-ink: #0F3D2A;
+    /* Couleurs : jetons de lyann-palette-v31b.css uniquement. */
+    --d3-green: var(--lyann-green-deep);
+    --d3-green-2: var(--lyann-green-primary);
+    --d3-pastel: var(--lyann-green-pastel);
+    --d3-yellow: var(--lyann-yellow);
+    --d3-cream: var(--lyann-cream);
+    --d3-ink: var(--lyann-text-primary);
     max-width: 720px;
     padding-top: calc(76px + env(safe-area-inset-top, 0px));
     padding-left: 16px;
     padding-right: 16px;
 }
-body.discover-page { background: #F7F2E8; }
+body.discover-page { background: var(--lyann-cream); }
 .discover-v3 .discover-search,
 .discover-v3 .discover-actions,
 .discover-v3 .discover-block,
@@ -25,10 +26,10 @@ body.discover-page { background: #F7F2E8; }
     gap: 8px;
     min-height: 46px;
     padding: 0 6px 0 14px;
-    background: #fff;
-    border: 1px solid rgba(15, 61, 42, 0.12);
+    background: var(--lyann-white);
+    border: 1px solid var(--lyann-border-control);
     border-radius: 16px;
-    box-shadow: 0 6px 18px rgba(15, 61, 42, 0.08);
+    box-shadow: var(--lyann-shadow-card);
 }
 .discover-v3 .discover-search-bar > i { font-size: 1.15rem; color: var(--d3-green-2); }
 .discover-v3 .discover-search-bar input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 0.95rem; padding: 12px 0; outline: none; color: var(--d3-ink); }
@@ -43,12 +44,12 @@ body.discover-page { background: #F7F2E8; }
 @media (max-width: 360px) { .discover-v3 .discover-actions { grid-template-columns: 1fr 1fr; } .discover-v3 .discover-action-icon { display: none; } }
 .discover-v3 .discover-action-card {
     display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 8px 10px 8px 12px;
-    border: 0; border-radius: 16px; text-decoration: none; box-shadow: 0 6px 16px rgba(15, 61, 42, 0.14);
+    border: 0; border-radius: 16px; text-decoration: none; box-shadow: 0 6px 16px rgba(22, 61, 45, 0.14);
 }
-.discover-v3 .discover-action-card.is-help { background: linear-gradient(135deg, #0F3D2A, #1F5A3D); color: #fff; }
-.discover-v3 .discover-action-card.is-offer { background: linear-gradient(135deg, #F7DE8E, #F2C94C); color: #0F3D2A; }
+.discover-v3 .discover-action-card.is-help { background: var(--lyann-green-action); color: #fff; }
+.discover-v3 .discover-action-card.is-offer { background: var(--lyann-yellow); color: var(--lyann-text-primary); }
 .discover-v3 .discover-action-icon { flex: 0 0 auto; width: auto; height: auto; padding: 0; background: transparent; font-size: 1.45rem; color: inherit; }
-.discover-v3 .discover-action-card.is-offer .discover-action-icon { background: transparent; color: #0F3D2A; }
+.discover-v3 .discover-action-card.is-offer .discover-action-icon { background: transparent; color: var(--lyann-text-primary); }
 .discover-v3 .discover-action-text { flex: 1; min-width: 0; }
 .discover-v3 .discover-action-text strong { display: block; font-size: 0.9rem; line-height: 1.15; color: inherit; }
 .discover-v3 .discover-action-chevron { flex: 0 0 auto; font-size: 0.95rem; color: inherit; }
@@ -58,7 +59,7 @@ body.discover-page { background: #F7F2E8; }
 .discover-v3 .discover-section-title {
     position: relative; margin: 0; padding-bottom: 6px; font-size: 1.08rem; line-height: 1.2; font-weight: 800; color: var(--d3-ink);
 }
-.discover-v3 .discover-section-title::after { content: ''; position: absolute; left: 0; bottom: 0; width: 28px; height: 3px; border-radius: 2px; background: #E5B345; }
+.discover-v3 .discover-section-title::after { content: ''; position: absolute; left: 0; bottom: 0; width: 28px; height: 3px; border-radius: 2px; background: var(--lyann-yellow); }
 .discover-v3 .discover-block-head a { flex: 0 0 auto; font-size: 0.78rem; font-weight: 700; color: var(--d3-green-2); text-decoration: none; }
 
 /* À la une : le module n'occupe de place que s'il a de vraies cartes */
@@ -80,35 +81,35 @@ body.discover-page { background: #F7F2E8; }
 .discover-v3 .discover-grid-talents::-webkit-scrollbar { display: none; }
 .discover-v3 .discover-talent-mini {
     flex: 0 0 min(62%, 220px); display: flex; align-items: center; gap: 10px; padding: 8px; text-align: left; scroll-snap-align: start;
-    background: #fff; border: 1px solid rgba(15, 61, 42, 0.08); border-radius: 16px; box-shadow: 0 4px 12px rgba(15, 61, 42, 0.07); color: var(--d3-ink); cursor: pointer;
+    background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 16px; box-shadow: var(--lyann-shadow-card); color: var(--d3-ink); cursor: pointer;
 }
 .discover-v3 .discover-talent-mini .discover-talent-photo { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 14px; overflow: hidden; background: var(--d3-pastel); }
 .discover-v3 .discover-talent-mini img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .discover-v3 .discover-talent-mini .discover-talent-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .discover-v3 .discover-talent-mini h3 { margin: 0; font-size: 0.88rem; line-height: 1.15; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.discover-v3 .discover-talent-mini .discover-talent-skill { display: block; align-self: auto; padding: 0; border: 0; border-radius: 0; background: none; font-size: 0.76rem; font-weight: 600; color: rgba(15, 61, 42, 0.78); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.discover-v3 .discover-talent-mini .discover-talent-skill { display: block; align-self: auto; padding: 0; border: 0; border-radius: 0; background: none; font-size: 0.76rem; font-weight: 600; color: var(--lyann-text-secondary-aa); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .discover-v3 .discover-talent-mini .discover-talent-rating { display: inline-flex; align-items: center; gap: 3px; font-size: 0.74rem; font-weight: 800; }
-.discover-v3 .discover-talent-mini .discover-talent-rating i { color: #E5B345; font-size: 0.8rem; }
+.discover-v3 .discover-talent-mini .discover-talent-rating i { color: var(--lyann-star); font-size: 0.8rem; }
 
 /* Annonces du moment : lignes compactes */
 .discover-v3 .discover-grid-needs { display: flex; flex-direction: column; gap: 8px; }
 .discover-v3 .discover-need-row {
     display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px 8px 8px; text-align: left;
-    background: #fff; border: 1px solid rgba(15, 61, 42, 0.08); border-radius: 16px; box-shadow: 0 4px 12px rgba(15, 61, 42, 0.06); color: var(--d3-ink); cursor: pointer;
+    background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 16px; box-shadow: var(--lyann-shadow-card); color: var(--d3-ink); cursor: pointer;
 }
 .discover-v3 .discover-need-icon { flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--d3-pastel); color: var(--d3-green-2); font-size: 1.2rem; }
 .discover-v3 .discover-need-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .discover-v3 .discover-need-text strong { font-size: 0.88rem; line-height: 1.2; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.discover-v3 .discover-need-text span { font-size: 0.74rem; color: rgba(15, 61, 42, 0.72); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.discover-v3 .discover-need-text span { font-size: 0.74rem; color: var(--lyann-text-secondary-aa); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .discover-v3 .discover-need-row > i.ph-caret-right { flex: 0 0 auto; font-size: 0.95rem; }
-.discover-v3 .discover-state { margin: 0; padding: 12px 14px; background: rgba(255, 255, 255, 0.7); border-radius: 14px; }
+.discover-v3 .discover-state { margin: 0; padding: 12px 14px; background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 14px; }
 .discover-v3 .discover-state h3 { margin: 0 0 2px; font-size: 0.88rem; }
-.discover-v3 .discover-state p { margin: 0; font-size: 0.78rem; color: rgba(15, 61, 42, 0.75); }
+.discover-v3 .discover-state p { margin: 0; font-size: 0.78rem; color: var(--lyann-text-secondary-aa); }
 
 /* Carte */
 .discover-v3 .discover-map-banner {
     display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 10px 12px; text-decoration: none; color: var(--d3-ink);
-    background: linear-gradient(100deg, #E4EFDF 0%, #D4E9DC 55%, #BFE3E0 100%); border-radius: 18px; box-shadow: 0 6px 16px rgba(15, 61, 42, 0.1);
+    background: linear-gradient(100deg, var(--lyann-green-pastel) 0%, var(--lyann-green-soft) 100%); border: 1px solid var(--lyann-border); border-radius: 18px; box-shadow: var(--lyann-shadow-card);
 }
 .discover-v3 .discover-map-banner-icon { flex: 0 0 auto; font-size: 1.5rem; color: var(--d3-green-2); }
 .discover-v3 .discover-map-banner strong { flex: 1; font-size: 0.92rem; line-height: 1.2; }
@@ -125,3 +126,8 @@ body.discover-page { background: #F7F2E8; }
     .discover-v3 .discover-search-bar input { font-size: 0.9rem; }
     .discover-v3 .discover-search-bar input::placeholder { font-size: 13px; letter-spacing: -0.01em; }
 }
+
+.discover-v3 .discover-search-bar input::placeholder { color: var(--lyann-text-secondary-aa); opacity: 1; }
+.discover-v3 .discover-service-tile { border: 1px solid transparent; }
+.discover-v3 a:focus-visible, .discover-v3 button:focus-visible { outline: 3px solid var(--lyann-focus); outline-offset: 2px; }
+.discover-v3 .discover-action-card.is-help:focus-visible { outline-color: var(--lyann-text-primary); }
