@@ -13,35 +13,38 @@ body.results-page,
 body.results-page[data-explorer-mode="annonces"],
 body.results-page[data-explorer-mode="lyanneurs"] { background: var(--lyann-cream); }
 
-/* Header photo compact, pleine largeur sous l'en-tête natif */
+/* Header photo compact (V3.1C) : même structure sur Lyanneurs et Annonces.
+ * Photo rectangulaire à coins arrondis, dans les marges de la page, couleurs naturelles : aucune ombre, aucun filtre,
+ * aucun vignettage, aucun dégradé sur l'image. Le texte blanc, aligné à droite, repose sur une petite pastille locale
+ * (derrière le texte seulement) pour garder un contraste AA sans voiler la photographie. */
 main#explorer .results-v3-header {
     position: relative;
     display: block;
-    height: 138px;
-    margin: 0 calc(50% - 50vw) 12px;
-    width: 100vw;
+    aspect-ratio: 758 / 331; /* proportions de la photo : aucun visage coupé, cadrage identique sur tous les écrans */
+    max-height: 160px;
+    margin: 0 0 12px;
+    width: 100%; /* explicite : sinon max-height réduirait la largeur via le ratio */
     overflow: hidden;
-    background: var(--lyann-green-deep);
-    border-radius: 0;
+    background: var(--lyann-green-pastel);
+    border-radius: 20px;
+    box-shadow: none;
+    filter: none;
 }
-main#explorer .results-v3-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
-/* Lyanneurs : cadrage haut, les trois visages entiers ; le titre repose sur les vêtements, sous les visages. */
-main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; object-position: center 0%; }
+main#explorer .results-v3-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 0%; display: none; filter: none; box-shadow: none; }
+/* Lyanneurs : les trois visages entiers ; le texte reste sous le visage de droite. */
+main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; }
 /* Annonces : la voisine à gauche, le texte à droite sur le mur et l'évier. */
-main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; object-position: center 8%; }
+main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; }
 main#explorer .results-v3-overlay {
-    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 18px 9px;
-    background: linear-gradient(0deg, rgba(22, 61, 45, 0.9) 0%, rgba(22, 61, 45, 0.78) 30%, rgba(22, 61, 45, 0.34) 52%, rgba(22, 61, 45, 0) 72%);
-    color: #fff;
+    position: absolute; right: 8px; bottom: 6px; display: block; width: fit-content; max-width: 56%;
+    padding: 3px 10px 4px; text-align: right; color: #fff; pointer-events: none;
+    background: rgba(22, 61, 45, 0.7); border-radius: 14px;
 }
-main#explorer[data-mode="annonces"] .results-v3-overlay {
-    justify-content: center; align-items: flex-end; text-align: right; padding: 0 18px;
-    background: linear-gradient(270deg, rgba(22, 61, 45, 0.72) 0%, rgba(22, 61, 45, 0.46) 52%, rgba(22, 61, 45, 0) 86%);
-}
-main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: 1.6rem; line-height: 1.05; font-weight: 800; color: #fff; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); }
-main#explorer[data-mode="annonces"] .results-v3-overlay h1 { font-size: 1.9rem; }
-main#explorer .results-v3-overlay p { margin: 2px 0 0; max-width: none; font-size: 0.82rem; line-height: 1.25; font-weight: 600; color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
-main#explorer[data-mode="annonces"] .results-v3-overlay p { max-width: 11.5em; margin-top: 4px; font-size: 0.86rem; }
+main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: 1.15rem; line-height: 1.06; font-weight: 800; color: #fff; text-align: right; text-shadow: none; }
+main#explorer .results-v3-overlay p { margin: 2px 0 0; max-width: 12em; margin-left: auto; font-size: 0.66rem; line-height: 1.2; font-weight: 600; color: #fff; text-align: right; text-shadow: none; }
+/* Annonces : pastille centrée verticalement à droite, petit accent miel sous le titre */
+main#explorer[data-mode="annonces"] .results-v3-overlay { bottom: auto; top: 50%; transform: translateY(-50%); }
+main#explorer[data-mode="annonces"] .results-v3-overlay h1::after { content: ""; display: block; width: 44px; height: 3px; margin: 3px 0 0 auto; border-radius: 3px; background: var(--lyann-yellow); }
 body.is-native-app[data-explorer-mode] main#explorer #explorerPanel { margin-top: 0; }
 
 /* Recherche */
@@ -76,7 +79,7 @@ main#explorer .lyann-pill {
 }
 main#explorer .lyann-pill span { hyphens: none; overflow-wrap: normal; }
 main#explorer .lyann-pill-icon { width: 24px; height: 24px; fill: none; stroke: var(--r3-green-2); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-main#explorer .lyann-pill.is-active { background: var(--r3-green); border: 0; color: #fff; box-shadow: 0 6px 14px rgba(36, 107, 73, 0.24); }
+main#explorer .lyann-pill.is-active { background: var(--r3-green); border: 0; color: #fff; box-shadow: none; }
 main#explorer .lyann-pill.is-active .lyann-pill-icon { stroke: #fff; }
 main#explorer .lyann-pill:focus-visible { outline: 3px solid var(--lyann-focus); outline-offset: 2px; }
 main#explorer .explorer-active-filters { margin: 0 0 8px; }
@@ -137,7 +140,7 @@ body.results-page.explorer-annonces-map-view main#explorer .explorer-view-toggle
 body.results-page.explorer-annonces-map-view main#explorer .results-v3-header { display: none; }
 
 @media (min-width: 720px) {
-    main#explorer .results-v3-header { width: auto; margin: 0 0 14px; border-radius: 20px; height: 168px; }
+    main#explorer .results-v3-header { max-width: 560px; max-height: none; margin: 0 auto 14px; }
 }
 
 /* Petits écrans (≤ 400 px) : le placeholder doit rester entier */
@@ -180,4 +183,27 @@ body.results-page.explorer-annonces-map-view .needs-map-summary { margin: 0 2px 
 @media (max-width: 380px) {
     main#explorer .lyann-pills { gap: 5px; }
     main#explorer .lyann-pill { min-width: 0; padding: 8px 1px; font-size: 0.62rem; }
+}
+
+/* ── V3.1C · Univers Annonces : jaune miel doux, en accents seulement ──────────────────────────────────────────────
+ * Le vert reste la couleur des composants communs (recherche, filtres, Liste / Carte). Le miel marque l'univers :
+ * accent du header, anneau du filtre actif, pastilles, icônes d'accent, bouton « Voir l'annonce », onglet Annonces. */
+main#explorer[data-mode="annonces"] .explorer-search .explorer-search-icon { color: var(--lyann-honey-icon); }
+main#explorer[data-mode="annonces"] .lyann-pill.is-active { box-shadow: inset 0 0 0 2px var(--lyann-honey); }
+main#explorer[data-mode="annonces"] .explorer-annonce .explorer-annonce-taxonomy { background: var(--lyann-honey-pastel); border-color: var(--lyann-honey); color: var(--lyann-text-primary); }
+main#explorer[data-mode="annonces"] .explorer-annonce .explorer-fact-icon { color: var(--lyann-honey-icon); }
+main#explorer[data-mode="annonces"] .explorer-annonce .explorer-fact-price .explorer-fact-text { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--lyann-honey-pastel); color: var(--lyann-text-primary); font-weight: 800; }
+/* « Voir l'annonce » : miel doux, texte vert profond (7,31:1), sans brillance ni dégradé ; plus fort que la règle verte commune. */
+main#explorer[data-mode="annonces"] .explorer-annonce-actions .btn-primary {
+    background: var(--lyann-honey) !important; background-image: none !important; color: var(--lyann-text-primary) !important;
+    border: 1px solid var(--lyann-honey) !important; box-shadow: 0 3px 8px rgba(22, 61, 45, 0.12) !important; font-weight: 800;
+}
+/* Navigation native : l'onglet Annonces actif reçoit un fond miel très clair (mêmes onglets, même structure). */
+body[data-explorer-mode="annonces"] .mobile-bottom-nav .nav-tab.active { background: var(--lyann-honey-pastel); border-radius: 18px; color: var(--lyann-text-primary); }
+
+/* ≤ 370 px (Android 360) : le placeholder Annonces reste entier. */
+@media (max-width: 370px) {
+    main#explorer .explorer-search { padding-left: 30px; }
+    main#explorer .explorer-search .explorer-search-icon { left: 9px; }
+    main#explorer .explorer-search input::placeholder { font-size: 12px; letter-spacing: -0.02em; }
 }

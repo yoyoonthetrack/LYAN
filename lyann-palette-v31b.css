@@ -38,3 +38,13 @@
     /* Étoile de note : l'ancien or #E5B345 ne faisait que 1,93:1 sur blanc ; #A87B00 fait 3,82:1 (blanc) et 3,45:1 (crème). */
     --lyann-star: #A87B00;
 }
+
+/* V3.1C — jaune miel doux de l'univers Annonces (accents seulement : jamais de grande surface ni de jaune saturé).
+ *   --lyann-honey (#EBC568) : bouton « Voir l'annonce », anneau du filtre actif. Texte vert profond dessus : 7,31:1.
+ *   --lyann-honey-pastel (#F9E9BC) : pastilles (catégorie, prix), onglet Annonces. Vert profond dessus : 10,01:1.
+ *   --lyann-honey-icon (#A87B00) : icônes d'accent sur blanc/crème (3,82 / 3,45:1) ; #EBC568 ne ferait que 1,65:1. */
+:root {
+    --lyann-honey: #EBC568;
+    --lyann-honey-pastel: #F9E9BC;
+    --lyann-honey-icon: #A87B00;
+}

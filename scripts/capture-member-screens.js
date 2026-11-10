@@ -163,6 +163,13 @@ const SCREENS = {
                 mapRect: r(document.querySelector('#explorerMap')),
                 mapMarkers: Array.from(document.querySelectorAll('#explorerMap .leaflet-marker-icon')).map((m) => { const b = m.getBoundingClientRect(); return { label: (m.getAttribute('aria-label') || m.getAttribute('title') || '').slice(0, 80), x: Math.round(b.left + b.width / 2), y: Math.round(b.top + b.height / 2) }; }),
                 mapSummary: (document.querySelector('.needs-map-summary, #explorerMapSummary') || {}).textContent || null,
+                search: (() => {
+                    const i = document.querySelector('#explorerSearchInput'); if (!i || !vis(i)) return null;
+                    const cs = getComputedStyle(i, '::placeholder'); const ics = getComputedStyle(i);
+                    const g = document.createElement('canvas').getContext('2d'); g.font = `${cs.fontWeight} ${cs.fontSize} ${ics.fontFamily}`;
+                    const textWidth = g.measureText(i.placeholder).width; const inner = i.clientWidth - parseFloat(ics.paddingLeft) - parseFloat(ics.paddingRight);
+                    return { placeholder: i.placeholder, fontSize: cs.fontSize, textWidth: Math.round(textWidth), innerWidth: Math.round(inner), fits: textWidth <= inner };
+                })(),
                 docScroll: document.documentElement.scrollHeight - vh,
                 bodyOverflow: getComputedStyle(document.body).overflow,
                 forbiddenOnResults: ['Talents près de chez vous', 'Annonces du moment', 'Explorer les services', 'Voir plus'].filter((t) => /results\.html/.test(location.pathname) && (document.querySelector('main')?.innerText || '').includes(t))
@@ -189,6 +196,36 @@ const SCREENS = {
             }
             await page.evaluate(() => document.getElementById('__ink')?.remove());
             checks.screens[name].headerTextOverPhoto = samples;
+        }
+        if (name === 'lyanneurs' || name === 'annonces') {
+            // Phase 3.1C: header geometry. Head boxes (hair to chin) in photo pixels (758 x 331); the title block must not touch them.
+            checks.screens[name].header = await page.evaluate((mode) => {
+                const HEADS = { lyanneurs: [[112, 10, 285, 215], [350, 2, 468, 142], [505, 12, 682, 178]], annonces: [[60, 3, 322, 185]] };
+                const hd = document.querySelector('.results-v3-header');
+                const img = document.querySelector(`.results-v3-photo.is-${mode}`);
+                const ov = document.querySelector('.results-v3-overlay');
+                const h1 = document.querySelector('.results-v3-overlay h1');
+                const hr = hd.getBoundingClientRect(); const ir = img.getBoundingClientRect(); const orr = ov.getBoundingClientRect();
+                const pos = getComputedStyle(img).objectPosition.split(' ').map((v) => parseFloat(v) / 100);
+                const s = Math.max(ir.width / img.naturalWidth, ir.height / img.naturalHeight);
+                const ox = ir.left + (ir.width - img.naturalWidth * s) * pos[0]; const oy = ir.top + (ir.height - img.naturalHeight * s) * pos[1];
+                const heads = HEADS[mode].map(([x0, y0, x1, y1]) => ({ left: ox + x0 * s, top: oy + y0 * s, right: ox + x1 * s, bottom: oy + y1 * s }));
+                const gapToHeadPx = Math.round(Math.min(...heads.map((b) => (orr.left < b.right && orr.right > b.left ? orr.top - b.bottom : 999))) * 10) / 10;
+                const hit = heads.map((b) => !(orr.right <= b.left || orr.left >= b.right || orr.bottom <= b.top || orr.top >= b.bottom));
+                const cs = getComputedStyle(hd); const cp = getComputedStyle(img);
+                const visibleTop = hr.top; const cut = heads.map((b) => b.top < visibleTop - 0.5 || b.bottom > hr.bottom + 0.5 || b.left < hr.left - 0.5 || b.right > hr.right + 0.5);
+                const pageEl = document.querySelector('.explorer-search-row').getBoundingClientRect();
+                return {
+                    rect: { left: Math.round(hr.left), right: Math.round(hr.right), width: Math.round(hr.width), height: Math.round(hr.height) },
+                    sideMarginMatchesSearch: Math.abs(hr.left - pageEl.left) < 1.5 && Math.abs(hr.right - pageEl.right) < 1.5,
+                    borderRadius: cs.borderTopLeftRadius, boxShadow: cs.boxShadow, filter: cs.filter, photoFilter: cp.filter, photoBoxShadow: cp.boxShadow,
+                    overlayBackgroundOnPhoto: cs.backgroundImage,
+                    textAlign: getComputedStyle(h1).textAlign, textBlockRightGap: Math.round(hr.right - orr.right), textBlockOnRightHalf: orr.left > hr.left + hr.width * 0.4,
+                    headsTouchedByText: hit, gapBelowHeadsPx: gapToHeadPx, headsCutByFrame: cut,
+                    horizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
+                    pills: Array.from(document.querySelectorAll('.lyann-pill')).map((p) => { const b = p.getBoundingClientRect(); return { label: p.textContent.trim().replace(/\s+/g, ' '), inViewport: b.left >= -0.5 && b.right <= window.innerWidth + 0.5 }; })
+                };
+            }, name);
         }
         const file = path.join(outDir, `${name}.png`);
         await page.screenshot({ path: file, fullPage: false });
