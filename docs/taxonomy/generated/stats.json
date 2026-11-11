@@ -1,0 +1,69 @@
+{
+  "families": 8,
+  "plusAutres": true,
+  "trades": 105,
+  "specialties": 414,
+  "terms": 6864,
+  "termsByType": {
+    "label": 528,
+    "syn": 4969,
+    "problem": 1171,
+    "local": 196
+  },
+  "selectableNodes": 516,
+  "restrictedPlaceholders": [
+    "permis_code_route_lecons_conduite",
+    "aide_personnes_agees_aide_toilette_soins",
+    "traduction_interpretation_traduction_assermentee"
+  ],
+  "safety": {
+    "NORMAL": 414,
+    "CAUTION": 88,
+    "PRO_REQUIRED": 14,
+    "RESTRICTED": 3
+  },
+  "multiFamilyTrades": 14,
+  "tradesPerFamily": {
+    "maison": 20,
+    "jardin": 10,
+    "entretien": 8,
+    "beaute": 14,
+    "transport": 12,
+    "famille": 11,
+    "evenement": 15,
+    "numerique": 14,
+    "autres": 1
+  },
+  "specialtiesPerFamily": {
+    "maison": 88,
+    "jardin": 38,
+    "entretien": 27,
+    "beaute": 55,
+    "transport": 47,
+    "famille": 43,
+    "evenement": 61,
+    "numerique": 53,
+    "autres": 2
+  },
+  "legacy": {
+    "leaves": 89,
+    "byKind": {
+      "broad": 10,
+      "exact": 39,
+      "split": 35,
+      "merge": 2,
+      "ambiguous": 3
+    },
+    "skillTitles": 103,
+    "skillByKind": {
+      "exact": 72,
+      "ambiguous": 22,
+      "broad": 8,
+      "split": 1
+    },
+    "requestCategories": 15
+  },
+  "collisions": 179,
+  "ambiguousRegistry": 30,
+  "tuningEntries": 31
+}

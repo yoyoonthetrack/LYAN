@@ -1,0 +1,520 @@
+code,kind,parent_code,family_code,group_code,label_fr,safety,selectable,also_families,regulation_note,sort_order,term_count
+plomberie,trade,,maison,depannage,Plomberie,NORMAL,true,,,1,19
+plomberie_fuite,specialty,plomberie,maison,depannage,Fuite & recherche de fuite,NORMAL,true,,,1,26
+plomberie_robinetterie,specialty,plomberie,maison,depannage,Robinetterie & joints,NORMAL,true,,,2,10
+plomberie_wc,specialty,plomberie,maison,depannage,"WC, lavabo & douche",NORMAL,true,,,3,13
+plomberie_debouchage,specialty,plomberie,maison,depannage,Débouchage & évacuations,NORMAL,true,,,4,12
+plomberie_chauffe_eau,specialty,plomberie,maison,depannage,Chauffe-eau & ballon d'eau chaude,NORMAL,true,,,5,9
+plomberie_citerne_pompe,specialty,plomberie,maison,depannage,"Citerne, cuve & surpresseur",NORMAL,true,,,6,13
+plomberie_installation,specialty,plomberie,maison,depannage,Installation sanitaire & raccordements,NORMAL,true,,,7,12
+electricite,trade,,maison,depannage,Électricité,CAUTION,true,,Installation neuve ou modification du tableau : professionnel qualifié (NF C 15-100). Le particulier peut faire du petit dépannage hors tableau.,2,11
+electricite_panne,specialty,electricite,maison,depannage,Panne & recherche de panne,CAUTION,true,,,1,11
+electricite_prises,specialty,electricite,maison,depannage,Prises & interrupteurs,CAUTION,true,,,2,11
+electricite_luminaires,specialty,electricite,maison,depannage,Luminaires & éclairage,CAUTION,true,,,3,13
+electricite_tableau,specialty,electricite,maison,depannage,Tableau électrique & mise aux normes,PRO_REQUIRED,true,,Intervention sur tableau et raccordement réseau : professionnel qualifié et assuré.,4,11
+electricite_ventilateur,specialty,electricite,maison,depannage,Ventilateurs & brasseurs d'air,CAUTION,true,,,5,9
+electricite_groupe_electrogene,specialty,electricite,maison,depannage,"Groupe électrogène, onduleur & secours",CAUTION,true,,,6,8
+electricite_exterieur,specialty,electricite,maison,depannage,Éclairage & prises extérieurs,CAUTION,true,,,7,9
+climatisation,trade,,maison,depannage,Climatisation & froid,PRO_REQUIRED,true,,Manipulation de fluides frigorigènes : attestation de capacité obligatoire.,3,13
+climatisation_installation,specialty,climatisation,maison,depannage,Pose de climatisation,PRO_REQUIRED,true,,,1,10
+climatisation_entretien,specialty,climatisation,maison,depannage,Entretien & nettoyage,PRO_REQUIRED,true,,,2,9
+climatisation_depannage,specialty,climatisation,maison,depannage,Dépannage & panne,PRO_REQUIRED,true,,,3,10
+climatisation_recharge_fluide,specialty,climatisation,maison,depannage,Recharge de gaz & fluide,PRO_REQUIRED,true,,,4,6
+climatisation_froid_ventilation,specialty,climatisation,maison,depannage,"Froid, chambre froide & VMC",PRO_REQUIRED,true,,,5,8
+serrurerie,trade,,maison,depannage,Serrurerie,CAUTION,true,,Ouverture de porte : justificatif de domicile ou d'identité demandé par le professionnel.,4,14
+serrurerie_ouverture,specialty,serrurerie,maison,depannage,Ouverture de porte,CAUTION,true,,,1,8
+serrurerie_changement_serrure,specialty,serrurerie,maison,depannage,Changement de serrure & cylindre,CAUTION,true,,,2,8
+serrurerie_securite,specialty,serrurerie,maison,depannage,Sécurisation & blindage,CAUTION,true,,,3,9
+serrurerie_cles,specialty,serrurerie,maison,depannage,"Clés, doubles & cadenas",CAUTION,true,,,4,8
+electromenager,trade,,maison,depannage,Électroménager,NORMAL,true,,,5,21
+electromenager_lave_linge,specialty,electromenager,maison,depannage,Lave-linge & sèche-linge,NORMAL,true,,,1,10
+electromenager_frigo_congelateur,specialty,electromenager,maison,depannage,Réfrigérateur & congélateur,NORMAL,true,,,2,11
+electromenager_lave_vaisselle,specialty,electromenager,maison,depannage,Lave-vaisselle,NORMAL,true,,,3,4
+electromenager_cuisson,specialty,electromenager,maison,depannage,"Four, plaques & cuisinière",NORMAL,true,,,4,10
+electromenager_petit_electromenager,specialty,electromenager,maison,depannage,Petit électroménager,NORMAL,true,,,5,10
+vitrerie_stores,trade,,maison,depannage,"Vitrerie, volets & stores",NORMAL,true,,,6,15
+vitrerie_stores_vitre,specialty,vitrerie_stores,maison,depannage,Vitres & miroirs,NORMAL,true,,,1,10
+vitrerie_stores_volets_stores,specialty,vitrerie_stores,maison,depannage,"Volets, stores & jalousies",NORMAL,true,,,2,15
+vitrerie_stores_moustiquaire,specialty,vitrerie_stores,maison,depannage,Moustiquaires,NORMAL,true,,,3,6
+vitrerie_stores_fenetre_alu,specialty,vitrerie_stores,maison,depannage,"Fenêtres, baies & portes-fenêtres",NORMAL,true,,,4,9
+securite_automatismes,trade,,maison,equipement,"Alarme, portail & sécurité",NORMAL,true,,,7,19
+securite_automatismes_alarme_video,specialty,securite_automatismes,maison,equipement,Alarme & vidéosurveillance,NORMAL,true,,,1,9
+securite_automatismes_portail_motorisation,specialty,securite_automatismes,maison,equipement,Portail & motorisation,NORMAL,true,,,2,17
+securite_automatismes_interphone,specialty,securite_automatismes,maison,equipement,"Interphone, visiophone & sonnette",NORMAL,true,,,3,9
+securite_automatismes_detecteurs,specialty,securite_automatismes,maison,equipement,Détecteurs de fumée & sécurité incendie,NORMAL,true,,,4,6
+energie_solaire,trade,,maison,equipement,"Solaire, énergie & recharge",PRO_REQUIRED,true,,"Installation photovoltaïque, chauffe-eau solaire et bornes de recharge : professionnel qualifié (RGE) et assuré.",8,11
+energie_solaire_chauffe_eau_solaire,specialty,energie_solaire,maison,equipement,Chauffe-eau solaire,PRO_REQUIRED,true,,,1,7
+energie_solaire_photovoltaique,specialty,energie_solaire,maison,equipement,Panneaux photovoltaïques,PRO_REQUIRED,true,,,2,9
+energie_solaire_borne_recharge,specialty,energie_solaire,maison,equipement,Borne de recharge véhicule électrique,PRO_REQUIRED,true,,,3,6
+peinture,trade,,maison,travaux,Peinture & revêtements muraux,NORMAL,true,,,9,15
+peinture_interieur,specialty,peinture,maison,travaux,Peinture intérieure,NORMAL,true,,,1,10
+peinture_facade,specialty,peinture,maison,travaux,Façade & peinture extérieure,NORMAL,true,,,2,9
+peinture_enduit,specialty,peinture,maison,travaux,Enduit & ratissage,NORMAL,true,,,3,10
+peinture_boiseries,specialty,peinture,maison,travaux,"Boiseries, volets & lasure",NORMAL,true,,,4,10
+peinture_decoration,specialty,peinture,maison,travaux,Papier peint & décoration murale,NORMAL,true,,,5,10
+maconnerie,trade,,maison,travaux,Maçonnerie & gros œuvre,NORMAL,true,,,10,17
+maconnerie_muret_cloture,specialty,maconnerie,maison,travaux,Murets & clôtures maçonnées,NORMAL,true,,,1,9
+maconnerie_dalle_terrasse,specialty,maconnerie,maison,travaux,"Dalles, chapes & terrasses",NORMAL,true,,,2,11
+maconnerie_reparation,specialty,maconnerie,maison,travaux,Fissures & petites réparations,NORMAL,true,,,3,16
+maconnerie_petite_construction,specialty,maconnerie,maison,travaux,"Abris, extensions & petites constructions",CAUTION,true,,"Extension et gros œuvre : permis ou déclaration préalable, assurance décennale du professionnel.",4,12
+maconnerie_ouverture_mur,specialty,maconnerie,maison,travaux,Ouvertures & démolition légère,CAUTION,true,,Mur porteur : étude préalable obligatoire.,5,9
+carrelage_sols,trade,,maison,travaux,Carrelage & sols,NORMAL,true,,,11,16
+carrelage_sols_pose_carrelage,specialty,carrelage_sols,maison,travaux,Pose de carrelage,NORMAL,true,,,1,10
+carrelage_sols_faience_credence,specialty,carrelage_sols,maison,travaux,Faïence & crédence,NORMAL,true,,,2,8
+carrelage_sols_joints_renovation,specialty,carrelage_sols,maison,travaux,Joints & rénovation de carrelage,NORMAL,true,,,3,9
+carrelage_sols_parquet_stratifie,specialty,carrelage_sols,maison,travaux,"Parquet, stratifié & sols souples",NORMAL,true,,,4,11
+menuiserie_bois,trade,,maison,travaux,Menuiserie & agencement bois,NORMAL,true,,,12,12
+menuiserie_bois_sur_mesure,specialty,menuiserie_bois,maison,travaux,"Placards, dressings & meubles sur mesure",NORMAL,true,,,1,10
+menuiserie_bois_portes_fenetres_bois,specialty,menuiserie_bois,maison,travaux,"Portes, fenêtres & volets bois",NORMAL,true,,,2,10
+menuiserie_bois_terrasse_pergola,specialty,menuiserie_bois,maison,travaux,"Terrasses bois, pergolas & carports",NORMAL,true,,,3,17
+menuiserie_bois_reparation_bois,specialty,menuiserie_bois,maison,travaux,Réparation de meubles & boiseries,NORMAL,true,,,4,9
+menuiserie_bois_cuisine_sdb,specialty,menuiserie_bois,maison,travaux,Cuisines & salles de bain équipées,NORMAL,true,,,5,8
+platrerie_isolation,trade,,maison,travaux,"Plâtrerie, cloisons & isolation",NORMAL,true,,,13,13
+platrerie_isolation_cloisons,specialty,platrerie_isolation,maison,travaux,Cloisons & doublages,NORMAL,true,,,1,11
+platrerie_isolation_faux_plafond,specialty,platrerie_isolation,maison,travaux,Faux plafonds,NORMAL,true,,,2,8
+platrerie_isolation_isolation,specialty,platrerie_isolation,maison,travaux,Isolation thermique & phonique,NORMAL,true,,,3,12
+toiture_etancheite,trade,,maison,travaux,"Toiture, charpente & étanchéité",CAUTION,true,,"Travail en hauteur : équipements de sécurité obligatoires, assurance décennale pour la couverture.",14,19
+toiture_etancheite_fuite_toiture,specialty,toiture_etancheite,maison,travaux,Fuite de toit & réparation,CAUTION,true,,,1,12
+toiture_etancheite_gouttieres,specialty,toiture_etancheite,maison,travaux,Gouttières & descentes d'eau,CAUTION,true,,,2,8
+toiture_etancheite_etancheite_terrasse,specialty,toiture_etancheite,maison,travaux,Étanchéité de toit-terrasse,CAUTION,true,,,3,11
+toiture_etancheite_couverture_tole,specialty,toiture_etancheite,maison,travaux,"Couverture tôle, bac acier & charpente légère",CAUTION,true,,,4,11
+toiture_etancheite_urgence_intemperies,specialty,toiture_etancheite,maison,travaux,Mise en sécurité après intempéries,CAUTION,true,,,5,10
+ferronnerie_soudure,trade,,maison,travaux,"Ferronnerie, soudure & métallerie",NORMAL,true,,,15,14
+ferronnerie_soudure_soudure,specialty,ferronnerie_soudure,maison,travaux,Soudure & réparations métalliques,NORMAL,true,,,1,11
+ferronnerie_soudure_garde_corps_escalier,specialty,ferronnerie_soudure,maison,travaux,"Garde-corps, escaliers & rampes",NORMAL,true,,,2,9
+ferronnerie_soudure_grilles_portails,specialty,ferronnerie_soudure,maison,travaux,Grilles de protection & portails sur mesure,NORMAL,true,,,3,9
+cloture_portail,trade,,maison,travaux,Clôtures & portails,NORMAL,true,jardin,,16,13
+cloture_portail_grillage,specialty,cloture_portail,maison,travaux,Clôture grillagée,NORMAL,true,,,1,10
+cloture_portail_bois_pvc_alu,specialty,cloture_portail,maison,travaux,"Clôture bois, PVC & aluminium",NORMAL,true,,,2,9
+cloture_portail_brise_vue,specialty,cloture_portail,maison,travaux,"Brise-vue, canisses & claustras",NORMAL,true,,,3,10
+cloture_portail_portail,specialty,cloture_portail,maison,travaux,Pose de portail & portillon,NORMAL,true,,,4,9
+traitement_batiment,trade,,maison,travaux,"Termites, humidité & traitement du bâti",CAUTION,true,entretien,Produits biocides : certification des applicateurs professionnels. Diagnostic termites réglementé en zone concernée.,17,19
+traitement_batiment_termites,specialty,traitement_batiment,maison,travaux,Termites & insectes du bois,CAUTION,true,,,1,11
+traitement_batiment_humidite,specialty,traitement_batiment,maison,travaux,"Humidité, moisissures & salpêtre",CAUTION,true,,,2,12
+traitement_batiment_traitement_bois,specialty,traitement_batiment,maison,travaux,Traitement & protection du bois,CAUTION,true,,,3,8
+renovation,trade,,maison,travaux,Rénovation tous corps d'état,NORMAL,true,,,18,14
+renovation_salle_de_bain,specialty,renovation,maison,travaux,Rénovation de salle de bain,NORMAL,true,,,1,8
+renovation_cuisine,specialty,renovation,maison,travaux,Rénovation de cuisine,NORMAL,true,,,2,7
+renovation_logement,specialty,renovation,maison,travaux,Rafraîchissement & rénovation de logement,NORMAL,true,,,3,10
+renovation_suivi_chantier,specialty,renovation,maison,travaux,Suivi de chantier & coordination,NORMAL,true,,,4,10
+bricolage,trade,,maison,petits,Bricolage & petits travaux,NORMAL,true,,,19,15
+bricolage_montage_meubles,specialty,bricolage,maison,petits,Montage de meubles,NORMAL,true,,,1,17
+bricolage_fixations,specialty,bricolage,maison,petits,Fixations & accrochages,NORMAL,true,,,2,15
+bricolage_petites_reparations,specialty,bricolage,maison,petits,Petites réparations & ajustements,NORMAL,true,,,3,13
+bricolage_homme_a_tout_faire,specialty,bricolage,maison,petits,Homme à tout faire (travaux divers),NORMAL,true,,,4,9
+bricolage_accessoires_sdb_cuisine,specialty,bricolage,maison,petits,"Pose d'accessoires (salle de bain, cuisine)",NORMAL,true,,,5,9
+location_outillage,trade,,maison,petits,Prêt & location d'outillage,NORMAL,true,evenement,,20,13
+location_outillage_outils_travaux,specialty,location_outillage,maison,petits,Outils & petit matériel de chantier,NORMAL,true,,,1,13
+location_outillage_echafaudage_echelle,specialty,location_outillage,maison,petits,"Échafaudage, échelle & accès en hauteur",NORMAL,true,,,2,9
+location_outillage_materiel_jardin_nettoyage,specialty,location_outillage,maison,petits,Matériel de jardin & nettoyage,NORMAL,true,,,3,11
+jardinage_entretien,trade,,jardin,entretien,Entretien de jardin,NORMAL,true,,,21,14
+jardinage_entretien_tonte,specialty,jardinage_entretien,jardin,entretien,Tonte de pelouse,NORMAL,true,,,1,10
+jardinage_entretien_taille_haies,specialty,jardinage_entretien,jardin,entretien,Taille de haies & arbustes,NORMAL,true,,,2,11
+jardinage_entretien_desherbage,specialty,jardinage_entretien,jardin,entretien,Désherbage & entretien de massifs,NORMAL,true,,,3,11
+jardinage_entretien_dechets_verts,specialty,jardinage_entretien,jardin,entretien,Évacuation de déchets verts,NORMAL,true,,,4,10
+jardinage_entretien_entretien_regulier,specialty,jardinage_entretien,jardin,entretien,Entretien régulier (abonnement jardinier),NORMAL,true,,,5,9
+debroussaillage,trade,,jardin,entretien,Débroussaillage & nettoyage de terrain,CAUTION,true,,Obligation légale de débroussaillement autour des habitations en zones concernées.,22,16
+debroussaillage_terrain,specialty,debroussaillage,jardin,entretien,Débroussaillage de terrain,CAUTION,true,,,1,11
+debroussaillage_avant_construction,specialty,debroussaillage,jardin,entretien,Nettoyage avant construction ou vente,CAUTION,true,,,2,9
+debroussaillage_talus_ravine,specialty,debroussaillage,jardin,entretien,"Talus, pentes & ravines",CAUTION,true,,,3,10
+debroussaillage_obligation_legale,specialty,debroussaillage,jardin,entretien,Débroussaillement obligatoire,CAUTION,true,,,4,8
+elagage_abattage,trade,,jardin,arbres,Élagage & abattage,CAUTION,true,,"Travail en hauteur et tronçonneuse : équipements de protection obligatoires, assurance du professionnel.",23,15
+elagage_abattage_taille_arbres,specialty,elagage_abattage,jardin,arbres,Taille & élagage d'arbres,CAUTION,true,,,1,12
+elagage_abattage_palmiers,specialty,elagage_abattage,jardin,arbres,Palmiers & cocotiers,CAUTION,true,,,2,12
+elagage_abattage_abattage,specialty,elagage_abattage,jardin,arbres,Abattage & dessouchage,CAUTION,true,,,3,10
+elagage_abattage_tronconnage_urgence,specialty,elagage_abattage,jardin,arbres,Arbre tombé & tronçonnage,CAUTION,true,,,4,11
+paysagisme,trade,,jardin,creation,Paysagisme & plantations,NORMAL,true,,,24,14
+paysagisme_amenagement,specialty,paysagisme,jardin,creation,Aménagement & création de jardin,NORMAL,true,,,1,13
+paysagisme_plantations,specialty,paysagisme,jardin,creation,"Plantations (arbres, haies, fleurs)",NORMAL,true,,,2,13
+paysagisme_gazon,specialty,paysagisme,jardin,creation,Gazon & engazonnement,NORMAL,true,,,3,10
+paysagisme_conseil_plantes,specialty,paysagisme,jardin,creation,"Conseil, diagnostic & soin des plantes",NORMAL,true,,,4,10
+arrosage_irrigation,trade,,jardin,creation,Arrosage & irrigation,NORMAL,true,,,25,11
+arrosage_irrigation_installation,specialty,arrosage_irrigation,jardin,creation,Installation d'arrosage automatique,NORMAL,true,,,1,9
+arrosage_irrigation_reparation,specialty,arrosage_irrigation,jardin,creation,Réparation d'arrosage,NORMAL,true,,,2,8
+arrosage_irrigation_recuperation_eau,specialty,arrosage_irrigation,jardin,creation,Récupération & stockage d'eau de pluie,NORMAL,true,,,3,8
+piscine_bassin,trade,,jardin,exterieur,Piscine & bassin,NORMAL,true,,,26,15
+piscine_bassin_entretien,specialty,piscine_bassin,jardin,exterieur,Entretien de piscine,NORMAL,true,,,1,15
+piscine_bassin_mise_en_service,specialty,piscine_bassin,jardin,exterieur,"Mise en service, hivernage & remise en route",NORMAL,true,,,2,9
+piscine_bassin_reparation_equipements,specialty,piscine_bassin,jardin,exterieur,"Réparation (pompe, filtre, liner)",NORMAL,true,,,3,12
+piscine_bassin_spa_jacuzzi,specialty,piscine_bassin,jardin,exterieur,Spa & jacuzzi,NORMAL,true,,,4,7
+nettoyage_exterieur,trade,,jardin,exterieur,Nettoyage extérieur & haute pression,NORMAL,true,entretien,,27,16
+nettoyage_exterieur_haute_pression,specialty,nettoyage_exterieur,jardin,exterieur,"Nettoyage haute pression (terrasses, façades, allées)",NORMAL,true,,,1,12
+nettoyage_exterieur_demoussage,specialty,nettoyage_exterieur,jardin,exterieur,Démoussage de toiture & surfaces,NORMAL,true,,,2,10
+nettoyage_exterieur_algues_debris,specialty,nettoyage_exterieur,jardin,exterieur,"Évacuation d'algues, débris & remise en état après intempéries",NORMAL,true,,,3,14
+amenagement_exterieur,trade,,jardin,exterieur,"Terrasses, abris & allées",NORMAL,true,maison,,28,17
+amenagement_exterieur_terrasse,specialty,amenagement_exterieur,jardin,exterieur,Création & rénovation de terrasse,NORMAL,true,,,1,10
+amenagement_exterieur_allees_paves,specialty,amenagement_exterieur,jardin,exterieur,"Allées, pavés & cheminements",NORMAL,true,,,2,12
+amenagement_exterieur_abri_pergola,specialty,amenagement_exterieur,jardin,exterieur,"Abris, pergolas & carports",NORMAL,true,,,3,13
+amenagement_exterieur_barbecue_cuisine_ete,specialty,amenagement_exterieur,jardin,exterieur,Barbecue & cuisine d'été,NORMAL,true,,,4,10
+potager_vivrier,trade,,jardin,agricole,Potager & jardin vivrier,NORMAL,true,,,29,16
+potager_vivrier_potager,specialty,potager_vivrier,jardin,agricole,Création & entretien de potager,NORMAL,true,,,1,12
+potager_vivrier_verger_fruitiers,specialty,potager_vivrier,jardin,agricole,Verger & arbres fruitiers,NORMAL,true,,,2,13
+potager_vivrier_compost_permaculture,specialty,potager_vivrier,jardin,agricole,Compost & permaculture,NORMAL,true,,,3,11
+agricole,trade,,jardin,agricole,Aide agricole & petit élevage,NORMAL,true,,,30,21
+agricole_recolte_entretien,specialty,agricole,jardin,agricole,Récolte & entretien de parcelle,NORMAL,true,,,1,12
+agricole_petit_elevage,specialty,agricole,jardin,agricole,Petit élevage & basse-cour,NORMAL,true,,,2,13
+agricole_apiculture,specialty,agricole,jardin,agricole,Apiculture & miel,NORMAL,true,,,3,9
+agricole_marche_producteur,specialty,agricole,jardin,agricole,Vente & marché de producteurs,NORMAL,true,,,4,10
+menage_domicile,trade,,entretien,menage,Ménage à domicile,NORMAL,true,,,31,13
+menage_domicile_regulier,specialty,menage_domicile,entretien,menage,Ménage régulier,NORMAL,true,,,1,10
+menage_domicile_grand_menage,specialty,menage_domicile,entretien,menage,Grand ménage & remise en propreté,NORMAL,true,,,2,9
+menage_domicile_ponctuel,specialty,menage_domicile,entretien,menage,"Ménage ponctuel (avant/après fête, départ)",NORMAL,true,,,3,10
+menage_domicile_cuisine_sdb,specialty,menage_domicile,entretien,menage,"Cuisine, salle de bain & sanitaires",NORMAL,true,,,4,11
+linge_repassage,trade,,entretien,linge,Linge & repassage,NORMAL,true,,,32,12
+linge_repassage_repassage,specialty,linge_repassage,entretien,linge,Repassage,NORMAL,true,,,1,10
+linge_repassage_lessive_linge,specialty,linge_repassage,entretien,linge,Lessive & entretien du linge,NORMAL,true,,,2,12
+linge_repassage_literie_rideaux,specialty,linge_repassage,entretien,linge,"Literie, rideaux & gros textiles",NORMAL,true,,,3,11
+nettoyage_special,trade,,entretien,special,Nettoyages spécialisés,NORMAL,true,,,33,24
+nettoyage_special_vitres,specialty,nettoyage_special,entretien,special,"Vitres, baies & vérandas",NORMAL,true,,,1,11
+nettoyage_special_canape_tapis_matelas,specialty,nettoyage_special,entretien,special,"Canapé, tapis, moquette & matelas",NORMAL,true,,,2,13
+nettoyage_special_fin_chantier,specialty,nettoyage_special,entretien,special,Nettoyage de fin de chantier,NORMAL,true,,,3,9
+nettoyage_special_sinistre_inondation,specialty,nettoyage_special,entretien,special,Remise en état après sinistre ou inondation,NORMAL,true,,,4,12
+nettoyage_locaux_pro,trade,,entretien,locaux,Nettoyage de locaux & parties communes,NORMAL,true,,,34,19
+nettoyage_locaux_pro_bureaux_commerces,specialty,nettoyage_locaux_pro,entretien,locaux,"Bureaux, commerces & cabinets",NORMAL,true,,,1,11
+nettoyage_locaux_pro_parties_communes,specialty,nettoyage_locaux_pro,entretien,locaux,Parties communes & copropriétés,NORMAL,true,,,2,11
+nettoyage_locaux_pro_locaux_associatifs,specialty,nettoyage_locaux_pro,entretien,locaux,Salles communales & locaux associatifs,NORMAL,true,,,3,8
+conciergerie_location,trade,,entretien,locaux,Conciergerie & location saisonnière,NORMAL,true,,,35,19
+conciergerie_location_menage_rotation,specialty,conciergerie_location,entretien,locaux,Ménage & rotation de linge,NORMAL,true,,,1,11
+conciergerie_location_accueil_cles,specialty,conciergerie_location,entretien,locaux,Accueil des voyageurs & remise des clés,NORMAL,true,,,2,10
+conciergerie_location_petit_entretien_location,specialty,conciergerie_location,entretien,locaux,Petit entretien & dépannage de location,NORMAL,true,,,3,9
+gardiennage_maison,trade,,entretien,locaux,Gardiennage & surveillance de logement,NORMAL,true,,,36,19
+gardiennage_maison_surveillance_absence,specialty,gardiennage_maison,entretien,locaux,Surveillance pendant une absence,NORMAL,true,,,1,10
+gardiennage_maison_plantes_courrier,specialty,gardiennage_maison,entretien,locaux,Arrosage des plantes & courrier,NORMAL,true,,,2,9
+gardiennage_maison_presence_nuit,specialty,gardiennage_maison,entretien,locaux,Présence & garde de maison,NORMAL,true,,,3,9
+nuisibles_hygiene,trade,,entretien,hygiene,"Insectes, rongeurs & hygiène",CAUTION,true,maison,"Produits biocides : certification des applicateurs professionnels (certibiocide). Les termites relèvent de « Termites, humidité & traitement du bâti ».",37,22
+nuisibles_hygiene_insectes,specialty,nuisibles_hygiene,entretien,hygiene,"Cafards, fourmis, moustiques & guêpes",CAUTION,true,,,1,18
+nuisibles_hygiene_rongeurs,specialty,nuisibles_hygiene,entretien,hygiene,"Rats, souris & rongeurs",CAUTION,true,,,2,11
+nuisibles_hygiene_desinfection,specialty,nuisibles_hygiene,entretien,hygiene,Désinfection & assainissement,CAUTION,true,,,3,10
+nuisibles_hygiene_serpents_animaux,specialty,nuisibles_hygiene,entretien,hygiene,"Serpents, animaux sauvages & nids",CAUTION,true,,,4,11
+rangement_organisation,trade,,entretien,hygiene,Rangement & organisation d'intérieur,NORMAL,true,,,38,14
+rangement_organisation_tri_desencombrement,specialty,rangement_organisation,entretien,hygiene,Tri & désencombrement,NORMAL,true,,,1,12
+rangement_organisation_organisation_interieure,specialty,rangement_organisation,entretien,hygiene,"Organisation, dressing & rangement",NORMAL,true,,,2,11
+rangement_organisation_archivage_papiers,specialty,rangement_organisation,entretien,hygiene,Classement de papiers & archives domestiques,NORMAL,true,,,3,9
+coiffure,trade,,beaute,coiffure,Coiffure,NORMAL,true,,,39,13
+coiffure_coupe_femme_enfant,specialty,coiffure,beaute,coiffure,Coupe femme & enfant,NORMAL,true,,,1,11
+coiffure_barbier,specialty,coiffure,beaute,coiffure,Barbier & coupe homme,NORMAL,true,,,2,12
+coiffure_coloration_soins,specialty,coiffure,beaute,coiffure,"Coloration, lissage & soins",NORMAL,true,,,3,13
+coiffure_coiffure_evenement,specialty,coiffure,beaute,coiffure,Coiffure de mariage & événement,NORMAL,true,,,4,10
+tresses_cheveux_naturels,trade,,beaute,coiffure,"Tresses, locks & cheveux texturés",NORMAL,true,,,40,23
+tresses_cheveux_naturels_tresses_nattes,specialty,tresses_cheveux_naturels,beaute,coiffure,Tresses & nattes,NORMAL,true,,,1,15
+tresses_cheveux_naturels_locks,specialty,tresses_cheveux_naturels,beaute,coiffure,Locks & dreadlocks,NORMAL,true,,,2,12
+tresses_cheveux_naturels_tissage_extensions,specialty,tresses_cheveux_naturels,beaute,coiffure,"Tissage, extensions & perruques",NORMAL,true,,,3,13
+tresses_cheveux_naturels_soins_afro,specialty,tresses_cheveux_naturels,beaute,coiffure,Soins & coiffures protectrices,NORMAL,true,,,4,12
+esthetique,trade,,beaute,esthetique,Esthétique & soins du corps,NORMAL,true,,,41,15
+esthetique_soins_visage,specialty,esthetique,beaute,esthetique,Soins du visage,NORMAL,true,,,1,11
+esthetique_epilation,specialty,esthetique,beaute,esthetique,Épilation,NORMAL,true,,,2,10
+esthetique_cils_sourcils,specialty,esthetique,beaute,esthetique,Cils & sourcils,NORMAL,true,,,3,10
+esthetique_soins_corps,specialty,esthetique,beaute,esthetique,Soins du corps & gommage,NORMAL,true,,,4,11
+ongles,trade,,beaute,esthetique,Ongles & manucure,NORMAL,true,,,42,13
+ongles_manucure,specialty,ongles,beaute,esthetique,Manucure & vernis semi-permanent,NORMAL,true,,,1,11
+ongles_pose_gel_capsules,specialty,ongles,beaute,esthetique,"Pose d'ongles (gel, résine, capsules)",NORMAL,true,,,2,12
+ongles_nail_art,specialty,ongles,beaute,esthetique,Nail art,NORMAL,true,,,3,9
+ongles_pedicure,specialty,ongles,beaute,esthetique,Pédicure & soins des pieds,NORMAL,true,,,4,8
+maquillage,trade,,beaute,esthetique,Maquillage,NORMAL,true,,,43,11
+maquillage_mariee,specialty,maquillage,beaute,esthetique,Maquillage de mariée,NORMAL,true,,,1,7
+maquillage_evenement,specialty,maquillage,beaute,esthetique,Maquillage de soirée & événement,NORMAL,true,,,2,9
+maquillage_cours,specialty,maquillage,beaute,esthetique,Cours & conseils maquillage,NORMAL,true,,,3,9
+maquillage_artistique_enfants,specialty,maquillage,beaute,esthetique,Maquillage artistique & enfants,NORMAL,true,,,4,11
+massage_bien_etre,trade,,beaute,bienetre,Massage & relaxation,CAUTION,true,,"Bien-être non thérapeutique uniquement. Les actes de soin, la kinésithérapie et tout acte médical sont hors périmètre LYANN.",44,13
+massage_bien_etre_detente,specialty,massage_bien_etre,beaute,bienetre,Massage de détente,CAUTION,true,,,1,11
+massage_bien_etre_sportif_recuperation,specialty,massage_bien_etre,beaute,bienetre,Massage sportif & récupération,CAUTION,true,,,2,8
+massage_bien_etre_reflexologie,specialty,massage_bien_etre,beaute,bienetre,Réflexologie,CAUTION,true,,,3,7
+massage_bien_etre_sophrologie_relaxation,specialty,massage_bien_etre,beaute,bienetre,"Relaxation, sophrologie & méditation guidée",CAUTION,true,,,4,10
+massage_bien_etre_massage_bebe_femme_enceinte,specialty,massage_bien_etre,beaute,bienetre,Massage bébé & femme enceinte (bien-être),CAUTION,true,,,5,7
+yoga_pilates,trade,,beaute,bienetre,"Yoga, pilates & gym douce",NORMAL,true,,,45,15
+yoga_pilates_yoga,specialty,yoga_pilates,beaute,bienetre,Cours de yoga,NORMAL,true,,,1,13
+yoga_pilates_pilates,specialty,yoga_pilates,beaute,bienetre,Pilates & renforcement doux,NORMAL,true,,,2,10
+yoga_pilates_gym_douce_seniors,specialty,yoga_pilates,beaute,bienetre,Gym douce & seniors,NORMAL,true,,,3,11
+yoga_pilates_meditation_taichi,specialty,yoga_pilates,beaute,bienetre,"Méditation, qi gong & tai-chi",NORMAL,true,,,4,9
+coaching_sportif,trade,,beaute,sport,Coaching sportif & remise en forme,NORMAL,true,,,46,17
+coaching_sportif_fitness_muscu,specialty,coaching_sportif,beaute,sport,Fitness & musculation,NORMAL,true,,,1,13
+coaching_sportif_perte_poids_forme,specialty,coaching_sportif,beaute,sport,Perte de poids & remise en forme,NORMAL,true,,,2,11
+coaching_sportif_running_marche,specialty,coaching_sportif,beaute,sport,"Course à pied, marche & trail",NORMAL,true,,,3,11
+coaching_sportif_preparation_physique,specialty,coaching_sportif,beaute,sport,Préparation physique & performance,NORMAL,true,,,4,9
+danse,trade,,beaute,sport,Danse,NORMAL,true,evenement,,47,25
+danse_cours_adultes,specialty,danse,beaute,sport,Cours de danse (adultes),NORMAL,true,,,1,15
+danse_cours_enfants,specialty,danse,beaute,sport,Danse & éveil corporel (enfants),NORMAL,true,,,2,9
+danse_choregraphie_mariage,specialty,danse,beaute,sport,Chorégraphie de mariage & événement,NORMAL,true,,,3,10
+danse_danses_traditionnelles,specialty,danse,beaute,sport,Danses traditionnelles & folklore,NORMAL,true,,,4,16
+sports_ballon_raquette,trade,,beaute,sport,"Tennis, foot, basket & sports de balle",NORMAL,true,,,48,19
+sports_ballon_raquette_tennis_raquettes,specialty,sports_ballon_raquette,beaute,sport,"Tennis, padel & sports de raquette",NORMAL,true,,,1,13
+sports_ballon_raquette_football_basket_volley,specialty,sports_ballon_raquette,beaute,sport,"Football, basket, volley & sports collectifs",NORMAL,true,,,2,14
+sports_ballon_raquette_petanque_jeux,specialty,sports_ballon_raquette,beaute,sport,Pétanque & jeux d'adresse,NORMAL,true,,,3,10
+natation,trade,,beaute,sport,Natation & activités aquatiques,NORMAL,true,,,49,13
+natation_cours_enfants,specialty,natation,beaute,sport,Natation enfants & bébés nageurs,NORMAL,true,,,1,9
+natation_cours_adultes,specialty,natation,beaute,sport,Natation adultes & peur de l'eau,NORMAL,true,,,2,10
+natation_aquagym,specialty,natation,beaute,sport,Aquagym & aquabike,NORMAL,true,,,3,8
+natation_surveillance_baignade,specialty,natation,beaute,sport,Surveillance de baignade,PRO_REQUIRED,true,,Surveillance de baignade : diplôme (BNSSA ou équivalent) exigé.,4,8
+arts_martiaux,trade,,beaute,sport,Arts martiaux & self-défense,NORMAL,true,,,50,19
+arts_martiaux_judo_karate_taekwondo,specialty,arts_martiaux,beaute,sport,"Judo, karaté & taekwondo",NORMAL,true,,,1,12
+arts_martiaux_boxe_combat,specialty,arts_martiaux,beaute,sport,"Boxe, kick-boxing & sports de combat",NORMAL,true,,,2,13
+arts_martiaux_self_defense,specialty,arts_martiaux,beaute,sport,Self-défense,NORMAL,true,,,3,9
+arts_martiaux_capoeira_traditions,specialty,arts_martiaux,beaute,sport,Capoeira & arts martiaux traditionnels,NORMAL,true,,,4,12
+activites_nautiques,trade,,beaute,nature,Activités nautiques & pêche de loisir,CAUTION,true,,"Plongée, voile et activités encadrées contre rémunération : brevets d'État ou diplômes fédéraux exigés ; équipements de sécurité obligatoires.",51,22
+activites_nautiques_plongee_snorkeling,specialty,activites_nautiques,beaute,nature,Plongée & snorkeling,PRO_REQUIRED,true,,Encadrement de plongée : brevet d'État ou équivalent exigé.,1,12
+activites_nautiques_voile_glisse,specialty,activites_nautiques,beaute,nature,"Voile, kayak, paddle & glisse",CAUTION,true,,,2,16
+activites_nautiques_peche_loisir,specialty,activites_nautiques,beaute,nature,Pêche de loisir & sorties en mer,CAUTION,true,,,3,15
+activites_nautiques_balade_bateau,specialty,activites_nautiques,beaute,nature,Balades en bateau & sorties à la journée,CAUTION,true,,,4,10
+randonnee_nature,trade,,beaute,nature,Randonnée & balades guidées,CAUTION,true,,Accompagnement rémunéré en montagne ou milieu naturel : diplôme d'accompagnateur exigé.,52,16
+randonnee_nature_randonnee_guidee,specialty,randonnee_nature,beaute,nature,Randonnée guidée,CAUTION,true,,,1,14
+randonnee_nature_decouverte_nature,specialty,randonnee_nature,beaute,nature,"Découverte de la faune, de la flore & du patrimoine",CAUTION,true,,,2,11
+randonnee_nature_canyoning_aventure,specialty,randonnee_nature,beaute,nature,Canyoning & activités d'aventure,PRO_REQUIRED,true,,Activités d'aventure encadrées : diplôme d'État et assurance exigés.,3,10
+covoiturage_trajets,trade,,transport,personnes,Covoiturage & trajets,CAUTION,true,,"Partage de frais uniquement. Le transport payant de personnes (taxi, VTC) est une activité réglementée.",53,17
+covoiturage_trajets_trajet_local,specialty,covoiturage_trajets,transport,personnes,Trajets locaux & covoiturage,CAUTION,true,,,1,12
+covoiturage_trajets_aeroport_port,specialty,covoiturage_trajets,transport,personnes,"Aéroport, gare, port & transferts",CAUTION,true,,,2,15
+covoiturage_trajets_trajets_enfants_seniors,specialty,covoiturage_trajets,transport,personnes,"Accompagnement de trajets (enfants, seniors)",CAUTION,true,,,3,10
+covoiturage_trajets_longue_distance,specialty,covoiturage_trajets,transport,personnes,Trajets longue distance & déplacements ponctuels,CAUTION,true,,,4,9
+colis_livraison,trade,,transport,colis,Colis & livraison,NORMAL,true,,,54,15
+colis_livraison_colis_local,specialty,colis_livraison,transport,colis,Retrait & livraison de colis,NORMAL,true,,,1,14
+colis_livraison_livraison_objets,specialty,colis_livraison,transport,colis,Livraison d'objets & coursier,NORMAL,true,,,2,11
+colis_livraison_fret_inter_iles,specialty,colis_livraison,transport,colis,"Fret, envois inter-îles & métropole",NORMAL,true,,,3,17
+colis_livraison_livraison_repas,specialty,colis_livraison,transport,colis,Livraison de repas & plats,NORMAL,true,,,4,10
+demenagement,trade,,transport,demenagement,Déménagement,NORMAL,true,,,55,18
+demenagement_aide_demenagement,specialty,demenagement,transport,demenagement,Aide au déménagement,NORMAL,true,,,1,11
+demenagement_demenagement_complet,specialty,demenagement,transport,demenagement,Déménagement complet (camion + équipe),NORMAL,true,,,2,9
+demenagement_emballage_remontage,specialty,demenagement,transport,demenagement,"Emballage, démontage & remontage",NORMAL,true,,,3,9
+demenagement_garde_meuble,specialty,demenagement,transport,demenagement,Garde-meubles & stockage,NORMAL,true,,,4,9
+transport_objets,trade,,transport,demenagement,Transport d'objets & utilitaire,NORMAL,true,,,56,14
+transport_objets_meubles_electromenager,specialty,transport_objets,transport,demenagement,Transport de meubles & électroménager,NORMAL,true,,,1,12
+transport_objets_materiaux_chantier,specialty,transport_objets,transport,demenagement,"Transport de matériaux, sable & gravats",NORMAL,true,,,2,14
+transport_objets_utilitaire_remorque,specialty,transport_objets,transport,demenagement,"Utilitaire, remorque & camion avec chauffeur",NORMAL,true,,,3,11
+transport_objets_plantes_vegetaux,specialty,transport_objets,transport,demenagement,Transport de plantes & végétaux,NORMAL,true,,,4,9
+manutention_debarras,trade,,transport,demenagement,"Manutention, débarras & encombrants",NORMAL,true,,,57,16
+manutention_debarras_manutention_portage,specialty,manutention_debarras,transport,demenagement,Manutention & portage,NORMAL,true,,,1,13
+manutention_debarras_debarras,specialty,manutention_debarras,transport,demenagement,"Débarras de cave, garage & logement",NORMAL,true,,,2,11
+manutention_debarras_encombrants_dechetterie,specialty,manutention_debarras,transport,demenagement,Évacuation d'encombrants & déchetterie,NORMAL,true,,,3,14
+mecanique_auto,trade,,transport,vehicules,Mécanique automobile,NORMAL,true,,,58,22
+mecanique_auto_diagnostic_panne,specialty,mecanique_auto,transport,vehicules,Diagnostic & pannes,NORMAL,true,,,1,22
+mecanique_auto_entretien_revision,specialty,mecanique_auto,transport,vehicules,"Entretien, vidange & révision",NORMAL,true,,,2,14
+mecanique_auto_freinage_suspension,specialty,mecanique_auto,transport,vehicules,"Freinage, suspension & direction",NORMAL,true,,,3,14
+mecanique_auto_batterie_electricite_auto,specialty,mecanique_auto,transport,vehicules,Batterie & électricité auto,NORMAL,true,,,4,13
+mecanique_auto_climatisation_auto,specialty,mecanique_auto,transport,vehicules,Climatisation automobile,NORMAL,true,,,5,8
+mecanique_auto_controle_technique,specialty,mecanique_auto,transport,vehicules,Accompagnement contrôle technique,NORMAL,true,,,6,9
+deux_roues_velo,trade,,transport,vehicules,"Scooter, moto & vélo",NORMAL,true,,,59,17
+deux_roues_velo_scooter_moto_mecanique,specialty,deux_roues_velo,transport,vehicules,Mécanique scooter & moto,NORMAL,true,,,1,18
+deux_roues_velo_velo_vae,specialty,deux_roues_velo,transport,vehicules,"Vélo, VTT & vélo électrique",NORMAL,true,,,2,14
+deux_roues_velo_trottinette_ebike,specialty,deux_roues_velo,transport,vehicules,Trottinettes & mobilité électrique,NORMAL,true,,,3,9
+deux_roues_velo_pneus_deux_roues,specialty,deux_roues_velo,transport,vehicules,Pneus & freinage deux-roues,NORMAL,true,,,4,9
+carrosserie_auto,trade,,transport,vehicules,Carrosserie & peinture auto,NORMAL,true,,,60,16
+carrosserie_auto_rayures_chocs,specialty,carrosserie_auto,transport,vehicules,"Rayures, bosses & chocs",NORMAL,true,,,1,13
+carrosserie_auto_debosselage,specialty,carrosserie_auto,transport,vehicules,Débosselage sans peinture,NORMAL,true,,,2,8
+carrosserie_auto_peinture_vernis,specialty,carrosserie_auto,transport,vehicules,"Peinture, vernis & rénovation de teinte",NORMAL,true,,,3,10
+carrosserie_auto_phares_vitres,specialty,carrosserie_auto,transport,vehicules,"Phares, rétroviseurs & vitrages",NORMAL,true,,,4,11
+pneus_roues,trade,,transport,vehicules,Pneus & roues,NORMAL,true,,,61,14
+pneus_roues_montage_equilibrage,specialty,pneus_roues,transport,vehicules,Montage & équilibrage,NORMAL,true,,,1,12
+pneus_roues_crevaison,specialty,pneus_roues,transport,vehicules,Crevaison & réparation de pneu,NORMAL,true,,,2,11
+pneus_roues_geometrie,specialty,pneus_roues,transport,vehicules,Géométrie & parallélisme,NORMAL,true,,,3,9
+lavage_auto,trade,,transport,vehicules,Lavage & rénovation de véhicules,NORMAL,true,,,62,14
+lavage_auto_exterieur_interieur,specialty,lavage_auto,transport,vehicules,Lavage extérieur & intérieur,NORMAL,true,,,1,12
+lavage_auto_detailing,specialty,lavage_auto,transport,vehicules,"Détailing, polish & lustrage",NORMAL,true,,,2,13
+lavage_auto_sieges_odeurs,specialty,lavage_auto,transport,vehicules,"Sièges, moquettes & odeurs",NORMAL,true,,,3,10
+lavage_auto_bateaux_motos,specialty,lavage_auto,transport,vehicules,"Lavage de bateaux, motos & autres véhicules",NORMAL,true,,,4,8
+depannage_vehicule,trade,,transport,vehicules,Dépannage & remorquage de véhicule,NORMAL,true,,,63,22
+depannage_vehicule_batterie_demarrage,specialty,depannage_vehicule,transport,vehicules,Batterie à plat & démarrage,NORMAL,true,,,1,11
+depannage_vehicule_remorquage,specialty,depannage_vehicule,transport,vehicules,Remorquage & dépanneuse,NORMAL,true,,,2,11
+depannage_vehicule_assistance_route,specialty,depannage_vehicule,transport,vehicules,"Assistance sur la route (roue, carburant)",NORMAL,true,,,3,13
+bateau_mecanique_marine,trade,,transport,nautique,"Bateau, hors-bord & entretien nautique",CAUTION,true,,Convoyage et mise à l'eau : assurance du propriétaire ; équipements de sécurité obligatoires à bord.,64,21
+bateau_mecanique_marine_moteur_hors_bord,specialty,bateau_mecanique_marine,transport,nautique,Moteur hors-bord & mécanique marine,CAUTION,true,,,1,14
+bateau_mecanique_marine_coque_carenage,specialty,bateau_mecanique_marine,transport,nautique,"Coque, carénage & antifouling",CAUTION,true,,,2,13
+bateau_mecanique_marine_annexe_gonflable,specialty,bateau_mecanique_marine,transport,nautique,"Annexe, gonflable & petit bateau",CAUTION,true,,,3,13
+bateau_mecanique_marine_convoyage_mouillage,specialty,bateau_mecanique_marine,transport,nautique,"Convoyage, mise à l'eau & gardiennage",CAUTION,true,,,4,13
+garde_enfants,trade,,famille,enfants,Garde d'enfants & babysitting,CAUTION,true,,Entraide ponctuelle uniquement. L'accueil régulier d'enfants contre rémunération relève des assistantes maternelles agréées.,65,15
+garde_enfants_babysitting_soiree,specialty,garde_enfants,famille,enfants,"Babysitting ponctuel (soirée, week-end)",CAUTION,true,,,1,12
+garde_enfants_garde_reguliere,specialty,garde_enfants,famille,enfants,Garde à domicile régulière (nounou),CAUTION,true,,,2,10
+garde_enfants_sortie_ecole,specialty,garde_enfants,famille,enfants,"Sortie d'école, goûter & accompagnement",CAUTION,true,,,3,12
+garde_enfants_garde_vacances,specialty,garde_enfants,famille,enfants,Garde pendant les vacances & activités,CAUTION,true,,,4,11
+garde_enfants_garde_bebe,specialty,garde_enfants,famille,enfants,Garde de bébé & jeunes enfants,CAUTION,true,,,5,11
+soutien_scolaire,trade,,famille,cours,Soutien scolaire,NORMAL,true,,,66,15
+soutien_scolaire_devoirs_primaire,specialty,soutien_scolaire,famille,cours,Aide aux devoirs (primaire),NORMAL,true,,,1,16
+soutien_scolaire_college_lycee,specialty,soutien_scolaire,famille,cours,"Collège & lycée (maths, français, sciences…)",NORMAL,true,,,2,15
+soutien_scolaire_preparation_examens,specialty,soutien_scolaire,famille,cours,Préparation aux examens & concours,NORMAL,true,,,3,15
+soutien_scolaire_enseignement_superieur,specialty,soutien_scolaire,famille,cours,Études supérieures & reprise d'études,NORMAL,true,,,4,13
+langues,trade,,famille,cours,Cours de langues,NORMAL,true,,,67,21
+langues_anglais,specialty,langues,famille,cours,Anglais,NORMAL,true,,,1,12
+langues_espagnol,specialty,langues,famille,cours,Espagnol,NORMAL,true,,,2,8
+langues_creole,specialty,langues,famille,cours,Créole,NORMAL,true,,,3,15
+langues_francais_alphabetisation,specialty,langues,famille,cours,"Français, alphabétisation & remise à niveau",NORMAL,true,,,4,14
+langues_autres_langues,specialty,langues,famille,cours,"Autres langues (portugais, allemand, chinois…)",NORMAL,true,,,5,14
+cours_musique,trade,,famille,cours,Cours de musique & chant,NORMAL,true,evenement,,68,24
+cours_musique_instruments,specialty,cours_musique,famille,cours,"Piano, guitare, batterie & instruments",NORMAL,true,,,1,21
+cours_musique_chant_solfege,specialty,cours_musique,famille,cours,"Chant, solfège & théorie",NORMAL,true,,,2,11
+cours_musique_percussions_traditionnelles,specialty,cours_musique,famille,cours,Percussions & musiques traditionnelles,NORMAL,true,,,3,17
+cours_musique_eveil_musical,specialty,cours_musique,famille,cours,Éveil musical (enfants),NORMAL,true,,,4,8
+permis_code_route,trade,,famille,cours,Code de la route & permis,NORMAL,true,,,69,14
+permis_code_route_code_route,specialty,permis_code_route,famille,cours,Révision du code de la route,NORMAL,true,,,1,11
+permis_code_route_reprise_confiance,specialty,permis_code_route,famille,cours,Reprise de confiance au volant (accompagnement),NORMAL,true,,,2,8
+permis_code_route_lecons_conduite,specialty,permis_code_route,famille,cours,Leçons de conduite rémunérées,RESTRICTED,false,,Les leçons de conduite rémunérées relèvent d'écoles de conduite agréées : non proposées comme compétence.,3,10
+aide_personnes_agees,trade,,famille,seniors,Seniors : présence & accompagnement,CAUTION,true,,"Aide non médicale uniquement. Toilette, soins, aide à la prise de médicaments : professionnels agréés (services d'aide à domicile, aides-soignants).",70,14
+aide_personnes_agees_compagnie_presence,specialty,aide_personnes_agees,famille,seniors,Compagnie & présence,CAUTION,true,,,1,13
+aide_personnes_agees_aide_repas_courses_seniors,specialty,aide_personnes_agees,famille,seniors,"Repas, courses & aide pratique",CAUTION,true,,,2,11
+aide_personnes_agees_accompagnement_sorties_rdv,specialty,aide_personnes_agees,famille,seniors,Accompagnement de sorties & rendez-vous,CAUTION,true,,,3,13
+aide_personnes_agees_aide_toilette_soins,specialty,aide_personnes_agees,famille,seniors,"Toilette, soins & aide médicale",RESTRICTED,false,,Actes de soin et de toilette : services agréés ou professionnels de santé. Non proposé comme compétence LYANN.,4,13
+aide_quotidienne,trade,,famille,quotidien,Coups de main & aide du quotidien,NORMAL,true,,,71,15
+aide_quotidienne_coup_de_main,specialty,aide_quotidienne,famille,quotidien,Coup de main ponctuel,NORMAL,true,,,1,12
+aide_quotidienne_accompagnement_quotidien,specialty,aide_quotidienne,famille,quotidien,Accompagnement & présence au quotidien,NORMAL,true,,,2,10
+aide_quotidienne_aide_deplacement_courses,specialty,aide_quotidienne,famille,quotidien,Aide aux déplacements & courses,NORMAL,true,,,3,8
+aide_quotidienne_aide_evenement_famille,specialty,aide_quotidienne,famille,quotidien,Aide pour un événement familial,NORMAL,true,,,4,9
+courses_commissions,trade,,famille,quotidien,Courses & commissions,NORMAL,true,transport,,72,24
+courses_commissions_courses_alimentaires,specialty,courses_commissions,famille,quotidien,Courses alimentaires,NORMAL,true,,,1,14
+courses_commissions_commissions_diverses,specialty,courses_commissions,famille,quotidien,Commissions & achats pour autrui,NORMAL,true,,,2,14
+courses_commissions_portage_courses,specialty,courses_commissions,famille,quotidien,Portage & rangement des courses,NORMAL,true,,,3,9
+garde_animaux,trade,,famille,animaux,Garde & promenade d'animaux,CAUTION,true,,Pas de soins vétérinaires. Pension à titre professionnel : déclaration et locaux conformes.,73,19
+garde_animaux_garde_chiens,specialty,garde_animaux,famille,animaux,Garde & pension de chiens,CAUTION,true,,,1,13
+garde_animaux_chats_nac,specialty,garde_animaux,famille,animaux,Chats & nouveaux animaux de compagnie (NAC),CAUTION,true,,,2,15
+garde_animaux_promenade,specialty,garde_animaux,famille,animaux,Promenade & sorties de chiens,CAUTION,true,,,3,11
+garde_animaux_visite_domicile,specialty,garde_animaux,famille,animaux,"Visites à domicile (nourrissage, soins courants)",CAUTION,true,,,4,11
+garde_animaux_transport_animaux,specialty,garde_animaux,famille,animaux,Transport d'animaux,CAUTION,true,,,5,10
+toilettage_animaux,trade,,famille,animaux,Toilettage d'animaux,NORMAL,true,,,74,14
+toilettage_animaux_bain_coupe,specialty,toilettage_animaux,famille,animaux,"Bain, coupe & brossage",NORMAL,true,,,1,13
+toilettage_animaux_hygiene_soins,specialty,toilettage_animaux,famille,animaux,"Griffes, oreilles & hygiène",NORMAL,true,,,2,11
+toilettage_animaux_domicile_mobile,specialty,toilettage_animaux,famille,animaux,Toilettage à domicile,NORMAL,true,,,3,7
+education_canine,trade,,famille,animaux,Éducation canine & comportement,CAUTION,true,,Chiens catégorisés : obligations réglementaires (permis de détention) ; pas de diagnostic comportemental médical.,75,16
+education_canine_chiot,specialty,education_canine,famille,animaux,Éducation du chiot,CAUTION,true,,,1,11
+education_canine_obeissance,specialty,education_canine,famille,animaux,Obéissance & rappel,CAUTION,true,,,2,13
+education_canine_comportement,specialty,education_canine,famille,animaux,"Comportement (aboiements, anxiété, agressivité)",CAUTION,true,,,3,11
+organisation_evenement,trade,,evenement,organisation,Organisation d'événements,NORMAL,true,,,76,19
+organisation_evenement_mariage_ceremonie,specialty,organisation_evenement,evenement,organisation,"Mariage, baptême & cérémonies",NORMAL,true,,,1,10
+organisation_evenement_anniversaires_fetes,specialty,organisation_evenement,evenement,organisation,Anniversaires & fêtes privées,NORMAL,true,,,2,13
+organisation_evenement_service_reception,specialty,organisation_evenement,evenement,organisation,"Service, barman & aide en salle",NORMAL,true,,,3,15
+organisation_evenement_evenements_associatifs_pro,specialty,organisation_evenement,evenement,organisation,"Événements associatifs, de quartier & professionnels",NORMAL,true,,,4,14
+animation,trade,,evenement,organisation,Animation enfants & adultes,NORMAL,true,,,77,17
+animation_enfants,specialty,animation,evenement,organisation,Animation enfants & anniversaires,NORMAL,true,,,1,15
+animation_adultes_soiree,specialty,animation,evenement,organisation,Animation de soirée & jeux adultes,NORMAL,true,,,2,14
+animation_ateliers_loisirs,specialty,animation,evenement,organisation,Ateliers créatifs & loisirs animés,NORMAL,true,,,3,10
+animation_animation_mariage,specialty,animation,evenement,organisation,Animation de mariage & cérémonie,NORMAL,true,,,4,10
+dj_sonorisation,trade,,evenement,organisation,"DJ, sonorisation & éclairage",NORMAL,true,,,78,20
+dj_sonorisation_dj_soiree,specialty,dj_sonorisation,evenement,organisation,DJ de soirée & mariage,NORMAL,true,,,1,18
+dj_sonorisation_sonorisation,specialty,dj_sonorisation,evenement,organisation,Sonorisation & technicien son,NORMAL,true,,,2,14
+dj_sonorisation_eclairage,specialty,dj_sonorisation,evenement,organisation,Éclairage de fête & de scène,NORMAL,true,,,3,14
+decoration_evenement,trade,,evenement,organisation,Décoration & fleurs d'événement,NORMAL,true,,,79,15
+decoration_evenement_ballons_arches,specialty,decoration_evenement,evenement,organisation,"Ballons, arches & décor de fête",NORMAL,true,,,1,13
+decoration_evenement_salle_table,specialty,decoration_evenement,evenement,organisation,Décoration de salle & de table,NORMAL,true,,,2,13
+decoration_evenement_fleurs,specialty,decoration_evenement,evenement,organisation,Fleuriste & compositions florales,NORMAL,true,,,3,14
+location_materiel,trade,,evenement,organisation,Location de matériel & mobilier de fête,NORMAL,true,maison,,80,18
+location_materiel_tentes_chaises_tables,specialty,location_materiel,evenement,organisation,"Tentes, chaises & tables",NORMAL,true,,,1,16
+location_materiel_vaisselle_verres,specialty,location_materiel,evenement,organisation,"Vaisselle, verres & art de la table",NORMAL,true,,,2,13
+location_materiel_sono_lumiere_location,specialty,location_materiel,evenement,organisation,"Sono, lumière & matériel technique",NORMAL,true,,,3,12
+location_materiel_jeux_structures,specialty,location_materiel,evenement,organisation,"Jeux gonflables, stands & structures",NORMAL,true,,,4,13
+traiteur_evenement,trade,,evenement,cuisine,Traiteur & réception,NORMAL,true,,,81,27
+traiteur_evenement_buffet_cocktail,specialty,traiteur_evenement,evenement,cuisine,Buffet & cocktail dînatoire,NORMAL,true,,,1,14
+traiteur_evenement_repas_assis,specialty,traiteur_evenement,evenement,cuisine,Repas de fête & service à table,NORMAL,true,,,2,13
+traiteur_evenement_plats_creoles_evenement,specialty,traiteur_evenement,evenement,cuisine,Plats créoles & spécialités locales,NORMAL,true,,,3,28
+traiteur_evenement_barbecue_grillades,specialty,traiteur_evenement,evenement,cuisine,"Barbecue, grillades & cuisine de plein air",NORMAL,true,,,4,15
+cuisine_domicile,trade,,evenement,cuisine,Cuisine à domicile & plats préparés,NORMAL,true,,,82,22
+cuisine_domicile_plats_a_emporter,specialty,cuisine_domicile,evenement,cuisine,Plats faits maison à emporter,NORMAL,true,,,1,18
+cuisine_domicile_chef_domicile,specialty,cuisine_domicile,evenement,cuisine,Cuisinier ou chef à domicile,NORMAL,true,,,2,13
+cuisine_domicile_preparation_repas,specialty,cuisine_domicile,evenement,cuisine,"Préparation de repas (semaine, régimes)",NORMAL,true,,,3,13
+cuisine_domicile_cours_cuisine,specialty,cuisine_domicile,evenement,cuisine,Cours & ateliers de cuisine,NORMAL,true,,,4,13
+cuisine_domicile_boissons_jus,specialty,cuisine_domicile,evenement,cuisine,"Jus, boissons & produits maison (sans alcool)",NORMAL,true,,,5,18
+patisserie,trade,,evenement,cuisine,"Pâtisserie, boulangerie & desserts",NORMAL,true,,,83,25
+patisserie_gateaux_anniversaire,specialty,patisserie,evenement,cuisine,Gâteaux d'anniversaire & cake design,NORMAL,true,,,1,15
+patisserie_desserts_creoles,specialty,patisserie,evenement,cuisine,Pâtisseries & desserts créoles,NORMAL,true,,,2,20
+patisserie_pain_viennoiseries,specialty,patisserie,evenement,cuisine,"Pain, viennoiseries & boulangerie",NORMAL,true,,,3,17
+patisserie_entremets_desserts_fete,specialty,patisserie,evenement,cuisine,"Entremets, tartes & desserts de fête",NORMAL,true,,,4,15
+photographe,trade,,evenement,image,Photographie,NORMAL,true,,,84,15
+photographe_evenement,specialty,photographe,evenement,image,"Photo d'événement (mariage, baptême, fête)",NORMAL,true,,,1,14
+photographe_portrait_famille,specialty,photographe,evenement,image,"Portrait, famille & grossesse",NORMAL,true,,,2,16
+photographe_produit_immobilier,specialty,photographe,evenement,image,"Photo produit, commerce & immobilier",NORMAL,true,,,3,14
+photographe_drone,specialty,photographe,evenement,image,Prises de vue aériennes (drone),CAUTION,true,,Drone : formation et déclaration auprès de la DGAC ; zones de vol réglementées.,4,11
+photographe_retouche_tirage,specialty,photographe,evenement,image,"Retouche, tirages & albums",NORMAL,true,,,5,13
+video,trade,,evenement,image,"Vidéo, tournage & montage",NORMAL,true,numerique,,85,19
+video_evenement,specialty,video,evenement,image,"Vidéo d'événement (film de mariage, aftermovie)",NORMAL,true,,,1,14
+video_captation_live,specialty,video,evenement,image,Captation de spectacles & diffusion en direct,NORMAL,true,,,2,13
+video_montage,specialty,video,evenement,image,Montage vidéo & post-production,NORMAL,true,,,3,17
+video_video_promo,specialty,video,evenement,image,Vidéo promotionnelle & entreprise,NORMAL,true,,,4,14
+artisanat_creation,trade,,evenement,creation,Artisanat & objets créés,NORMAL,true,,,86,28
+artisanat_creation_bijoux_accessoires,specialty,artisanat_creation,evenement,creation,Bijoux & accessoires,NORMAL,true,,,1,18
+artisanat_creation_poterie_ceramique,specialty,artisanat_creation,evenement,creation,Poterie & céramique,NORMAL,true,,,2,15
+artisanat_creation_vannerie_textiles_locaux,specialty,artisanat_creation,evenement,creation,"Vannerie, madras & textiles traditionnels",NORMAL,true,,,3,21
+artisanat_creation_bois_objets_deco,specialty,artisanat_creation,evenement,creation,Travail du bois & objets décoratifs,NORMAL,true,,,4,15
+artisanat_creation_savons_bougies_naturels,specialty,artisanat_creation,evenement,creation,"Savons, bougies & produits naturels",NORMAL,true,,,5,15
+arts_visuels,trade,,evenement,creation,"Peinture, dessin & arts plastiques",NORMAL,true,,,87,18
+arts_visuels_tableau_commande,specialty,arts_visuels,evenement,creation,Tableaux & portraits sur commande,NORMAL,true,,,1,15
+arts_visuels_cours_dessin_peinture,specialty,arts_visuels,evenement,creation,Cours de dessin & de peinture,NORMAL,true,,,2,13
+arts_visuels_fresque_murale,specialty,arts_visuels,evenement,creation,Fresques murales & street art,NORMAL,true,,,3,12
+arts_visuels_illustration,specialty,arts_visuels,evenement,creation,Illustration & bande dessinée,NORMAL,true,,,4,13
+couture_retouches,trade,,evenement,creation,"Couture, retouches & confection",NORMAL,true,,,88,24
+couture_retouches_retouches_ourlets,specialty,couture_retouches,evenement,creation,Retouches & ourlets,NORMAL,true,,,1,15
+couture_retouches_sur_mesure,specialty,couture_retouches,evenement,creation,Vêtements sur mesure & tenues de cérémonie,NORMAL,true,,,2,20
+couture_retouches_confection_maison,specialty,couture_retouches,evenement,creation,"Confection pour la maison (rideaux, coussins, linge)",NORMAL,true,,,3,15
+couture_retouches_costumes_deguisements,specialty,couture_retouches,evenement,creation,"Costumes, déguisements & carnaval",NORMAL,true,,,4,17
+couture_retouches_cours_couture,specialty,couture_retouches,evenement,creation,Cours & ateliers de couture,NORMAL,true,,,5,11
+stylisme_conseil,trade,,evenement,creation,Stylisme & conseil en image,NORMAL,true,,,89,14
+stylisme_conseil_conseil_look,specialty,stylisme_conseil,evenement,creation,Relooking & conseil look,NORMAL,true,,,1,12
+stylisme_conseil_shopping_accompagne,specialty,stylisme_conseil,evenement,creation,Shopping accompagné & personal shopper,NORMAL,true,,,2,9
+stylisme_conseil_tri_garde_robe,specialty,stylisme_conseil,evenement,creation,Tri & optimisation de garde-robe,NORMAL,true,,,3,11
+musique_spectacle,trade,,evenement,spectacle,"Musiciens, chanteurs & spectacle",NORMAL,true,famille,,90,29
+musique_spectacle_groupe_orchestre,specialty,musique_spectacle,evenement,spectacle,"Groupe, orchestre & musiciens",NORMAL,true,,,1,22
+musique_spectacle_chanteur_ceremonie,specialty,musique_spectacle,evenement,spectacle,Chanteur & chant de cérémonie,NORMAL,true,,,2,15
+musique_spectacle_traditions_carnaval,specialty,musique_spectacle,evenement,spectacle,"Musiques & spectacles traditionnels, carnaval",NORMAL,true,,,3,22
+musique_spectacle_spectacle_scene,specialty,musique_spectacle,evenement,spectacle,"Danseurs, comédiens & spectacle vivant",NORMAL,true,,,4,16
+informatique_depannage,trade,,numerique,depannage,"Ordinateurs, Wi-Fi & réseau",NORMAL,true,,,91,21
+informatique_depannage_pannes_pc_mac,specialty,informatique_depannage,numerique,depannage,"Pannes & lenteurs (PC, Mac, portable)",NORMAL,true,,,1,20
+informatique_depannage_wifi_box_reseau,specialty,informatique_depannage,numerique,depannage,"Wi-Fi, box internet & réseau",NORMAL,true,,,2,20
+informatique_depannage_imprimante_peripheriques,specialty,informatique_depannage,numerique,depannage,"Imprimantes, écrans & périphériques",NORMAL,true,,,3,15
+informatique_depannage_sauvegarde_donnees,specialty,informatique_depannage,numerique,depannage,"Sauvegarde, récupération de données & sécurité",NORMAL,true,,,4,17
+informatique_depannage_installation_configuration,specialty,informatique_depannage,numerique,depannage,"Installation & configuration (nouvel appareil, logiciels)",NORMAL,true,,,5,14
+smartphone_tablette,trade,,numerique,depannage,Smartphone & tablette,NORMAL,true,,,92,23
+smartphone_tablette_reglages_applications,specialty,smartphone_tablette,numerique,depannage,"Réglages, applications & WhatsApp",NORMAL,true,,,1,17
+smartphone_tablette_transfert_sauvegarde,specialty,smartphone_tablette,numerique,depannage,"Transfert, sauvegarde & stockage",NORMAL,true,,,2,12
+smartphone_tablette_reparation_telephone,specialty,smartphone_tablette,numerique,depannage,"Réparation (écran, batterie, charge)",NORMAL,true,,,3,12
+smartphone_tablette_tablette_seniors,specialty,smartphone_tablette,numerique,depannage,Tablette & accompagnement des seniors,NORMAL,true,,,4,13
+tv_audiovisuel,trade,,numerique,depannage,"TV, antenne & audio",NORMAL,true,,,93,26
+tv_audiovisuel_installation_tv,specialty,tv_audiovisuel,numerique,depannage,Installation & fixation de télévision,NORMAL,true,,,1,13
+tv_audiovisuel_antenne_satellite,specialty,tv_audiovisuel,numerique,depannage,"Antenne, parabole & décodeur",NORMAL,true,,,2,17
+tv_audiovisuel_home_cinema_audio,specialty,tv_audiovisuel,numerique,depannage,"Home cinéma, barre de son & multiroom",NORMAL,true,,,3,14
+domotique_connectee,trade,,numerique,depannage,Domotique & objets connectés,NORMAL,true,maison,,94,15
+domotique_connectee_eclairage_prises,specialty,domotique_connectee,numerique,depannage,Éclairage & prises connectés,NORMAL,true,,,1,11
+domotique_connectee_volets_climatisation_connectes,specialty,domotique_connectee,numerique,depannage,"Volets, climatisation & thermostats connectés",NORMAL,true,,,2,10
+domotique_connectee_cameras_sonnettes,specialty,domotique_connectee,numerique,depannage,Caméras & sonnettes connectées,NORMAL,true,,,3,11
+domotique_connectee_assistants_hubs,specialty,domotique_connectee,numerique,depannage,Assistants vocaux & centrales domotiques,NORMAL,true,,,4,13
+creation_web,trade,,numerique,creation,Sites web & boutiques en ligne,NORMAL,true,,,95,18
+creation_web_site_vitrine,specialty,creation_web,numerique,creation,Site vitrine & page de présentation,NORMAL,true,,,1,15
+creation_web_boutique_en_ligne,specialty,creation_web,numerique,creation,Boutique en ligne & e-commerce,NORMAL,true,,,2,13
+creation_web_referencement_local,specialty,creation_web,numerique,creation,Référencement & visibilité locale,NORMAL,true,,,3,13
+creation_web_maintenance_site,specialty,creation_web,numerique,creation,"Maintenance, hébergement & nom de domaine",NORMAL,true,,,4,14
+communication_reseaux,trade,,numerique,creation,Réseaux sociaux & communication,NORMAL,true,,,96,18
+communication_reseaux_community_management,specialty,communication_reseaux,numerique,creation,Community management,NORMAL,true,,,1,16
+communication_reseaux_creation_contenu,specialty,communication_reseaux,numerique,creation,"Création de contenu (photos, vidéos courtes, textes)",NORMAL,true,,,2,15
+communication_reseaux_publicite_en_ligne,specialty,communication_reseaux,numerique,creation,Publicité en ligne & campagnes,NORMAL,true,,,3,14
+communication_reseaux_strategie_communication,specialty,communication_reseaux,numerique,creation,Stratégie de communication & image de marque,NORMAL,true,,,4,13
+graphisme_design,trade,,numerique,creation,Graphisme & design,NORMAL,true,,,97,20
+graphisme_design_logo_identite,specialty,graphisme_design,numerique,creation,Logo & identité visuelle,NORMAL,true,,,1,13
+graphisme_design_supports_print,specialty,graphisme_design,numerique,creation,"Flyers, affiches & cartes de visite",NORMAL,true,,,2,17
+graphisme_design_supports_digitaux,specialty,graphisme_design,numerique,creation,"Visuels réseaux, bannières & templates",NORMAL,true,,,3,14
+graphisme_design_illustration_infographie,specialty,graphisme_design,numerique,creation,Illustration & infographie,NORMAL,true,,,4,12
+initiation_numerique,trade,,numerique,formation,Initiation & formation au numérique,NORMAL,true,famille,,98,28
+initiation_numerique_initiation_seniors_debutants,specialty,initiation_numerique,numerique,formation,"Initiation internet & ordinateur (débutants, seniors)",NORMAL,true,,,1,17
+initiation_numerique_bureautique,specialty,initiation_numerique,numerique,formation,"Bureautique (Word, Excel, PowerPoint)",NORMAL,true,,,2,16
+initiation_numerique_code_programmation,specialty,initiation_numerique,numerique,formation,Code & programmation (enfants et adultes),NORMAL,true,,,3,17
+initiation_numerique_outils_metier,specialty,initiation_numerique,numerique,formation,Outils métier & logiciels spécialisés,NORMAL,true,,,4,15
+aide_administrative,trade,,numerique,admin,Aide aux démarches administratives,NORMAL,true,,,99,22
+aide_administrative_demarches_en_ligne,specialty,aide_administrative,numerique,admin,"Démarches en ligne (impôts, CAF, ameli…)",NORMAL,true,,,1,22
+aide_administrative_dossiers_aides,specialty,aide_administrative,numerique,admin,Dossiers d'aides & prestations,NORMAL,true,,,2,17
+aide_administrative_courrier_ecrivain_public,specialty,aide_administrative,numerique,admin,"Courrier, réclamations & écrivain public",NORMAL,true,,,3,16
+aide_administrative_classement_suivi,specialty,aide_administrative,numerique,admin,"Classement, suivi & organisation des papiers",NORMAL,true,,,4,13
+cv_redaction,trade,,numerique,admin,"CV, lettres & rédaction",NORMAL,true,,,100,18
+cv_redaction_cv_lettre_motivation,specialty,cv_redaction,numerique,admin,"CV, lettre de motivation & LinkedIn",NORMAL,true,,,1,13
+cv_redaction_preparation_entretien,specialty,cv_redaction,numerique,admin,Préparation d'entretien & recherche d'emploi,NORMAL,true,,,2,13
+cv_redaction_redaction_textes,specialty,cv_redaction,numerique,admin,"Rédaction, relecture & correction",NORMAL,true,,,3,20
+cv_redaction_contenu_web_seo,specialty,cv_redaction,numerique,admin,Rédaction web & contenus professionnels,NORMAL,true,,,4,14
+traduction_interpretation,trade,,numerique,admin,Traduction & interprétariat,NORMAL,true,,,101,22
+traduction_interpretation_traduction_documents,specialty,traduction_interpretation,numerique,admin,Traduction de documents (FR / EN / ES / Créole),NORMAL,true,,,1,15
+traduction_interpretation_interpretariat,specialty,traduction_interpretation,numerique,admin,Interprétariat & accompagnement linguistique,NORMAL,true,,,2,13
+traduction_interpretation_traduction_assermentee,specialty,traduction_interpretation,numerique,admin,Traduction assermentée (documents officiels),RESTRICTED,false,,Traduction assermentée : traducteur expert près une cour d'appel. Non proposée comme compétence.,3,10
+secretariat_assistance,trade,,numerique,pro,Secrétariat & assistance,NORMAL,true,,,102,18
+secretariat_assistance_saisie_mise_en_page,specialty,secretariat_assistance,numerique,pro,"Saisie, frappe & mise en page",NORMAL,true,,,1,15
+secretariat_assistance_assistance_virtuelle,specialty,secretariat_assistance,numerique,pro,"Assistance virtuelle (agenda, e-mails, rendez-vous)",NORMAL,true,,,2,14
+secretariat_assistance_assistance_independants,specialty,secretariat_assistance,numerique,pro,Assistance pour indépendants & petites entreprises,NORMAL,true,,,3,12
+comptabilite_gestion,trade,,numerique,pro,Comptabilité & gestion simple,CAUTION,true,,La tenue de comptabilité complète et l'établissement des comptes annuels sont réservés aux experts-comptables. LYANN couvre la gestion simple et le suivi.,103,18
+comptabilite_gestion_facturation_devis,specialty,comptabilite_gestion,numerique,pro,Devis & facturation,CAUTION,true,,,1,13
+comptabilite_gestion_micro_entreprise,specialty,comptabilite_gestion,numerique,pro,Micro-entreprise & déclarations (URSSAF),CAUTION,true,,,2,15
+comptabilite_gestion_creation_activite,specialty,comptabilite_gestion,numerique,pro,Création d'activité & statut,CAUTION,true,,,3,15
+comptabilite_gestion_budget_particulier,specialty,comptabilite_gestion,numerique,pro,Budget & gestion de comptes personnels,CAUTION,true,,,4,13
+formation_coaching_pro,trade,,numerique,pro,"Formation, coaching & conseil pro",NORMAL,true,,,104,17
+formation_coaching_pro_formation_professionnelle,specialty,formation_coaching_pro,numerique,pro,Formation professionnelle & ateliers,NORMAL,true,,,1,15
+formation_coaching_pro_coaching_orientation,specialty,formation_coaching_pro,numerique,pro,"Coaching, orientation & reconversion",NORMAL,true,,,2,15
+formation_coaching_pro_conseil_organisation,specialty,formation_coaching_pro,numerique,pro,Conseil & organisation d'activité,NORMAL,true,,,3,14
+autre_demande,trade,,autres,libre,Autre besoin (demande libre),NORMAL,true,,,105,9
+autre_demande_non_classee,specialty,autre_demande,autres,libre,Demande à classer,NORMAL,true,,,1,8
+autre_demande_service_direct,specialty,autre_demande,autres,libre,Service direct (demande ciblée à un membre),NORMAL,true,,,2,7

@@ -1,0 +1,53 @@
+-- 94v_taxonomy_v2_verify — contrôles de cohérence (lecture seule)
+-- ============================================================================
+-- BROUILLON — NON APPLIQUÉ. Chaque requête doit renvoyer ZÉRO ligne (sauf mention contraire).
+-- À exécuter après 04 (seed) puis après 05 (backfill), sur Staging d'abord.
+-- ============================================================================
+
+-- V01 — familles : exactement 9 (8 + autres)
+SELECT 'V01 familles' AS check, count(*) AS found FROM public.lyann_taxonomy_node WHERE kind = 'family' HAVING count(*) <> 9;
+
+-- V02 — spécialités dont le parent n'est pas un métier, ou famille incohérente avec le parent
+SELECT 'V02 parent/famille' AS check, s.code FROM public.lyann_taxonomy_node s
+LEFT JOIN public.lyann_taxonomy_node p ON p.code = s.parent_code
+WHERE s.kind = 'specialty' AND (p.kind IS DISTINCT FROM 'trade' OR p.family_code <> s.family_code);
+
+-- V03 — métiers sans spécialité ET sans terme (nœud inutilisable en recherche)
+SELECT 'V03 métier sans terme' AS check, n.code FROM public.lyann_taxonomy_node n
+WHERE n.kind = 'trade' AND NOT EXISTS (SELECT 1 FROM public.lyann_taxonomy_term t WHERE t.node_code = n.code);
+
+-- V04 — normalisation : term_norm stocké identique à la fonction de normalisation
+SELECT 'V04 term_norm' AS check, id, term FROM public.lyann_taxonomy_term WHERE term_norm <> public.lyann_taxonomy_norm(term);
+
+-- V05 — activités réglementées sélectionnables (doit être impossible par contrainte)
+SELECT 'V05 réglementé sélectionnable' AS check, code FROM public.lyann_taxonomy_node WHERE safety IN ('RESTRICTED', 'PROHIBITED') AND selectable;
+
+-- V06 — familles secondaires qui ne sont pas des familles
+SELECT 'V06 famille secondaire' AS check, nf.node_code, nf.family_code FROM public.lyann_taxonomy_node_family nf
+JOIN public.lyann_taxonomy_node f ON f.code = nf.family_code WHERE f.kind <> 'family' OR nf.family_code = (SELECT family_code FROM public.lyann_taxonomy_node WHERE code = nf.node_code);
+
+-- V07 — la correspondance couvre toutes les feuilles historiques
+SELECT 'V07 feuille sans correspondance' AS check, t.id, t.universe, t.category, t.subcategory FROM public.lyann_taxonomy t
+WHERE NOT EXISTS (SELECT 1 FROM public.lyann_taxonomy_legacy_map m WHERE m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory);
+
+-- V08 (après backfill) — feuilles historiques sans node_code
+SELECT 'V08 feuille sans node_code' AS check, t.id FROM public.lyann_taxonomy t WHERE t.node_code IS NULL;
+
+-- V09 (après backfill) — demandes classées à l'ancienne mais sans nœud v2
+SELECT 'V09 demande classée sans nœud' AS check, r.id FROM public.requests r WHERE r.taxonomy_id IS NOT NULL AND r.taxonomy_node_code IS NULL;
+
+-- V10 — cohérence ancien/nouveau : une demande ne peut pas pointer un nœud v2 différent de celui de sa feuille
+SELECT 'V10 incohérence ancien/nouveau' AS check, r.id FROM public.requests r
+JOIN public.lyann_taxonomy t ON t.id = r.taxonomy_id
+WHERE r.taxonomy_node_code IS NOT NULL AND t.node_code IS NOT NULL AND r.taxonomy_node_code <> t.node_code;
+
+-- V11 — informatif : couverture du backfill (aucune erreur attendue ; pour le suivi)
+SELECT 'V11 couverture demandes' AS info,
+       count(*) AS total, count(taxonomy_id) AS ancien_classees, count(taxonomy_node_code) AS nouveau_classees
+FROM public.requests;
+SELECT 'V11 couverture compétences' AS info, count(*) AS total, count(taxonomy_node_code) AS rattachees FROM public.services;
+
+-- V12 — politiques RLS présentes sur toutes les nouvelles tables (doit lister les 7 tables avec rowsecurity = true)
+SELECT 'V12 RLS désactivée' AS check, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relname LIKE 'lyann_taxonomy_%' AND c.relkind = 'r' AND NOT c.relrowsecurity
+  AND c.relname IN ('lyann_taxonomy_release', 'lyann_taxonomy_group', 'lyann_taxonomy_node', 'lyann_taxonomy_node_family', 'lyann_taxonomy_term', 'lyann_taxonomy_ambiguous_term', 'lyann_taxonomy_legacy_map');
