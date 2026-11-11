@@ -1,5 +1,7 @@
 # 11 — Plan d'intégration technique de la taxonomie v2 sur Staging
 
+> **Dernière mise à jour : voir [`13-lock-before-staging-migration.md`](13-lock-before-staging-migration.md)** (X1–X5, quotas, modération du rétro-remplissage, plan P3 et conditions d'arrêt).
+
 > **Mise à jour du 11 nov. 2026 (soir) — voir [`12-staging-validation-and-legacy-compat.md`](12-staging-validation-and-legacy-compat.md).** P1 est exécuté (15/15, lecture seule) : **B1 est levé**. P2 est livré localement derrière des drapeaux OFF. Le plan P3-P9 est **amendé** (§6 du document 12 : brouillon `08`, RPC `lyann_sync_profile_skills` protégée, instantané obligatoire, étape facultative T2). **B6** : consommateurs identifiés, garde de gel livré éteint (aucune route désactivée). Nouveaux points ouverts : X1-X5 (document 12, §7). Banc PGlite : **103 contrôles**.
 
 > **Statut : PLAN. Rien n'est appliqué.** Aucune migration, aucune permission créée ou modifiée, aucun déploiement, Production non consultée. Staging n'a pas été interrogé dans cette étape (voir B1).

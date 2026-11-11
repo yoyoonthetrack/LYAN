@@ -71,7 +71,10 @@ GRANT EXECUTE ON FUNCTION public.lyann_taxonomy_search(text, integer) TO anon, a
 -- ---------------------------------------------------------------------------
 -- Compétences de profil rattachées aux nœuds (référence unique partagée avec les annonces).
 -- Pendant la transition, services reste lu par l'application : la nouvelle RPC écrit AUSSI le stub services
--- (title = libellé du nœud, category = libellé, taxonomy_node_code = code) pour que les anciens clients continuent d'afficher les compétences.
+-- pour que les anciens clients continuent d'afficher les compétences. POLITIQUE D'ÉCRITURE C (décision X2) : title = category = « Métier · Spécialité »
+-- (le libellé seul pour un métier). Une compétence reste UNE catégorie distincte, exactement comme aujourd'hui (un ancien stub porte category = title) :
+-- le quota de catégories du forfait (lyann_guard_category_entitlement, migration 82) compte les mêmes clés qu'avant : une par compétence, sans
+-- contournement possible ni surcoût (deux spécialités de métiers différents restent deux clés distinctes, même si leur libellé nu serait proche). Aucune modification des forfaits ni de la garde.
 -- ---------------------------------------------------------------------------
 CREATE TABLE public.lyann_profile_skill (
     user_id    uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -90,7 +93,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
     v_nodes text[];
     v_code  text;
-    v_label text;
+    v_title text;
 BEGIN
     IF auth.uid() IS NULL OR auth.uid() <> p_user THEN
         RAISE EXCEPTION 'Accès refusé' USING ERRCODE = '42501';
@@ -120,10 +123,11 @@ BEGIN
       AND s.base_price IS NULL AND s.indicative_price IS NULL AND s.price_type IS NULL AND s.pricing_model IS NULL
       AND (coalesce(btrim(s.description), '') = '' OR btrim(s.description) = btrim(s.title));
     FOREACH v_code IN ARRAY v_nodes LOOP
-        SELECT label_fr INTO v_label FROM public.lyann_taxonomy_node WHERE code = v_code;
+        SELECT CASE WHEN n.kind = 'specialty' THEN p.label_fr || ' · ' || n.label_fr ELSE n.label_fr END INTO v_title
+        FROM public.lyann_taxonomy_node n LEFT JOIN public.lyann_taxonomy_node p ON p.code = n.parent_code WHERE n.code = v_code;
         IF NOT EXISTS (SELECT 1 FROM public.services WHERE owner_id = p_user AND taxonomy_node_code = v_code) THEN
             INSERT INTO public.services(owner_id, title, description, category, slug, taxonomy_node_code)
-            VALUES (p_user, v_label, v_label, v_label, 'skill-' || gen_random_uuid()::text, v_code);
+            VALUES (p_user, v_title, v_title, v_title, 'skill-' || gen_random_uuid()::text, v_code);
         END IF;
     END LOOP;
     RETURN jsonb_build_object('success', true, 'skills', v_nodes);

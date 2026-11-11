@@ -46,6 +46,7 @@ DROP FUNCTION IF EXISTS public.lyann_service_legacy_matches_node(text, text);
 DROP FUNCTION IF EXISTS public.lyann_request_legacy_matches_node(text, uuid, text);
 DROP FUNCTION IF EXISTS public.lyann_node_related_to(text, text[]);
 DROP FUNCTION IF EXISTS public.lyann_legacy_value_is_placeholder(text);
+DROP FUNCTION IF EXISTS public.lyann_legacy_certain_node(text, text);
 DROP FUNCTION IF EXISTS public.lyann_sync_profile_skills_v2(uuid, text[]);
 DROP TABLE    IF EXISTS public.lyann_profile_skill;
 DROP FUNCTION IF EXISTS public.lyann_taxonomy_search(text, integer);

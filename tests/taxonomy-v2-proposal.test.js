@@ -305,8 +305,13 @@ test('brouillons SQL : étiquetés non appliqués, additifs, sans accès Product
     }
     // Seuls les nouveaux champs sont écrits dans les tables existantes.
     const backfill = fs.readFileSync(path.join(DRAFT, '05_legacy_map_and_backfill.sql'), 'utf8');
-    for (const m of backfill.matchAll(/UPDATE\s+public\.(\w+)\s+\w+\s+SET\s+([^\n]+)/gi)) {
-        const assigned = m[2].split(',').map((x) => x.split('=')[0].trim());
+    // La clause SET est lue en entier (plusieurs lignes, CASE imbriqué) jusqu'au FROM ou WHERE de plus haut niveau.
+    const backfillCode = backfill.replace(/^\s*--.*$/gm, '');
+    const updates = [...backfillCode.matchAll(/UPDATE\s+public\.(\w+)\s+\w+\s+SET\s+([\s\S]*?)\s+(?:FROM|WHERE)\s/gi)];
+    assert.ok(updates.length >= 4, `UPDATE de rétro-remplissage trouvés : ${updates.length}`);
+    for (const m of updates) {
+        const assigned = [...m[2].replace(/\([^()]*(\([^()]*\)[^()]*)*\)/g, '()').matchAll(/(?:^|,)\s*(\w+)\s*=/g)].map((x) => x[1]);
+        assert.ok(assigned.length >= 1, `${m[1]}: aucune colonne lue`);
         for (const col of assigned) assert.ok(['node_code', 'taxonomy_node_code', 'taxonomy_node_source'].includes(col), `${m[1]}: colonne écrite inattendue ${col}`);
     }
     // 06 : déclencheurs de double écriture : SECURITY DEFINER à search_path fixé, fail-open, n'écrivent que les champs v2.

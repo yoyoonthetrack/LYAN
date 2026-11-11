@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const DRAFT = path.join(__dirname, '..', '..', 'docs', 'taxonomy', 'migration-draft');
+const moderation = require('./moderation-fixture');
 const snapshot = require(path.join(__dirname, '..', '..', 'docs', 'taxonomy', 'data', 'staging-snapshot.json'));
 
 function loadPglite() {
@@ -27,7 +28,7 @@ function loadContrib(name) {
 const read = (f) => fs.readFileSync(path.join(DRAFT, f), 'utf8');
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
-async function run() {
+async function run(opts = {}) {
     const pglite = loadPglite();
     if (!pglite) return { skipped: true, reason: '@electric-sql/pglite introuvable (dépendance de développement optionnelle)' };
     const unaccent = loadContrib('unaccent');
@@ -47,12 +48,18 @@ async function run() {
         CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('test.uid', true), '')::uuid $$;
         CREATE FUNCTION public.has_admin_permission(p_user uuid, p_perm text) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT p_user IS NOT NULL AND p_user = nullif(current_setting('test.admin', true), '')::uuid $$;
         CREATE TABLE public.lyann_taxonomy (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), universe text, category text, subcategory text, synonyms text[], tags text[], safety_level text, active boolean DEFAULT true);
-        CREATE TABLE public.requests (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text, category text, taxonomy_id uuid REFERENCES public.lyann_taxonomy(id));
-        CREATE TABLE public.services (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid, title text, description text, category text, slug text, base_price numeric, indicative_price numeric, price_type text, pricing_model text);
+        CREATE TABLE public.requests (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), title text, category text, taxonomy_id uuid REFERENCES public.lyann_taxonomy(id), ${moderation.REQUEST_MODERATION_COLUMNS});
+        CREATE TABLE public.services (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid, title text, description text, category text, slug text, base_price numeric, indicative_price numeric, price_type text, pricing_model text, category_id uuid, active boolean DEFAULT true, is_active boolean DEFAULT true);
+        CREATE TABLE public.lyann_plan_memberships (user_id uuid PRIMARY KEY, plan text, status text, expires_at timestamptz);
         GRANT SELECT, INSERT, UPDATE, DELETE ON public.requests, public.services, public.lyann_taxonomy TO authenticated;
     `);
     // Ancienne RPC d'enregistrement des compétences (migration 83, déjà appliquée sur Staging) : nécessaire pour prouver que 06 la protège et que 09 la restitue.
     await db.exec(fs.readFileSync(path.join(__dirname, '..', '..', '83_lyann_atomic_profile_skills_staging.sql'), 'utf8'));
+    // Garde de quota de catégories RÉELLE (migration 82), extraite du fichier : présente sur Staging, elle doit survivre à toute la séquence
+    const quotaObjects = require('./validate-quotas-pglite').extractQuotaObjects();
+    for (const t of quotaObjects.tables) await db.exec(t);
+    for (const f of quotaObjects.functions) await db.exec(f);
+    await db.exec(quotaObjects.trigger);
     const skillsFn = async () => (await rows("SELECT md5(prosrc) h FROM pg_proc WHERE proname = 'lyann_sync_profile_skills'"))[0].h;
     const skillsFnBefore = await skillsFn();
     for (const [u, c, s, safety] of snapshot.leaves) {
@@ -73,6 +80,7 @@ async function run() {
     }
     await db.exec(`INSERT INTO public.services(owner_id, title, description, category, slug, base_price) VALUES ('${userA}', 'Peinture pro', 'Peinture soignée', 'Peinture', 'priced', 40)`);
 
+    await moderation.install(db);   // déclencheurs RÉELS de modération des demandes (migrations 70 et 71), installés après le chargement des données de test
     const fingerprint = async () => {
         const t = await rows("SELECT md5(string_agg(row_to_json(x)::text, '|' ORDER BY id)) h, count(*) n FROM (SELECT id, universe, category, subcategory, safety_level, active FROM public.lyann_taxonomy) x");
         const r = await rows("SELECT md5(string_agg(row_to_json(x)::text, '|' ORDER BY id)) h, count(*) n FROM (SELECT id, title, category, taxonomy_id FROM public.requests) x");
@@ -81,6 +89,10 @@ async function run() {
     };
     const before = await fingerprint();
     report.rowCounts = JSON.parse(before).map((x) => Number(x.n));
+    if (opts.afterSetup) {
+        await opts.afterSetup({ db, rows, step, report, userA, userB });
+        if (opts.onlyAfterSetup) { await db.close(); return report; }
+    }
 
     // --- Application des brouillons ---
     for (const file of ['01_schema_taxonomy_v2.sql', '02_additive_columns.sql', '03_search_and_skills_rpc.sql', '04_seed_taxonomy_v2.sql']) {
@@ -104,12 +116,37 @@ async function run() {
     let v = await runVerify(['V01', 'V02', 'V03', 'V04', 'V05', 'V06', 'V12']);
     for (const [id, found] of Object.entries(v)) step(`verify ${id} (avant backfill)`, found.length === 0, found.length ? JSON.stringify(found.slice(0, 3)) : '');
 
-    try { await db.exec(read('05_legacy_map_and_backfill.sql')); step('appliquer 05_legacy_map_and_backfill.sql', true); } catch (e) { step('appliquer 05_legacy_map_and_backfill.sql', false, e.message); return report; }
-    v = await runVerify(['V07', 'V08', 'V09', 'V10']);
+    // --- Modération : le rétro-remplissage de `requests` ne doit ni rouvrir la file de modération, ni toucher une modification en attente ---
+    const backfill05 = moderation.backfillVariants(read('05_legacy_map_and_backfill.sql'));
+    const measureVariant = async (variant) => {
+        await db.exec('BEGIN');
+        await db.exec('ALTER TABLE public.requests DISABLE TRIGGER USER');
+        await db.exec(`INSERT INTO public.requests(title, category, public_moderation_status, title_pending) VALUES ('mod-pending-edit', 'Plomberie', 'approved', 'texte modifié en attente')`);
+        await db.exec(`INSERT INTO public.requests(title, category, public_moderation_status) VALUES ('mod-rejected', 'Plomberie', 'rejected')`);
+        await db.exec('ALTER TABLE public.requests ENABLE TRIGGER USER');
+        const before = await moderation.moderationState(db);
+        await db.exec(moderation.stripTransaction(variant));
+        const after = await moderation.moderationState(db);
+        const specials = await rows("SELECT title, taxonomy_node_code c FROM public.requests WHERE title IN ('mod-pending-edit', 'mod-rejected') ORDER BY title");
+        const classified = Number((await rows('SELECT count(taxonomy_node_code) n FROM public.requests'))[0].n);
+        await db.exec('ROLLBACK');
+        return { before, after, specials, classified };
+    };
+    const plainRun = await measureVariant(backfill05.plain);
+    const serviceRun = await measureVariant(backfill05.service);
+    report.moderation = { plain: { queue: plainRun.after.queue - plainRun.before.queue, jobs: plainRun.after.jobs - plainRun.before.jobs, hashChanged: plainRun.after.requestsHash !== plainRun.before.requestsHash },
+        service: { queue: serviceRun.after.queue - serviceRun.before.queue, jobs: serviceRun.after.jobs - serviceRun.before.jobs, hashChanged: serviceRun.after.requestsHash !== serviceRun.before.requestsHash }, classified: serviceRun.classified };
+    step('modération · exécution « telle quelle » (sans contexte service) : la réécriture re-modère les demandes (effet constaté, documenté, décision X6)', report.moderation.plain.queue > 0 || report.moderation.plain.jobs > 0, JSON.stringify(report.moderation.plain));
+    step('modération · exécution en contexte « service » : aucune ligne de file, aucune tâche, aucun texte ni statut de modération modifié', report.moderation.service.queue === 0 && report.moderation.service.jobs === 0 && !report.moderation.service.hashChanged, JSON.stringify(report.moderation.service));
+    step('modération : demandes avec modification en attente ou non approuvées exclues du rétro-remplissage (restent « à classer »), dans les deux variantes', serviceRun.specials.every((r) => r.c === null) && plainRun.specials.every((r) => r.c === null), JSON.stringify(serviceRun.specials));
+    step('modération : le rétro-remplissage classe bien les demandes approuvées (80 de test)', serviceRun.classified === 80, String(serviceRun.classified));
+    const modBefore = await moderation.moderationState(db);
+    try { await db.exec(backfill05.service); step('appliquer 05_legacy_map_and_backfill.sql', true); } catch (e) { step('appliquer 05_legacy_map_and_backfill.sql', false, e.message); return report; }
+    v = await runVerify(['V07', 'V08', 'V09', 'V10', 'V18', 'V21']);
     for (const [id, found] of Object.entries(v)) step(`verify ${id} (après backfill)`, found.length === 0, found.length ? JSON.stringify(found.slice(0, 3)) : '');
     // Idempotence : un second passage ne change rien
     const cov1 = await rows('SELECT count(taxonomy_node_code) a FROM public.services');
-    await db.exec(read('05_legacy_map_and_backfill.sql'));
+    await db.exec(backfill05.service);
     const cov2 = await rows('SELECT count(taxonomy_node_code) a FROM public.services');
     step('backfill idempotent', cov1[0].a === cov2[0].a, `${cov1[0].a} → ${cov2[0].a}`);
     const sk = await rows('SELECT count(*) total, count(taxonomy_node_code) mapped FROM public.services');
@@ -117,6 +154,8 @@ async function run() {
     const rq = await rows('SELECT count(*) total, count(taxonomy_id) legacy, count(taxonomy_node_code) v2 FROM public.requests');
     report.requestCoverage = { total: Number(rq[0].total), legacy: Number(rq[0].legacy), v2: Number(rq[0].v2) };
     step('les colonnes historiques sont inchangées après backfill', (await fingerprint()) === before);
+    const modAfter = await moderation.moderationState(db);
+    step('le rétro-remplissage (contexte service) laisse intacts la file et les tâches de modération et le texte/statut de toutes les demandes', JSON.stringify(modAfter) === JSON.stringify(modBefore), JSON.stringify({ modBefore, modAfter }));
 
     // --- 06 : rattachement automatique pour les anciens clients ---
     try { await db.exec(read('06_dual_write_derivation.sql')); step('appliquer 06_dual_write_derivation.sql', true); } catch (e) { step('appliquer 06_dual_write_derivation.sql', false, e.message); return report; }
@@ -125,7 +164,7 @@ async function run() {
     step('06 ne modifie aucune ligne existante', (await fingerprint()) === before);
     // Séquence réelle : 05 → 06 → 05 (rejeu) ; le rejeu doit rester neutre, déclencheurs actifs (lignes écrites entre 05 et 06 rattrapées).
     const covA = await rows('SELECT count(taxonomy_node_code) r, (SELECT count(taxonomy_node_code) FROM public.services) s FROM public.requests');
-    await db.exec(read('05_legacy_map_and_backfill.sql'));
+    await db.exec(backfill05.service);
     const covB = await rows('SELECT count(taxonomy_node_code) r, (SELECT count(taxonomy_node_code) FROM public.services) s FROM public.requests');
     step('rejeu de 05 après 06 : neutre, déclencheurs actifs', covA[0].r === covB[0].r && covA[0].s === covB[0].s, `${JSON.stringify(covA[0])} → ${JSON.stringify(covB[0])}`);
 
@@ -209,9 +248,15 @@ async function run() {
     await db.exec("INSERT INTO public.requests(title, category) VALUES ('oc-cat', 'Plomberie'), ('oc-general', 'Général'), ('oc-residu', 'k7mqp4lyannrc'), ('oc-jardinage', 'Jardinage')");
     await db.exec("INSERT INTO public.requests(title, category, taxonomy_node_code) VALUES ('oc-v2', 'Jardinage', 'garde_enfants')");
     await db.exec("INSERT INTO public.requests(title, category, taxonomy_node_code, taxonomy_node_source) VALUES ('oc-class', 'Général', 'plomberie_fuite', 'classifier')");
+    const leafBy = async (cat, sub) => (await rows(`SELECT id FROM public.lyann_taxonomy WHERE category = ${q(cat)} AND subcategory = ${q(sub)}`))[0].id;
+    await db.exec(`INSERT INTO public.requests(title, category, taxonomy_id) VALUES ('oc-leaf-exact', 'Électricité', '${await leafBy('Électricité', 'Panne & Dépannage')}'), ('oc-leaf-cross', 'DJ & Son', '${await leafBy('DJ & Son', 'Animation musicale')}')`);
     await db.exec('RESET ROLE');
     let n = await node('oc-leaf');
-    step('ancien client : feuille historique → nœud dérivé (membre sans accès à la table de correspondance)', n.c === 'plomberie_fuite' && n.s === 'derived_leaf', JSON.stringify(n));
+    step('ancien client : feuille historique → nœud dérivé (membre sans accès à la table de correspondance)', n.c === 'plomberie' && n.s === 'derived_leaf_parent', JSON.stringify(n));
+    // Décision X5 : feuille certaine → nœud précis ; feuille qui recouvre plusieurs spécialités → métier parent + signal ; plusieurs métiers → rien.
+    n = await node('oc-leaf-exact'); step('X5 : feuille certaine (exact) → nœud précis conservé, sans signal de précision', n.c === 'electricite_panne' && n.s === 'derived_leaf', JSON.stringify(n));
+    n = await node('oc-leaf'); step('X5 : feuille ambiguë (split sur 3 spécialités de la plomberie) → métier parent, besoin de précision signalé, spécialité jamais choisie', n.c === 'plomberie' && n.s === 'derived_leaf_parent', JSON.stringify(n));
+    n = await node('oc-leaf-cross'); step('X5 : feuille qui recouvre plusieurs métiers → aucun rattachement (à classer)', n.c === null && n.s === null, JSON.stringify(n));
     n = await node('oc-cat'); step('ancien client : catégorie libre exacte → nœud dérivé', n.c === 'plomberie' && n.s === 'derived_category', JSON.stringify(n));
     n = await node('oc-jardinage'); step('ancien client : catégorie « large » → métier de repli, provenance dérivée', n.c === 'jardinage_entretien' && n.s === 'derived_category', JSON.stringify(n));
     n = await node('oc-general'); step('ancien client : « Général » reste à classer (NULL)', n.c === null && n.s === null, JSON.stringify(n));
@@ -236,7 +281,7 @@ async function run() {
     n = await editAs("category = 'Général'"); step('ancien client : repli « Général » → nœud précis conservé', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
     n = await editAs("category = 'Autre / Je ne trouve pas'"); step('ancien client : repli « Autre / Je ne trouve pas » (présélection de l\'ancien assistant) → nœud précis conservé', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
     n = await editAs(`taxonomy_id = '${leafId}', category = 'Plomberie'`); step('ancien client : feuille historique cohérente avec le nœud → conservé', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
-    n = await editAs(`taxonomy_id = '${poolLeaf}', category = 'Piscine'`); step('ancien client : feuille d\'une AUTRE catégorie → nœud re-dérivé depuis la feuille', n.c !== 'plomberie_fuite' && n.s === 'derived_leaf', JSON.stringify(n));
+    n = await editAs(`taxonomy_id = '${poolLeaf}', category = 'Piscine'`); step('ancien client : feuille d\'une AUTRE catégorie → nœud re-dérivé depuis la feuille', n.c !== 'plomberie_fuite' && /^derived_leaf(_parent)?$/.test(n.s), JSON.stringify(n));
     n = await editAs("taxonomy_id = NULL, category = 'k7mqp4lyannrc'"); step('ancien client : valeur informative sans équivalent fiable → « à classer », jamais un nœud inventé', n.c === null && n.s === null, JSON.stringify(n));
     await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`);
     await db.exec(`INSERT INTO public.services(owner_id, title, description, category, slug, taxonomy_node_code) VALUES ('${userB}', ${q(fuiteLabel)}, ${q(fuiteLabel)}, ${q(fuiteLabel)}, 'oc-s3', 'plomberie_fuite')`);
@@ -258,7 +303,7 @@ async function run() {
     const sv = async (slug) => (await rows(`SELECT taxonomy_node_code c, taxonomy_node_source s FROM public.services WHERE slug = ${q(slug)}`))[0];
     let sn = await sv('oc-s1'); step('ancien client : compétence « Plomberie » → nœud dérivé du titre', sn.c === 'plomberie' && sn.s === 'derived_title', JSON.stringify(sn));
     sn = await sv('oc-s2'); step('ancien client : compétence ambiguë « Installation » → à classer (NULL)', sn.c === null, JSON.stringify(sn));
-    v = await runVerify(['V13', 'V14']);
+    v = await runVerify(['V13', 'V14', 'V18']);
     for (const [id, found] of Object.entries(v)) step(`verify ${id} (après écritures d'anciens clients)`, found.length === 0, found.length ? JSON.stringify(found.slice(0, 3)) : '');
     await db.exec("DELETE FROM public.requests WHERE title LIKE 'oc-%'");
     await db.exec("DELETE FROM public.services WHERE slug LIKE 'oc-%'");
@@ -303,9 +348,21 @@ async function run() {
     const neg = await runVerify(['V02']);
     await db.exec('ROLLBACK');
     step('contrôle négatif : V02 détecte une spécialité incohérente', (neg.V02 || []).length === 1, JSON.stringify(neg.V02));
-    const source = await rows("SELECT count(*) FILTER (WHERE taxonomy_node_source = 'backfill_category') c, count(*) FILTER (WHERE taxonomy_node_source = 'backfill_leaf') l FROM public.requests");
-    report.requestSources = { backfill_category: Number(source[0].c), backfill_leaf: Number(source[0].l) };
-    step('provenance du backfill renseignée', Number(source[0].c) + Number(source[0].l) === report.requestCoverage.v2);
+    const source = await rows("SELECT taxonomy_node_source s, count(*) n FROM public.requests WHERE taxonomy_node_source LIKE 'backfill\\_%' GROUP BY 1 ORDER BY 1");
+    report.requestSources = Object.fromEntries(source.map((r) => [r.s, Number(r.n)]));
+    step('provenance du backfill renseignée', source.reduce((a, r) => a + Number(r.n), 0) === report.requestCoverage.v2, JSON.stringify(report.requestSources));
+    // Décision X5 : bilan de la résolution des valeurs historiques (jamais de spécialité inventée)
+    const x5 = await rows(`SELECT m.legacy_kind k, m.mapping_kind mk, c.precision_needed p, c.node_code IS NULL AS nul, count(*) n FROM public.lyann_taxonomy_legacy_map m
+        CROSS JOIN LATERAL public.lyann_legacy_certain_node(m.legacy_kind, m.legacy_key) c WHERE m.legacy_kind IN ('taxonomy_leaf', 'skill_title', 'request_category') GROUP BY 1, 2, 3, 4 ORDER BY 1, 2, 3, 4`);
+    report.x5 = x5.map((r) => ({ kind: r.k, mapping: r.mk, parent: r.p, none: r.nul, n: Number(r.n) }));
+    const leafParents = (await rows("SELECT count(*) n FROM public.lyann_taxonomy t JOIN public.lyann_taxonomy_node n ON n.code = t.node_code WHERE n.kind = 'trade' AND EXISTS (SELECT 1 FROM public.lyann_taxonomy_legacy_map m WHERE m.legacy_kind='taxonomy_leaf' AND m.legacy_key = t.universe||'|'||t.category||'|'||t.subcategory AND m.mapping_kind IN ('split','merge','ambiguous') AND cardinality(m.alt_codes) > 0)"))[0].n;
+    report.crossTradeLeaves = (await rows('SELECT universe||\'|\'||category||\'|\'||subcategory leaf FROM public.lyann_taxonomy WHERE node_code IS NULL ORDER BY 1')).map((r) => r.leaf);
+    step('X5 : aucune feuille ambiguë ne désigne une spécialité (V18) ; les feuilles multi-métiers restent sans nœud', report.crossTradeLeaves.length > 0 && Number(leafParents) > 0, `${leafParents} feuilles → métier parent ; ${report.crossTradeLeaves.length} multi-métiers`);
+    await db.exec('BEGIN');
+    await db.exec(`INSERT INTO public.requests(title, category, taxonomy_id, taxonomy_node_code, taxonomy_node_source) VALUES ('zz-neg-x5', 'Plomberie', '${leafId}', 'plomberie_debouchage', 'backfill_leaf')`);
+    const negX5 = await runVerify(['V18']);
+    await db.exec('ROLLBACK');
+    step('contrôle négatif : V18 détecte une spécialité choisie à partir d\'une feuille ambiguë', (negX5.V18 || []).length === 1, JSON.stringify(negX5.V18));
 
     // --- Rollback ---
     await db.exec(`DELETE FROM public.services WHERE owner_id='${userB}'`);

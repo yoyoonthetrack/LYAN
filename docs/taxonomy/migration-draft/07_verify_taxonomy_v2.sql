@@ -30,11 +30,17 @@ JOIN public.lyann_taxonomy_node f ON f.code = nf.family_code WHERE f.kind <> 'fa
 SELECT 'V07 feuille sans correspondance' AS check, t.id, t.universe, t.category, t.subcategory FROM public.lyann_taxonomy t
 WHERE NOT EXISTS (SELECT 1 FROM public.lyann_taxonomy_legacy_map m WHERE m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory);
 
--- V08 (après backfill) — feuilles historiques sans node_code
-SELECT 'V08 feuille sans node_code' AS check, t.id FROM public.lyann_taxonomy t WHERE t.node_code IS NULL;
+-- V08 (après backfill) — feuilles historiques sans node_code, SAUF celles qui recouvrent plusieurs métiers (décision X5 : rien n'est rattaché ;
+-- elles sont listées par V20 pour décision humaine)
+SELECT 'V08 feuille sans node_code' AS check, t.id FROM public.lyann_taxonomy t
+WHERE t.node_code IS NULL
+  AND NOT EXISTS (SELECT 1 FROM public.lyann_taxonomy_legacy_map m
+                  WHERE m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory
+                    AND m.mapping_kind IN ('split', 'merge', 'ambiguous') AND cardinality(m.alt_codes) > 0);
 
--- V09 (après backfill) — demandes classées à l'ancienne mais sans nœud v2
-SELECT 'V09 demande classée sans nœud' AS check, r.id FROM public.requests r WHERE r.taxonomy_id IS NOT NULL AND r.taxonomy_node_code IS NULL;
+-- V09 (après backfill) — demandes classées à l'ancienne mais sans nœud v2 (hors demandes volontairement exclues du rétro-remplissage : modération en cours, voir V22)
+SELECT 'V09 demande classée sans nœud' AS check, r.id FROM public.requests r WHERE r.taxonomy_id IS NOT NULL AND r.taxonomy_node_code IS NULL
+  AND r.public_moderation_status = 'approved' AND r.title_pending IS NULL AND r.description_pending IS NULL;
 
 -- V10 — cohérence ancien/nouveau : une demande ne peut pas pointer un nœud v2 SANS RAPPORT avec celui de sa feuille.
 -- Même nœud, spécialité du métier de la feuille, ou métier de la feuille (le client v2 peut être plus précis que l'ancienne feuille, jamais ailleurs).
@@ -63,7 +69,7 @@ SELECT 'V13 nœud sans provenance', 'services', s.id::text FROM public.services 
 
 -- V14 (après 06) — un rattachement dérivé d'une feuille doit être celui de cette feuille (jamais de divergence silencieuse)
 SELECT 'V14 dérivation divergente' AS check, r.id FROM public.requests r JOIN public.lyann_taxonomy t ON t.id = r.taxonomy_id
-WHERE r.taxonomy_node_source = 'derived_leaf' AND t.node_code IS NOT NULL AND r.taxonomy_node_code <> t.node_code;
+WHERE r.taxonomy_node_source IN ('derived_leaf', 'derived_leaf_parent') AND t.node_code IS NOT NULL AND r.taxonomy_node_code <> t.node_code;
 
 -- V15 (après 08) — la table de projection historique est intègre : toute feuille citée existe et est active
 SELECT 'V15 projection : feuille introuvable' AS check, p.node_code, p.legacy_leaf_key FROM public.lyann_taxonomy_legacy_projection p
@@ -78,3 +84,40 @@ WHERE p.legacy_leaf_key IS NOT NULL AND NOT public.lyann_node_related_to(p.node_
 -- V17 (après 08) — une projection ne peut pas viser un nœud sans pont véridique : aucune ligne pour un nœud de la famille « autres »
 SELECT 'V17 projection vers « autres »' AS check, p.node_code FROM public.lyann_taxonomy_legacy_projection p
 JOIN public.lyann_taxonomy_node n ON n.code = p.node_code WHERE n.family_code = 'autres';
+
+-- V18 (après backfill / 06) — décision X5 : AUCUNE spécialité n'est choisie à partir d'une valeur ambiguë.
+-- Un rattachement dérivé ou rétro-rempli sans suffixe _parent ne peut pas viser une spécialité si la correspondance est split / merge / ambiguous avec alternatives.
+SELECT 'V18 spécialité inventée (annonce)' AS check, r.id::text FROM public.requests r
+JOIN public.lyann_taxonomy t ON t.id = r.taxonomy_id
+JOIN public.lyann_taxonomy_legacy_map m ON m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory
+JOIN public.lyann_taxonomy_node n ON n.code = r.taxonomy_node_code
+WHERE r.taxonomy_node_source IN ('backfill_leaf', 'derived_leaf') AND n.kind = 'specialty'
+  AND m.mapping_kind IN ('split', 'merge', 'ambiguous') AND cardinality(m.alt_codes) > 0
+UNION ALL
+SELECT 'V18 spécialité inventée (compétence)', s.id::text FROM public.services s
+JOIN public.lyann_taxonomy_legacy_map m ON m.legacy_kind = 'skill_title' AND lower(btrim(m.legacy_key)) = lower(btrim(s.title))
+JOIN public.lyann_taxonomy_node n ON n.code = s.taxonomy_node_code
+WHERE s.taxonomy_node_source IN ('backfill_title', 'derived_title') AND n.kind = 'specialty'
+  AND m.mapping_kind IN ('split', 'merge', 'ambiguous') AND cardinality(m.alt_codes) > 0;
+
+-- V19 — informatif : file « besoin de précision » (rattachements au métier parent faute de certitude sur la spécialité)
+SELECT 'V19 besoin de précision' AS info, 'requests' AS t, taxonomy_node_source AS source, count(*) AS n
+FROM public.requests WHERE taxonomy_node_source LIKE '%\_parent' GROUP BY taxonomy_node_source
+UNION ALL
+SELECT 'V19 besoin de précision', 'services', taxonomy_node_source, count(*) FROM public.services WHERE taxonomy_node_source LIKE '%\_parent' GROUP BY taxonomy_node_source;
+
+-- V20 — informatif : feuilles historiques qui recouvrent plusieurs métiers (aucun nœud rattaché : à classer par décision humaine)
+SELECT 'V20 feuille multi-métiers' AS info, t.id, t.universe || '|' || t.category || '|' || t.subcategory AS leaf
+FROM public.lyann_taxonomy t WHERE t.node_code IS NULL;
+
+-- V21 — quota de catégories (décision X2, politique C) : deux nœuds proposables ne doivent jamais produire le même titre de compétence
+-- (« Métier · Spécialité », libellé seul pour un métier), sinon deux compétences ne compteraient que pour une catégorie du forfait.
+SELECT 'V21 titre de compétence en collision' AS check, k AS title_key, count(*) AS n FROM (
+    SELECT lower(regexp_replace(btrim(CASE WHEN n.kind = 'specialty' THEN p.label_fr || ' · ' || n.label_fr ELSE n.label_fr END), '\s+', ' ', 'g')) AS k
+    FROM public.lyann_taxonomy_node n LEFT JOIN public.lyann_taxonomy_node p ON p.code = n.parent_code
+    WHERE n.selectable AND n.kind IN ('trade', 'specialty') AND n.family_code <> 'autres'
+) t GROUP BY k HAVING count(*) > 1;
+
+-- V22 — informatif : demandes volontairement exclues du rétro-remplissage (modération en cours : statut non approuvé ou modification en attente)
+SELECT 'V22 demandes exclues (modération)' AS info, count(*) AS n FROM public.requests
+WHERE taxonomy_node_code IS NULL AND (public_moderation_status IS DISTINCT FROM 'approved' OR title_pending IS NOT NULL OR description_pending IS NOT NULL);

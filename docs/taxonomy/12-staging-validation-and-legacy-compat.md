@@ -1,5 +1,7 @@
 # 12 — Validation Staging, compatibilité des anciens clients, gel conditionnel de l'ancienne API
 
+> **Suite : [`13-lock-before-staging-migration.md`](13-lock-before-staging-migration.md)** — les règles de spécialités héritées (X5) y remplacent celles du §4.2 pour les écritures de rétro-remplissage ; la politique C y est prouvée contre la garde de quota réelle.
+
 > **Statut : DÉVELOPPEMENT LOCAL + LECTURE SEULE.** Aucune migration appliquée, aucune écriture Supabase, Production non consultée, aucun déploiement, aucune permission modifiée, aucun build iOS/Android.
 > Seule interaction avec Staging (`tdktfbtqceldlaeqjtow`, `Lyann-staging-v2`) : les 15 requêtes `SELECT` de `sql/staging-preflight-readonly.sql` (§1), plus une requête de catalogue sur les ACL de colonnes.
 > Tout ce qui change le comportement de l'application est derrière un drapeau **désactivé par défaut**.

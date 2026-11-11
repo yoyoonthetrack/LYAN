@@ -22,7 +22,8 @@
 --   5. l'ancien éditeur de compétences (RPC de la migration 83) ne supprime plus une compétence posée par un client v2 ;
 --   6. SECURITY DEFINER avec search_path fixé : la table de correspondance est réservée à l'administration (RLS), un membre
 --      ne pourrait pas la lire avec ses propres droits ; la fonction ne lit que des catalogues et n'écrit que dans NEW.
--- Provenances : client · user · classifier (v2) · derived_leaf · derived_category · derived_title (ce fichier) · backfill_* (05).
+-- Provenances : client · user · classifier (v2) · derived_leaf · derived_category · derived_title (ce fichier) · backfill_* (05) ;
+-- le suffixe _parent (derived_*_parent, backfill_*_parent) signale un rattachement au métier parent faute de certitude sur la spécialité : besoin de précision (décision X5).
 -- ============================================================================
 BEGIN;
 
@@ -117,6 +118,8 @@ AS $$
 DECLARE
     v_code   text;
     v_source text;
+    v_prec   boolean := false;
+    c        record;
 BEGIN
     BEGIN
         IF NEW.taxonomy_node_code IS NOT NULL THEN
@@ -136,21 +139,25 @@ BEGIN
             END IF;
         END IF;
 
+        -- Décision X5 : un nœud précis n'est dérivé que si la correspondance est certaine ; si la valeur historique recouvre plusieurs
+        -- spécialités d'un même métier, on rattache au MÉTIER PARENT (provenance *_parent = besoin de précision) ; si elle recouvre
+        -- plusieurs métiers, on ne rattache à rien. Jamais de spécialité choisie arbitrairement.
         IF NEW.taxonomy_id IS NOT NULL THEN
-            SELECT coalesce(t.node_code, m.node_code) INTO v_code
+            SELECT coalesce(t.node_code, k.node_code), coalesce(k.precision_needed, false) AND coalesce(t.node_code, k.node_code) IS NOT DISTINCT FROM k.node_code
+              INTO v_code, v_prec
             FROM public.lyann_taxonomy t
-            LEFT JOIN public.lyann_taxonomy_legacy_map m
-                   ON m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory
+            LEFT JOIN LATERAL public.lyann_legacy_certain_node('taxonomy_leaf', t.universe || '|' || t.category || '|' || t.subcategory) k ON true
             WHERE t.id = NEW.taxonomy_id;
-            IF v_code IS NOT NULL THEN v_source := 'derived_leaf'; END IF;
+            IF v_code IS NOT NULL THEN v_source := CASE WHEN v_prec THEN 'derived_leaf_parent' ELSE 'derived_leaf' END; END IF;
         END IF;
 
         IF v_code IS NULL AND nullif(btrim(NEW.category), '') IS NOT NULL THEN
-            SELECT m.node_code INTO v_code
-            FROM public.lyann_taxonomy_legacy_map m
-            WHERE m.legacy_kind = 'request_category' AND m.mapping_kind IN ('exact', 'broad', 'merge')
-              AND lower(btrim(m.legacy_key)) = lower(btrim(NEW.category));
-            IF v_code IS NOT NULL THEN v_source := 'derived_category'; END IF;
+            SELECT * INTO c FROM public.lyann_legacy_certain_node('request_category', NEW.category);
+            -- « Général », « Autre » et les résidus de test (ambiguous sans alternative) ne désignent rien : NULL.
+            IF c.node_code IS NOT NULL AND (c.precision_needed OR c.mapping_kind IN ('exact', 'broad', 'merge')) THEN
+                v_code := c.node_code;
+                v_source := CASE WHEN c.precision_needed THEN 'derived_category_parent' ELSE 'derived_category' END;
+            END IF;
         END IF;
 
         NEW.taxonomy_node_code := v_code;       -- NULL si rien de fiable : « à classer »
@@ -169,6 +176,7 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_code text;
+    c      record;
 BEGIN
     BEGIN
         IF NEW.taxonomy_node_code IS NOT NULL THEN
@@ -185,13 +193,14 @@ BEGIN
             END IF;
         END IF;
 
-        -- Compétence : correspondance par titre normalisé. Les titres ambigus (« Installation », « Dépannage »…) restent NULL.
-        SELECT m.node_code INTO v_code
-        FROM public.lyann_taxonomy_legacy_map m
-        WHERE m.legacy_kind = 'skill_title' AND m.mapping_kind IN ('exact', 'broad', 'merge')
-          AND lower(btrim(m.legacy_key)) = lower(btrim(NEW.title));
+        -- Compétence : correspondance par titre normalisé (décision X5). Les titres sans objet (« Installation », « Dépannage »…) qui
+        -- recouvrent plusieurs métiers restent NULL ; ceux qui recouvrent plusieurs spécialités d'un même métier montent au métier parent.
+        SELECT * INTO c FROM public.lyann_legacy_certain_node('skill_title', NEW.title);
+        IF c.node_code IS NOT NULL AND (c.precision_needed OR c.mapping_kind IN ('exact', 'broad', 'merge')) THEN
+            v_code := c.node_code;
+        END IF;
         NEW.taxonomy_node_code := v_code;
-        NEW.taxonomy_node_source := CASE WHEN v_code IS NULL THEN NULL ELSE 'derived_title' END;
+        NEW.taxonomy_node_source := CASE WHEN v_code IS NULL THEN NULL WHEN c.precision_needed THEN 'derived_title_parent' ELSE 'derived_title' END;
     EXCEPTION WHEN OTHERS THEN
         RAISE WARNING 'lyann_derive_service_node: % (%), rattachement laissé en l''état', SQLERRM, SQLSTATE;
     END;
