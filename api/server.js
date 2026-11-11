@@ -2755,6 +2755,15 @@ app.get('/v1/admin/bokantaj/media-volume', async (req, res) => {
     }
 });
 
+// Gel conditionnel des ÉCRITURES de l'ancienne API de taxonomie (B6, phase 3.2B). Éteint par défaut : tant que la variable n'est pas
+// exactement « true », le comportement est strictement celui d'avant. La lecture (GET) n'est jamais gelée ; aucun RBAC ni RLS n'est modifié.
+const legacyTaxonomyWritesFrozen = () => process.env.LYANN_FREEZE_LEGACY_TAXONOMY_WRITES === 'true';
+const refuseFrozenLegacyTaxonomyWrite = (res) => res.status(423).json({
+    success: false,
+    code: 'LEGACY_TAXONOMY_FROZEN',
+    error: "La gestion de l'ancien catalogue de taxonomie est gelée pendant la migration vers le référentiel v2."
+});
+
 app.get('/v1/admin/taxonomy', async (req, res) => {
     const authResult = await verifyAdminPermission(req);
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
@@ -2774,6 +2783,7 @@ app.get('/v1/admin/taxonomy', async (req, res) => {
 app.post('/v1/admin/taxonomy', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'moderation.manage');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    if (legacyTaxonomyWritesFrozen()) return refuseFrozenLegacyTaxonomyWrite(res);
     const universe = String(req.body?.universe || '').trim();
     const category = String(req.body?.category || '').trim();
     const subcategory = String(req.body?.subcategory || '').trim();
@@ -2811,6 +2821,7 @@ app.post('/v1/admin/taxonomy', async (req, res) => {
 app.patch('/v1/admin/taxonomy/:id', async (req, res) => {
     const authResult = await verifyAdminPermission(req, 'moderation.manage');
     if (!authResult.authorized) return res.status(authResult.status).json({ success: false, error: authResult.error });
+    if (legacyTaxonomyWritesFrozen()) return refuseFrozenLegacyTaxonomyWrite(res);
     try {
         const patch = { updated_at: new Date().toISOString() };
         if (typeof req.body?.active === 'boolean') patch.active = req.body.active;

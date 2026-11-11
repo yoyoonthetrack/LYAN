@@ -3595,16 +3595,20 @@ window.LyannFavoritesService = {
                         const mainTitle = req.description || req.title || 'Besoin LYANN';
                         const statusBadge = (typeof window.getRequestStatusBadge === 'function') ? window.getRequestStatusBadge(req.status) : { label: req.status || 'Ouvert', class: 'badge-open' };
                         const budgetStr = req.budget ? `${req.budget} €` : 'Sur devis';
+                        // Libellé de catégorie : résolveur taxonomie si son drapeau est actif, sinon valeur brute historique.
+                        const categoryLabel = (legacy) => (typeof window !== 'undefined' && window.LYANN_TAXONOMY_UX
+                            ? window.LYANN_TAXONOMY_UX.displayCategory(req, null, { legacy, features: window.LYANN_FEATURES })
+                            : (req.category || legacy));
                         hydrated.push({
                             favId: fav.id,
                             entity_type: 'REQUEST',
                             entity_id: req.id,
                             title: mainTitle,
-                            category: req.category || 'Entraide',
+                            category: categoryLabel('Entraide'),
                             location: req.location || 'Guadeloupe',
                             budget: budgetStr,
                             statusBadge: statusBadge,
-                            subtitle: `${req.category || 'Service'} • ${req.location || 'Guadeloupe'} • ${budgetStr}`,
+                            subtitle: `${categoryLabel('Service')} • ${req.location || 'Guadeloupe'} • ${budgetStr}`,
                             avatar: null,
                             created_at: fav.created_at,
                             raw: req

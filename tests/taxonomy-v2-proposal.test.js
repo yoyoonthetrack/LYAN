@@ -311,13 +311,38 @@ test('brouillons SQL : étiquetés non appliqués, additifs, sans accès Product
     }
     // 06 : déclencheurs de double écriture : SECURITY DEFINER à search_path fixé, fail-open, n'écrivent que les champs v2.
     const derive = fs.readFileSync(path.join(DRAFT, '06_dual_write_derivation.sql'), 'utf8');
-    for (const m of derive.matchAll(/CREATE OR REPLACE FUNCTION[\s\S]*?\$\$;/g)) {
-        assert.match(m[0], /SECURITY DEFINER/); assert.match(m[0], /SET search_path = public, pg_temp/);
-        assert.match(m[0], /EXCEPTION WHEN OTHERS THEN\s+RAISE WARNING/, 'doit être fail-open');
-        assert.doesNotMatch(m[0], /RAISE EXCEPTION/, 'ne doit jamais bloquer une écriture');
-        assert.doesNotMatch(m[0], /\b(INSERT|DELETE|UPDATE)\s+(INTO\s+)?public\./i, 'ne doit écrire que dans NEW');
-        for (const col of [...m[0].matchAll(/NEW\.(\w+)\s*:=/g)].map((x) => x[1])) assert.ok(['taxonomy_node_code', 'taxonomy_node_source'].includes(col), `NEW.${col} modifié`);
+    const functions = [...derive.matchAll(/CREATE OR REPLACE FUNCTION[\s\S]*?\$\$;/g)].map((m) => m[0]);
+    const triggers = functions.filter((f) => /RETURNS trigger/.test(f));
+    assert.equal(triggers.length, 2);
+    for (const fn of triggers) {
+        assert.match(fn, /SECURITY DEFINER/); assert.match(fn, /SET search_path = public, pg_temp/);
+        assert.match(fn, /EXCEPTION WHEN OTHERS THEN\s+RAISE WARNING/, 'doit être fail-open');
+        assert.doesNotMatch(fn, /RAISE EXCEPTION/, 'ne doit jamais bloquer une écriture');
+        assert.doesNotMatch(fn, /\b(INSERT|DELETE|UPDATE)\s+(INTO\s+)?public\./i, 'ne doit écrire que dans NEW');
+        for (const col of [...fn.matchAll(/NEW\.(\w+)\s*:=/g)].map((x) => x[1])) assert.ok(['taxonomy_node_code', 'taxonomy_node_source'].includes(col), `NEW.${col} modifié`);
     }
+    // 06 : aides de cohérence = lecture seule (aucune écriture), SECURITY DEFINER à search_path fixé dès qu'elles lisent une table.
+    const helpers = functions.filter((f) => /lyann_(node_related_to|request_legacy_matches_node|service_legacy_matches_node|legacy_value_is_placeholder)/.test(f.split('\n')[0]));
+    assert.equal(helpers.length, 4);
+    for (const fn of helpers) {
+        assert.doesNotMatch(fn, /\b(INSERT|DELETE|UPDATE)\b\s+(INTO\s+)?public\.|\bRAISE EXCEPTION\b/i, 'une aide de cohérence ne modifie rien');
+        if (/FROM public\./.test(fn)) { assert.match(fn, /SECURITY DEFINER/); assert.match(fn, /SET search_path = public, pg_temp/); assert.match(fn, /\bSTABLE\b/); }
+    }
+    // 06 : la RPC d'enregistrement des compétences (migration 83) n'est modifiée QUE par la protection des compétences à nœud explicite.
+    const protectedRpc = functions.find((f) => /lyann_sync_profile_skills\(p_user/.test(f.split('\n')[0]));
+    assert.ok(protectedRpc, 'RPC protégée absente de 06');
+    const original = fs.readFileSync(path.join(ROOT, '83_lyann_atomic_profile_skills_staging.sql'), 'utf8');
+    const originalFn = original.slice(original.indexOf('CREATE FUNCTION public.lyann_sync_profile_skills'), original.indexOf('REVOKE ALL ON FUNCTION public.lyann_sync_profile_skills')).replace('CREATE FUNCTION', 'CREATE OR REPLACE FUNCTION').trim();
+    const stripAdded = protectedRpc.split('\n').filter((l) => !/Compétence posée par un client v2|AND NOT \(s\.taxonomy_node_code IS NOT NULL/.test(l)).join('\n').replace('never priced services, never v2 skills.', 'never priced services.').trim();
+    assert.equal(stripAdded, originalFn, 'la RPC protégée ne doit différer de la migration 83 que par les lignes de protection');
+    // 08 : la projection historique est un trigger fail-open qui n'écrit que category et taxonomy_id dans NEW.
+    const projection = fs.readFileSync(path.join(DRAFT, '08_legacy_projection.sql'), 'utf8');
+    const proj = projection.match(/CREATE OR REPLACE FUNCTION public\.lyann_fill_request_legacy[\s\S]*?\$\$;/)[0];
+    assert.match(proj, /SECURITY DEFINER/); assert.match(proj, /SET search_path = public, pg_temp/);
+    assert.match(proj, /EXCEPTION WHEN OTHERS THEN\s+RAISE WARNING/); assert.doesNotMatch(proj, /RAISE EXCEPTION/);
+    assert.doesNotMatch(proj, /\b(INSERT|DELETE|UPDATE)\s+(INTO\s+)?public\./i);
+    assert.deepEqual([...new Set([...proj.matchAll(/NEW\.(\w+)\s*:=/g)].map((x) => x[1]))].sort(), ['category', 'taxonomy_id']);
+    assert.match(projection, /ALTER TABLE public\.lyann_taxonomy_legacy_projection ENABLE ROW LEVEL SECURITY/);
     // Toute nouvelle table a la RLS activée.
     const schema = fs.readFileSync(path.join(DRAFT, '01_schema_taxonomy_v2.sql'), 'utf8') + fs.readFileSync(path.join(DRAFT, '03_search_and_skills_rpc.sql'), 'utf8');
     const created = [...schema.matchAll(/CREATE TABLE public\.(\w+)/g)].map((m) => m[1]);

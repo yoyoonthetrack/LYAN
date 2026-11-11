@@ -7084,7 +7084,9 @@ safeDomReady(() => {
                 const rowsHTML = myRequests.map(r => {
                     const titleText = (r.title && r.title.trim()) ? r.title.trim() : 'Annonce';
                     const descriptionText = (r.description && r.description.trim() && r.description.trim() !== titleText) ? r.description.trim() : '';
-                    const categorySubtitle = (r.category && r.category.trim()) ? r.category.trim() : '';
+                    const categorySubtitle = window.LYANN_TAXONOMY_UX?.isEnabled('resolver', window.LYANN_FEATURES)
+                        ? (window.LYANN_TAXONOMY_UX.categoryLine(r, null, {}) || '')
+                        : ((r.category && r.category.trim()) ? r.category.trim() : '');
                     
                     let locShort = (r.location || 'Guadeloupe').split('(')[0].trim();
                     
@@ -10152,6 +10154,22 @@ safeDomReady(() => {
             taxonomyList = window.LyanAI.baselineTaxonomy;
         }
 
+        // Assistant sans présélection métier (drapeau taxonomyNoPreselect) : aucune valeur n'est cochée « parce qu'elle est première » ;
+        // seule une proposition CLASSIFIED présente dans la taxonomie est reprise, l'auteur choisit le reste.
+        const uxNoPreselect = window.LYANN_TAXONOMY_UX;
+        if (uxNoPreselect && uxNoPreselect.isEnabled('noPreselect', window.LYANN_FEATURES)) {
+            const render = (selection) => {
+                const state = uxNoPreselect.wizardState(taxonomyList, selection);
+                domainSelect.innerHTML = uxNoPreselect.optionsHtml(state.universes, 'Choisir un domaine', state.universe, escapeSearchHtml);
+                catSelect.innerHTML = uxNoPreselect.optionsHtml(state.categories, 'Choisir une catégorie', state.category, escapeSearchHtml);
+                subCatSelect.innerHTML = uxNoPreselect.optionsHtml(state.subcategories, 'Choisir une sous-catégorie', state.subcategory, escapeSearchHtml);
+            };
+            render(uxNoPreselect.suggestionFrom(taxonomyList, result));
+            domainSelect.onchange = () => render({ universe: domainSelect.value, category: '', subcategory: '' });
+            catSelect.onchange = () => render({ universe: domainSelect.value, category: catSelect.value, subcategory: '' });
+            return { taxonomyLength: taxonomyList.length };
+        }
+
         if (!result || !result.universe || result.universe === "Autres Besoins") {
             console.trace('[REAL FALLBACK WRITE]', {
                 source: 'syncWizardTaxonomyDropdowns_fallback',
@@ -11227,6 +11245,14 @@ safeDomReady(() => {
                     }
                 }
             } else if (currentStep < totalSteps) {
+                if (currentStep === 2 && window.LYANN_TAXONOMY_UX?.isEnabled('noPreselect', window.LYANN_FEATURES)) {
+                    const chosen = window.LYANN_TAXONOMY_UX.validateSelection({ category: document.getElementById('wizardCategory')?.value });
+                    if (!chosen.ok) {
+                        if (window.NotificationService) window.NotificationService.showToast('error', chosen.message);
+                        else alert(chosen.message);
+                        return;
+                    }
+                }
                 if (currentStep === 2) {
                     const title = (document.getElementById('wizardTitleInput')?.value || '').trim();
                     if (title.length < 3) {
@@ -11280,10 +11306,16 @@ safeDomReady(() => {
             // Extract form inputs
             const desc = document.getElementById('wizardDescInput')?.value?.trim() || '';
             const categorySelect = document.getElementById('wizardCategory');
-            const categoryText = categorySelect ? (categorySelect.options[categorySelect.selectedIndex]?.text || categorySelect.value) : 'Général';
+            // Drapeau taxonomyNoPreselect : on lit la valeur choisie (jamais le libellé d'une option vide ni le repli « Général »).
+            const noPreselect = Boolean(window.LYANN_TAXONOMY_UX?.isEnabled('noPreselect', window.LYANN_FEATURES));
+            const categoryText = noPreselect
+                ? String(categorySelect?.value || '').trim()
+                : (categorySelect ? (categorySelect.options[categorySelect.selectedIndex]?.text || categorySelect.value) : 'Général');
 
             const subCatSelect = document.getElementById('wizardSubCat');
-            const subCatText = subCatSelect ? (subCatSelect.options[subCatSelect.selectedIndex]?.text || subCatSelect.value) : '';
+            const subCatText = noPreselect
+                ? String(subCatSelect?.value || '').trim()
+                : (subCatSelect ? (subCatSelect.options[subCatSelect.selectedIndex]?.text || subCatSelect.value) : '');
             
             const territorySelect = document.getElementById('wizardTerritorySelect');
             const territoryVal = territorySelect ? (territorySelect.options[territorySelect.selectedIndex]?.text || territorySelect.value) : '971 - Guadeloupe';
@@ -11299,6 +11331,14 @@ safeDomReady(() => {
                 releasePublishLock();
                 goToStep(step);
             };
+
+            if (noPreselect) {
+                const chosen = window.LYANN_TAXONOMY_UX.validateSelection({ category: categoryText });
+                if (!chosen.ok) {
+                    refuse(chosen.message, 2);
+                    return;
+                }
+            }
 
             const title = (document.getElementById('wizardTitleInput')?.value || '').trim().slice(0, TITLE_MAX);
             if (title.length < 3) {
@@ -11835,7 +11875,8 @@ window.openLyannDetailModal = async function(requestId, initialData = null) {
     if (titleEl) titleEl.textContent = requestData.title || 'Demande d\'entraide';
     if (badgeEl) {
         const taxonomyText = window.LYANN_ANNONCE_FORMAT?.categoryLine(requestData, taxonomyLeaves);
-        badgeEl.textContent = `LYANN · ${taxonomyText || requestData.category || 'Général'}`;
+        const resolverOn = window.LYANN_TAXONOMY_UX?.isEnabled('resolver', window.LYANN_FEATURES);
+        badgeEl.textContent = `LYANN · ${taxonomyText || (resolverOn ? window.LYANN_TAXONOMY_UX.EMPTY_LABEL : (requestData.category || 'Général'))}`;
     }
     const ageEl = document.getElementById('lyannDetailAge');
     if (ageEl) {
@@ -12023,7 +12064,7 @@ window.loadUserRequestsUI = async function() {
                 <div class="request-card-item" data-id="${esc(req.id)}" style="background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                         <div>
-                            <span class="badge" style="background: #EBF3EE; color: #2D5A39; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">${esc(req.category || 'Besoin')}</span>
+                            <span class="badge" style="background: #EBF3EE; color: #2D5A39; font-weight: 700; font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; text-transform: uppercase;">${esc(window.LYANN_TAXONOMY_UX ? window.LYANN_TAXONOMY_UX.displayCategory(req, null, { legacy: 'Besoin', features: window.LYANN_FEATURES }) : (req.category || 'Besoin'))}</span>
                             <h5 style="margin: 6px 0 2px 0; font-size: 1.05rem; font-weight: 700;">${esc(req.title || 'Sans titre')}</h5>
                         </div>
                         <span style="font-weight: 800; font-size: 1.1rem; color: var(--primary, #2D5A39);">${budgetStr}</span>

@@ -74,6 +74,9 @@
     // "PHOTOGRAPHIE · ÉVÉNEMENT & PORTRAIT". The subcategory lives in the taxonomy,
     // referenced by taxonomy_id, so it is resolved rather than duplicated on the row.
     function categoryLine(record, taxonomyLeaves) {
+        // Résolveur de libellé (taxonomy-ux.js) : actif uniquement si le drapeau taxonomyResolver vaut true ; sinon comportement historique.
+        const ux = window.LYANN_TAXONOMY_UX;
+        if (ux && ux.isEnabled('resolver', window.LYANN_FEATURES)) return ux.categoryLine(record, taxonomyLeaves, {});
         const leaf = record?.taxonomy_id && Array.isArray(taxonomyLeaves)
             ? taxonomyLeaves.find(candidate => candidate.id === record.taxonomy_id)
             : null;

@@ -1,5 +1,7 @@
 # 11 — Plan d'intégration technique de la taxonomie v2 sur Staging
 
+> **Mise à jour du 11 nov. 2026 (soir) — voir [`12-staging-validation-and-legacy-compat.md`](12-staging-validation-and-legacy-compat.md).** P1 est exécuté (15/15, lecture seule) : **B1 est levé**. P2 est livré localement derrière des drapeaux OFF. Le plan P3-P9 est **amendé** (§6 du document 12 : brouillon `08`, RPC `lyann_sync_profile_skills` protégée, instantané obligatoire, étape facultative T2). **B6** : consommateurs identifiés, garde de gel livré éteint (aucune route désactivée). Nouveaux points ouverts : X1-X5 (document 12, §7). Banc PGlite : **103 contrôles**.
+
 > **Statut : PLAN. Rien n'est appliqué.** Aucune migration, aucune permission créée ou modifiée, aucun déploiement, Production non consultée. Staging n'a pas été interrogé dans cette étape (voir B1).
 > Ce qui a été fait : cartographie des dépendances (dépôt), un brouillon SQL supplémentaire (`06`) rejoué en local (PGlite, 66 contrôles), un pré-vol Staging en lecture seule prêt à exécuter. Les étapes marquées **🔐** exigent une autorisation spécifique avant toute exécution.
 

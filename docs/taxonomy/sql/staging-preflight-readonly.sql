@@ -1,6 +1,6 @@
 -- Pré-vol Staging de l'intégration taxonomie v2 — LECTURE SEULE (SELECT uniquement).
 -- À exécuter UNIQUEMENT sur Staging (tdktfbtqceldlaeqjtow), jamais sur Production. Aucun résultat ne contient de donnée personnelle.
--- Non exécuté à ce jour : l'exécution n'a pas été autorisée par le contrôle automatique. Chaque requête a un critère d'arrêt (colonne « attendu »).
+-- Exécuté le 11 nov. 2026 sur Staging (15/15, lecture seule) : résultats dans 12-staging-validation-and-legacy-compat.md §1. Chaque requête a un critère d'arrêt (colonne « attendu »).
 
 -- P01 — la permission taxonomy.manage existe déjà (migration 17) : attendu = 2 lignes (taxonomy.read, taxonomy.manage)
 SELECT 'P01 permissions taxonomie' AS controle, code FROM public.admin_permissions WHERE code LIKE 'taxonomy.%' ORDER BY code;

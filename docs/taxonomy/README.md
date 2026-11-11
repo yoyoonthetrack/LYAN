@@ -13,6 +13,8 @@
 - **Ce qui est prouvé** : cohérence de structure, couverture complète de l'existant (89 feuilles, 103 titres de compétences, 9 boutons, 15 catégories de demandes, 8 familles de carte, 3 clés pro), 47 contrôles SQL rejoués localement, jeux de classification.
 - **Ce qui ne l'est pas** : la demande réelle (Production non lue), la précision de classification sur du langage réel (jeux écrits par l'auteur), la conformité juridique des nœuds réglementés, l'ergonomie (aucun test utilisateur).
 
+> **Validation Staging et anciens clients : lire [`12-staging-validation-and-legacy-compat.md`](12-staging-validation-and-legacy-compat.md)** (pré-vol réel, matrice de compatibilité des builds iOS/Android, B6, plan et rollback amendés, verdict).
+>
 > **Pour intégrer : lire [`11-staging-integration-plan.md`](11-staging-integration-plan.md)** (arbitrages du 11 nov. 2026, plan P0-P10, contrôles C01-C30).
 >
 > **Pour décider : lire [`10-product-review.md`](10-product-review.md)** — revue produit (familles, métiers, tuiles, territoires, 13 décisions avec recommandation et risque, ambiguïtés, UX, protocole de test, structure finale).
@@ -75,3 +77,5 @@ node scripts/taxonomy-v2/census-coverage.js export.json
 
 ## Fichiers produits
 `docs/taxonomy/` (README, 01, 06, 07, 08, 09 rédigés ; 02-05 générés ; `data/`, `generated/`, `migration-draft/`, `sql/`) · `scripts/taxonomy-v2/` (4 fichiers) · `tests/taxonomy-v2-proposal.test.js`. **Aucun fichier existant du dépôt n'est modifié.**
+
+**Étape 3.2B-staging (11 nov. 2026)** : `12-staging-validation-and-legacy-compat.md`, `scripts/taxonomy-v2/{compat,compat-matrix,build-legacy-projection}.js`, `migration-draft/08_legacy_projection.sql` (généré), `generated/legacy-compat-matrix.{json,csv}`, `taxonomy-ux.js` (derrière drapeaux OFF), garde de gel `api/server.js`, `tests/taxonomy-ux.test.js`, `tests/taxonomy-compat.test.js`. Ces fichiers touchent l'application **uniquement derrière des drapeaux désactivés** ; aucune migration n'est appliquée.

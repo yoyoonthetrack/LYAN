@@ -51,6 +51,10 @@ async function run() {
         CREATE TABLE public.services (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid, title text, description text, category text, slug text, base_price numeric, indicative_price numeric, price_type text, pricing_model text);
         GRANT SELECT, INSERT, UPDATE, DELETE ON public.requests, public.services, public.lyann_taxonomy TO authenticated;
     `);
+    // Ancienne RPC d'enregistrement des compétences (migration 83, déjà appliquée sur Staging) : nécessaire pour prouver que 06 la protège et que 09 la restitue.
+    await db.exec(fs.readFileSync(path.join(__dirname, '..', '..', '83_lyann_atomic_profile_skills_staging.sql'), 'utf8'));
+    const skillsFn = async () => (await rows("SELECT md5(prosrc) h FROM pg_proc WHERE proname = 'lyann_sync_profile_skills'"))[0].h;
+    const skillsFnBefore = await skillsFn();
     for (const [u, c, s, safety] of snapshot.leaves) {
         await db.exec(`INSERT INTO public.lyann_taxonomy(universe, category, subcategory, safety_level) VALUES (${q(u)}, ${q(c)}, ${q(s)}, ${q(safety)})`);
     }
@@ -125,6 +129,17 @@ async function run() {
     const covB = await rows('SELECT count(taxonomy_node_code) r, (SELECT count(taxonomy_node_code) FROM public.services) s FROM public.requests');
     step('rejeu de 05 après 06 : neutre, déclencheurs actifs', covA[0].r === covB[0].r && covA[0].s === covB[0].s, `${JSON.stringify(covA[0])} → ${JSON.stringify(covB[0])}`);
 
+    // --- 08 : écriture historique véridique (étape facultative) ---
+    try { await db.exec(read('08_legacy_projection.sql')); step('appliquer 08_legacy_projection.sql', true); } catch (e) { step('appliquer 08_legacy_projection.sql', false, e.message); return report; }
+    step('08 ne modifie aucune ligne existante', (await fingerprint()) === before);
+    v = await runVerify(['V10', 'V13', 'V14', 'V15', 'V16', 'V17']);
+    for (const [id, found] of Object.entries(v)) step(`verify ${id} (après 08)`, found.length === 0, found.length ? JSON.stringify(found.slice(0, 3)) : '');
+    const projCount = Number((await rows('SELECT count(*) n FROM public.lyann_taxonomy_legacy_projection'))[0].n);
+    step('projection : une ligne par nœud ayant un pont véridique', projCount === require('./build-legacy-projection').projectionRows().length, String(projCount));
+    await db.exec('RESET ROLE');
+    let denyProj = false; await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`); try { await rows('SELECT count(*) FROM public.lyann_taxonomy_legacy_projection'); } catch (_) { denyProj = true; } await db.exec('RESET ROLE');
+    step('projection : illisible pour un membre (table réservée au serveur)', denyProj);
+
     // --- Comportements : recherche ---
     const search = async (text) => (await rows(`SELECT node_code, trade_code, family_code, score, needs_clarification FROM public.lyann_taxonomy_search(${q(text)}, 5)`));
     const s1 = await search('fuite sous mon évier');
@@ -174,6 +189,15 @@ async function run() {
     let usurp = false; try { await db.query(`SELECT public.lyann_sync_profile_skills_v2('${userA}', ARRAY['plomberie'])`); } catch (_) { usurp = true; }
     step('RPC compétences v2 : usurpation d\'un autre membre refusée', usurp);
     await db.exec('RESET ROLE');
+    // Ancien éditeur de compétences (RPC 83 protégée par 06) : les compétences v2 de userB survivent à son enregistrement.
+    await db.exec(`INSERT INTO public.services(owner_id, title, description, category, slug) VALUES ('${userB}', 'Piscine', 'Piscine', 'Piscine', 'oc-old-stub')`);
+    await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`);
+    await db.query(`SELECT public.lyann_sync_profile_skills('${userB}', ARRAY['Couture'])`);
+    await db.exec('RESET ROLE');
+    step('ancien éditeur de compétences : les compétences v2 (nœud explicite) ne sont pas supprimées', Number((await rows(`SELECT count(*) n FROM public.services WHERE owner_id='${userB}' AND taxonomy_node_source = 'client'`))[0].n) === 3);
+    step('ancien éditeur de compétences : un ancien stub absent de la liste est toujours supprimé (comportement inchangé)', Number((await rows("SELECT count(*) n FROM public.services WHERE slug = 'oc-old-stub'"))[0].n) === 0);
+    step('ancien éditeur de compétences : la nouvelle compétence reçoit un nœud dérivé de son titre', (await rows(`SELECT taxonomy_node_source s FROM public.services WHERE owner_id='${userB}' AND title = 'Couture'`))[0].s === 'derived_title');
+    await db.exec(`DELETE FROM public.services WHERE owner_id='${userB}' AND title = 'Couture'`);
     const priced = await rows("SELECT count(*) n FROM public.services WHERE slug='priced'");
     step('un service tarifé n\'est jamais supprimé', Number(priced[0].n) === 1);
 
@@ -197,7 +221,31 @@ async function run() {
     await db.exec("UPDATE public.requests SET category = 'Piscine' WHERE title = 'oc-cat'");
     n = await node('oc-cat'); step('ancien client modifie la catégorie : nœud dérivé recalculé', n.c === 'piscine_bassin' && n.s === 'derived_category', JSON.stringify(n));
     await db.exec("UPDATE public.requests SET category = 'Piscine' WHERE title = 'oc-v2'");
-    n = await node('oc-v2'); step('ancien client modifie la catégorie : nœud explicite conservé', n.c === 'garde_enfants', JSON.stringify(n));
+    n = await node('oc-v2'); step('ancien client écrit une catégorie qui CONTREDIT le nœud explicite : nœud re-dérivé', n.c === 'piscine_bassin' && n.s === 'derived_category', JSON.stringify(n));
+
+    let sn0;
+    // Compatibilité des modifications par un ancien client sur une annonce v2 (nœud explicite précis) — jamais de fausse catégorie, jamais de perte gratuite.
+    const fuiteLabel = (await rows("SELECT label_fr FROM public.lyann_taxonomy_node WHERE code = 'plomberie_fuite'"))[0].label_fr;
+    const poolLeaf = (await rows("SELECT id FROM public.lyann_taxonomy WHERE category = 'Piscine' ORDER BY id LIMIT 1"))[0].id;
+    await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`);
+    await db.exec(`INSERT INTO public.requests(title, category, taxonomy_node_code) VALUES ('oc-edit', ${q(fuiteLabel)}, 'plomberie_fuite')`);
+    await db.exec('RESET ROLE');
+    n = await node('oc-edit'); step('annonce v2 précise : nœud « client » enregistré', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
+    const editAs = async (setSql) => { await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`); await db.exec(`UPDATE public.requests SET ${setSql} WHERE title = 'oc-edit'`); await db.exec('RESET ROLE'); return node('oc-edit'); };
+    n = await editAs("category = 'Plomberie'"); step('ancien client : catégorie historique du pont (« Plomberie ») → nœud précis conservé', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
+    n = await editAs("category = 'Général'"); step('ancien client : repli « Général » → nœud précis conservé', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
+    n = await editAs("category = 'Autre / Je ne trouve pas'"); step('ancien client : repli « Autre / Je ne trouve pas » (présélection de l\'ancien assistant) → nœud précis conservé', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
+    n = await editAs(`taxonomy_id = '${leafId}', category = 'Plomberie'`); step('ancien client : feuille historique cohérente avec le nœud → conservé', n.c === 'plomberie_fuite' && n.s === 'client', JSON.stringify(n));
+    n = await editAs(`taxonomy_id = '${poolLeaf}', category = 'Piscine'`); step('ancien client : feuille d\'une AUTRE catégorie → nœud re-dérivé depuis la feuille', n.c !== 'plomberie_fuite' && n.s === 'derived_leaf', JSON.stringify(n));
+    n = await editAs("taxonomy_id = NULL, category = 'k7mqp4lyannrc'"); step('ancien client : valeur informative sans équivalent fiable → « à classer », jamais un nœud inventé', n.c === null && n.s === null, JSON.stringify(n));
+    await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`);
+    await db.exec(`INSERT INTO public.services(owner_id, title, description, category, slug, taxonomy_node_code) VALUES ('${userB}', ${q(fuiteLabel)}, ${q(fuiteLabel)}, ${q(fuiteLabel)}, 'oc-s3', 'plomberie_fuite')`);
+    await db.exec('RESET ROLE');
+    const editSvc = async (title) => { await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`); await db.exec(`UPDATE public.services SET title = ${q(title)} WHERE slug = 'oc-s3'`); await db.exec('RESET ROLE'); return (await rows("SELECT taxonomy_node_code c, taxonomy_node_source s FROM public.services WHERE slug = 'oc-s3'"))[0]; };
+    const parentLabel = (await rows("SELECT label_fr FROM public.lyann_taxonomy_node WHERE code = 'plomberie'"))[0].label_fr;
+    sn0 = await editSvc(parentLabel + ' · ' + fuiteLabel); step('compétence : titre composé « Métier · Spécialité » → nœud précis conservé', sn0.c === 'plomberie_fuite' && sn0.s === 'client', JSON.stringify(sn0));
+    sn0 = await editSvc('Plomberie'); step('compétence : titre du métier parent → nœud précis conservé (cohérent)', sn0.c === 'plomberie_fuite' && sn0.s === 'client', JSON.stringify(sn0));
+    sn0 = await editSvc('Piscine'); step('compétence : titre sans rapport → re-dérivé depuis le titre', sn0.c !== 'plomberie_fuite', JSON.stringify(sn0));
     await db.exec('BEGIN');
     await db.exec('ALTER TABLE public.lyann_taxonomy_legacy_map RENAME TO lyann_taxonomy_legacy_map_x');
     let failOpen = true; try { await db.exec("INSERT INTO public.requests(title, category) VALUES ('oc-failopen', 'Plomberie')"); } catch (_) { failOpen = false; }
@@ -215,6 +263,40 @@ async function run() {
     await db.exec("DELETE FROM public.requests WHERE title LIKE 'oc-%'");
     await db.exec("DELETE FROM public.services WHERE slug LIKE 'oc-%'");
 
+    // --- Projection historique : un client v2 écrit un nœud, l'ancien client doit pouvoir le retrouver sans fausse catégorie ---
+    {
+        const pj = async (title) => (await rows(`SELECT r.category c, r.taxonomy_id i, t.subcategory sub, r.taxonomy_node_code n, r.taxonomy_node_source s FROM public.requests r LEFT JOIN public.lyann_taxonomy t ON t.id = r.taxonomy_id WHERE r.title = ${q(title)}`))[0];
+        const asB = async (sqlText) => { await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`); try { await db.exec(sqlText); } finally { await db.exec('RESET ROLE'); } };
+        const unbridged = (await rows(`SELECT code FROM public.lyann_taxonomy_node n WHERE n.selectable AND n.kind <> 'family' AND n.family_code <> 'autres'
+            AND NOT EXISTS (SELECT 1 FROM public.lyann_taxonomy_legacy_projection p WHERE p.node_code = n.code) ORDER BY code LIMIT 1`))[0].code;
+        const fuite = (await rows("SELECT label_fr FROM public.lyann_taxonomy_node WHERE code = 'plomberie_fuite'"))[0].label_fr;
+        await asB(`INSERT INTO public.requests(title, category, taxonomy_node_code) VALUES ('pj-leaf', 'Général', 'plomberie_fuite'), ('pj-label', ${q(fuite)}, 'plomberie_fuite'),
+            ('pj-trade', 'Général', 'plomberie'), ('pj-none', 'Général', ${q(unbridged)}), ('pj-chosen', 'Jardinage', 'plomberie_fuite')`);
+        await asB(`INSERT INTO public.requests(title, category, taxonomy_node_code, taxonomy_id) VALUES ('pj-leafchosen', 'Plomberie', 'plomberie_fuite', '${poolLeaf}')`);
+        let r = await pj('pj-leaf'); step('projection : nœud précis + repli « Général » → feuille et catégorie historiques véridiques', r.c === 'Plomberie' && r.i === leafId && r.n === 'plomberie_fuite' && r.s === 'client', JSON.stringify(r));
+        r = await pj('pj-label'); step('projection : libellé v2 recopié dans category → remplacé par la catégorie historique', r.c === 'Plomberie' && r.i === leafId, JSON.stringify(r));
+        r = await pj('pj-trade'); step('projection : métier seul → catégorie historique, jamais de sous-catégorie plus précise', r.c === 'Plomberie' && r.i === null, JSON.stringify(r));
+        r = await pj('pj-none'); step(`projection : nœud sans pont véridique (${unbridged}) → rien d'écrit, jamais de catégorie inventée`, r.c === 'Général' && r.i === null && r.n === unbridged, JSON.stringify(r));
+        r = await pj('pj-chosen'); step('projection : catégorie historique choisie → jamais écrasée', r.c === 'Jardinage' && r.i === null, JSON.stringify(r));
+        r = await pj('pj-leafchosen'); step('projection : feuille historique choisie → jamais écrasée', r.i === poolLeaf, JSON.stringify(r));
+        await asB("UPDATE public.requests SET taxonomy_node_code = 'plomberie' WHERE title = 'pj-leaf'");
+        r = await pj('pj-leaf'); step('projection : le nœud change, champs historiques périmés → recalculés (plus de feuille pour le métier seul)', r.n === 'plomberie' && r.c === 'Plomberie' && r.i === null, JSON.stringify(r));
+        await asB("UPDATE public.requests SET taxonomy_node_code = 'plomberie_fuite', category = 'Jardinage' WHERE title = 'pj-leaf'");
+        r = await pj('pj-leaf'); step('projection : nœud et catégorie modifiés ensemble → catégorie écrite conservée', r.c === 'Jardinage', JSON.stringify(r));
+        await db.exec('BEGIN');
+        await db.exec('ALTER TABLE public.lyann_taxonomy_legacy_projection RENAME TO lyann_taxonomy_legacy_projection_x');
+        let failOpenP = true; try { await db.exec("INSERT INTO public.requests(title, category, taxonomy_node_code) VALUES ('pj-failopen', 'Général', 'plomberie_fuite')"); } catch (_) { failOpenP = false; }
+        r = failOpenP ? await pj('pj-failopen') : null;
+        await db.exec('ROLLBACK');
+        step('projection fail-open : anomalie → écriture acceptée, champs inchangés', failOpenP && r && r.c === 'Général' && r.n === 'plomberie_fuite', JSON.stringify(r));
+        v = await runVerify(['V10']);
+        step('verify V10 détecte la seule écriture contradictoire (nœud « plomberie_fuite » + feuille « Piscine » écrites par un client)', (v.V10 || []).length === 1, JSON.stringify(v.V10));
+        await db.exec("DELETE FROM public.requests WHERE title = 'pj-leafchosen'");
+        v = await runVerify(['V10', 'V13', 'V14']);
+        for (const [id, found] of Object.entries(v)) step(`verify ${id} (après projections)`, found.length === 0, found.length ? JSON.stringify(found.slice(0, 3)) : '');
+        await db.exec("DELETE FROM public.requests WHERE title LIKE 'pj-%'");
+    }
+
     // --- Contrôle négatif : les vérifications détectent bien une anomalie (annulée ensuite) ---
     await db.exec('BEGIN');
     await db.exec("INSERT INTO public.lyann_taxonomy_node(code, kind, parent_code, family_code, label_fr) VALUES ('zz_neg_spec', 'specialty', 'plomberie', 'jardin', 'Anomalie volontaire')");
@@ -229,12 +311,13 @@ async function run() {
     await db.exec(`DELETE FROM public.services WHERE owner_id='${userB}'`);
     try { await db.exec(read('09_rollback_taxonomy_v2.sql')); step('appliquer 09_rollback_taxonomy_v2.sql', true); } catch (e) { step('appliquer 09_rollback_taxonomy_v2.sql', false, e.message); return report; }
     step('rollback : état initial restitué à l\'identique', (await fingerprint()) === before);
+    step('rollback : la RPC d\'enregistrement des compétences est restituée à l\'identique de la migration 83', (await skillsFn()) === skillsFnBefore);
     const left = await rows("SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND (relname LIKE 'lyann_taxonomy_%' OR relname='lyann_profile_skill') AND relkind IN ('r','v')");
     step('rollback : aucune table v2 résiduelle', left.length === 0, left.map((r) => r.relname).join(','));
     const cols = await rows("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public' AND column_name IN ('taxonomy_node_code','node_code')");
     step('rollback : aucune colonne v2 résiduelle', cols.length === 0);
     // Rejouable : appliquer à nouveau après rollback
-    try { await db.exec(read('01_schema_taxonomy_v2.sql')); await db.exec(read('02_additive_columns.sql')); await db.exec(read('03_search_and_skills_rpc.sql')); await db.exec(read('04_seed_taxonomy_v2.sql')); await db.exec(read('05_legacy_map_and_backfill.sql')); await db.exec(read('06_dual_write_derivation.sql')); step('rejouable après rollback', true); } catch (e) { step('rejouable après rollback', false, e.message); }
+    try { await db.exec(read('01_schema_taxonomy_v2.sql')); await db.exec(read('02_additive_columns.sql')); await db.exec(read('03_search_and_skills_rpc.sql')); await db.exec(read('04_seed_taxonomy_v2.sql')); await db.exec(read('05_legacy_map_and_backfill.sql')); await db.exec(read('06_dual_write_derivation.sql')); await db.exec(read('08_legacy_projection.sql')); step('rejouable après rollback', true); } catch (e) { step('rejouable après rollback', false, e.message); }
     await db.close();
     return report;
 }
