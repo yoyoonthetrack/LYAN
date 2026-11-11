@@ -277,6 +277,29 @@ async function run() {
         step('rollback 100 : TRUNCATE, TRIGGER, REFERENCES restitués, politiques inchangées', await priv('anon', 'TRUNCATE') && await priv('authenticated', 'REFERENCES') && (await policiesHash()) === polBefore);
     }
 
+    // --- 10 (post-migration, NON appliqué) : le membre précise une ancienne compétence sans changer sa clé de quota, même au plafond ---
+    {
+        const post = path.join(ROOT, 'docs', 'taxonomy', 'post-migration-draft');
+        try { await db.exec(fs.readFileSync(path.join(post, '10_resolve_legacy_skill.sql'), 'utf8')); step('appliquer 10_resolve_legacy_skill.sql (banc local)', true); } catch (e) { step('appliquer 10_resolve_legacy_skill.sql (banc local)', false, e.message); return report; }
+        await enforce(true);
+        const u = await newUser('FREE');
+        await db.exec(`INSERT INTO public.services(owner_id, title, description, category, slug) VALUES ('${u}', 'Courses', 'Courses', 'Courses', 'r10-1')`);
+        const keys = async () => Number((await rows(`SELECT count(DISTINCT public.lyann_service_category(category_id, category)) n FROM public.services WHERE owner_id = '${u}'`))[0].n);
+        const kBefore = await keys();
+        const sid = (await rows("SELECT id FROM public.services WHERE slug = 'r10-1'"))[0].id;
+        const nodeBefore = (await rows(`SELECT taxonomy_node_code c FROM public.services WHERE id = '${sid}'`))[0].c;
+        let e10 = null;
+        await db.exec(`SET ROLE authenticated; SET test.uid = '${u}'`);
+        try { await db.exec(`SELECT public.lyann_resolve_legacy_skill('${sid}', 'courses_commissions')`); } catch (e) { e10 = e.message; } finally { await db.exec("RESET ROLE; SET test.uid = ''"); }
+        const r10 = (await rows(`SELECT taxonomy_node_code c, taxonomy_node_source s, category, title FROM public.services WHERE id = '${sid}'`))[0];
+        step('10 : un membre FREE (quota 1) précise le métier d\'une ancienne compétence : accepté, sans nouvelle clé de quota, ni titre ni catégorie modifiés',
+            nodeBefore === null && e10 === null && r10.c === 'courses_commissions' && r10.s === 'user' && r10.category === 'Courses' && r10.title === 'Courses' && (await keys()) === kBefore, JSON.stringify({ nodeBefore, e10, r10 }));
+        await db.exec(fs.readFileSync(path.join(post, '10_resolve_legacy_skill_rollback.sql'), 'utf8'));
+        step('rollback 10 : la fonction est retirée, le choix du membre reste', Number((await rows("SELECT count(*) n FROM pg_proc WHERE proname = 'lyann_resolve_legacy_skill'"))[0].n) === 0
+            && (await rows(`SELECT taxonomy_node_code c FROM public.services WHERE id = '${sid}'`))[0].c === 'courses_commissions');
+        await enforce(false);
+    }
+
     // --- Retour arrière ---
     {
         const users = (await rows("SELECT id FROM auth.users")).map((x) => x.id);

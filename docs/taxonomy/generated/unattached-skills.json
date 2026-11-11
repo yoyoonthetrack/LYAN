@@ -1,0 +1,856 @@
+{
+ "meta": {
+  "source": "docs/taxonomy/data/staging-snapshot.json (agrégat Staging du 11 nov. 2026, données de recette) ; docs/taxonomy/data/legacy-map.data.js ; docs/taxonomy/generated/taxonomy-v2.json",
+  "rule": "reproduit lyann_legacy_certain_node (05) ; aucune donnée personnelle ; aucune écriture",
+  "manyTradesThreshold": 5
+ },
+ "totals": {
+  "services": 208,
+  "attached": 156,
+  "unattached": 52,
+  "unattachedTitles": 23
+ },
+ "buckets": {
+  "recoverable": {
+   "rows": 0,
+   "titles": 0
+  },
+  "needs_member_precision": {
+   "rows": 48,
+   "titles": 21
+  },
+  "out_of_reference": {
+   "rows": 4,
+   "titles": 2
+  }
+ },
+ "items": [
+  {
+   "title": "courses",
+   "category": "courses",
+   "rows": 10,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "courses_commissions",
+     "label": "Courses & commissions",
+     "trade": "courses_commissions",
+     "tradeLabel": "Courses & commissions",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "colis_livraison",
+     "label": "Colis & livraison",
+     "trade": "colis_livraison",
+     "tradeLabel": "Colis & livraison",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "courses_commissions",
+   "question": "Faire vos courses ou livrer un colis ?",
+   "note": null
+  },
+  {
+   "title": "accompagnement",
+   "category": "accompagnement",
+   "rows": 6,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "aide_quotidienne_accompagnement_quotidien",
+     "label": "Accompagnement & présence au quotidien",
+     "trade": "aide_quotidienne",
+     "tradeLabel": "Coups de main & aide du quotidien",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "aide_personnes_agees",
+     "label": "Seniors : présence & accompagnement",
+     "trade": "aide_personnes_agees",
+     "tradeLabel": "Seniors : présence & accompagnement",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "courses_commissions",
+     "label": "Courses & commissions",
+     "trade": "courses_commissions",
+     "tradeLabel": "Courses & commissions",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "aide_quotidienne_accompagnement_quotidien",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "cuisine",
+   "category": "cuisine",
+   "rows": 6,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "cuisine_domicile",
+     "label": "Cuisine à domicile & plats préparés",
+     "trade": "cuisine_domicile",
+     "tradeLabel": "Cuisine à domicile & plats préparés",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "renovation_cuisine",
+     "label": "Rénovation de cuisine",
+     "trade": "renovation",
+     "tradeLabel": "Rénovation tous corps d'état",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "menage_domicile_cuisine_sdb",
+     "label": "Cuisine, salle de bain & sanitaires",
+     "trade": "menage_domicile",
+     "tradeLabel": "Ménage à domicile",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "cuisine_domicile",
+   "question": "Cuisiner des repas ou travaux dans la cuisine ?",
+   "note": "Cuisine (repas) ou cuisine (pièce)."
+  },
+  {
+   "title": "dépannage",
+   "category": "dépannage",
+   "rows": 3,
+   "mapping": "ambiguous",
+   "bucket": "out_of_reference",
+   "candidateTrades": 5,
+   "candidates": [
+    {
+     "code": "bricolage_homme_a_tout_faire",
+     "label": "Homme à tout faire (travaux divers)",
+     "trade": "bricolage",
+     "tradeLabel": "Bricolage & petits travaux",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "plomberie",
+     "label": "Plomberie",
+     "trade": "plomberie",
+     "tradeLabel": "Plomberie",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "electricite",
+     "label": "Électricité",
+     "trade": "electricite",
+     "tradeLabel": "Électricité",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "informatique_depannage",
+     "label": "Ordinateurs, Wi-Fi & réseau",
+     "trade": "informatique_depannage",
+     "tradeLabel": "Ordinateurs, Wi-Fi & réseau",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "depannage_vehicule",
+     "label": "Dépannage & remorquage de véhicule",
+     "trade": "depannage_vehicule",
+     "tradeLabel": "Dépannage & remorquage de véhicule",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "bricolage_homme_a_tout_faire",
+   "question": "Quel type de dépannage ?",
+   "note": "Titre sans objet."
+  },
+  {
+   "title": "transport",
+   "category": "transport",
+   "rows": 3,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 4,
+   "candidates": [
+    {
+     "code": "transport_objets",
+     "label": "Transport d'objets & utilitaire",
+     "trade": "transport_objets",
+     "tradeLabel": "Transport d'objets & utilitaire",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "covoiturage_trajets",
+     "label": "Covoiturage & trajets",
+     "trade": "covoiturage_trajets",
+     "tradeLabel": "Covoiturage & trajets",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "colis_livraison",
+     "label": "Colis & livraison",
+     "trade": "colis_livraison",
+     "tradeLabel": "Colis & livraison",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "demenagement",
+     "label": "Déménagement",
+     "trade": "demenagement",
+     "tradeLabel": "Déménagement",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "transport_objets",
+   "question": "Transporter qui ou quoi ?",
+   "note": null
+  },
+  {
+   "title": "décoration",
+   "category": "décoration",
+   "rows": 2,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "decoration_evenement",
+     "label": "Décoration & fleurs d'événement",
+     "trade": "decoration_evenement",
+     "tradeLabel": "Décoration & fleurs d'événement",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "peinture_decoration",
+     "label": "Papier peint & décoration murale",
+     "trade": "peinture",
+     "tradeLabel": "Peinture & revêtements muraux",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "decoration_evenement",
+   "question": "Décorer quoi ?",
+   "note": null
+  },
+  {
+   "title": "français",
+   "category": "français",
+   "rows": 2,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "langues_francais_alphabetisation",
+     "label": "Français, alphabétisation & remise à niveau",
+     "trade": "langues",
+     "tradeLabel": "Cours de langues",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "soutien_scolaire",
+     "label": "Soutien scolaire",
+     "trade": "soutien_scolaire",
+     "tradeLabel": "Soutien scolaire",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "langues_francais_alphabetisation",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "jardinage & élagage",
+   "category": "jardinage & élagage",
+   "rows": 2,
+   "mapping": "split",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "jardinage_entretien",
+     "label": "Entretien de jardin",
+     "trade": "jardinage_entretien",
+     "tradeLabel": "Entretien de jardin",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "elagage_abattage",
+     "label": "Élagage & abattage",
+     "trade": "elagage_abattage",
+     "tradeLabel": "Élagage & abattage",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "jardinage_entretien",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "montage",
+   "category": "montage",
+   "rows": 2,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "bricolage_montage_meubles",
+     "label": "Montage de meubles",
+     "trade": "bricolage",
+     "tradeLabel": "Bricolage & petits travaux",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "video_montage",
+     "label": "Montage vidéo & post-production",
+     "trade": "video",
+     "tradeLabel": "Vidéo, tournage & montage",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "bricolage_montage_meubles",
+   "question": "Montage de quoi ?",
+   "note": null
+  },
+  {
+   "title": "organisation",
+   "category": "organisation",
+   "rows": 2,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "organisation_evenement",
+     "label": "Organisation d'événements",
+     "trade": "organisation_evenement",
+     "tradeLabel": "Organisation d'événements",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "rangement_organisation",
+     "label": "Rangement & organisation d'intérieur",
+     "trade": "rangement_organisation",
+     "tradeLabel": "Rangement & organisation d'intérieur",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "aide_administrative",
+     "label": "Aide aux démarches administratives",
+     "trade": "aide_administrative",
+     "tradeLabel": "Aide aux démarches administratives",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "organisation_evenement",
+   "question": "Organiser quoi ?",
+   "note": null
+  },
+  {
+   "title": "photo",
+   "category": "photo",
+   "rows": 2,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "photographe",
+     "label": "Photographie",
+     "trade": "photographe",
+     "tradeLabel": "Photographie",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "video",
+     "label": "Vidéo, tournage & montage",
+     "trade": "video",
+     "tradeLabel": "Vidéo, tournage & montage",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "graphisme_design",
+     "label": "Graphisme & design",
+     "trade": "graphisme_design",
+     "tradeLabel": "Graphisme & design",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "photographe",
+   "question": "Photo de quoi ?",
+   "note": null
+  },
+  {
+   "title": "aide événementielle",
+   "category": "aide événementielle",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "aide_quotidienne_aide_evenement_famille",
+     "label": "Aide pour un événement familial",
+     "trade": "aide_quotidienne",
+     "tradeLabel": "Coups de main & aide du quotidien",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "organisation_evenement_service_reception",
+     "label": "Service, barman & aide en salle",
+     "trade": "organisation_evenement",
+     "tradeLabel": "Organisation d'événements",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "aide_quotidienne_aide_evenement_famille",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "bricolage extérieur",
+   "category": "bricolage extérieur",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "bricolage",
+     "label": "Bricolage & petits travaux",
+     "trade": "bricolage",
+     "tradeLabel": "Bricolage & petits travaux",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "amenagement_exterieur",
+     "label": "Terrasses, abris & allées",
+     "trade": "amenagement_exterieur",
+     "tradeLabel": "Terrasses, abris & allées",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "bricolage",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "entretien",
+   "category": "entretien",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 4,
+   "candidates": [
+    {
+     "code": "bricolage",
+     "label": "Bricolage & petits travaux",
+     "trade": "bricolage",
+     "tradeLabel": "Bricolage & petits travaux",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "menage_domicile",
+     "label": "Ménage à domicile",
+     "trade": "menage_domicile",
+     "tradeLabel": "Ménage à domicile",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "jardinage_entretien",
+     "label": "Entretien de jardin",
+     "trade": "jardinage_entretien",
+     "tradeLabel": "Entretien de jardin",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "mecanique_auto",
+     "label": "Mécanique automobile",
+     "trade": "mecanique_auto",
+     "tradeLabel": "Mécanique automobile",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "bricolage",
+   "question": "Entretien de quoi ?",
+   "note": "Titre sans objet."
+  },
+  {
+   "title": "entretien extérieur",
+   "category": "entretien extérieur",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "jardinage_entretien_entretien_regulier",
+     "label": "Entretien régulier (abonnement jardinier)",
+     "trade": "jardinage_entretien",
+     "tradeLabel": "Entretien de jardin",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "nettoyage_exterieur",
+     "label": "Nettoyage extérieur & haute pression",
+     "trade": "nettoyage_exterieur",
+     "tradeLabel": "Nettoyage extérieur & haute pression",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "jardinage_entretien_entretien_regulier",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "garde ponctuelle",
+   "category": "garde ponctuelle",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "garde_enfants",
+     "label": "Garde d'enfants & babysitting",
+     "trade": "garde_enfants",
+     "tradeLabel": "Garde d'enfants & babysitting",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "garde_animaux",
+     "label": "Garde & promenade d'animaux",
+     "trade": "garde_animaux",
+     "tradeLabel": "Garde & promenade d'animaux",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "aide_personnes_agees",
+     "label": "Seniors : présence & accompagnement",
+     "trade": "aide_personnes_agees",
+     "tradeLabel": "Seniors : présence & accompagnement",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "garde_enfants",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "installation",
+   "category": "installation",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 4,
+   "candidates": [
+    {
+     "code": "bricolage",
+     "label": "Bricolage & petits travaux",
+     "trade": "bricolage",
+     "tradeLabel": "Bricolage & petits travaux",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "electricite",
+     "label": "Électricité",
+     "trade": "electricite",
+     "tradeLabel": "Électricité",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "plomberie_installation",
+     "label": "Installation sanitaire & raccordements",
+     "trade": "plomberie",
+     "tradeLabel": "Plomberie",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "climatisation_installation",
+     "label": "Pose de climatisation",
+     "trade": "climatisation",
+     "tradeLabel": "Climatisation & froid",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "bricolage",
+   "question": "Installer quoi ?",
+   "note": "Titre sans objet : à préciser à la création du profil."
+  },
+  {
+   "title": "musique, concert, événement, cours de batterie,",
+   "category": "musique, concert, événement, cours de batterie,",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "out_of_reference",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "cours_musique_instruments",
+     "label": "Piano, guitare, batterie & instruments",
+     "trade": "cours_musique",
+     "tradeLabel": "Cours de musique & chant",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "musique_spectacle",
+     "label": "Musiciens, chanteurs & spectacle",
+     "trade": "musique_spectacle",
+     "tradeLabel": "Musiciens, chanteurs & spectacle",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "dj_sonorisation",
+     "label": "DJ, sonorisation & éclairage",
+     "trade": "dj_sonorisation",
+     "tradeLabel": "DJ, sonorisation & éclairage",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "cours_musique_instruments",
+   "question": null,
+   "note": "Titre libre à plusieurs intentions : donnée de recette à nettoyer."
+  },
+  {
+   "title": "nettoyage",
+   "category": "nettoyage",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 4,
+   "candidates": [
+    {
+     "code": "menage_domicile",
+     "label": "Ménage à domicile",
+     "trade": "menage_domicile",
+     "tradeLabel": "Ménage à domicile",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "nettoyage_special",
+     "label": "Nettoyages spécialisés",
+     "trade": "nettoyage_special",
+     "tradeLabel": "Nettoyages spécialisés",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "nettoyage_exterieur",
+     "label": "Nettoyage extérieur & haute pression",
+     "trade": "nettoyage_exterieur",
+     "tradeLabel": "Nettoyage extérieur & haute pression",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "lavage_auto",
+     "label": "Lavage & rénovation de véhicules",
+     "trade": "lavage_auto",
+     "tradeLabel": "Lavage & rénovation de véhicules",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "menage_domicile",
+   "question": "Nettoyer quoi ?",
+   "note": null
+  },
+  {
+   "title": "petit dépannage",
+   "category": "petit dépannage",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "bricolage_petites_reparations",
+     "label": "Petites réparations & ajustements",
+     "trade": "bricolage",
+     "tradeLabel": "Bricolage & petits travaux",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "plomberie_fuite",
+     "label": "Fuite & recherche de fuite",
+     "trade": "plomberie",
+     "tradeLabel": "Plomberie",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "electricite_panne",
+     "label": "Panne & recherche de panne",
+     "trade": "electricite",
+     "tradeLabel": "Électricité",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "bricolage_petites_reparations",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "promenade",
+   "category": "promenade",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 2,
+   "candidates": [
+    {
+     "code": "garde_animaux_promenade",
+     "label": "Promenade & sorties de chiens",
+     "trade": "garde_animaux",
+     "tradeLabel": "Garde & promenade d'animaux",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "aide_personnes_agees_accompagnement_sorties_rdv",
+     "label": "Accompagnement de sorties & rendez-vous",
+     "trade": "aide_personnes_agees",
+     "tradeLabel": "Seniors : présence & accompagnement",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "garde_animaux_promenade",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "réparations",
+   "category": "réparations",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "bricolage_petites_reparations",
+     "label": "Petites réparations & ajustements",
+     "trade": "bricolage",
+     "tradeLabel": "Bricolage & petits travaux",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "electromenager",
+     "label": "Électroménager",
+     "trade": "electromenager",
+     "tradeLabel": "Électroménager",
+     "specialty": false,
+     "selectable": true
+    },
+    {
+     "code": "menuiserie_bois_reparation_bois",
+     "label": "Réparation de meubles & boiseries",
+     "trade": "menuiserie_bois",
+     "tradeLabel": "Menuiserie & agencement bois",
+     "specialty": true,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "bricolage_petites_reparations",
+   "question": null,
+   "note": null
+  },
+  {
+   "title": "taille",
+   "category": "taille",
+   "rows": 1,
+   "mapping": "ambiguous",
+   "bucket": "needs_member_precision",
+   "candidateTrades": 3,
+   "candidates": [
+    {
+     "code": "jardinage_entretien_taille_haies",
+     "label": "Taille de haies & arbustes",
+     "trade": "jardinage_entretien",
+     "tradeLabel": "Entretien de jardin",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "elagage_abattage_taille_arbres",
+     "label": "Taille & élagage d'arbres",
+     "trade": "elagage_abattage",
+     "tradeLabel": "Élagage & abattage",
+     "specialty": true,
+     "selectable": true
+    },
+    {
+     "code": "coiffure",
+     "label": "Coiffure",
+     "trade": "coiffure",
+     "tradeLabel": "Coiffure",
+     "specialty": false,
+     "selectable": true
+    }
+   ],
+   "suggestionFirst": "jardinage_entretien_taille_haies",
+   "question": null,
+   "note": null
+  }
+ ]
+}

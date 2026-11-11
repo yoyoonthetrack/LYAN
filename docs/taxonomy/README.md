@@ -13,6 +13,8 @@
 - **Ce qui est prouvé** : cohérence de structure, couverture complète de l'existant (89 feuilles, 103 titres de compétences, 9 boutons, 15 catégories de demandes, 8 familles de carte, 3 clés pro), 47 contrôles SQL rejoués localement, jeux de classification.
 - **Ce qui ne l'est pas** : la demande réelle (Production non lue), la précision de classification sur du langage réel (jeux écrits par l'auteur), la conformité juridique des nœuds réglementés, l'ergonomie (aucun test utilisateur).
 
+> **Application persistante P4/P5 sur Staging (préparée, non autorisée) : lire [`14-p4-p5-staging-runbook.md`](14-p4-p5-staging-runbook.md)** (ordre exact, pré-vol, vérifications, arrêts, sauvegarde et restauration, 52 compétences, politique de version, décisions restantes).
+
 > **Verrouillage avant migration Staging (X1–X5, quotas, modération, P3) : lire [`13-lock-before-staging-migration.md`](13-lock-before-staging-migration.md).** Il complète 12 : spécialités héritées (X5), aléa de modération du rétro-remplissage, preuves de quotas, brouillon `security-draft/100` non appliqué, répétition P3 préparée mais non autorisée.
 >
 > **Validation Staging et anciens clients : lire [`12-staging-validation-and-legacy-compat.md`](12-staging-validation-and-legacy-compat.md)** (pré-vol réel, matrice de compatibilité des builds iOS/Android, B6, plan et rollback amendés, verdict).
@@ -83,3 +85,5 @@ node scripts/taxonomy-v2/census-coverage.js export.json
 **Étape 3.2B-staging (11 nov. 2026)** : `12-staging-validation-and-legacy-compat.md`, `scripts/taxonomy-v2/{compat,compat-matrix,build-legacy-projection}.js`, `migration-draft/08_legacy_projection.sql` (généré), `generated/legacy-compat-matrix.{json,csv}`, `taxonomy-ux.js` (derrière drapeaux OFF), garde de gel `api/server.js`, `tests/taxonomy-ux.test.js`, `tests/taxonomy-compat.test.js`. Ces fichiers touchent l'application **uniquement derrière des drapeaux désactivés** ; aucune migration n'est appliquée.
 
 **Étape 3.2B-verrouillage (11 nov. 2026)** : `13-lock-before-staging-migration.md`, `scripts/taxonomy-v2/{p3-rehearsal,moderation-fixture,validate-quotas-pglite}.js`, `security-draft/100_services_dangerous_privileges_{staging,rollback}.sql` (NON APPLIQUÉS), `migration-draft/{03,05,06,07,09}` (X5, garde de modération), `tests/taxonomy-quota.test.js`, `tests/taxonomy-p3-rehearsal.test.js`. Rien n'est appliqué ni exécuté sur une base.
+
+**Étape 3.2B-préparation P4/P5 (11 nov. 2026)** : `14-p4-p5-staging-runbook.md`, `scripts/taxonomy-v2/{p45-staging,unattached-skills}.js`, `security-draft/100_*` durci, `post-migration-draft/10_resolve_legacy_skill*.sql`, `api/app-version-policy.js` (inerte), `generated/unattached-skills.{json,csv}`. Rien n'est appliqué.

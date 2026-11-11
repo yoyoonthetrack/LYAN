@@ -264,3 +264,54 @@ test('publication réelle : la validation et la lecture des sélecteurs sont der
     // Le repli historique reste en place pour le drapeau éteint.
     assert.match(source, /: \(categorySelect \? \(categorySelect\.options\[categorySelect\.selectedIndex\]\?\.text \|\| categorySelect\.value\) : 'Général'\);/);
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Compétences sans nœud (P4/P5) : affichage et précision, derrière le drapeau `taxonomySkills`
+// ---------------------------------------------------------------------------------------------------------------------
+test('compétences : drapeau éteint = le titre exact, aucune précision demandée (comportement actuel)', () => {
+    assert.equal(ux.isEnabled('skills'), false);
+    for (const value of ['true', 1, 'yes', {}, null]) assert.equal(ux.isEnabled('skills', { taxonomySkills: value }), false);
+    for (const title of ['Courses', 'k7mqp4lyannrc', ' Cuisine ', '']) {
+        assert.deepEqual(ux.describeSkill({ title, taxonomy_node_code: null }), { label: title.trim(), status: 'legacy', needsPrecision: false, mode: 'none', candidates: [] });
+    }
+});
+
+test('compétences : drapeau allumé — rattachée, rattachée au métier parent (précision proposée), non rattachée (candidats ou recherche libre)', () => {
+    const on = { taxonomySkills: true };
+    const nodes = new Map([
+        ['plomberie_fuite', { label: 'Fuite & recherche de fuite', parent: { label: 'Plomberie' } }],
+        ['plomberie', { label: 'Plomberie' }],
+    ]);
+    const ctx = { nodes };
+    assert.deepEqual(ux.describeSkill({ title: 'Recherche de fuite', taxonomy_node_code: 'plomberie_fuite', taxonomy_node_source: 'backfill_title' }, { features: on, ctx }),
+        { label: 'Plomberie · Fuite & recherche de fuite', status: 'classified', needsPrecision: false, mode: 'none', candidates: [] });
+    assert.deepEqual(ux.describeSkill({ title: 'Dépannage', taxonomy_node_code: 'plomberie', taxonomy_node_source: 'backfill_title_parent' }, { features: on, ctx }),
+        { label: 'Plomberie', status: 'classified_parent', needsPrecision: true, mode: 'pick', candidates: [] });
+    const cands = [
+        { code: 'courses_commissions', label: 'Courses & commissions', selectable: true },
+        { code: 'colis_livraison', label: 'Colis & livraison', selectable: true },
+        { code: 'Mauvais Code', label: 'x' }, { code: 'transport', label: 'x', kind: 'family' }, { code: 'autre_demande', label: 'x', family_code: 'autres' },
+        { code: 'reglemente', label: 'x', selectable: false }, { code: 'inactif', label: 'x', active: false },
+        { code: 'a_1', label: '1' }, { code: 'a_2', label: '2' }, { code: 'a_3', label: '3' },
+    ];
+    const pick = ux.describeSkill({ title: 'courses', taxonomy_node_code: null }, { features: on, ctx, candidates: cands });
+    assert.equal(pick.status, 'unclassified');
+    assert.equal(pick.needsPrecision, true);
+    assert.equal(pick.mode, 'pick');
+    assert.equal(pick.label, 'Courses', 'le titre reste affiché tel qu\'écrit (majuscule initiale seulement)');
+    assert.deepEqual(pick.candidates.map((c) => c.code), ['courses_commissions', 'colis_livraison', 'a_1', 'a_2'], 'seuls les nœuds proposables, 4 au plus, dans l\'ordre fourni');
+    const search = ux.describeSkill({ title: 'dépannage', taxonomy_node_code: null }, { features: on, ctx });
+    assert.deepEqual({ mode: search.mode, candidates: search.candidates, needsPrecision: search.needsPrecision }, { mode: 'search', candidates: [], needsPrecision: true });
+});
+
+test('compétences : jamais de valeur technique affichée, jamais d\'appel avec une valeur libre', () => {
+    const on = { taxonomySkills: true };
+    for (const title of ['k7mqp4lyannrc', 'UNCLASSIFIED', 'général', '00000000-0000-4000-8000-000000000001', '']) {
+        assert.equal(ux.describeSkill({ title, taxonomy_node_code: null }, { features: on }).label, ux.SKILL_FALLBACK, title);
+    }
+    const id = '00000000-0000-4000-8000-000000000001';
+    assert.deepEqual(ux.resolveSkillArgs({ id, taxonomy_node_code: null }, 'courses_commissions'), { rpc: 'lyann_resolve_legacy_skill', args: { p_service: id, p_node: 'courses_commissions' } });
+    for (const [service, code] of [[{ id, taxonomy_node_code: 'x_y' }, 'courses_commissions'], [{ id: 'abc' }, 'courses_commissions'], [{ id }, 'Courses'], [{ id }, "a'b"], [{ id }, ''], [{ id }, null], [null, 'courses_commissions']]) {
+        assert.equal(ux.resolveSkillArgs(service, code), null, JSON.stringify([service, code]));
+    }
+});

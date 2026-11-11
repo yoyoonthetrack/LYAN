@@ -19,7 +19,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
     'use strict';
 
-    const FLAGS = Object.freeze({ resolver: 'taxonomyResolver', noPreselect: 'taxonomyNoPreselect' });
+    const FLAGS = Object.freeze({ resolver: 'taxonomyResolver', noPreselect: 'taxonomyNoPreselect', skills: 'taxonomySkills' });
     const OTHER_CATEGORY = 'Autre / Je ne trouve pas';
     const OTHER_LABEL = 'Autre besoin';
     const EMPTY_LABEL = 'Besoin à préciser';
@@ -159,9 +159,53 @@
         return { ok: true };
     }
 
+
+    // ---------------------------------------------------------------------------------------------
+    // Compétences sans nœud (P4/P5) : affichage et précision par le membre. Drapeau `taxonomySkills`, éteint par défaut.
+    // Les données historiques ne changent jamais : le titre reste affiché tel qu'écrit ; seul le nœud peut être ajouté, par le membre (RPC
+    // lyann_resolve_legacy_skill, brouillon 10). Aucun métier n'est jamais choisi à sa place.
+    // ---------------------------------------------------------------------------------------------
+    const SKILL_FALLBACK = 'Compétence à préciser';
+    const NODE_CODE = /^[a-z0-9_]{2,80}$/;
+    const MAX_CANDIDATES = 4;
+
+    /**
+     * Affichage d'une compétence : { label, status, needsPrecision, mode, candidates }.
+     *   status : legacy (drapeau éteint) | classified | classified_parent | unclassified
+     *   mode   : none | pick (liste de candidats connus) | search (recherche libre : aucun candidat fiable)
+     * `options.candidates` : nœuds proposés par l'appelant (résultat de la recherche v2 ou liste de correspondance) ; seuls les nœuds
+     * sélectionnables, actifs et à code valide sont retenus, 4 au plus, dans l'ordre fourni.
+     */
+    function describeSkill(service, options) {
+        const opts = options || {};
+        const title = String((service && service.title) == null ? '' : service.title).trim();
+        if (!isEnabled('skills', opts.features)) return { label: title, status: 'legacy', needsPrecision: false, mode: 'none', candidates: [] };
+        const parts = nodeParts(service, opts.ctx);
+        const source = String((service && service.taxonomy_node_source) || '');
+        if (parts) {
+            const parentOnly = /_parent$/.test(source);
+            return { label: parts.join(' · '), status: parentOnly ? 'classified_parent' : 'classified', needsPrecision: parentOnly, mode: parentOnly ? 'pick' : 'none', candidates: [] };
+        }
+        const readable = classifyCategoryValue(title) === 'readable';
+        const candidates = (Array.isArray(opts.candidates) ? opts.candidates : [])
+            .filter((c) => c && NODE_CODE.test(String(c.code || '')) && c.selectable !== false && c.active !== false && c.kind !== 'family' && c.family_code !== 'autres')
+            .slice(0, MAX_CANDIDATES)
+            .map((c) => ({ code: c.code, label: String(c.label || '').trim() }));
+        return { label: readable ? capitalise(title) : SKILL_FALLBACK, status: 'unclassified', needsPrecision: true, mode: candidates.length ? 'pick' : 'search', candidates };
+    }
+
+    /** Arguments de la RPC de précision ; null si le code ou l'identifiant est invalide (jamais d'appel avec une valeur libre). */
+    function resolveSkillArgs(service, nodeCode) {
+        const id = service && service.id;
+        if (!UUID.test(String(id || '')) || !NODE_CODE.test(String(nodeCode || ''))) return null;
+        if (service.taxonomy_node_code) return null;
+        return { rpc: 'lyann_resolve_legacy_skill', args: { p_service: id, p_node: nodeCode } };
+    }
+
     return Object.freeze({
         FLAGS, OTHER_CATEGORY, OTHER_LABEL, EMPTY_LABEL,
         isEnabled, classifyCategoryValue, resolveCategory, categoryLine, displayCategory,
-        suggestionFrom, optionsHtml, wizardState, validateSelection
+        suggestionFrom, optionsHtml, wizardState, validateSelection,
+        describeSkill, resolveSkillArgs, SKILL_FALLBACK
     });
 });

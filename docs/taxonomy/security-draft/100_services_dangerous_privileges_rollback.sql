@@ -1,4 +1,4 @@
--- LYANN Migration 100 — ROLLBACK (BROUILLON — NON APPLIQUÉ) : redonne TRUNCATE, TRIGGER et REFERENCES sur public.services à anon et authenticated.
+-- LYANN Migration 100 — ROLLBACK (PRÊT ET TESTÉ SUR LE BANC — NON APPLIQUÉ) : redonne TRUNCATE, TRIGGER et REFERENCES sur public.services à anon et authenticated.
 -- USAGE D'URGENCE : il rétablit des privilèges structurels dont aucun parcours LYANN n'a besoin. À n'utiliser que si une dépendance légitime documentée
 -- est découverte, en préférant un correctif ciblé. Ne touche à aucune politique ni à aucun autre privilège.
 BEGIN;

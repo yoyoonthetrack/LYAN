@@ -1,0 +1,24 @@
+title,category,rows,bucket,mapping,candidate_trades,candidates,question
+courses,courses,10,needs_member_precision,ambiguous,2,courses_commissions|colis_livraison,Faire vos courses ou livrer un colis ?
+accompagnement,accompagnement,6,needs_member_precision,ambiguous,3,aide_quotidienne_accompagnement_quotidien|aide_personnes_agees|courses_commissions,
+cuisine,cuisine,6,needs_member_precision,ambiguous,3,cuisine_domicile|renovation_cuisine|menage_domicile_cuisine_sdb,Cuisiner des repas ou travaux dans la cuisine ?
+dépannage,dépannage,3,out_of_reference,ambiguous,5,bricolage_homme_a_tout_faire|plomberie|electricite|informatique_depannage|depannage_vehicule,Quel type de dépannage ?
+transport,transport,3,needs_member_precision,ambiguous,4,transport_objets|covoiturage_trajets|colis_livraison|demenagement,Transporter qui ou quoi ?
+décoration,décoration,2,needs_member_precision,ambiguous,2,decoration_evenement|peinture_decoration,Décorer quoi ?
+français,français,2,needs_member_precision,ambiguous,2,langues_francais_alphabetisation|soutien_scolaire,
+jardinage & élagage,jardinage & élagage,2,needs_member_precision,split,2,jardinage_entretien|elagage_abattage,
+montage,montage,2,needs_member_precision,ambiguous,2,bricolage_montage_meubles|video_montage,Montage de quoi ?
+organisation,organisation,2,needs_member_precision,ambiguous,3,organisation_evenement|rangement_organisation|aide_administrative,Organiser quoi ?
+photo,photo,2,needs_member_precision,ambiguous,3,photographe|video|graphisme_design,Photo de quoi ?
+aide événementielle,aide événementielle,1,needs_member_precision,ambiguous,2,aide_quotidienne_aide_evenement_famille|organisation_evenement_service_reception,
+bricolage extérieur,bricolage extérieur,1,needs_member_precision,ambiguous,2,bricolage|amenagement_exterieur,
+entretien,entretien,1,needs_member_precision,ambiguous,4,bricolage|menage_domicile|jardinage_entretien|mecanique_auto,Entretien de quoi ?
+entretien extérieur,entretien extérieur,1,needs_member_precision,ambiguous,2,jardinage_entretien_entretien_regulier|nettoyage_exterieur,
+garde ponctuelle,garde ponctuelle,1,needs_member_precision,ambiguous,3,garde_enfants|garde_animaux|aide_personnes_agees,
+installation,installation,1,needs_member_precision,ambiguous,4,bricolage|electricite|plomberie_installation|climatisation_installation,Installer quoi ?
+"musique, concert, événement, cours de batterie,","musique, concert, événement, cours de batterie,",1,out_of_reference,ambiguous,3,cours_musique_instruments|musique_spectacle|dj_sonorisation,
+nettoyage,nettoyage,1,needs_member_precision,ambiguous,4,menage_domicile|nettoyage_special|nettoyage_exterieur|lavage_auto,Nettoyer quoi ?
+petit dépannage,petit dépannage,1,needs_member_precision,ambiguous,3,bricolage_petites_reparations|plomberie_fuite|electricite_panne,
+promenade,promenade,1,needs_member_precision,ambiguous,2,garde_animaux_promenade|aide_personnes_agees_accompagnement_sorties_rdv,
+réparations,réparations,1,needs_member_precision,ambiguous,3,bricolage_petites_reparations|electromenager|menuiserie_bois_reparation_bois,
+taille,taille,1,needs_member_precision,ambiguous,3,jardinage_entretien_taille_haies|elagage_abattage_taille_arbres|coiffure,

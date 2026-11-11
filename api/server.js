@@ -320,6 +320,11 @@ app.get('/v1/runtime/identity', (req, res) => {
     });
 });
 
+// Politique de version minimale (taxonomie v2) : route publique, sans base ni état. INERTE par défaut (aucune mise à jour obligatoire
+// tant que LYANN_APP_VERSION_POLICY_ENFORCE n'est pas exactement « true » et qu'un plancher n'est pas posé). Voir api/app-version-policy.js.
+const { createVersionPolicyHandler } = require('./app-version-policy');
+app.get('/v1/app/version-policy', createVersionPolicyHandler(process.env));
+
 function getSupabaseClient(req) {
     const authHeader = req ? (req.headers['authorization'] || req.headers['Authorization']) : null;
     if (authHeader && authHeader.startsWith('Bearer ')) {

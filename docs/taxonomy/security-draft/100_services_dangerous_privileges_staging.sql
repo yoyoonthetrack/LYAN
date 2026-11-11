@@ -1,4 +1,4 @@
--- LYANN Migration 100 (BROUILLON — NON APPLIQUÉ) — services : retirer les privilèges structurels TRUNCATE, TRIGGER et REFERENCES
+-- LYANN Migration 100 (PRÊT ET TESTÉ SUR LE BANC — NON APPLIQUÉ) — services : retirer les privilèges structurels TRUNCATE, TRIGGER et REFERENCES
 -- à anon, authenticated (et PUBLIC). Staging uniquement (tdktfbtqceldlaeqjtow). Jamais Production sans autorisation spécifique.
 -- Rollback : 100_services_dangerous_privileges_rollback.sql. Dépendances et preuves : docs/taxonomy/13-lock-before-staging-migration.md §3.
 --
@@ -13,19 +13,46 @@
 -- Non modifié, volontairement : SELECT, INSERT, UPDATE, DELETE, MAINTAIN, les politiques RLS, service_role, postgres et toute autre table.
 BEGIN;
 
+-- A REVOKE needs a short exclusive lock on services: fail fast rather than queue behind a long transaction (never loop on this error).
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
+
 -- 0. Preconditions and snapshots. Anything unexpected aborts and rolls back the whole migration.
 DO $pre$
 DECLARE
     v_policies text;
     v_kept text;
+    v_invokers text;
+    v_deps text;
 BEGIN
     IF to_regclass('public.services') IS NULL THEN
         RAISE EXCEPTION 'migration 100: public.services missing';
     END IF;
 
+    -- Dependency guard 1: a SECURITY INVOKER routine that runs a structural statement on services would stop working for the exposed roles.
+    -- (SECURITY DEFINER routines run as their owner and are unaffected; so are triggers and foreign-key checks.)
+    SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text) INTO v_invokers
+    FROM pg_proc p
+    WHERE p.prokind IN ('f', 'p') AND NOT p.prosecdef
+      AND p.pronamespace NOT IN ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+      AND p.prolang IN (SELECT oid FROM pg_language WHERE lanname IN ('plpgsql', 'sql'))
+      AND (p.prosrc ~* 'truncate\s+(table\s+)?(only\s+)?(public\.)?"?services\M'
+           OR p.prosrc ~* 'create\s+(or\s+replace\s+)?(constraint\s+)?trigger\s[^;]*\mon\s+(public\.)?"?services\M'
+           OR p.prosrc ~* 'references\s+(public\.)?"?services\M');
+    IF v_invokers IS NOT NULL THEN
+        RAISE EXCEPTION 'migration 100: SECURITY INVOKER routine(s) rely on a structural privilege of services (%): review before applying', v_invokers;
+    END IF;
+
+    -- Dependency guard 2 (snapshot): foreign keys that reference services, and its triggers, must be exactly the same afterwards.
+    SELECT (SELECT count(*) FROM pg_constraint WHERE contype = 'f' AND confrelid = 'public.services'::regclass)::text || '/'
+        || (SELECT count(*) FROM pg_trigger WHERE tgrelid = 'public.services'::regclass AND NOT tgisinternal)::text || '/'
+        || (SELECT count(*) FROM pg_rewrite r WHERE r.ev_class = 'public.services'::regclass)::text || '/'
+        || (SELECT relrowsecurity::text || relforcerowsecurity::text FROM pg_class WHERE oid = 'public.services'::regclass) INTO v_deps;
+    PERFORM set_config('lyann.m100_deps', v_deps, true);
+
     -- Snapshot 1: every policy of the table (name, command, roles, expressions).
-    SELECT md5(string_agg(policyname || '|' || cmd || '|' || roles::text || '|' || coalesce(qual, '') || '|' || coalesce(with_check, ''),
-                          E'\n' ORDER BY policyname))
+    SELECT coalesce(md5(string_agg(policyname || '|' || cmd || '|' || roles::text || '|' || coalesce(qual, '') || '|' || coalesce(with_check, ''),
+                                   E'\n' ORDER BY policyname)), '')   -- '' (not NULL) when the table has no policy: set_config() stores NULL as ''
       INTO v_policies
     FROM pg_policies WHERE schemaname = 'public' AND tablename = 'services';
 
@@ -90,12 +117,20 @@ BEGIN
         RAISE EXCEPTION 'migration 100: other privileges changed (before: %, after: %)', current_setting('lyann.m100_kept'), v_kept;
     END IF;
 
-    SELECT md5(string_agg(policyname || '|' || cmd || '|' || roles::text || '|' || coalesce(qual, '') || '|' || coalesce(with_check, ''),
-                          E'\n' ORDER BY policyname))
+    SELECT coalesce(md5(string_agg(policyname || '|' || cmd || '|' || roles::text || '|' || coalesce(qual, '') || '|' || coalesce(with_check, ''),
+                                   E'\n' ORDER BY policyname)), '')   -- '' (not NULL) when the table has no policy: set_config() stores NULL as ''
       INTO v_policies
     FROM pg_policies WHERE schemaname = 'public' AND tablename = 'services';
     IF v_policies IS DISTINCT FROM current_setting('lyann.m100_policies') THEN
         RAISE EXCEPTION 'migration 100: the policies of services changed';
+    END IF;
+
+    -- Foreign keys, triggers, rules and the row-security flags of services are untouched.
+    IF (SELECT count(*) FROM pg_constraint WHERE contype = 'f' AND confrelid = 'public.services'::regclass)::text || '/'
+       || (SELECT count(*) FROM pg_trigger WHERE tgrelid = 'public.services'::regclass AND NOT tgisinternal)::text || '/'
+       || (SELECT count(*) FROM pg_rewrite r WHERE r.ev_class = 'public.services'::regclass)::text || '/'
+       || (SELECT relrowsecurity::text || relforcerowsecurity::text FROM pg_class WHERE oid = 'public.services'::regclass) IS DISTINCT FROM current_setting('lyann.m100_deps') THEN
+        RAISE EXCEPTION 'migration 100: foreign keys, triggers, rules or row security of services changed';
     END IF;
 END
 $post$;
