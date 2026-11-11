@@ -31,11 +31,81 @@
         let json = null;
         try { json = await response.json(); } catch (_) { json = null; }
         if (!response.ok || !json || json.success === false) {
-            const error = new Error((json && json.error) || 'Action impossible.');
+            const error = new Error((json && json.error) || (response.status === 413 ? 'Image trop lourde pour l’envoi. Réessayez avec une photo plus légère.' : 'Action impossible.'));
             error.field = json && json.field;
             throw error;
         }
         return json;
+    }
+
+    /** Capsule Découvrir ~2:1 ; le serveur n’accepte que JPEG/PNG/WebP ≤ 1 Mo (pas de HEIC). */
+    const HIGHLIGHT_MAX_BYTES = 1024 * 1024;
+    const HIGHLIGHT_MAX_W = 760;
+    const HIGHLIGHT_MAX_H = 420;
+
+    function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function loadImageElement(dataUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('FORMAT_UNSUPPORTED'));
+            img.src = dataUrl;
+        });
+    }
+
+    function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(new Error('Lecture du fichier impossible.'));
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function prepareHighlightImage(file) {
+        const name = String(file.name || '');
+        const type = String(file.type || '');
+        if (/heic|heif/i.test(type) || /\.hei[cf]$/i.test(name)) {
+            throw new Error('Les photos HEIC ne sont pas acceptées. Exportez en JPEG ou WebP (Aperçu → Exporter, ou iPhone : Réglages → Appareil photo → Formats compatibles).');
+        }
+        let dataUrl;
+        try {
+            dataUrl = await readFileAsDataUrl(file);
+            const img = await loadImageElement(dataUrl);
+            const scale = Math.min(1, HIGHLIGHT_MAX_W / img.naturalWidth, HIGHLIGHT_MAX_H / img.naturalHeight);
+            const w = Math.max(1, Math.round(img.naturalWidth * scale));
+            const h = Math.max(1, Math.round(img.naturalHeight * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            let quality = 0.9;
+            let blob = null;
+            for (let attempt = 0; attempt < 8; attempt += 1) {
+                blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+                if (!blob) throw new Error('Impossible de préparer l’image dans le navigateur.');
+                if (blob.size <= HIGHLIGHT_MAX_BYTES - 4096 || quality <= 0.42) break;
+                quality -= 0.08;
+            }
+            if (blob.size > HIGHLIGHT_MAX_BYTES) {
+                throw new Error('Image encore trop lourde après réduction. Essayez une photo plus simple ou exportez-la en plus petit format.');
+            }
+            dataUrl = await blobToDataUrl(blob);
+        } catch (e) {
+            if (e.message === 'FORMAT_UNSUPPORTED') {
+                throw new Error('Format non pris en charge. Utilisez JPEG, PNG ou WebP (pas HEIC ni PDF).');
+            }
+            throw e;
+        }
+        return dataUrl;
     }
 
     function formValue() {
@@ -133,22 +203,23 @@
         } catch (e) { say(e.message, true); } finally { button.disabled = false; }
     }
 
-    function uploadImage() {
+    async function uploadImage() {
         const file = $('hlFile').files && $('hlFile').files[0];
         if (!file) return;
-        if (file.size > 1024 * 1024) { say('Image : 1 Mo maximum.', true); $('hlFile').value = ''; return; }
-        const reader = new FileReader();
-        reader.onload = async () => {
-            try {
-                $('hlImageInfo').textContent = 'Envoi…';
-                const json = await api('/image', { method: 'POST', body: JSON.stringify({ data: String(reader.result) }) });
-                imageUrl = json.url;
-                $('hlImageInfo').textContent = `Image envoyée (${Math.round(json.bytes / 1024)} Ko).`;
-                say('');
-                renderPreview();
-            } catch (e) { $('hlImageInfo').textContent = 'Échec de l’envoi.'; say(e.message, true); }
-        };
-        reader.readAsDataURL(file);
+        $('hlImageInfo').textContent = file.size > HIGHLIGHT_MAX_BYTES ? 'Photo lourde : compression locale…' : 'Préparation…';
+        say('');
+        try {
+            const dataUrl = await prepareHighlightImage(file);
+            $('hlImageInfo').textContent = 'Envoi…';
+            const json = await api('/image', { method: 'POST', body: JSON.stringify({ data: dataUrl }) });
+            imageUrl = json.url;
+            $('hlImageInfo').textContent = `Image envoyée (${Math.round(json.bytes / 1024)} Ko).`;
+            renderPreview();
+        } catch (e) {
+            $('hlImageInfo').textContent = 'Échec de l’envoi.';
+            say(e.message, true);
+            $('hlFile').value = '';
+        }
     }
 
     async function onListClick(event) {

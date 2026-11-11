@@ -338,8 +338,9 @@ app.use((req, res, next) => {
         express.raw({ type: '*/*' })(req, res, next);
     } else {
         const maisonMedia = url.includes('/v1/admin/maison/');
-        const highlightImage = req.path === '/v1/admin/editorial/highlights/image';
-        express.json({ limit: req.path === '/v1/business/documents' ? '3mb' : maisonMedia ? '16mb' : highlightImage ? '2mb' : '1mb' })(req, res, next);
+        const reqPath = String(req.originalUrl || req.url || req.path || '').split('?')[0];
+        const highlightImage = reqPath === '/v1/admin/editorial/highlights/image';
+        express.json({ limit: reqPath === '/v1/business/documents' ? '3mb' : maisonMedia ? '16mb' : highlightImage ? '2mb' : '1mb' })(req, res, next);
     }
 });
 
