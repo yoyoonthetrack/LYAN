@@ -94,7 +94,7 @@ Feuilles utilisées (Staging) : `Plomberie › Fuite & Dépannage` (3), `Bricola
 | Libellés = identité | codes indépendants des libellés ; libellé modifiable sans migration |
 | Aucun lien compétence ↔ référentiel | `lyann_profile_skill(user_id, node_code)` + stub `services` écrit en double pendant la transition |
 | 89 feuilles trop larges | 105 métiers / 414 spécialités, avec **spécialités optionnelles** (on peut s'arrêter au métier) |
-| Vocabulaire lacunaire | 6 864 termes : synonymes, problèmes en langage naturel, vocabulaire local/créole |
+| Vocabulaire lacunaire | 7 007 termes : synonymes, problèmes en langage naturel, vocabulaire local/créole |
 | `quotidien` fourre-tout | la carte adopte les **8 familles** |
 | Réglementation | `safety` à 5 niveaux + `selectable = false` pour les activités réglementées |
 | Statut jamais mis à jour | statut de classification **dérivé** et provenance explicite du rattachement |

@@ -1,6 +1,6 @@
 # 09 — Risques, ambiguïtés et décisions à prendre
 
-> La validation humaine est réservée à **la structure métier finale** et à **toute future migration**. Ce document liste ce qui doit être tranché ; pour chaque décision, une **recommandation** est donnée, jamais appliquée.
+> **Synthèse et recommandations arbitrables : voir [`10-product-review.md`](10-product-review.md) §0 et §5.** La validation humaine est réservée à **la structure métier finale** et à **toute future migration**. Ce document liste ce qui doit être tranché ; pour chaque décision, une **recommandation** est donnée, jamais appliquée.
 
 ## 1. Décisions à prendre (par ordre d'impact)
 
@@ -18,32 +18,32 @@
 | **D10** | **`classification_status`** (UNCLASSIFIED sur 80/80) | le **dériver** (`CLASSIFIED` si `taxonomy_node_code` renseigné, provenance `user`/`classifier`) | conserver la colonne telle quelle | logique serveur, tableaux admin |
 | **D11** | **Recensement Production lecture seule** | à autoriser explicitement (requêtes prêtes, agrégats seulement) | décider sans données réelles | la répartition de la demande reste inconnue |
 | **D12** | **Langues comme attribut** plutôt que nœuds | langue = attribut libre (traduction : 4 langues → 1 nœud) | un nœud par langue | volume de la table de termes |
-| **D13** | **Périmètre territorial du vocabulaire** | vocabulaire **Antilles/Guadeloupe** d'abord (sargasses, cyclone, créole) | élargir Guyane, Réunion, métropole | ajout de termes `local`, sans changement de structure |
+| **D13** | **Périmètre territorial du vocabulaire** *(révisée en 3.2B-revue)* | **structure unique** pour les 5 territoires du produit (Guadeloupe, Martinique, Saint-Martin, Guyane, La Réunion) + **vocabulaire par région** : colonne `territories` (`antilles`, `guyane`, `reunion` ; NULL = partout), lot rédigé puis **relu par des locuteurs** avant publication | Antilles seules (écartée : sondage = Antilles 70 %, Guyane 50 %, Réunion 30 % de classements stricts avant enrichissement) | ajout de termes `local` et de valeurs `territories`, sans changement de structure |
 
 ## 2. Risques
 
 | # | Risque | Gravité | Probabilité | Parade |
 |---|---|---|---|---|
 | **R1** | **35 feuilles `split` et 3 `ambiguous`** : un rattachement par défaut peut être faux | moyenne | élevée | provenance du backfill ; file de relecture ; jamais de réaffectation silencieuse ; alternatives conservées |
-| **R2** | **Termes partagés** : 179 termes normalisés apparaissent dans plusieurs métiers | moyenne | élevée | pondération par partage ; registre d'ambiguïtés (30) ; `generated/shared-terms.csv` à relire par un éditeur ; test bloquant au-delà de 4 métiers |
+| **R2** | **Termes partagés** : 200 termes normalisés apparaissent dans plusieurs métiers | moyenne | élevée | pondération par partage ; registre d'ambiguïtés (33) ; `generated/shared-terms.csv` à relire par un éditeur ; test bloquant au-delà de 4 métiers |
 | **R3** | **Anciens clients** (iOS 1.0-15/16, Android) | haute | certaine | colonnes ajoutées uniquement ; double écriture ; stubs `services` ; version minimale tardive (étape 6) |
 | **R4** | **Mauvaise classification silencieuse** (faux positif) | haute | moyenne | statut `NEEDS_CLARIFICATION` ; proposition toujours modifiable ; aucune écriture automatique sans confirmation ; seuil de confiance |
 | **R5** | **Portée limitée de la mesure de qualité** : jeux de tests écrits par l'auteur du vocabulaire (biais) ; Staging = recette (≈ 60 % de « qa ») ; 1ʳᵉ passe sur titres réels : au moins 5 échecs sur 14 avant réglage | haute | certaine | **ne pas annoncer de précision réelle** ; mesurer avec `census-coverage.js` sur le recensement Production (D11) ; jeu hors échantillon rédigé après réglage et jamais utilisé pour ajuster |
 | **R6** | **Réglementation** : les notes `regulation` sont des repères, pas un avis juridique | haute | moyenne | revue juridique des nœuds `CAUTION`/`PRO_REQUIRED`/`RESTRICTED` avant publication ; libellés neutres |
 | **R7** | **Double écriture divergente** (ancien vs nouveau) | moyenne | moyenne | `V10` (incohérence ancien/nouveau) ; test de non-régression ; drapeau de double écriture |
-| **R8** | **Charge éditoriale** : 6 864 termes saisis à la main, à maintenir | moyenne | élevée | gouvernance (D8), version publiée, tests de collision, génération depuis une source unique |
+| **R8** | **Charge éditoriale** : 7 007 termes saisis à la main, à maintenir | moyenne | élevée | gouvernance (D8), version publiée, tests de collision, génération depuis une source unique |
 | **R9** | **Divergence Staging ↔ Production** (schéma, volumes, FK) | moyenne | moyenne | répétition à blanc ; recensement Production ; codes texte identiques d'un environnement à l'autre |
 | **R10** | **Verrous et durée** des DDL/backfill en Production | moyenne | faible | colonnes NULLables (métadonnées), FK `NOT VALID`, backfill par lots, `lock_timeout`, créneau creux |
 | **R11** | **Découvrabilité** : un métier absent de la liste | moyenne | moyenne | recherche par problème/synonyme, « Autres », suggestion de métier modérée |
 | **R12** | **Réutilisation d'un code** après désactivation | haute | faible | trigger d'immuabilité ; pas de suppression ; test |
 | **R13** | **Multi-famille** : double comptage ou affichage dupliqué | faible | moyenne | famille primaire unique + secondaires (comptées une fois) |
-| **R14** | **Données de recette en Production** (« Jardinage » par défaut) | moyenne | inconnue | provenance `backfill_category` exclue des statistiques ; correction du défaut de l'assistant (D14 ci-dessous) |
+| **R14** | **Données de recette en Production** (« Jardinage » par défaut) | moyenne | inconnue | provenance `backfill_category` exclue des statistiques ; correction du défaut de l'assistant (action **A1**, `10-product-review.md` §10) |
 | **R15** | **Taille / performance** de la recherche | faible | faible | index GIN trigramme ; arbre ≈ 90 Ko ; surveiller > 100 000 termes |
 
 ## 3. Ambiguïtés relevées pendant l'audit
 
 1. **Le brief demande « 8 familles » et « 9 domaines »** : résolu par D1 (une famille, deux tuiles) — c'est une interprétation, pas un fait.
-2. **Valeur par défaut « Jardinage »** dans l'assistant d'annonce : 48/80 demandes Staging portent cette catégorie, toutes issues de scripts. Si ce défaut existe aussi côté produit réel, il fausse toutes les statistiques par catégorie. **À vérifier** (D14) : l'assistant doit ne présélectionner aucune catégorie.
+2. **Valeur par défaut « Jardinage »** dans l'assistant d'annonce : 48/80 demandes Staging portent cette catégorie, toutes issues de scripts. Si ce défaut existe aussi côté produit réel, il fausse toutes les statistiques par catégorie. **À vérifier** (action **A1**) : l'assistant doit ne présélectionner aucune catégorie.
 3. **« Autres Besoins »** existe dans l'assistant mais pas dans la base ; **« Général »** et **« Service direct »** (11 demandes) sont des catégories libres sans équivalent. La proposition les mappe sur la famille **Autres** (`autre_demande_non_classee`, `autre_demande_service_direct`).
 4. **Les 8 familles de pins de la carte** ne coïncident pas avec les 18 univers de l'assistant ni avec les domaines de Découvrir : trois découpages parallèles aujourd'hui.
 5. **`classification_status`** n'a pas de sémantique vérifiable aujourd'hui (voir D10).

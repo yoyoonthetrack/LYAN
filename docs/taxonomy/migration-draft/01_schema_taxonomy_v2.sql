@@ -113,6 +113,8 @@ CREATE TABLE public.lyann_taxonomy_term (
     term      text    NOT NULL CHECK (length(btrim(term)) BETWEEN 1 AND 160),
     term_norm text    NOT NULL,
     term_type text    NOT NULL CHECK (term_type IN ('label', 'syn', 'problem', 'local')),
+    -- Régions où le terme est en usage ; NULL = partout. Valeurs : antilles (Guadeloupe, Martinique, Saint-Martin), guyane, reunion.
+    territories text[] CHECK (territories IS NULL OR territories <@ ARRAY['antilles', 'guyane', 'reunion']::text[]),
     active    boolean NOT NULL DEFAULT true,
     UNIQUE (node_code, term_norm, term_type)
 );

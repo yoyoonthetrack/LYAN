@@ -11,7 +11,7 @@
 | `problem` | problème dit en langage naturel | « plus d'eau chaude », « ça coule sous l'évier » |
 | `local` | vocabulaire local ou créole | « ravets », « bokit », « gwoka » |
 
-Volumes : `label` 528 · `syn` 4969 · `problem` 1171 · `local` 196 (total 6864).
+Volumes : `label` 528 · `syn` 4976 · `problem` 1173 · `local` 330 (total 7007).
 
 ## Normalisation
 
@@ -48,6 +48,9 @@ Un terme ambigu ne classe jamais seul : il déclenche une question courte. Regis
 | cuisine | Cuisine : repas (cuisinier) ou pièce (rénovation, plomberie). | Cuisiner des repas ou travaux dans la cuisine ? |
 | bois | Bois : menuiserie, traitement du bâti, transport de matériaux. | Quel travail sur le bois ? |
 | devis | Mot d'usage de la plateforme (demande de devis) : ne décrit pas un métier. | Devis pour quel service ? |
+| auto | Auto : véhicule ou auto-entrepreneur. | Véhicule ou statut d'auto-entrepreneur ? |
+| port | Port : maritime, ou port d'objets. | Port maritime ou transport d'objets ? |
+| menu | Menu : repas ou maquette graphique. | Menu de repas ou création graphique ? |
 | creole | Créole : langue, cuisine créole ou bijoux créoles. | Cours de créole, cuisine créole ou bijoux ? |
 | vidange | Vidange moteur ou vidange d'un appareil. | Vidange de véhicule ou d'appareil ? |
 | terrasse | Terrasse : revêtement, construction ou nettoyage. | Que faire sur la terrasse ? |
@@ -69,7 +72,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 
 ## Termes partagés entre métiers
 
-179 termes normalisés apparaissent dans plusieurs métiers (cela inclut volontairement des termes culturels comme *zouk* ou *gwoka*, légitimement multi-cibles). Règle de classification : un terme partagé par *k* métiers est pondéré par *k^0,7* et la recherche affiche **tous** les nœuds concernés. Liste complète dans `generated/shared-terms.csv`.
+200 termes normalisés apparaissent dans plusieurs métiers (cela inclut volontairement des termes culturels comme *zouk* ou *gwoka*, légitimement multi-cibles). Règle de classification : un terme partagé par *k* métiers est pondéré par *k^0,7* et la recherche affiche **tous** les nœuds concernés. Liste complète dans `generated/shared-terms.csv`.
 
 ## Extrait par métier (synonymes, problèmes, local)
 
@@ -110,7 +113,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Peinture & revêtements muraux** (`peinture`)
   - synonymes : peintre, peinture, peindre, repeindre, enduit, ratissage, ravalement, lasure, vernis, papier peint, peinture interieure, peindre une chambre, peindre un plafond, peinture murs … (+25)
   - problèmes : les murs sont abimes ; la peinture s ecaille ; moisissure sur les murs ; rafraichir une piece
-  - local : —
+  - local : case creole, peindre ma case, peinture de case, case en tole
 - **Maçonnerie & gros œuvre** (`maconnerie`)
   - synonymes : macon, maconnerie, parpaing, beton, ciment, dalle, chape, muret, fondation, agglo, coulage, mur de cloture, cloture beton, poteaux beton … (+32)
   - problèmes : mur fissure ; fissure dans le mur ; mur qui s effrite ; dalle de terrasse a refaire
@@ -122,7 +125,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Menuiserie & agencement bois** (`menuiserie_bois`)
   - synonymes : menuisier, menuiserie, ebeniste, bois, charpentier, agencement, travail du bois, bois sur mesure, placard, dressing, etagere sur mesure, meuble sur mesure, bibliotheque, rangement sur mesure … (+30)
   - problèmes : porte qui frotte ; meuble a reparer ; il me faut un placard sur mesure ; faire un placard sur mesure
-  - local : ajoupa, kiosque
+  - local : ajoupa, kiosque, carbet, construire un carbet, carbet en bois, varangue, refaire la varangue, varangue a refaire
 - **Plâtrerie, cloisons & isolation** (`platrerie_isolation`)
   - synonymes : platrier, platrerie, placo, placoplatre, cloison, faux plafond, isolation, plaque de platre, ba13, cloison seche, doublage, separation de piece, plafond suspendu, dalles de plafond … (+9)
   - problèmes : il fait trop chaud sous le toit ; le bruit passe a travers la cloison ; creer une cloison ; separer une piece en deux
@@ -130,7 +133,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Toiture, charpente & étanchéité** (`toiture_etancheite`)
   - synonymes : couvreur, toiture, toit, couverture, tole, bac acier, tuile, charpente, gouttiere, etancheite, zingueur, fuite toit, fuite de toiture, reparation toiture … (+29)
   - problèmes : toit qui fuit ; ca coule dans la maison quand il pleut ; tuile cassee ; tole arrachee
-  - local : tole, tole ondulee
+  - local : tole, tole ondulee, tole de la case, case en tole, toit de case
 - **Ferronnerie, soudure & métallerie** (`ferronnerie_soudure`)
   - synonymes : soudeur, soudure, ferronnier, ferronnerie, metallerie, metallier, garde corps, grille, acier, inox, aluminium soudure, souder, reparation metal, arc … (+15)
   - problèmes : ma grille est rouillee ; il me faut un garde corps ; faire une soudure ; reparer une grille cassee
@@ -159,13 +162,13 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 ### Jardin et extérieur
 
 - **Entretien de jardin** (`jardinage_entretien`)
-  - synonymes : jardinier, jardinage, entretien jardin, entretien de jardin, espaces verts, tonte, tondre, pelouse, taille haie, jardin, tonte de pelouse, gazon, tondeuse, tonte jardin … (+27)
+  - synonymes : jardinier, jardinage, entretien jardin, entretien de jardin, espaces verts, tonte, tondre, pelouse, taille haie, jardin, tonte de pelouse, gazon, tondeuse, tonte jardin … (+31)
   - problèmes : mon jardin est envahi ; l herbe est trop haute ; je n ai plus le temps d entretenir mon jardin ; tondre ma pelouse
   - local : —
 - **Débroussaillage & nettoyage de terrain** (`debroussaillage`)
   - synonymes : debroussaillage, debroussailler, debroussailleuse, nettoyage de terrain, nettoyage de parcelle, friche, defrichage, terrain en friche, coupe coupe, debroussaillage de terrain, terrain, parcelle, m2, hectare … (+20)
   - problèmes : mon terrain est envahi par les broussailles ; terrain a nettoyer avant de construire ; ravine a nettoyer ; debroussaillage 400 m2
-  - local : sabre, coupe-coupe, nettoyer la ravine
+  - local : sabre, coupe-coupe, nettoyer la ravine, debroussaillage en foret, ouvrir un layon, layon
 - **Élagage & abattage** (`elagage_abattage`)
   - synonymes : elagage, elaguer, elagueur, abattage, abattre un arbre, arbre, tailler un arbre, dessouchage, tronconnage, grimpeur, taille d arbre, manguier, avocatier, arbre fruitier a tailler … (+21)
   - problèmes : un arbre menace ma maison ; branche qui touche la toiture ; arbre tombe ; les branches touchent les fils electriques
@@ -189,15 +192,15 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Terrasses, abris & allées** (`amenagement_exterieur`)
   - synonymes : terrasse, allee, paves, abri de jardin, pergola, carport, cabanon, cuisine d ete, barbecue, pavage, dalles exterieures, kiosque, creation terrasse, renovation terrasse … (+20)
   - problèmes : je veux une terrasse couverte ; je veux un coin barbecue dans le jardin ; refaire ma terrasse ; creer une terrasse couverte
-  - local : ajoupa, kiosque, carbet
+  - local : ajoupa, kiosque, carbet, case a outils, construire un carbet, carbet en bois, abri en bois en foret
 - **Potager & jardin vivrier** (`potager_vivrier`)
   - synonymes : potager, jardin vivrier, jardin creole, legumes, verger, compost, permaculture, arbres fruitiers, plantation de bananes, carres potagers, semis, plants, arrosage potager, cultiver … (+14)
   - problèmes : je veux cultiver mes legumes ; je veux un jardin vivrier ; creer un potager ; aide pour mon jardin creole
-  - local : jardin creole, jardin kreyol, jaden kreyol, abattis
+  - local : jardin creole, jardin kreyol, jaden kreyol, abattis, litchi, letchi, bibasse, goyavier
 - **Aide agricole & petit élevage** (`agricole`)
   - synonymes : aide agricole, agriculteur, agriculture, recolte, abattis, canne, banane, ferme, exploitation agricole, elevage, poules, ruches, apiculture, miel … (+26)
   - problèmes : j ai besoin de bras pour la recolte ; je cherche quelqu un pour ma parcelle ; aide pour la recolte de bananes ; besoin de bras sur ma parcelle
-  - local : abattis, jardin creole, coupe de la canne, cabri
+  - local : abattis, jardin creole, coupe de la canne, cabri, abattis a defricher, defricher un abattis
 
 ### Ménage et entretien
 
@@ -228,7 +231,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Insectes, rongeurs & hygiène** (`nuisibles_hygiene`)
   - synonymes : desinsectisation, deratisation, nuisibles, cafards, rats, souris, moustiques, fourmis, punaises de lit, guepes, desinfection, 3d, ravets, fourmis folles … (+22)
   - problèmes : j ai des cafards dans la cuisine ; des rats dans le plafond ; invasion de fourmis ; nid de guepes
-  - local : ravets, fourmis folles, fourmis manioc, mabouya, bebetes
+  - local : ravets, fourmis folles, fourmis manioc, mabouya, bebetes, demoustication, dengue, chikungunya
 - **Rangement & organisation d'intérieur** (`rangement_organisation`)
   - synonymes : rangement, ranger, organisation, home organizer, desencombrement, tri, trier, vider, dressing, organiser, desencombrer, tri de vetements, tri de papiers, vide maison … (+13)
   - problèmes : ma maison est en desordre ; trop d affaires ; je dois trier avant de demenager ; trier mes affaires
@@ -283,15 +286,15 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Arts martiaux & self-défense** (`arts_martiaux`)
   - synonymes : judo, karate, boxe, arts martiaux, self defense, taekwondo, jiu jitsu, krav maga, kick boxing, capoeira, mma, lutte, sambo, aikido … (+20)
   - problèmes : je veux apprendre a me defendre ; mon fils veut faire du judo ; inscrire mon fils au judo ; cours de karate
-  - local : moringue, ladja, danmye
+  - local : moringue, ladja, danmye, moringue reunionnais
 - **Activités nautiques & pêche de loisir** (`activites_nautiques`)
   - synonymes : plongee, voile, kayak, paddle, stand up paddle, kitesurf, windsurf, surf, peche, peche en mer, sortie en mer, catamaran, snorkeling, tuba … (+26)
   - problèmes : je veux faire de la plongee ; je veux apprendre la voile ; sortie en mer en famille ; faire un bapteme de plongee
-  - local : sortie en mer, peche au gros, pwason
+  - local : sortie en mer, peche au gros, pwason, yole, yole ronde, course de yoles, gommier, sortie en mer avec un pecheur
 - **Randonnée & balades guidées** (`randonnee_nature`)
   - synonymes : randonnee, rando, guide, balade, promenade nature, trek, canyoning, marche en foret, cascade, volcan, accompagnateur nature, sortie nature, sentier, randonnee guidee … (+17)
   - problèmes : je cherche quelqu un pour m emmener en randonnee ; je ne connais pas les sentiers ; trouver un guide pour une randonnee ; randonnee a la cascade
-  - local : —
+  - local : parapente, vol libre, via ferrata, randonnee au volcan, mafate, salazie, cilaos
 
 ### Transport, véhicules et logistique
 
@@ -302,7 +305,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Colis & livraison** (`colis_livraison`)
   - synonymes : colis, livraison, livreur, paquet, relais colis, point relais, amazon, coursier, retrait colis, livrer, recuperer un colis, livraison colis, relais, poste … (+27)
   - problèmes : je dois envoyer un colis ; quelqu un pour recuperer mon colis ; livrer un objet ; recuperer mon colis au relais
-  - local : barrique
+  - local : barrique, transport fluvial, fret fluvial, marchandises par pirogue, fret sur le fleuve, livraison en commune isolee
 - **Déménagement** (`demenagement`)
   - synonymes : demenagement, demenager, demenageur, cartons, changer de logement, emmenagement, camion de demenagement, monter les meubles etages, demenager un canape, demenager un frigo, demenager mes meubles, deplacer un canape, transporter un canape, aide au demenagement … (+25)
   - problèmes : je dois demenager ; j emmenage samedi ; j ai un canape a descendre du troisieme ; demenager un canape et un frigo
@@ -342,7 +345,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Bateau, hors-bord & entretien nautique** (`bateau_mecanique_marine`)
   - synonymes : bateau, hors bord, moteur hors bord, annexe, coque, carenage, antifouling, mecanique marine, voilier, catamaran, jet ski, ponton, mouillage, gardiennage de bateau … (+29)
   - problèmes : mon moteur de bateau ne demarre pas ; ma coque est sale ; mon annexe a un trou ; mon hors bord ne demarre pas
-  - local : yole, canot, gommo
+  - local : yole, canot, gommo, pirogue, moteur de pirogue, reparation pirogue, coque de pirogue, moteur de pirogue en panne
 
 ### Famille, éducation et assistance
 
@@ -355,9 +358,9 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
   - problèmes : mon enfant a des difficultes a l ecole ; il doit remonter ses notes ; mon fils prepare le bac ; aider mon enfant avec les devoirs
   - local : —
 - **Cours de langues** (`langues`)
-  - synonymes : langues, cours de langues, anglais, espagnol, francais, portugais, allemand, italien, chinois, langue etrangere, conversation, cours de creole, apprendre le creole, parler creole … (+36)
+  - synonymes : langues, cours de langues, anglais, espagnol, francais, portugais, allemand, italien, chinois, langue etrangere, conversation, cours de creole, apprendre le creole, parler creole … (+40)
   - problèmes : je veux apprendre l anglais ; je pars a l etranger ; je veux parler creole ; apprendre l anglais
-  - local : kreyol, kweyol, patois
+  - local : kreyol, kweyol, patois, neerlandais, papiamento, anglais de saint martin, hmong, nenge
 - **Cours de musique & chant** (`cours_musique`)
   - synonymes : cours de musique, musique, piano, guitare, batterie, saxophone, violon, ukulele, chant, solfege, instrument, prof de musique, percussions, tambour … (+31)
   - problèmes : je veux apprendre un instrument ; mon enfant veut faire de la musique ; cours de batterie pour mon fils ; apprendre la guitare
@@ -369,7 +372,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Seniors : présence & accompagnement** (`aide_personnes_agees`)
   - synonymes : personne agee, senior, aide a domicile, accompagnement senior, compagnie, visite, aidant, grand parent, aide seniors, presence, tenir compagnie, discussion, lecture, jeux de societe … (+30)
   - problèmes : ma mere est seule ; mon pere ne peut plus sortir ; je ne peux pas laisser mes parents seuls ; tenir compagnie a ma grand mere
-  - local : —
+  - local : gramoun, gramoune, ma gramoun, mon gramoun, aide pour ma gramoun
 - **Coups de main & aide du quotidien** (`aide_quotidienne`)
   - synonymes : aide ponctuelle, coup de main, aide quotidienne, petit service, service, aide, assistance, depannage humain, entraide, aider, rendre service, aide aujourd hui, aide demain, petit coup de pouce … (+19)
   - problèmes : j ai besoin d un coup de main ; je ne sais pas qui appeler ; je suis debordee ; j ai besoin d un coup de main cet apres midi
@@ -418,9 +421,9 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
   - problèmes : je dois nourrir 50 personnes ; un repas pour ma fete ; je cherche un traiteur pour un bapteme ; un buffet pour 40 personnes
   - local : colombo, accras, boudin, court bouillon, feroce, christophine, poulet boucane, pate en pot
 - **Cuisine à domicile & plats préparés** (`cuisine_domicile`)
-  - synonymes : cuisinier, cuisiniere, chef a domicile, cuisine a domicile, plats a emporter, preparation de repas, repas, meal prep, plat du jour, bokit, cours de cuisine, cuisiner pour moi, cuisine, accras … (+43)
+  - synonymes : cuisinier, cuisiniere, chef a domicile, cuisine a domicile, plats a emporter, preparation de repas, repas, meal prep, plat du jour, bokit, cours de cuisine, cuisiner pour moi, cuisine, accras … (+42)
   - problèmes : je n ai pas le temps de cuisiner ; des repas faits maison toute la semaine ; apprendre a cuisiner ; des plats faits maison a emporter
-  - local : bokit, colombo, accras, plat du jour, dejeuner pays, jus de canne, bissap, sirop de batterie
+  - local : bokit, colombo, accras, plat du jour, dejeuner pays, cuisine guyanaise, couac, cassave
 - **Pâtisserie, boulangerie & desserts** (`patisserie`)
   - synonymes : patisserie, patissier, patissiere, gateau, dessert, wedding cake, gateau d anniversaire, boulanger, pain, viennoiseries, cake design, cupcakes, tarte, gateau sur mesure … (+41)
   - problèmes : je veux un gateau pour l anniversaire ; un dessert pour une fete ; un gateau pour les 7 ans de mon fils ; gateau de mariage
@@ -499,7 +502,7 @@ Ils pondèrent l'urgence ou le lieu, ils ne classent jamais à eux seuls.
 - **Traduction & interprétariat** (`traduction_interpretation`)
   - synonymes : traduction, traducteur, traductrice, interprete, interpretariat, traduire, document traduit, anglais traduction, espagnol traduction, creole traduction, sous titrage, traduire un document, traduire en anglais, traduction en anglais … (+28)
   - problèmes : je dois faire traduire un document ; j ai besoin d un interprete pour un rendez vous ; traduire un document en anglais ; traduire mon cv en anglais
-  - local : kreyol
+  - local : kreyol, interprete bushinenge, interprete hmong, interprete creole haitien
 - **Secrétariat & assistance** (`secretariat_assistance`)
   - synonymes : secretariat, secretaire, assistante, assistant virtuel, assistante virtuelle, saisie, frappe, gestion agenda, emails, standard, permanence, retranscription, prise de rendez vous, assistance administrative … (+26)
   - problèmes : je suis submergee par les mails ; j ai besoin d une secretaire quelques heures ; saisir des documents ; taper un document

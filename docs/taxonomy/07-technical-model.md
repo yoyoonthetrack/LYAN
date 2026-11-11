@@ -43,13 +43,13 @@ Un métier a **une** famille primaire (`family_code`) et zéro ou plusieurs fami
 ### 2.4 Référence unique annonces ↔ compétences
 `requests.taxonomy_node_code` et `lyann_profile_skill.node_code` pointent la **même clé**. Faire correspondre une annonce à des prestataires devient une égalité de code (ou d'ancêtre) et non plus une comparaison de chaînes. Une compétence sur un **métier** couvre ses spécialités ; une annonce sur une **spécialité** est servie par les compétences du métier parent.
 
-### 2.4 bis. Sécurité métier portée par le nœud
+### 2.5 Sécurité métier portée par le nœud
 `safety` ∈ `NORMAL | CAUTION | PRO_REQUIRED | RESTRICTED | PROHIBITED`, `regulation_note`, `selectable`. Contrainte SQL : **un nœud `RESTRICTED`/`PROHIBITED` ne peut pas être sélectionnable**. Une spécialité n'est **jamais moins stricte** que son métier (testé). Ces 3 nœuds sont réglementés dans la proposition : leçons de conduite payantes, aide à la toilette/soins, traduction assermentée.
 
-### 2.5 Recherche : termes typés + registre d'ambiguïtés
-`lyann_taxonomy_term` (6 864 lignes) : `label` 528 · `syn` 4 969 · `problem` 1 171 · `local` 196. Normalisation **unique** (`lyann_taxonomy_norm` : unaccent + minuscules + non-alphanumérique → espace, **sans racinisation**), appliquée à l'écriture (seed) et à la lecture (RPC), vérifiée par `V04`. Les termes génériques ou partagés (« dépannage », « batterie », « portail », « cuisine »…) sont déclarés dans `lyann_taxonomy_ambiguous_term` : ils ne classent jamais seuls et déclenchent une **question**.
+### 2.6 Recherche : termes typés + registre d'ambiguïtés
+`lyann_taxonomy_term` (7 007 lignes) : `label` 528 · `syn` 4 976 · `problem` 1 173 · `local` 330 ; colonne `territories text[]` (`antilles`, `guyane`, `reunion` ; NULL = valable partout). Normalisation **unique** (`lyann_taxonomy_norm` : unaccent + minuscules + non-alphanumérique → espace, **sans racinisation**), appliquée à l'écriture (seed) et à la lecture (RPC), vérifiée par `V04`. Les termes génériques ou partagés (« dépannage », « batterie », « portail », « cuisine »…) sont déclarés dans `lyann_taxonomy_ambiguous_term` : ils ne classent jamais seuls et déclenchent une **question**.
 
-### 2.6 Versionnement
+### 2.7 Versionnement
 `lyann_taxonomy_release` : une version `draft` → `published`. L'app lit la dernière version publiée et la **met en cache** ; comme les codes sont immuables, une version ultérieure **ajoute** ou **désactive**, elle ne casse jamais un rattachement existant.
 
 ## 3. Compatibilité ascendante (additive, double lecture / double écriture)

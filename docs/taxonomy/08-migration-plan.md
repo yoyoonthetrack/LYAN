@@ -12,7 +12,7 @@
 
 | Étape | Contenu | Environnement | Porte d'entrée | Porte de sortie | Retour arrière |
 |---|---|---|---|---|---|
-| **0** | Décisions humaines D1-D8 (doc. 09) ; autorisation du recensement Production **en lecture seule** (`sql/readonly-census.sql`) ; revue juridique des 3 nœuds réglementés | — | rapport 3.2B livré | décisions consignées | — |
+| **0** | Décisions humaines D1-D13 (doc. 09, synthèse dans doc. 10 §0 : 6 arbitrages) ; autorisation du recensement Production **en lecture seule** (`sql/readonly-census.sql`) ; revue juridique des 3 nœuds réglementés | — | rapport 3.2B livré | décisions consignées | — |
 | **1** | **Répétition à blanc sur Staging** : `BEGIN; 01…05; 07; ROLLBACK;` puis, si vert, application réelle | Staging | étape 0 + sauvegarde / point de restauration | `07_verify` : **zéro ligne** sur V01-V10 ; V11 relevé | `09_rollback` |
 | **2** | Lecture seule côté serveur/app **derrière un drapeau** : l'app peut lire l'arbre et appeler `lyann_taxonomy_search` ; aucun écran visible | Staging | étape 1 verte | tests contrat + non-régression des écrans actuels | désactiver le drapeau |
 | **3** | **Double écriture** : annonces et profils écrivent le **code** *et* les champs historiques ; RPC `lyann_sync_profile_skills_v2` | Staging | étape 2 | 100 % des nouvelles lignes ont `taxonomy_node_code` ; anciens clients lisent toujours ; pas d'écart (V10 = 0) | désactiver le drapeau d'écriture v2 |

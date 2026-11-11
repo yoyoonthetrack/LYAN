@@ -45,13 +45,14 @@ function flatten(data = loadData()) {
     const mkTerms = (node, lists) => {
         const out = [];
         const seen = new Set();
+        const foldKey = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[’']/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
         const add = (term, type) => {
             const norm = normalize(term);
             if (!norm) return;
             const key = `${type}:${norm}`;
             if (seen.has(key)) return;
             seen.add(key);
-            out.push({ term, norm, type });
+            out.push({ term, norm, type, territories: (lists.territoryTerms && lists.territoryTerms[foldKey(term)]) || null });
         };
         add(node.label, 'label');
         for (const t of lists.t || []) add(t, 'syn');

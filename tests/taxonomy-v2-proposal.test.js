@@ -14,6 +14,7 @@ const DATA = path.join(ROOT, 'docs', 'taxonomy', 'data');
 const DRAFT = path.join(ROOT, 'docs', 'taxonomy', 'migration-draft');
 const legacy = require(path.join(DATA, 'legacy-map.data.js'));
 const snapshot = require(path.join(DATA, 'staging-snapshot.json'));
+const pct = (x) => `${(x * 100).toFixed(0)} %`;
 const ctx = lib.build();
 const { nodes, byCode, data } = ctx;
 const trades = nodes.filter((n) => n.kind === 'trade');
@@ -231,6 +232,35 @@ test('classification : activités réglementées guidées, jamais présentées c
     const r = lib.classify('des lecons de conduite pour passer mon permis', ctx);
     assert.equal(r.ranked[0].node, 'permis_code_route_lecons_conduite');
     assert.equal(byCode.get(r.ranked[0].node).selectable, false);
+});
+
+test('territoires : lot de vocabulaire par région valide, sans erreur silencieuse, écart entre régions borné', () => {
+    const evaluate = require(path.join(ROOT, 'scripts', 'taxonomy-v2', 'evaluate.js'));
+    const REGIONS = ['antilles', 'guyane', 'reunion'];
+    const lots = require(path.join(DATA, 'territory-vocabulary.js'));
+    assert.deepEqual(Object.keys(lots).sort(), [...REGIONS].sort());
+    const tagged = nodes.flatMap((n) => n.terms).filter((t) => t.territories);
+    assert.ok(tagged.length >= 100, `termes territoriaux marqués : ${tagged.length}`);
+    for (const t of tagged) for (const r of t.territories) assert.ok(REGIONS.includes(r), `région inconnue ${r} (${t.term})`);
+    const { rows, byRegion } = evaluate.run();
+    assert.equal(rows.filter((r) => r.silentError).length, 0, `erreurs silencieuses : ${rows.filter((r) => r.silentError).map((r) => r.q).join(' | ')}`);
+    const held = byRegion.filter((s) => s.group.startsWith('territorial (hors échantillon)'));
+    for (const s of held) assert.ok(s.safe >= 0.85, `${s.group} : « sûr » ${pct(s.safe)}`);
+    const safes = held.map((s) => s.safe);
+    assert.ok(Math.max(...safes) - Math.min(...safes) <= 0.15, 'écart entre territoires > 15 points');
+    const seed = fs.readFileSync(path.join(DRAFT, '04_seed_taxonomy_v2.sql'), 'utf8');
+    assert.match(seed, /ARRAY\['guyane'\]::text\[\]/);
+    assert.match(fs.readFileSync(path.join(DRAFT, '01_schema_taxonomy_v2.sql'), 'utf8'), /territories text\[\]/);
+});
+
+test('revue produit (doc. 10) : générée, à jour, et fidèle aux données', () => {
+    const { render } = require(path.join(ROOT, 'scripts', 'taxonomy-v2', 'review.js'));
+    const current = fs.readFileSync(path.join(ROOT, 'docs', 'taxonomy', '10-product-review.md'), 'utf8');
+    assert.equal(current, render(), 'doc. 10 obsolète : node scripts/taxonomy-v2/review.js');
+    for (const f of ['maison', 'jardin', 'entretien', 'beaute', 'transport', 'famille', 'evenement', 'numerique']) assert.ok(current.includes(`(\`${f}\`)`), f);
+    for (let i = 1; i <= 13; i += 1) assert.ok(new RegExp(`\\*\\*D${i}\\*\\* \\|`).test(current), `D${i} absente de la revue`);
+    const decisions = fs.readFileSync(path.join(ROOT, 'docs', 'taxonomy', '09-risks-and-decisions.md'), 'utf8');
+    assert.ok(!/D14/.test(decisions), 'référence à une décision D14 inexistante');
 });
 
 test('livrables générés : cohérents avec la source', () => {

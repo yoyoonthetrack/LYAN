@@ -2,7 +2,7 @@
 
 > Document généré. **Proposition — non appliquée.** Les identifiants (`code`) sont permanents et indépendants des libellés.
 
-Total : **8 familles + Autres**, **105 métiers**, **414 spécialités**, **6864 termes de recherche**.
+Total : **8 familles + Autres**, **105 métiers**, **414 spécialités**, **7007 termes de recherche**.
 
 **Légende.** Sécurité : `NORMAL` · `CAUTION` (rappel de prudence) · `PRO_REQUIRED` (pro justifié requis) · `RESTRICTED` (activité réglementée, non sélectionnable comme compétence). 
 `→` = famille(s) secondaire(s) où le métier est aussi trouvable (sans duplication). `⛔` = nœud non sélectionnable (guide la recherche seulement).

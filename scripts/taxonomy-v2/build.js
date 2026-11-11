@@ -58,7 +58,7 @@ write(path.join(GEN, 'taxonomy-v2.json'), JSON.stringify({
     nodes: nodes.filter((n) => n.kind !== 'family').map((n) => ({
         code: n.code, kind: n.kind, parent: n.parent, family: n.family, group: n.group, label: n.label, safety: n.safety,
         selectable: n.selectable, regulation: n.regulation, also: n.also, ord: n.ord,
-        terms: n.terms.map((t) => ({ t: t.term, type: t.type }))
+        terms: n.terms.map((t) => (t.territories ? { t: t.term, type: t.type, territories: t.territories } : { t: t.term, type: t.type }))
     })),
     ambiguousTerms: data.AMBIGUOUS_TERMS,
     contextModifiers: data.CONTEXT_MODIFIERS
@@ -69,8 +69,8 @@ write(path.join(GEN, 'nodes.csv'), csv(
     nodeRows.filter((n) => n.kind !== 'family').map((n) => [n.code, n.kind, n.parent, n.family, n.group, n.label, n.safety, n.selectable, n.also, n.regulation, n.ord, n.termCount])
 ));
 write(path.join(GEN, 'terms.csv'), csv(
-    ['node_code', 'term', 'term_norm', 'term_type'],
-    nodes.filter((n) => n.kind !== 'family').flatMap((n) => n.terms.map((t) => [n.code, t.term, normDb(t.term), t.type]))
+    ['node_code', 'term', 'term_norm', 'term_type', 'territories'],
+    nodes.filter((n) => n.kind !== 'family').flatMap((n) => n.terms.map((t) => [n.code, t.term, normDb(t.term), t.type, t.territories || '']))
 ));
 
 const legacyRows = [];
@@ -258,10 +258,10 @@ write(path.join(GEN, 'stats.json'), JSON.stringify(stats, null, 2));
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-        }).map((t) => `(${sql(n.code)}, ${sql(t.term)}, ${sql(normDb(t.term))}, ${sql(t.type)})`);
+        }).map((t) => `(${sql(n.code)}, ${sql(t.term)}, ${sql(normDb(t.term))}, ${sql(t.type)}, ${t.territories ? sqlArr(t.territories) : 'NULL'})`);
     });
     for (let i = 0; i < termValues.length; i += 1000) {
-        out.push('INSERT INTO public.lyann_taxonomy_term(node_code, term, term_norm, term_type) VALUES', termValues.slice(i, i + 1000).join(',\n'), 'ON CONFLICT DO NOTHING;', '');
+        out.push('INSERT INTO public.lyann_taxonomy_term(node_code, term, term_norm, term_type, territories) VALUES', termValues.slice(i, i + 1000).join(',\n'), 'ON CONFLICT DO NOTHING;', '');
     }
     const amb = Object.entries(data.AMBIGUOUS_TERMS).map(([term, v]) => `(${sql(normDb(term))}, ${sql(v.why)}, ${sql(v.question)})`);
     out.push('INSERT INTO public.lyann_taxonomy_ambiguous_term(term_norm, why, question_fr) VALUES', amb.join(',\n'), 'ON CONFLICT DO NOTHING;', '');

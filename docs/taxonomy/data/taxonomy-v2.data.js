@@ -23,7 +23,27 @@ function applyTuning(trade) {
     return trade;
 }
 
-const tag = (family, list) => list.map((trade) => applyTuning({ ...trade, family }));
+const TERRITORIES = require('./territory-vocabulary');
+const TERRITORY_CODES = Object.keys(TERRITORIES);
+
+/** Ajoute le lot territorial : termes `local` + marquage par région (NULL = valable partout). */
+function applyTerritories(trade) {
+    for (const node of [trade, ...trade.specs]) {
+        node.territoryTerms = node.territoryTerms || {};
+        for (const region of TERRITORY_CODES) {
+            const lot = TERRITORIES[region][node.code];
+            if (!lot) continue;
+            for (const term of splitTerms(lot)) {
+                if (!node.l.some((x) => fold(x) === fold(term))) node.l.push(term);
+                const key = fold(term);
+                node.territoryTerms[key] = [...new Set([...(node.territoryTerms[key] || []), region])];
+            }
+        }
+    }
+    return trade;
+}
+
+const tag = (family, list) => list.map((trade) => applyTerritories(applyTuning({ ...trade, family })));
 
 const TRADES = [
     ...tag('maison', require('./trades-maison')),
@@ -70,6 +90,9 @@ const AMBIGUOUS_TERMS = {
     'cuisine': { why: 'Cuisine : repas (cuisinier) ou pièce (rénovation, plomberie).', question: 'Cuisiner des repas ou travaux dans la cuisine ?' },
     'bois': { why: 'Bois : menuiserie, traitement du bâti, transport de matériaux.', question: 'Quel travail sur le bois ?' },
     'devis': { why: 'Mot d\'usage de la plateforme (demande de devis) : ne décrit pas un métier.', question: 'Devis pour quel service ?' },
+    'auto': { why: 'Auto : véhicule ou auto-entrepreneur.', question: 'Véhicule ou statut d\'auto-entrepreneur ?' },
+    'port': { why: 'Port : maritime, ou port d\'objets.', question: 'Port maritime ou transport d\'objets ?' },
+    'menu': { why: 'Menu : repas ou maquette graphique.', question: 'Menu de repas ou création graphique ?' },
     'creole': { why: 'Créole : langue, cuisine créole ou bijoux créoles.', question: 'Cours de créole, cuisine créole ou bijoux ?' },
     'vidange': { why: 'Vidange moteur ou vidange d\'un appareil.', question: 'Vidange de véhicule ou d\'appareil ?' },
     'terrasse': { why: 'Terrasse : revêtement, construction ou nettoyage.', question: 'Que faire sur la terrasse ?' },
@@ -87,7 +110,9 @@ const CONTEXT_MODIFIERS = {
     lieu_exterieur: ['dans mon jardin|devant chez moi|sur mon terrain|a la plage']
 };
 
+const unknownTerritory = TERRITORY_CODES.flatMap((r) => Object.keys(TERRITORIES[r])).filter((code) => !TRADES.some((t) => t.code === code || t.specs.some((s) => s.code === code)));
+if (unknownTerritory.length) throw new Error(`territory-vocabulary: codes inconnus ${unknownTerritory.join(', ')}`);
 const unknownTuning = Object.keys(TUNING).filter((code) => !TRADES.some((t) => t.code === code || t.specs.some((s) => s.code === code)));
 if (unknownTuning.length) throw new Error(`editorial-tuning: codes inconnus ${unknownTuning.join(', ')}`);
 
-module.exports = { CONTEXT_MODIFIERS, FAMILIES: ALL_FAMILIES, DISCOVER_TILES, TRADES, AMBIGUOUS_TERMS };
+module.exports = { TERRITORY_CODES, CONTEXT_MODIFIERS, FAMILIES: ALL_FAMILIES, DISCOVER_TILES, TRADES, AMBIGUOUS_TERMS };

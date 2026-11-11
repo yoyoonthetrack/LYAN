@@ -6,12 +6,14 @@
 
 ## En une page
 
-- **8 familles + « Autres »**, **105 métiers**, **414 spécialités**, **6 864 termes de recherche** (synonymes, problèmes formulés comme on parle, vocabulaire local/créole).
+- **8 familles + « Autres »**, **105 métiers**, **414 spécialités**, **7 007 termes de recherche** (synonymes, problèmes formulés comme on parle, vocabulaire local/créole marqué par région : Antilles, Guyane, Réunion).
 - **Un code permanent** par nœud (`plomberie`, `plomberie_fuite`), indépendant des libellés, identique dans tous les environnements ; une seule référence partagée par annonces, compétences, filtres et carte.
 - **Découvrir : 9 domaines + « Autres » en 10ᵉ position** (la famille Maison, la plus dense, est exposée par deux tuiles).
 - **Migration non destructive** : colonnes NULLables ajoutées, double écriture, backfill tracé, **rollback prouvé à l'identique**, anciens clients intacts.
 - **Ce qui est prouvé** : cohérence de structure, couverture complète de l'existant (89 feuilles, 103 titres de compétences, 9 boutons, 15 catégories de demandes, 8 familles de carte, 3 clés pro), 47 contrôles SQL rejoués localement, jeux de classification.
 - **Ce qui ne l'est pas** : la demande réelle (Production non lue), la précision de classification sur du langage réel (jeux écrits par l'auteur), la conformité juridique des nœuds réglementés, l'ergonomie (aucun test utilisateur).
+
+> **Pour décider : lire [`10-product-review.md`](10-product-review.md)** — revue produit (familles, métiers, tuiles, territoires, 13 décisions avec recommandation et risque, ambiguïtés, UX, protocole de test, structure finale).
 
 ## Les 10 livrables
 
@@ -27,15 +29,16 @@
 | 8 | Plan de migration non destructif | [`08-migration-plan.md`](08-migration-plan.md) |
 | 9 | Risques, ambiguïtés, décisions à prendre | [`09-risks-and-decisions.md`](09-risks-and-decisions.md) |
 | 10 | Branche, SHA, fichiers produits | message de livraison + section « Fichiers » ci-dessous |
+| + | **Revue produit finale** (3.2B-revue) | [`10-product-review.md`](10-product-review.md) *(généré par `scripts/taxonomy-v2/review.js`)* |
 
 ## Source de vérité et régénération
 
 ```
 docs/taxonomy/data/          ← SEULE source éditée à la main
-  families.js, trades-*.js, _dsl.js, editorial-tuning.js, taxonomy-v2.data.js
-  legacy-map.data.js, staging-snapshot.json, classification-*.js
+  families.js, trades-*.js, _dsl.js, editorial-tuning.js, territory-vocabulary.js, taxonomy-v2.data.js
+  legacy-map.data.js, staging-snapshot.json, classification-*.js (dont classification-territorial.js)
 scripts/taxonomy-v2/         ← outillage hors application (aucun import depuis le site ni l'app)
-  lib.js (normalisation + prototype de classification), build.js, validate-sql-pglite.js, census-coverage.js
+  lib.js (normalisation + prototype de classification), build.js, evaluate.js, review.js, validate-sql-pglite.js, census-coverage.js
 docs/taxonomy/generated/     ← dérivés (JSON, CSV)         ┐ régénérés par build.js,
 docs/taxonomy/02..05-*.md    ← dérivés (Markdown)          │ ne pas éditer à la main
 docs/taxonomy/migration-draft/04_*.sql, 05_*.sql ← dérivés ┘
@@ -43,7 +46,9 @@ docs/taxonomy/migration-draft/04_*.sql, 05_*.sql ← dérivés ┘
 
 ```bash
 node scripts/taxonomy-v2/build.js                      # régénère tous les dérivés
-node --test tests/taxonomy-v2-proposal.test.js         # 18 tests (le rejeu SQL est ignoré si PGlite est absent)
+node scripts/taxonomy-v2/review.js                     # régénère 10-product-review.md
+node scripts/taxonomy-v2/evaluate.js                   # mesures de classification (par jeu et par région)
+node --test tests/taxonomy-v2-proposal.test.js         # 20 tests (le rejeu SQL est ignoré si PGlite est absent)
 # Rejeu SQL complet (Postgres embarqué en mémoire, hors dépôt) :
 npm i --no-save @electric-sql/pglite && node scripts/taxonomy-v2/validate-sql-pglite.js
 # Mesure sur un export de recensement (voir sql/readonly-census.sql) :

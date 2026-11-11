@@ -7,9 +7,13 @@
 module.exports = {
     organisation_evenement_mariage_ceremonie: { drop: 'mariage|bapteme|ceremonie|communion' },
     organisation_evenement_anniversaires_fetes: { drop: 'anniversaire|fete|fetes' },
-    langues_creole: { drop: 'creole|creoles' },
+    langues_creole: { drop: 'creole|creoles', t: 'professeur de creole|prof de creole|cours de creole|apprendre le creole|cours de kreyol|apprendre le kreyol', p: 'cherche un professeur de creole' },
     securite_automatismes_portail_motorisation: { drop: 'portail coulissant|portail battant', t: 'telecommande|telecommande portail|moteur portail|motorisation de portail coulissant|motorisation de portail battant', p: 'portail coulissant ne s ouvre plus|portail coulissant bloque|portail coulissant en panne|portail battant en panne|portail battant ne s ouvre plus' },
     // --- Réglage issu des titres réels de la recette Staging (jeu classification-staging.js) ---
+    // --- Correctifs issus de la revue produit (sondage territorial et mots courts) ---
+    jardinage_entretien_taille_haies: { t: 'tailler mes arbustes|tailler les arbustes|taille d arbustes|bougainvillier|bougainvilliers|hibiscus', p: 'tailler mes bougainvilliers' },
+    cuisine_domicile_cours_cuisine: { drop: 'cours|cour' },
+    cuisine_domicile: { drop: 'cour|cours|repa' },
     plomberie_fuite: { t: 'fuite douche|fuite dans ma douche|fuite salle de bain|fuite cuisine|fuite dans ma cuisine|fuite evier|fuite plafond|fuite salon|fuite dans mon salon|fuite wc|fuite sous evier', p: 'j ai une fuite dans mon salon|fuite dans ma douche a l italienne|fuite dans ma cuisine' },
     mecanique_auto_diagnostic_panne: { t: 'fuite d huile|fuite huile|fuite d huile voiture|fuite liquide de refroidissement|fuite d essence', p: 'fuite d huile dans ma voiture' },
     arts_visuels: { drop: 'huile' },

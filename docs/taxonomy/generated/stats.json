@@ -3,12 +3,12 @@
   "plusAutres": true,
   "trades": 105,
   "specialties": 414,
-  "terms": 6864,
+  "terms": 7007,
   "termsByType": {
     "label": 528,
-    "syn": 4969,
-    "problem": 1171,
-    "local": 196
+    "syn": 4976,
+    "problem": 1173,
+    "local": 330
   },
   "selectableNodes": 516,
   "restrictedPlaceholders": [
@@ -63,7 +63,7 @@
     },
     "requestCategories": 15
   },
-  "collisions": 179,
-  "ambiguousRegistry": 30,
-  "tuningEntries": 31
+  "collisions": 200,
+  "ambiguousRegistry": 33,
+  "tuningEntries": 34
 }

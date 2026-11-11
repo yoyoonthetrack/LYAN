@@ -3174,6 +3174,34 @@
     {
      "t": "rafraichir une piece",
      "type": "problem"
+    },
+    {
+     "t": "case creole",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "peindre ma case",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "peinture de case",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "case en tole",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -4378,6 +4406,62 @@
     {
      "t": "kiosque",
      "type": "local"
+    },
+    {
+     "t": "carbet",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "construire un carbet",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "carbet en bois",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "varangue",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "refaire la varangue",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "varangue a refaire",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "lambrequins",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "bardeaux",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -4803,6 +4887,27 @@
     {
      "t": "tole ondulee",
      "type": "local"
+    },
+    {
+     "t": "tole de la case",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "case en tole",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "toit de case",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -6955,6 +7060,22 @@
      "type": "syn"
     },
     {
+     "t": "tailler mes arbustes",
+     "type": "syn"
+    },
+    {
+     "t": "tailler les arbustes",
+     "type": "syn"
+    },
+    {
+     "t": "bougainvillier",
+     "type": "syn"
+    },
+    {
+     "t": "hibiscus",
+     "type": "syn"
+    },
+    {
      "t": "tailler ma haie",
      "type": "problem"
     },
@@ -6964,6 +7085,10 @@
     },
     {
      "t": "haie de lauriers a tailler",
+     "type": "problem"
+    },
+    {
+     "t": "tailler mes bougainvilliers",
      "type": "problem"
     }
    ]
@@ -7268,6 +7393,27 @@
     {
      "t": "terrain envahi par les broussailles",
      "type": "problem"
+    },
+    {
+     "t": "debroussaillage en foret",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "ouvrir un layon",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "layon",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
     }
    ]
   },
@@ -9077,7 +9223,10 @@
     },
     {
      "t": "ajoupa",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "antilles"
+     ]
     },
     {
      "t": "tonnelle",
@@ -9102,6 +9251,49 @@
     {
      "t": "construire un carport",
      "type": "problem"
+    },
+    {
+     "t": "ajoupa",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "carbet",
+     "type": "local",
+     "territories": [
+      "antilles",
+      "guyane"
+     ]
+    },
+    {
+     "t": "case a outils",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "construire un carbet",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "carbet en bois",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "abri en bois en foret",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
     }
    ]
   },
@@ -9349,7 +9541,10 @@
     },
     {
      "t": "goyavier",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "reunion"
+     ]
     },
     {
      "t": "greffage",
@@ -9366,6 +9561,48 @@
     {
      "t": "entretenir mes bananiers",
      "type": "problem"
+    },
+    {
+     "t": "litchi",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "letchi",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "bibasse",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "goyavier",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "cueillette de litchis",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "vanille",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -9566,7 +9803,10 @@
     },
     {
      "t": "abattis",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "guyane"
+     ]
     },
     {
      "t": "cueillette",
@@ -9587,6 +9827,34 @@
     {
      "t": "besoin de bras sur ma parcelle",
      "type": "problem"
+    },
+    {
+     "t": "abattis",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "abattis a defricher",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "defricher un abattis",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "jardin creole",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
     }
    ]
   },
@@ -11541,7 +11809,10 @@
     },
     {
      "t": "moustiques",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "antilles"
+     ]
     },
     {
      "t": "guepes",
@@ -11590,6 +11861,55 @@
     {
      "t": "fourmis folles",
      "type": "local"
+    },
+    {
+     "t": "demoustication",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "dengue",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "chikungunya",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "zika",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "moustique tigre",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "gites larvaires",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "moustiques",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
     }
    ]
   },
@@ -11763,6 +12083,27 @@
     {
      "t": "des chauves souris dans le toit",
      "type": "problem"
+    },
+    {
+     "t": "tangue",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "tangue dans le jardin",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "rats des cannes",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -14863,6 +15204,41 @@
     {
      "t": "quadrille",
      "type": "local"
+    },
+    {
+     "t": "maloya",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "sega",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "seggae",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "cours de maloya",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "cours de sega",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -15712,7 +16088,10 @@
     },
     {
      "t": "moringue",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "reunion"
+     ]
     },
     {
      "t": "ladja",
@@ -15740,7 +16119,10 @@
     },
     {
      "t": "moringue",
-     "type": "local"
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     },
     {
      "t": "ladja",
@@ -15749,6 +16131,13 @@
     {
      "t": "danmye",
      "type": "local"
+    },
+    {
+     "t": "moringue reunionnais",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -15994,6 +16383,34 @@
     {
      "t": "cours de paddle",
      "type": "problem"
+    },
+    {
+     "t": "yole",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "yole ronde",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "course de yoles",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "gommier",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
     }
    ]
   },
@@ -16024,11 +16441,17 @@
     },
     {
      "t": "peche en mer",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "reunion"
+     ]
     },
     {
      "t": "peche a la ligne",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "reunion"
+     ]
     },
     {
      "t": "sortie peche",
@@ -16036,7 +16459,11 @@
     },
     {
      "t": "peche au gros",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "antilles",
+      "reunion"
+     ]
     },
     {
      "t": "peche en bord de mer",
@@ -16064,11 +16491,50 @@
     },
     {
      "t": "peche au gros",
-     "type": "local"
+     "type": "local",
+     "territories": [
+      "antilles",
+      "reunion"
+     ]
     },
     {
      "t": "pwason",
      "type": "local"
+    },
+    {
+     "t": "sortie en mer avec un pecheur",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "marin pecheur",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "pecher au gros",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "peche a la ligne",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "peche en mer",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -16367,7 +16833,10 @@
     },
     {
      "t": "via ferrata",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "reunion"
+     ]
     },
     {
      "t": "spéléologie",
@@ -16388,6 +16857,55 @@
     {
      "t": "faire du canyoning",
      "type": "problem"
+    },
+    {
+     "t": "parapente",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "vol libre",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "via ferrata",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "randonnee au volcan",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "mafate",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "salazie",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "cilaos",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -17003,6 +17521,41 @@
     {
      "t": "barrique",
      "type": "local"
+    },
+    {
+     "t": "transport fluvial",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "fret fluvial",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "marchandises par pirogue",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "fret sur le fleuve",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "livraison en commune isolee",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
     }
    ]
   },
@@ -20045,6 +20598,48 @@
     {
      "t": "gommo",
      "type": "local"
+    },
+    {
+     "t": "pirogue",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "moteur de pirogue",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "reparation pirogue",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "coque de pirogue",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "moteur de pirogue en panne",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "pirogue moteur en panne",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
     }
    ]
   },
@@ -21328,11 +21923,31 @@
      "type": "syn"
     },
     {
+     "t": "professeur de creole",
+     "type": "syn"
+    },
+    {
+     "t": "prof de creole",
+     "type": "syn"
+    },
+    {
+     "t": "cours de kreyol",
+     "type": "syn"
+    },
+    {
+     "t": "apprendre le kreyol",
+     "type": "syn"
+    },
+    {
      "t": "apprendre le creole",
      "type": "problem"
     },
     {
      "t": "cours de kreyol pour mon conjoint",
+     "type": "problem"
+    },
+    {
+     "t": "cherche un professeur de creole",
      "type": "problem"
     },
     {
@@ -21455,7 +22070,10 @@
     },
     {
      "t": "neerlandais",
-     "type": "syn"
+     "type": "syn",
+     "territories": [
+      "antilles"
+     ]
     },
     {
      "t": "russe",
@@ -21483,11 +22101,98 @@
     },
     {
      "t": "cours de portugais",
-     "type": "problem"
+     "type": "problem",
+     "territories": [
+      "guyane"
+     ]
     },
     {
      "t": "apprendre le neerlandais",
      "type": "problem"
+    },
+    {
+     "t": "neerlandais",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "papiamento",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "anglais de saint martin",
+     "type": "local",
+     "territories": [
+      "antilles"
+     ]
+    },
+    {
+     "t": "hmong",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "nenge",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "bushinenge",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "sranan tongo",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "taki taki",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "portugais bresilien",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "creole haitien",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "cours de hmong",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "cours de portugais",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
     }
    ]
   },
@@ -22259,6 +22964,41 @@
     {
      "t": "une visite pour mon pere tous les jours",
      "type": "problem"
+    },
+    {
+     "t": "gramoun",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "gramoune",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "ma gramoun",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "mon gramoun",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "aide pour ma gramoun",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -26014,6 +26754,132 @@
     {
      "t": "bokit",
      "type": "local"
+    },
+    {
+     "t": "maripa",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "couac",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "cassave",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "bouillon d awara",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "awara",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "poisson boucane",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "cuisine guyanaise",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "pimentade",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "cari",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "cari poulet",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "rougail",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "rougail saucisse",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "samoussa",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "bonbon piment",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "achards",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "civet",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "bichique",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "boucane",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -26346,6 +27212,76 @@
     {
      "t": "quelqu un qui cuisine chez moi",
      "type": "problem"
+    },
+    {
+     "t": "cuisine guyanaise",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "couac",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "cassave",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "maripa",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "cari",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "rougail",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "samoussa",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "bonbon piment",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "achards",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "civet",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -26467,10 +27403,6 @@
     },
     {
      "t": "pain au levain",
-     "type": "syn"
-    },
-    {
-     "t": "cours",
      "type": "syn"
     },
     {
@@ -28205,6 +29137,41 @@
     {
      "t": "ti panier",
      "type": "local"
+    },
+    {
+     "t": "vacoa",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "tressage vacoa",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "tressage de vacoa",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "chapeau en vacoa",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "panier en vacoa",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -29870,6 +30837,34 @@
     {
      "t": "ka",
      "type": "local"
+    },
+    {
+     "t": "maloya",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "sega",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "seggae",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
+    },
+    {
+     "t": "kayamb",
+     "type": "local",
+     "territories": [
+      "reunion"
+     ]
     }
    ]
   },
@@ -34006,6 +35001,27 @@
     {
      "t": "kreyol",
      "type": "local"
+    },
+    {
+     "t": "interprete bushinenge",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "interprete hmong",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
+    },
+    {
+     "t": "interprete creole haitien",
+     "type": "local",
+     "territories": [
+      "guyane"
+     ]
     }
    ]
   },
@@ -35419,6 +36435,18 @@
   "devis": {
    "why": "Mot d'usage de la plateforme (demande de devis) : ne décrit pas un métier.",
    "question": "Devis pour quel service ?"
+  },
+  "auto": {
+   "why": "Auto : véhicule ou auto-entrepreneur.",
+   "question": "Véhicule ou statut d'auto-entrepreneur ?"
+  },
+  "port": {
+   "why": "Port : maritime, ou port d'objets.",
+   "question": "Port maritime ou transport d'objets ?"
+  },
+  "menu": {
+   "why": "Menu : repas ou maquette graphique.",
+   "question": "Menu de repas ou création graphique ?"
   },
   "creole": {
    "why": "Créole : langue, cuisine créole ou bijoux créoles.",
