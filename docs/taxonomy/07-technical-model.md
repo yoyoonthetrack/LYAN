@@ -85,7 +85,7 @@ Ajouter une colonne NULLable sans défaut est une opération de **métadonnées*
 
 Contrôles vérifiés dans le rejeu local : `anon` lit le catalogue ; `anon` n'écrit pas ; `anon` ne lit pas la correspondance ; un membre non administrateur ne modifie pas le catalogue ; usurpation d'un autre membre refusée ; nœud réglementé / `autres` / code inexistant / injection refusés ; RLS activée sur les 8 tables (test statique + `V12`).
 
-> ⚠️ La permission `taxonomy.manage` **n'existe pas encore**. L'ajouter touche au système de permissions d'administration : c'est une **décision à valider** (doc. 09, D8) — la contrainte de la mission interdit de modifier les permissions admin dans cette phase.
+> La permission `taxonomy.manage` **existe déjà** (migration 17, attribuée au rôle propriétaire) et protège `lyann_taxonomy` : le modèle v2 la **réutilise**. Aucune permission n'est à créer et le RBAC n'est pas modifié (D8, doc. 11 §0). *Correction : une version antérieure de cette note affirmait le contraire.*
 
 ## 6. Performance
 - `lyann_taxonomy_term` ≈ 6 800 lignes : index sur `term_norm` et index **GIN trigramme** ; la RPC filtre par contenu de mots entiers, préfixe et similarité. À cette taille, un balayage reste de l'ordre de la milliseconde ; à surveiller si le vocabulaire dépasse ~100 000 termes.

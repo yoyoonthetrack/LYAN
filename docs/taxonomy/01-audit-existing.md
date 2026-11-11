@@ -18,7 +18,7 @@
 | 1 | `lyann_taxonomy` | base ; migrations `17`, `24`, `38` | 89 lignes à 3 niveaux texte (`universe`/`category`/`subcategory`) + synonymes, tags, `safety_level` | UUID par ligne, **pas de code stable** | libellés = identité ; doublons ; pas de FK entrante |
 | 2 | `categories` (héritée) | base ; `schema.sql` | table vide | `category_id` | FK `services`, `requests`, `projects` → table morte |
 | 3 | `user_matching_skills`, `internal_taxonomy_tags` | base ; `schema.sql` | tables **non alimentées** | — | schéma mort, sans politique d'écriture |
-| 4 | `requests.category` | base | texte libre (15 valeurs sur Staging) | libellé | valeur par défaut « Jardinage » : 48/80 |
+| 4 | `requests.category` | base | texte libre (15 valeurs sur Staging) | libellé | « Jardinage » : 48/80, valeur des scripts de recette (aucun défaut dans le code d'écriture) |
 | 5 | `requests.taxonomy_id` | base | UUID **sans clé étrangère** | UUID de feuille | 12/80 renseignés ; `classification_status` jamais mis à jour |
 | 6 | `services.title` / `.category` | base ; RPC `lyann_sync_profile_skills` (migration `83`) | compétence = titre libre, `category = title` | texte | 101 titres distincts / 208 lignes ; génériques (« installation », « entretien », « dépannage ») |
 | 7 | 9 boutons « compétences rapides » | `payment-portal.html` | lots de compétences | libellé | chaque bouton recouvre 1 à 3 métiers (« Transport & Déménagement », « Cours & Soutien scolaire ») |
@@ -36,7 +36,7 @@
 | Demandes | 80 |
 | … avec `taxonomy_id` | 12 (15 %) |
 | … avec `classification_status = UNCLASSIFIED` | **80 (100 %)** |
-| … catégorie « Jardinage » (valeur par défaut) | 48 (60 %) — toutes issues de scripts de recette (« qa … », « rc14 … ») |
+| … catégorie « Jardinage » (valeur des scripts de recette, pas un défaut du code) | 48 (60 %) — toutes issues de scripts de recette (« qa … », « rc14 … ») |
 | … « Service direct » (catégorie « Général ») | 11 (14 %) |
 | … titres réellement descriptifs | ≈ 20 demandes (≈ 25 %), 17 titres distincts exploitables |
 | Lignes de compétences (`services`) | 208 |

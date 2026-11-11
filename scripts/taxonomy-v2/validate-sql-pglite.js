@@ -1,7 +1,7 @@
 'use strict';
 /*
  * Validation LOCALE des brouillons SQL de la taxonomie v2 (aucune base distante, aucun réseau à l'exécution).
- * Joue 01 → 05, 07 puis 09 dans un Postgres embarqué (PGlite, en mémoire) sur des tables de test qui reprennent
+ * Joue 01 → 06, 07 puis 09 dans un Postgres embarqué (PGlite, en mémoire) sur des tables de test qui reprennent
  * la structure et les agrégats de Staging, puis vérifie que le rollback restitue exactement l'état initial.
  *
  * Prérequis hors dépôt : `npm i --no-save @electric-sql/pglite` (ou PGLITE_PATH=/chemin/vers/node_modules).
@@ -114,6 +114,17 @@ async function run() {
     report.requestCoverage = { total: Number(rq[0].total), legacy: Number(rq[0].legacy), v2: Number(rq[0].v2) };
     step('les colonnes historiques sont inchangées après backfill', (await fingerprint()) === before);
 
+    // --- 06 : rattachement automatique pour les anciens clients ---
+    try { await db.exec(read('06_dual_write_derivation.sql')); step('appliquer 06_dual_write_derivation.sql', true); } catch (e) { step('appliquer 06_dual_write_derivation.sql', false, e.message); return report; }
+    v = await runVerify(['V13', 'V14']);
+    for (const [id, found] of Object.entries(v)) step(`verify ${id} (après 06)`, found.length === 0, found.length ? JSON.stringify(found.slice(0, 3)) : '');
+    step('06 ne modifie aucune ligne existante', (await fingerprint()) === before);
+    // Séquence réelle : 05 → 06 → 05 (rejeu) ; le rejeu doit rester neutre, déclencheurs actifs (lignes écrites entre 05 et 06 rattrapées).
+    const covA = await rows('SELECT count(taxonomy_node_code) r, (SELECT count(taxonomy_node_code) FROM public.services) s FROM public.requests');
+    await db.exec(read('05_legacy_map_and_backfill.sql'));
+    const covB = await rows('SELECT count(taxonomy_node_code) r, (SELECT count(taxonomy_node_code) FROM public.services) s FROM public.requests');
+    step('rejeu de 05 après 06 : neutre, déclencheurs actifs', covA[0].r === covB[0].r && covA[0].s === covB[0].s, `${JSON.stringify(covA[0])} → ${JSON.stringify(covB[0])}`);
+
     // --- Comportements : recherche ---
     const search = async (text) => (await rows(`SELECT node_code, trade_code, family_code, score, needs_clarification FROM public.lyann_taxonomy_search(${q(text)}, 5)`));
     const s1 = await search('fuite sous mon évier');
@@ -166,6 +177,44 @@ async function run() {
     const priced = await rows("SELECT count(*) n FROM public.services WHERE slug='priced'");
     step('un service tarifé n\'est jamais supprimé', Number(priced[0].n) === 1);
 
+    // --- Anciens clients : écritures sans taxonomy_node_code (le cas des builds iOS/Android déjà publiés) ---
+    const leafId = (await rows("SELECT id FROM public.lyann_taxonomy WHERE category = 'Plomberie' AND subcategory = 'Fuite & Dépannage'"))[0].id;
+    const node = async (title) => (await rows(`SELECT taxonomy_node_code c, taxonomy_node_source s FROM public.requests WHERE title = ${q(title)}`))[0];
+    await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`);
+    await db.exec(`INSERT INTO public.requests(title, category, taxonomy_id) VALUES ('oc-leaf', 'Plomberie', '${leafId}')`);
+    await db.exec("INSERT INTO public.requests(title, category) VALUES ('oc-cat', 'Plomberie'), ('oc-general', 'Général'), ('oc-residu', 'k7mqp4lyannrc'), ('oc-jardinage', 'Jardinage')");
+    await db.exec("INSERT INTO public.requests(title, category, taxonomy_node_code) VALUES ('oc-v2', 'Jardinage', 'garde_enfants')");
+    await db.exec("INSERT INTO public.requests(title, category, taxonomy_node_code, taxonomy_node_source) VALUES ('oc-class', 'Général', 'plomberie_fuite', 'classifier')");
+    await db.exec('RESET ROLE');
+    let n = await node('oc-leaf');
+    step('ancien client : feuille historique → nœud dérivé (membre sans accès à la table de correspondance)', n.c === 'plomberie_fuite' && n.s === 'derived_leaf', JSON.stringify(n));
+    n = await node('oc-cat'); step('ancien client : catégorie libre exacte → nœud dérivé', n.c === 'plomberie' && n.s === 'derived_category', JSON.stringify(n));
+    n = await node('oc-jardinage'); step('ancien client : catégorie « large » → métier de repli, provenance dérivée', n.c === 'jardinage_entretien' && n.s === 'derived_category', JSON.stringify(n));
+    n = await node('oc-general'); step('ancien client : « Général » reste à classer (NULL)', n.c === null && n.s === null, JSON.stringify(n));
+    n = await node('oc-residu'); step('ancien client : résidu de test reste à classer (NULL)', n.c === null, JSON.stringify(n));
+    n = await node('oc-v2'); step('client v2 : valeur explicite jamais écrasée par la catégorie', n.c === 'garde_enfants' && n.s === 'client', JSON.stringify(n));
+    n = await node('oc-class'); step('client v2 : provenance « classifier » conservée', n.c === 'plomberie_fuite' && n.s === 'classifier', JSON.stringify(n));
+    await db.exec("UPDATE public.requests SET category = 'Piscine' WHERE title = 'oc-cat'");
+    n = await node('oc-cat'); step('ancien client modifie la catégorie : nœud dérivé recalculé', n.c === 'piscine_bassin' && n.s === 'derived_category', JSON.stringify(n));
+    await db.exec("UPDATE public.requests SET category = 'Piscine' WHERE title = 'oc-v2'");
+    n = await node('oc-v2'); step('ancien client modifie la catégorie : nœud explicite conservé', n.c === 'garde_enfants', JSON.stringify(n));
+    await db.exec('BEGIN');
+    await db.exec('ALTER TABLE public.lyann_taxonomy_legacy_map RENAME TO lyann_taxonomy_legacy_map_x');
+    let failOpen = true; try { await db.exec("INSERT INTO public.requests(title, category) VALUES ('oc-failopen', 'Plomberie')"); } catch (_) { failOpen = false; }
+    n = failOpen ? await node('oc-failopen') : null;
+    await db.exec('ROLLBACK');
+    step('fail-open : anomalie de taxonomie → écriture acceptée, nœud NULL', failOpen && n && n.c === null, JSON.stringify(n));
+    await db.exec(`SET ROLE authenticated; SET test.uid = '${userB}'`);
+    await db.exec("INSERT INTO public.services(owner_id, title, description, category, slug) VALUES ('" + userB + "', 'Plomberie', 'Plomberie', 'Plomberie', 'oc-s1'), ('" + userB + "', 'Installation', 'Installation', 'Installation', 'oc-s2')");
+    await db.exec('RESET ROLE');
+    const sv = async (slug) => (await rows(`SELECT taxonomy_node_code c, taxonomy_node_source s FROM public.services WHERE slug = ${q(slug)}`))[0];
+    let sn = await sv('oc-s1'); step('ancien client : compétence « Plomberie » → nœud dérivé du titre', sn.c === 'plomberie' && sn.s === 'derived_title', JSON.stringify(sn));
+    sn = await sv('oc-s2'); step('ancien client : compétence ambiguë « Installation » → à classer (NULL)', sn.c === null, JSON.stringify(sn));
+    v = await runVerify(['V13', 'V14']);
+    for (const [id, found] of Object.entries(v)) step(`verify ${id} (après écritures d'anciens clients)`, found.length === 0, found.length ? JSON.stringify(found.slice(0, 3)) : '');
+    await db.exec("DELETE FROM public.requests WHERE title LIKE 'oc-%'");
+    await db.exec("DELETE FROM public.services WHERE slug LIKE 'oc-%'");
+
     // --- Contrôle négatif : les vérifications détectent bien une anomalie (annulée ensuite) ---
     await db.exec('BEGIN');
     await db.exec("INSERT INTO public.lyann_taxonomy_node(code, kind, parent_code, family_code, label_fr) VALUES ('zz_neg_spec', 'specialty', 'plomberie', 'jardin', 'Anomalie volontaire')");
@@ -185,7 +234,7 @@ async function run() {
     const cols = await rows("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public' AND column_name IN ('taxonomy_node_code','node_code')");
     step('rollback : aucune colonne v2 résiduelle', cols.length === 0);
     // Rejouable : appliquer à nouveau après rollback
-    try { await db.exec(read('01_schema_taxonomy_v2.sql')); await db.exec(read('02_additive_columns.sql')); await db.exec(read('03_search_and_skills_rpc.sql')); await db.exec(read('04_seed_taxonomy_v2.sql')); await db.exec(read('05_legacy_map_and_backfill.sql')); step('rejouable après rollback', true); } catch (e) { step('rejouable après rollback', false, e.message); }
+    try { await db.exec(read('01_schema_taxonomy_v2.sql')); await db.exec(read('02_additive_columns.sql')); await db.exec(read('03_search_and_skills_rpc.sql')); await db.exec(read('04_seed_taxonomy_v2.sql')); await db.exec(read('05_legacy_map_and_backfill.sql')); await db.exec(read('06_dual_write_derivation.sql')); step('rejouable après rollback', true); } catch (e) { step('rejouable après rollback', false, e.message); }
     await db.close();
     return report;
 }

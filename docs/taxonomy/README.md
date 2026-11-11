@@ -13,6 +13,8 @@
 - **Ce qui est prouvé** : cohérence de structure, couverture complète de l'existant (89 feuilles, 103 titres de compétences, 9 boutons, 15 catégories de demandes, 8 familles de carte, 3 clés pro), 47 contrôles SQL rejoués localement, jeux de classification.
 - **Ce qui ne l'est pas** : la demande réelle (Production non lue), la précision de classification sur du langage réel (jeux écrits par l'auteur), la conformité juridique des nœuds réglementés, l'ergonomie (aucun test utilisateur).
 
+> **Pour intégrer : lire [`11-staging-integration-plan.md`](11-staging-integration-plan.md)** (arbitrages du 11 nov. 2026, plan P0-P10, contrôles C01-C30).
+>
 > **Pour décider : lire [`10-product-review.md`](10-product-review.md)** — revue produit (familles, métiers, tuiles, territoires, 13 décisions avec recommandation et risque, ambiguïtés, UX, protocole de test, structure finale).
 
 ## Les 10 livrables
@@ -29,6 +31,7 @@
 | 8 | Plan de migration non destructif | [`08-migration-plan.md`](08-migration-plan.md) |
 | 9 | Risques, ambiguïtés, décisions à prendre | [`09-risks-and-decisions.md`](09-risks-and-decisions.md) |
 | 10 | Branche, SHA, fichiers produits | message de livraison + section « Fichiers » ci-dessous |
+| + | **Plan d'intégration technique sur Staging** (arbitrages retenus, dépendances, plan séquencé, blocages, contrôles) | [`11-staging-integration-plan.md`](11-staging-integration-plan.md) |
 | + | **Revue produit finale** (3.2B-revue) | [`10-product-review.md`](10-product-review.md) *(généré par `scripts/taxonomy-v2/review.js`)* |
 
 ## Source de vérité et régénération
@@ -48,7 +51,7 @@ docs/taxonomy/migration-draft/04_*.sql, 05_*.sql ← dérivés ┘
 node scripts/taxonomy-v2/build.js                      # régénère tous les dérivés
 node scripts/taxonomy-v2/review.js                     # régénère 10-product-review.md
 node scripts/taxonomy-v2/evaluate.js                   # mesures de classification (par jeu et par région)
-node --test tests/taxonomy-v2-proposal.test.js         # 20 tests (le rejeu SQL est ignoré si PGlite est absent)
+node --test tests/taxonomy-v2-proposal.test.js         # 21 tests (66 contrôles SQL rejoués) (le rejeu SQL est ignoré si PGlite est absent)
 # Rejeu SQL complet (Postgres embarqué en mémoire, hors dépôt) :
 npm i --no-save @electric-sql/pglite && node scripts/taxonomy-v2/validate-sql-pglite.js
 # Mesure sur un export de recensement (voir sql/readonly-census.sql) :
@@ -63,6 +66,7 @@ node scripts/taxonomy-v2/census-coverage.js export.json
 | `02_additive_columns.sql` | colonnes NULLables + FK `NOT VALID` + provenance |
 | `03_search_and_skills_rpc.sql` | recherche, vue à plat, compétences v2 (RPC sécurisée) |
 | `04_seed_taxonomy_v2.sql` | amorçage des familles, métiers, spécialités, termes *(généré)* |
+| `06_dual_write_derivation.sql` | déclencheurs : rattachement automatique des écritures d'anciens clients (fail-open, `SECURITY DEFINER`) |
 | `05_legacy_map_and_backfill.sql` | table de correspondance + rétro-remplissage additif et idempotent *(généré)* |
 | `07_verify_taxonomy_v2.sql` | 12 contrôles de cohérence (zéro ligne attendue) |
 | `09_rollback_taxonomy_v2.sql` | retour à l'état antérieur, prouvé à l'identique |

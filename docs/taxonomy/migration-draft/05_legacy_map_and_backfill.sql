@@ -260,7 +260,7 @@ WHERE m.legacy_kind = 'skill_title' AND s.taxonomy_node_code IS NULL
   AND lower(btrim(s.title)) = lower(m.legacy_key);
 
 -- 4) Demandes sans taxonomy_id : rapprochement par requests.category (catégories libres connues uniquement). Confiance FAIBLE :
---    la catégorie « Jardinage » est la valeur par défaut observée sur Staging (48 des 80 demandes, toutes issues de la recette) ;
+--    la catégorie « Jardinage » est la valeur des scripts de recette sur Staging (48 des 80 demandes ; aucun défaut dans le code d'écriture) ;
 --    la provenance backfill_category permet de les exclure des statistiques et de les reclasser.
 UPDATE public.requests r SET taxonomy_node_code = m.node_code, taxonomy_node_source = 'backfill_category'
 FROM public.lyann_taxonomy_legacy_map m

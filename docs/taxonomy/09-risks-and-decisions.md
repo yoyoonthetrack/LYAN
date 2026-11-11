@@ -1,5 +1,7 @@
 # 09 — Risques, ambiguïtés et décisions à prendre
 
+> **Arbitrages retenus le 11 nov. 2026** (D1 validé, D4 conditionnel, D5 à revoir, D8 validé en principe, D11 reporté, D13 validé) : voir [`11-staging-integration-plan.md`](11-staging-integration-plan.md) §0. Les recommandations ci-dessous sont celles soumises à la revue ; D4, D5, D8 et D11 sont **modifiées** par ces arbitrages.
+>
 > **Synthèse et recommandations arbitrables : voir [`10-product-review.md`](10-product-review.md) §0 et §5.** La validation humaine est réservée à **la structure métier finale** et à **toute future migration**. Ce document liste ce qui doit être tranché ; pour chaque décision, une **recommandation** est donnée, jamais appliquée.
 
 ## 1. Décisions à prendre (par ordre d'impact)
@@ -13,7 +15,7 @@
 | **D5** | **Transport rémunéré de personnes** (aéroport, trajets) | **partage de frais uniquement** ; « Transfert aéroport » rattaché au covoiturage avec rappel | interdire / exiger statut pro VTC | modération, textes, éventuelle vérification |
 | **D6** | **Courses pour autrui** : Famille ou Transport ? | métier `courses_commissions` en **Famille**, secondaire **Transport** | primaire Transport | 1 métier ; comptage des annonces |
 | **D7** | **Remontée des recherches sans résultat** pour enrichir les synonymes | compteur **agrégé**, texte tronqué et normalisé, sans identifiant de membre | ne rien collecter | privacy (mentions légales, consentement), table de télémétrie |
-| **D8** | **Qui administre la taxonomie** et comment sont acceptés de nouveaux métiers | permission dédiée `taxonomy.manage` (**non créée** ; touche au système de permissions admin) + formulaire « Je ne trouve pas mon métier » modéré | passer par migration SQL uniquement | RBAC admin, back-office |
+| **D8** | **Qui administre la taxonomie** et comment sont acceptés de nouveaux métiers | permission `taxonomy.manage` (**déjà existante**, migration 17 : aucune création) + formulaire « Je ne trouve pas mon métier » modéré (plan dédié, doc. 11 §7) | passer par migration SQL uniquement | RBAC admin, back-office |
 | **D9** | **Sort de `lyann_taxonomy`** | conserver en lecture seule (jamais de suppression), gel après adoption | purge future | aucune avant l'étape 6 |
 | **D10** | **`classification_status`** (UNCLASSIFIED sur 80/80) | le **dériver** (`CLASSIFIED` si `taxonomy_node_code` renseigné, provenance `user`/`classifier`) | conserver la colonne telle quelle | logique serveur, tableaux admin |
 | **D11** | **Recensement Production lecture seule** | à autoriser explicitement (requêtes prêtes, agrégats seulement) | décider sans données réelles | la répartition de la demande reste inconnue |
@@ -37,13 +39,13 @@
 | **R11** | **Découvrabilité** : un métier absent de la liste | moyenne | moyenne | recherche par problème/synonyme, « Autres », suggestion de métier modérée |
 | **R12** | **Réutilisation d'un code** après désactivation | haute | faible | trigger d'immuabilité ; pas de suppression ; test |
 | **R13** | **Multi-famille** : double comptage ou affichage dupliqué | faible | moyenne | famille primaire unique + secondaires (comptées une fois) |
-| **R14** | **Données de recette en Production** (« Jardinage » par défaut) | moyenne | inconnue | provenance `backfill_category` exclue des statistiques ; correction du défaut de l'assistant (action **A1**, `10-product-review.md` §10) |
+| **R14** | **Données de recette en Production** (catégorie « Jardinage » issue des scripts) | moyenne | inconnue | provenance `backfill_category` exclue des statistiques ; correction du défaut de l'assistant (action **A1**, `10-product-review.md` §10) |
 | **R15** | **Taille / performance** de la recherche | faible | faible | index GIN trigramme ; arbre ≈ 90 Ko ; surveiller > 100 000 termes |
 
 ## 3. Ambiguïtés relevées pendant l'audit
 
 1. **Le brief demande « 8 familles » et « 9 domaines »** : résolu par D1 (une famille, deux tuiles) — c'est une interprétation, pas un fait.
-2. **Valeur par défaut « Jardinage »** dans l'assistant d'annonce : 48/80 demandes Staging portent cette catégorie, toutes issues de scripts. Si ce défaut existe aussi côté produit réel, il fausse toutes les statistiques par catégorie. **À vérifier** (action **A1**) : l'assistant doit ne présélectionner aucune catégorie.
+2. **Catégorie « Jardinage »** : 48/80 demandes Staging, toutes issues de scripts de recette. **Vérifié (doc. 11) : ce n'est pas un défaut du code d'écriture** ; en revanche l'assistant présélectionne la première catégorie et la première sous-catégorie d'un univers, ce qui fausse tout autant les statistiques (action **A1** : ne présélectionner aucun métier).
 3. **« Autres Besoins »** existe dans l'assistant mais pas dans la base ; **« Général »** et **« Service direct »** (11 demandes) sont des catégories libres sans équivalent. La proposition les mappe sur la famille **Autres** (`autre_demande_non_classee`, `autre_demande_service_direct`).
 4. **Les 8 familles de pins de la carte** ne coïncident pas avec les 18 univers de l'assistant ni avec les domaines de Découvrir : trois découpages parallèles aujourd'hui.
 5. **`classification_status`** n'a pas de sémantique vérifiable aujourd'hui (voir D10).

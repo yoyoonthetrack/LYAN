@@ -51,3 +51,12 @@ SELECT 'V11 couverture compétences' AS info, count(*) AS total, count(taxonomy_
 SELECT 'V12 RLS désactivée' AS check, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public' AND c.relname LIKE 'lyann_taxonomy_%' AND c.relkind = 'r' AND NOT c.relrowsecurity
   AND c.relname IN ('lyann_taxonomy_release', 'lyann_taxonomy_group', 'lyann_taxonomy_node', 'lyann_taxonomy_node_family', 'lyann_taxonomy_term', 'lyann_taxonomy_ambiguous_term', 'lyann_taxonomy_legacy_map');
+
+-- V13 (après 06) — un nœud renseigné doit toujours avoir une provenance (demandes et compétences)
+SELECT 'V13 nœud sans provenance' AS check, 'requests' AS t, r.id::text FROM public.requests r WHERE r.taxonomy_node_code IS NOT NULL AND r.taxonomy_node_source IS NULL
+UNION ALL
+SELECT 'V13 nœud sans provenance', 'services', s.id::text FROM public.services s WHERE s.taxonomy_node_code IS NOT NULL AND s.taxonomy_node_source IS NULL;
+
+-- V14 (après 06) — un rattachement dérivé d'une feuille doit être celui de cette feuille (jamais de divergence silencieuse)
+SELECT 'V14 dérivation divergente' AS check, r.id FROM public.requests r JOIN public.lyann_taxonomy t ON t.id = r.taxonomy_id
+WHERE r.taxonomy_node_source = 'derived_leaf' AND t.node_code IS NOT NULL AND r.taxonomy_node_code <> t.node_code;

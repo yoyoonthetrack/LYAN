@@ -263,6 +263,19 @@ test('revue produit (doc. 10) : générée, à jour, et fidèle aux données', (
     assert.ok(!/D14/.test(decisions), 'référence à une décision D14 inexistante');
 });
 
+test('plan d\'intégration Staging (doc. 11) : arbitrages, priorités, blocages ; pré-vol strictement en lecture seule', () => {
+    const plan = fs.readFileSync(path.join(ROOT, 'docs', 'taxonomy', '11-staging-integration-plan.md'), 'utf8');
+    for (const d of ['D1', 'D4', 'D5', 'D8', 'D11', 'D13']) assert.ok(new RegExp(`\\*\\*${d}\\*\\*`).test(plan), `${d} absent du plan`);
+    for (let i = 1; i <= 8; i += 1) assert.ok(new RegExp(`\\| ${i} \\| \\*\\*`).test(plan), `priorité ${i} absente`);
+    for (const p of ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10']) assert.ok(plan.includes(`**${p}**`), `${p} absente`);
+    for (let i = 1; i <= 30; i += 1) assert.ok(plan.includes(`| C${String(i).padStart(2, '0')} |`), `contrôle C${i} absent`);
+    assert.match(plan, /taxonomy\.manage[^\n]*existe déjà|existe déjà[^\n]*taxonomy\.manage/);
+    const pre = fs.readFileSync(path.join(ROOT, 'docs', 'taxonomy', 'sql', 'staging-preflight-readonly.sql'), 'utf8');
+    const code = pre.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+    assert.doesNotMatch(code, /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY|CALL|DO)\b/i, 'le pré-vol doit rester en lecture seule');
+    assert.doesNotMatch(pre, /gzispjfoywklpqatjyop/, 'identifiant Production');
+});
+
 test('livrables générés : cohérents avec la source', () => {
     const gen = path.join(ROOT, 'docs', 'taxonomy', 'generated');
     const json = JSON.parse(fs.readFileSync(path.join(gen, 'taxonomy-v2.json'), 'utf8'));
@@ -295,6 +308,15 @@ test('brouillons SQL : étiquetés non appliqués, additifs, sans accès Product
     for (const m of backfill.matchAll(/UPDATE\s+public\.(\w+)\s+\w+\s+SET\s+([^\n]+)/gi)) {
         const assigned = m[2].split(',').map((x) => x.split('=')[0].trim());
         for (const col of assigned) assert.ok(['node_code', 'taxonomy_node_code', 'taxonomy_node_source'].includes(col), `${m[1]}: colonne écrite inattendue ${col}`);
+    }
+    // 06 : déclencheurs de double écriture : SECURITY DEFINER à search_path fixé, fail-open, n'écrivent que les champs v2.
+    const derive = fs.readFileSync(path.join(DRAFT, '06_dual_write_derivation.sql'), 'utf8');
+    for (const m of derive.matchAll(/CREATE OR REPLACE FUNCTION[\s\S]*?\$\$;/g)) {
+        assert.match(m[0], /SECURITY DEFINER/); assert.match(m[0], /SET search_path = public, pg_temp/);
+        assert.match(m[0], /EXCEPTION WHEN OTHERS THEN\s+RAISE WARNING/, 'doit être fail-open');
+        assert.doesNotMatch(m[0], /RAISE EXCEPTION/, 'ne doit jamais bloquer une écriture');
+        assert.doesNotMatch(m[0], /\b(INSERT|DELETE|UPDATE)\s+(INTO\s+)?public\./i, 'ne doit écrire que dans NEW');
+        for (const col of [...m[0].matchAll(/NEW\.(\w+)\s*:=/g)].map((x) => x[1])) assert.ok(['taxonomy_node_code', 'taxonomy_node_source'].includes(col), `NEW.${col} modifié`);
     }
     // Toute nouvelle table a la RLS activée.
     const schema = fs.readFileSync(path.join(DRAFT, '01_schema_taxonomy_v2.sql'), 'utf8') + fs.readFileSync(path.join(DRAFT, '03_search_and_skills_rpc.sql'), 'utf8');

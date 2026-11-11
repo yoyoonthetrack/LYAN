@@ -2,6 +2,7 @@
 
 > **Statut : PROPOSITION À VALIDER — rien n'est implémenté ni appliqué.** Document généré par `scripts/taxonomy-v2/review.js` à partir des données de `docs/taxonomy/data/` (les tableaux ne peuvent donc pas diverger de la source).
 > Aucune migration, aucune écriture Supabase, aucun déploiement, Production non consultée.
+> **Suite donnée (11 nov. 2026)** : arbitrages D1 validé, D4 conditionnel, D5 à revoir, D8 validé en principe, D11 reporté, D13 validé — voir `11-staging-integration-plan.md` §0. Cette revue est conservée telle que soumise, à deux corrections factuelles près (D8 et A1, signalées ci-dessous).
 
 ## 0. Ce qu'il faut décider (et le reste)
 
@@ -12,7 +13,7 @@ La revue se résume à **6 arbitrages** ; les 7 autres décisions sont des recom
 | **D1** structure : 8 familles, Maison sur 2 tuiles | structurel | **Oui** | structure figée (codes permanents) |
 | **D4** nœuds réglementés non sélectionnables | juridique | **Oui** + relecture juridique des 3 nœuds | contrainte SQL `selectable=false` conservée |
 | **D5** transport de personnes = partage de frais seulement | juridique/métier | **Oui** | libellés et modération alignés ; « piroguier » (Guyane) traité de même |
-| **D8** permission `taxonomy.manage` + formulaire « Je ne trouve pas mon métier » | structurel (droits admin) | **Oui**, à créer dans une migration dédiée | nouveau droit admin, jamais attribué par défaut |
+| **D8** permission `taxonomy.manage` + formulaire « Je ne trouve pas mon métier » | structurel | **Oui** ; *correction : la permission existe déjà (migration 17), rien à créer* | aucun changement de droits |
 | **D11** recensement Production **en lecture seule** (agrégats) | accès Production | **Oui**, requêtes déjà prêtes | mesure réelle de la demande et de la précision |
 | **D13** vocabulaire territorial : **structure unique, vocabulaire par région** | périmètre | **Oui** (révisé, voir §5) | lot Guyane/Réunion relu par des locuteurs |
 
@@ -333,7 +334,7 @@ Niveau de risque = risque **si on se trompe**, après mise en œuvre de la recom
 | **D5** | Transport de personnes | **Partage de frais uniquement** | « Transfert aéroport » rattaché au covoiturage avec rappel ; piroguier fluvial : même règle | 🔴 élevé (juridique) |
 | **D6** | Courses pour autrui | **Famille** (secondaire Transport) | 1 métier ; compté une fois | 🟢 faible |
 | **D7** | Recherches sans résultat | Compteur **agrégé**, texte normalisé tronqué, **aucun identifiant** | table de télémétrie ; mention de confidentialité ; sert à enrichir les synonymes | 🟡 moyen (vie privée) |
-| **D8** | Administration de la taxonomie | Permission **`taxonomy.manage`** (à créer) + formulaire modéré « Je ne trouve pas mon métier » | touche le RBAC admin : migration dédiée, jamais attribuée par défaut ; sinon tout passe par migration SQL | 🟠 moyen-élevé (droits) |
+| **D8** | Administration de la taxonomie | Permission **`taxonomy.manage`** (*déjà existante, migration 17 ; correction*) + formulaire modéré « Je ne trouve pas mon métier » | aucun changement de RBAC ; seul le formulaire modéré est à construire | 🟡 moyen (modération) |
 | **D9** | Ancienne table `lyann_taxonomy` | **Lecture seule, jamais supprimée** | anciens clients intacts ; purge éventuelle bien plus tard | 🟢 faible |
 | **D10** | `classification_status` | **Dérivé** du code renseigné et de sa provenance | statut cohérent sans double saisie ; 80/80 « non classé » aujourd'hui | 🟢 faible |
 | **D11** | Recensement Production | **Autoriser en lecture seule**, agrégats uniquement | sans lui, la demande réelle et la précision restent inconnues ; aucune donnée personnelle | 🟡 moyen (accès Production) |
@@ -556,7 +557,7 @@ Codes permanents (indépendants des libellés). 8 familles + Autres · 105 méti
 
 | Étape | Contenu | Porte de sortie |
 |---|---|---|
-| **A1** | Assistant d'annonce : ne présélectionner **aucune catégorie** (aujourd'hui « Jardinage » par défaut : 48/80 demandes Staging) | statistiques par catégorie fiables |
+| **A1** | Assistant d'annonce : ne présélectionner **aucun métier** (aujourd'hui : première catégorie et première sous-catégorie d'un univers choisies d'office ; *correction : « Jardinage » n'est pas un défaut du code, les 48/80 demandes viennent des scripts de recette*) | statistiques par catégorie fiables |
 | **0** | Décisions §0 ; recensement Production en lecture seule (D11) ; relecture juridique D4/D5 ; relecture du lot territorial | feu vert humain |
 | **1** | Répétition à blanc sur Staging (`BEGIN … ROLLBACK`), puis application Staging | 0 violation V01–V12 |
 | **2–3** | Lecture seule derrière un drapeau, puis double écriture | 100 % des nouvelles lignes avec code |
