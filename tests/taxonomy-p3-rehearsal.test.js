@@ -11,10 +11,10 @@ const { spawnSync } = require('node:child_process');
 const p3 = require('../scripts/taxonomy-v2/p3-rehearsal');
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'taxonomy-v2', 'p3-rehearsal.js');
 
-const runBench = async (afterSetup) => {
+const runBench = async (afterSetup, extra = {}) => {
     const { run } = require('../scripts/taxonomy-v2/validate-sql-pglite');
     const out = {};
-    const report = await run({ onlyAfterSetup: true, afterSetup: async (ctx) => { await afterSetup(ctx, out); } });
+    const report = await run({ ...extra, onlyAfterSetup: true, afterSetup: async (ctx) => { await afterSetup(ctx, out); } });
     return { report, out };
 };
 
@@ -156,4 +156,25 @@ test('documentation : le document 13 porte les sections citées par le plan P3 e
     // Chaque condition d'arrêt de l'évaluateur est décrite : 10 lignes numérotées en §7.3.
     const section = doc.slice(doc.indexOf('### 7.3'), doc.indexOf('### 7.4'));
     assert.equal((section.match(/^\d+\. /gm) || []).length, 10);
+});
+
+test('P3 banc local : les brouillons s\'appliquent que pg_trgm / unaccent soient dans `public` (Staging) ou dans `extensions`', async (t) => {
+    for (const extensionSchema of ['public', 'extensions']) {
+        const { report, out } = await runBench(async ({ db }, o) => {
+            try { await db.exec(p3.buildRehearsal().sql); o.error = null; } catch (e) { o.error = e; }
+            try { await db.exec('ROLLBACK'); } catch (_) { /* déjà annulée */ }
+        }, { extensionSchema });
+        if (report.skipped) { t.skip(report.reason); return; }
+        assert.equal(out.error && out.error.code, 'P3R01', `${extensionSchema} : ${out.error && out.error.message.slice(0, 200)}`);
+        assert.equal(p3.evaluateReport(p3.extractReport(out.error.message)).go, true, extensionSchema);
+    }
+});
+
+test('brouillons : aucun nom d\'objet d\'extension qualifié par un schéma (Staging les range dans public, pas dans extensions)', () => {
+    const fs = require('node:fs');
+    const dir = path.join(__dirname, '..', 'docs', 'taxonomy', 'migration-draft');
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sql'))) {
+        const code = fs.readFileSync(path.join(dir, f), 'utf8').replace(/^\s*--.*$/gm, '').replace(/--[^\n]*/g, '');
+        assert.doesNotMatch(code.replace(/WITH SCHEMA extensions/gi, ''), /\bextensions\.[a-z_]+/i, f);
+    }
 });

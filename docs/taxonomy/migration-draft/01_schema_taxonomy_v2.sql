@@ -3,7 +3,7 @@
 -- BROUILLON — NON APPLIQUÉ. Aucune exécution sur Staging ni sur Production dans la phase 3.2B.
 -- Strictement ADDITIF : ne modifie, ne supprime et ne réécrit aucune table existante.
 -- Rollback : 09_rollback_taxonomy_v2.sql
--- Prérequis : extensions unaccent et pg_trgm (schéma `extensions` sur Supabase) ; fonction
+-- Prérequis : extensions unaccent et pg_trgm (schéma `public` sur Staging, `extensions` ailleurs : aucun nom n'est qualifié, le search_path suffit) ; fonction
 --             public.has_admin_permission(uuid, text) déjà présente (migration 13).
 -- ============================================================================
 BEGIN;
@@ -119,7 +119,7 @@ CREATE TABLE public.lyann_taxonomy_term (
     UNIQUE (node_code, term_norm, term_type)
 );
 CREATE INDEX lyann_taxonomy_term_norm_idx ON public.lyann_taxonomy_term (term_norm);
-CREATE INDEX lyann_taxonomy_term_trgm_idx ON public.lyann_taxonomy_term USING gin (term_norm extensions.gin_trgm_ops);
+CREATE INDEX lyann_taxonomy_term_trgm_idx ON public.lyann_taxonomy_term USING gin (term_norm gin_trgm_ops);  -- non qualifié : sur Staging pg_trgm est dans `public`, ailleurs dans `extensions` (les deux sont dans le search_path)
 
 -- Termes volontairement ambigus : la recherche pose une question de précision au lieu de deviner
 CREATE TABLE public.lyann_taxonomy_ambiguous_term (

@@ -53,6 +53,11 @@ async function run(opts = {}) {
         CREATE TABLE public.lyann_plan_memberships (user_id uuid PRIMARY KEY, plan text, status text, expires_at timestamptz);
         GRANT SELECT, INSERT, UPDATE, DELETE ON public.requests, public.services, public.lyann_taxonomy TO authenticated;
     `);
+    // Staging réel : unaccent et pg_trgm sont installées dans le schéma `public` (constat P3, 11 nov. 2026). Le banc fait de même par défaut ;
+    // `extensionSchema: 'extensions'` rejoue le cas d'un projet qui les range dans `extensions`. Les brouillons doivent fonctionner dans les deux.
+    const extensionSchema = opts.extensionSchema || 'public';
+    await db.exec(`CREATE EXTENSION unaccent WITH SCHEMA ${extensionSchema}; CREATE EXTENSION pg_trgm WITH SCHEMA ${extensionSchema};`);
+    await db.exec('SET search_path = "$user", public, extensions');   // search_path de Staging (constaté au pré-vol P3)
     // Ancienne RPC d'enregistrement des compétences (migration 83, déjà appliquée sur Staging) : nécessaire pour prouver que 06 la protège et que 09 la restitue.
     await db.exec(fs.readFileSync(path.join(__dirname, '..', '..', '83_lyann_atomic_profile_skills_staging.sql'), 'utf8'));
     // Garde de quota de catégories RÉELLE (migration 82), extraite du fichier : présente sur Staging, elle doit survivre à toute la séquence

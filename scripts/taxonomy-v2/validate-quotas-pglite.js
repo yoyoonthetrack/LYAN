@@ -57,8 +57,10 @@ async function run() {
     const rows = async (sql) => (await db.query(sql)).rows;
 
     const quota = extractQuotaObjects();
+    // Comme Staging : unaccent et pg_trgm dans `public`, search_path « $user, public, extensions ».
+    await db.exec('CREATE SCHEMA extensions; CREATE EXTENSION unaccent; CREATE EXTENSION pg_trgm; SET search_path = "$user", public, extensions;');
     await db.exec(`
-        CREATE SCHEMA extensions; CREATE SCHEMA auth;
+        CREATE SCHEMA auth;
         CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
         GRANT USAGE ON SCHEMA public, extensions, auth TO anon, authenticated;
         CREATE TABLE auth.users (id uuid PRIMARY KEY);

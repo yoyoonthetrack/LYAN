@@ -237,7 +237,8 @@ Le script les évalue (`evaluateReport`) et sort en erreur si l'une est vraie :
 6. **Contenu en modération** : les demandes `pending` ne reçoivent pas de nœud tant que leur modération n'est pas réglée (V22). À rattraper après coup.
 7. **Rôles Supabase** (`authenticator`, `supabase_admin`) non reproduits localement.
 8. **Consommateur externe de l'ancienne API** non détectable par lecture de code (§6.1).
-9. **Rollback `09` après données v2 réelles** : il supprime les nœuds v2 de `requests`/`services`. Prévu, mais irréversible sans sauvegarde : une sauvegarde logique précède toute migration réelle.
+9. **Écart banc / Staging trouvé au pré-vol de P3** : `unaccent` et `pg_trgm` sont dans le schéma `public` sur Staging (le banc les mettait dans `extensions`). L'index `lyann_taxonomy_term_trgm_idx` de `01` qualifiait `extensions.gin_trgm_ops` et aurait échoué. Corrigé (nom non qualifié), banc rejoué dans les deux configurations, test ajouté.
+10. **Rollback `09` après données v2 réelles** : il supprime les nœuds v2 de `requests`/`services`. Prévu, mais irréversible sans sauvegarde : une sauvegarde logique précède toute migration réelle.
 
 ## 9. Fichiers de cette étape
 
