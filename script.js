@@ -1237,6 +1237,9 @@ safeDomReady(() => {
         if (typeof window.syncFavoriteButtonStates === 'function') {
             window.syncFavoriteButtonStates();
         }
+        if (isSelf && typeof window.lyannWatchPortfolioItems === 'function') {
+            window.lyannWatchPortfolioItems();
+        }
 
         // Reset scroll position immediately post-render
         resetProfileModalScroll(memberId, entryPoint || 'openPublicMemberProfile');
@@ -1529,9 +1532,10 @@ safeDomReady(() => {
                     </div>
                     <div class="lyann-portfolio-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px;">
                         ${portfolioItems.map(item => `
-                            <div class="lyann-portfolio-card" onclick="window.lyannOpenLightbox('${item.image_url.replace(/'/g, "\\'")}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.caption || '').replace(/'/g, "\\'")}')" style="cursor: pointer; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #E2E8F0;">
+                            <div class="lyann-portfolio-card"${isSelf && /-hold\//.test(String(item.image_url || '')) ? ` data-portfolio-item="${window.escapeHtmlAttr(item.id)}" data-portfolio-src="${window.escapeHtmlAttr(item.image_url)}"` : ''} onclick="window.lyannOpenLightbox('${item.image_url.replace(/'/g, "\\'")}', '${(item.title || '').replace(/'/g, "\\'")}', '${(item.caption || '').replace(/'/g, "\\'")}')" style="cursor: pointer; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #E2E8F0;">
                                 <img src="${item.image_url}" alt="${window.escapeHtmlAttr(item.title || 'Réalisation')}" class="lyann-portfolio-img" style="width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;">
                                 ${item.title ? `<div style="font-size: 0.76rem; font-weight: 600; padding: 4px 8px; color: #1E293B; background: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${window.escapeHtmlAttr(item.title)}</div>` : ''}
+                                ${isSelf && /-hold\//.test(String(item.image_url || '')) ? '<div class="lyann-portfolio-status" data-portfolio-status role="status" aria-live="polite" style="position:absolute; left:6px; bottom:30px; right:36px; font-size:0.72rem; font-weight:700; line-height:1.25; padding:4px 8px; border-radius:8px; background:#FFF8E1; color:#5B4300; border:1px solid #E8C766;">Vérification en cours…</div>' : ''}
                                 ${isSelf ? `<button type="button" style="position:absolute; top:6px; right:6px; background:rgba(201,81,64,0.9); color:white; border:none; border-radius:50%; width:24px; height:24px; font-size:0.7rem; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="event.stopPropagation(); window.lyannDeletePortfolioItem('${item.id}');"><i class="ph ph-trash"></i></button>` : ''}
                             </div>
                         `).join('')}
@@ -12474,39 +12478,141 @@ window.lyannHandleAddPortfolioSubmit = async function(event) {
     const caption = document.getElementById('lyannPortCaption').value;
     const fileInput = document.getElementById('lyannPortFileInput');
     const isPublic = document.getElementById('lyannPortPublicToggle').checked;
+    const submitBtn = event.target && event.target.querySelector ? event.target.querySelector('button[type="submit"]') : null;
+    const notify = (message, icon) => { if (window.showLyanToast) window.showLyanToast(message, icon); };
 
     const file = fileInput.files[0];
     if (!file) return;
-
-    if (window.showLyanToast) window.showLyanToast("Envoi de la réalisation...", "⏳");
-    document.getElementById('lyannAddPortfolioModal').classList.remove('active');
+    if (submitBtn) submitBtn.disabled = true;
 
     try {
-        const sessionRes = await window.apiClient.getSession();
-        const userId = sessionRes?.data?.session?.user?.id;
-        if (!userId) return;
-
-        const upRes = await window.apiClient.uploadPortfolioImage(userId, file);
-        if (upRes.error) {
-            if (window.showLyanToast) window.showLyanToast(upRes.error.message || "Erreur d'upload photo", "❌");
+        notify('Préparation de la photo…', '⏳');
+        // Redimensionnement + ré-encodage : la vérification automatique ne lit pas les fichiers > 5 Mio
+        // (ils restaient indéfiniment « en cours de vérification »), et les métadonnées de position sont retirées.
+        let prepared;
+        try {
+            prepared = await window.LYANN_IMAGE_PREPARE.prepare(file);
+        } catch (prepError) {
+            notify(prepError.message || 'Cette photo ne peut pas être utilisée. Choisissez une photo JPEG, PNG ou WebP.', '❌');
             return;
         }
 
-        const imgUrl = upRes.data.image_url;
-        await window.apiClient.addPortfolioItem(userId, {
-            image_url: imgUrl,
+        const sessionRes = await window.apiClient.getSession();
+        const userId = sessionRes?.data?.session?.user?.id;
+        if (!userId) { notify('Connectez-vous pour ajouter une réalisation.', '❌'); return; }
+
+        document.getElementById('lyannAddPortfolioModal').classList.remove('active');
+        notify('Envoi de la réalisation…', '⏳');
+
+        const upRes = await window.apiClient.uploadPortfolioImage(userId, prepared);
+        if (upRes.error) {
+            notify(upRes.error.message || "Erreur d'upload photo", '❌');
+            return;
+        }
+
+        const added = await window.apiClient.addPortfolioItem(userId, {
+            image_url: upRes.data.image_url,
             title: title,
             caption: caption,
             is_public: isPublic
         });
+        if (added && added.error) {
+            console.error('Portfolio insert error:', added.error);
+            notify((added.error.message && /PORTFOLIO_QUOTA/.test(added.error.message))
+                ? 'Limite de photos atteinte. Vos photos existantes sont conservées.'
+                : "La réalisation n'a pas pu être enregistrée. Réessayez.", '❌');
+            return;
+        }
 
-        if (window.showLyanToast) window.showLyanToast('Votre photo est en cours de vérification.', '⏳');
+        fileInput.value = '';
+        notify('Photo envoyée. Elle sera visible dès la fin de la vérification.', '⏳');
+        // Le profil est mis en cache : sans invalidation, la nouvelle réalisation n'apparaît pas.
+        window.LYANN_PROFILE_REPOSITORY?.invalidate?.(userId);
+        window.LYANN_PROFILE_REPOSITORY?.invalidate?.();
         if (typeof window.openPublicMemberProfile === 'function') {
             window.openPublicMemberProfile(userId);
         }
     } catch(e) {
         console.error('Portfolio submit error:', e);
+        notify("L'envoi de la réalisation a échoué. Réessayez.", '❌');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
     }
+};
+
+// Suivi du statut des photos « en cours de vérification » (propriétaire uniquement).
+// La passerelle média répond : image = publiée ; SVG « en cours de vérification » = en attente ; SVG « n'a pas été publiée » = refusée.
+window.lyannProbePortfolioMedia = async function(url) {
+    try {
+        const response = await fetch(url, { cache: 'no-store', credentials: 'omit' });
+        const type = String(response.headers.get('content-type') || '');
+        if (response.status === 404) return 'missing';
+        if (!response.ok) return 'error';
+        if (type.startsWith('image/svg')) {
+            const text = await response.text();
+            return /n.a pas été publiée/i.test(text) ? 'rejected' : 'pending';
+        }
+        if (type.startsWith('image/')) {
+            if (response.body && response.body.cancel) response.body.cancel();
+            return 'approved';
+        }
+        return 'error';
+    } catch (_) {
+        return 'error';
+    }
+};
+
+window.lyannWatchPortfolioItems = function() {
+    const SLOW_AFTER_MS = 5 * 60 * 1000;
+    const GIVE_UP_MS = 30 * 60 * 1000;
+    document.querySelectorAll('.lyann-portfolio-card[data-portfolio-item]').forEach((card) => {
+        if (card.dataset.portfolioWatching === '1') return;
+        card.dataset.portfolioWatching = '1';
+        const src = card.dataset.portfolioSrc;
+        const badge = card.querySelector('[data-portfolio-status]');
+        const img = card.querySelector('img.lyann-portfolio-img');
+        const startedAt = Date.now();
+        const paint = (state, text, tone) => {
+            card.dataset.portfolioState = state;
+            if (!badge) return;
+            badge.textContent = text;
+            badge.hidden = !text;
+            const tones = {
+                wait: ['#FFF8E1', '#5B4300', '#E8C766'],
+                bad: ['#FDECEA', '#7A1F14', '#E5A19A']
+            };
+            const [bg, fg, border] = tones[tone] || tones.wait;
+            badge.style.background = bg; badge.style.color = fg; badge.style.borderColor = border;
+        };
+        const tick = async () => {
+            if (!document.body.contains(card)) return;
+            const state = await window.lyannProbePortfolioMedia(src);
+            if (!document.body.contains(card)) return;
+            if (state === 'approved') {
+                paint('approved', '', 'wait');
+                if (img) img.src = src + (src.includes('?') ? '&' : '?') + 'v=' + Date.now();
+                if (window.showLyanToast) window.showLyanToast('Votre photo est publiée.', '✅');
+                return;
+            }
+            if (state === 'rejected') {
+                paint('rejected', "Photo non publiée. Supprimez-la puis essayez une autre photo.", 'bad');
+                return;
+            }
+            const elapsed = Date.now() - startedAt;
+            if (state === 'missing' && elapsed > 60000) {
+                paint('missing', 'Photo introuvable. Supprimez-la puis réessayez.', 'bad');
+                return;
+            }
+            if (state === 'pending' || state === 'error' || state === 'missing') {
+                paint('pending', elapsed > SLOW_AFTER_MS
+                    ? 'Vérification plus longue que prévu. Vous pouvez la supprimer et réessayer.'
+                    : 'Vérification en cours…', 'wait');
+            }
+            if (elapsed > GIVE_UP_MS) return;
+            setTimeout(tick, elapsed < 60000 ? 4000 : (elapsed < SLOW_AFTER_MS ? 10000 : 30000));
+        };
+        tick();
+    });
 };
 
 window.lyannDeletePortfolioItem = async function(itemId) {
@@ -12516,6 +12622,8 @@ window.lyannDeletePortfolioItem = async function(itemId) {
         if (window.showLyanToast) window.showLyanToast("Réalisation supprimée", "🗑️");
         const sessionRes = await window.apiClient.getSession();
         const userId = sessionRes?.data?.session?.user?.id;
+        window.LYANN_PROFILE_REPOSITORY?.invalidate?.(userId);
+        window.LYANN_PROFILE_REPOSITORY?.invalidate?.();
         if (userId && typeof window.openPublicMemberProfile === 'function') {
             window.openPublicMemberProfile(userId);
         }

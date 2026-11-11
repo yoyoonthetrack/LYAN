@@ -259,7 +259,8 @@
         function openMapCategorySheet() {
             const api = mapFamiliesApi();
             if (!api) return;
-            mapFamilyDraft = mapFamilyFilter ? [...mapFamilyFilter] : [...api.ALL_FAMILY_IDS];
+            // Brouillon = liste explicite ; vide = « Toutes » (aucun filtre).
+            mapFamilyDraft = api.canonicalFamilySelection(mapFamilyFilter || []);
             mapCategorySheetOpen = true;
             document.body.classList.add('explorer-map-category-sheet-open');
             renderMapCategoryGrid();
@@ -271,48 +272,45 @@
             const api = mapFamiliesApi();
             const host = $('explorerMapCategoryGrid');
             if (!api || !host) return;
-            const draft = mapFamilyDraft ?? mapFamilyFilter ?? api.ALL_FAMILY_IDS;
-            const allOn = draft.length >= api.FAMILIES.length;
-            const toggle = (id) => {
-                if (id === '__all__') {
-                    mapFamilyDraft = [...api.ALL_FAMILY_IDS];
-                    return;
-                }
-                const set = new Set(draft);
-                if (set.has(id)) set.delete(id); else set.add(id);
-                mapFamilyDraft = [...set];
-                if (mapFamilyDraft.length >= api.FAMILIES.length) mapFamilyDraft = [...api.ALL_FAMILY_IDS];
-            };
+            const draft = api.canonicalFamilySelection(mapFamilyDraft || []);
+            const allOn = draft.length === 0 || draft.length >= api.FAMILIES.length;
             const familyIcon = {
                 plomberie: 'ph-drop', electricite: 'ph-lightning', bricolage: 'ph-hammer', jardinage: 'ph-plant',
                 menage: 'ph-broom', beaute: 'ph-flower', numerique: 'ph-laptop', quotidien: 'ph-calendar-blank'
             };
+            // Chaque puce reflète uniquement sa propre famille : « Toutes » n'allume jamais les autres puces.
             host.innerHTML = `<button type="button" class="explorer-map-category-chip${allOn ? ' is-active' : ''}" data-family="__all__" aria-pressed="${allOn ? 'true' : 'false'}">Toutes</button>`
                 + api.FAMILIES.map((family) => {
-                    const active = !allOn && draft.includes(family.id);
+                    const active = draft.includes(family.id);
                     const tone = family.tone === 'yellow' ? 'is-tone-yellow' : 'is-tone-green';
                     const icon = familyIcon[family.id] || 'ph-calendar-blank';
                     return `<button type="button" class="explorer-map-category-chip ${tone}${active ? ' is-active' : ''}" data-family="${escape(family.id)}" aria-pressed="${active ? 'true' : 'false'}"><i class="ph ${icon}" aria-hidden="true"></i><span>${escape(family.label)}</span></button>`;
                 }).join('');
-            host.querySelectorAll('[data-family]').forEach((button) => {
-                button.addEventListener('click', () => {
-                    toggle(button.dataset.family);
-                    renderMapCategoryGrid();
-                });
-            });
+        }
+        // Un seul écouteur délégué (jamais rattaché aux puces recréées) : état lu au moment du clic, pas capturé au rendu.
+        function onMapCategoryGridClick(event) {
+            const button = event.target.closest('[data-family]');
+            if (!button) return;
+            const api = mapFamiliesApi();
+            if (!api) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const id = button.dataset.family;
+            mapFamilyDraft = id === '__all__'
+                ? []
+                : api.toggleFamilySelection(mapFamilyDraft || [], id);
+            renderMapCategoryGrid();
         }
         function applyMapCategoryFilter() {
             const api = mapFamiliesApi();
             if (!api) return;
-            const draft = mapFamilyDraft ?? api.ALL_FAMILY_IDS;
-            if (!draft.length || draft.length >= api.FAMILIES.length) mapFamilyFilter = null;
-            else mapFamilyFilter = [...draft];
+            mapFamilyFilter = api.effectiveFamilyFilter(mapFamilyDraft || []);
             closeMapCategorySheet();
             render({ quiet: true });
         }
         function clearMapCategoryFilter() {
             mapFamilyFilter = null;
-            mapFamilyDraft = mapFamiliesApi()?.ALL_FAMILY_IDS ? [...mapFamiliesApi().ALL_FAMILY_IDS] : null;
+            mapFamilyDraft = [];
             renderMapCategoryGrid();
             render({ quiet: true });
         }
@@ -690,6 +688,7 @@
         $('explorerReset').addEventListener('click', () => { $('explorerFilters').close(); reset(); });
         $('explorerCategorySheetClose')?.addEventListener('click', () => $('explorerCategorySheet').close());
         $('explorerCategorySheet')?.addEventListener('click', event => { if (event.target === $('explorerCategorySheet')) $('explorerCategorySheet').close(); });
+        $('explorerMapCategoryGrid')?.addEventListener('click', onMapCategoryGridClick);
         $('explorerMapCategoryClose')?.addEventListener('click', closeMapCategorySheet);
         $('explorerMapCategoryApply')?.addEventListener('click', applyMapCategoryFilter);
         $('explorerMapCategoryClear')?.addEventListener('click', clearMapCategoryFilter);

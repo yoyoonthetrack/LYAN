@@ -157,6 +157,27 @@
         return list.filter((row) => allowed.has(familyForRow(row, leaves)));
     }
 
+    /* Sélection de familles (feuille « Catégories sur la carte »).
+     * Règle unique : la sélection est une liste explicite d'identifiants valides, en ordre canonique.
+     * Liste vide (ou complète) = aucun filtre = « Toutes ». Un clic sur une famille n'ajoute ou ne retire QUE cette famille. */
+    function canonicalFamilySelection(selected) {
+        const set = new Set(Array.isArray(selected) ? selected : []);
+        return ALL_FAMILY_IDS.filter((id) => set.has(id));
+    }
+
+    function toggleFamilySelection(selected, id) {
+        if (!ALL_FAMILY_IDS.includes(id)) return canonicalFamilySelection(selected);
+        const set = new Set(canonicalFamilySelection(selected));
+        if (set.has(id)) set.delete(id); else set.add(id);
+        return ALL_FAMILY_IDS.filter((familyId) => set.has(familyId));
+    }
+
+    /** Filtre effectif à appliquer : null si aucun filtre (vide ou toutes les familles). */
+    function effectiveFamilyFilter(selected) {
+        const list = canonicalFamilySelection(selected);
+        return list.length === 0 || list.length >= FAMILIES.length ? null : list;
+    }
+
     function familyMeta(id) {
         return FAMILIES.find((f) => f.id === id) || FAMILIES.find((f) => f.id === 'quotidien');
     }
@@ -168,6 +189,9 @@
         familyForCategory,
         familyForRow,
         filterRowsByFamilies,
+        canonicalFamilySelection,
+        toggleFamilySelection,
+        effectiveFamilyFilter,
         familyMeta,
         normalizeCategoryKey: normalize
     });

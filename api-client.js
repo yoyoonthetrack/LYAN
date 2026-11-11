@@ -281,6 +281,85 @@ async function readImageSize(blob) {
     return null;
 }
 
+// Préparation d'une photo avant dépôt : décodage, rotation EXIF appliquée, redimensionnement, ré-encodage JPEG.
+// La vérification automatique ne lit pas les images > 5 Mio : au-delà, la photo restait « en cours de vérification ».
+// Le ré-encodage retire aussi les métadonnées (position GPS) du fichier publié.
+window.LYANN_IMAGE_PREPARE = (function () {
+    const DEFAULT_MAX_EDGE = 2048;
+    const DEFAULT_MAX_BYTES = 4 * 1024 * 1024;
+    const ACCEPTED = /^image\/(jpeg|png|webp)$/i;
+    const HEIC = /\.(heic|heif)$|^image\/hei[cf]/i;
+
+    function fail(message, code) {
+        const error = new Error(message);
+        error.code = code;
+        return error;
+    }
+
+    async function decode(file) {
+        if (typeof createImageBitmap === 'function') {
+            try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (_) { /* repli ci-dessous */ }
+        }
+        return await new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+            img.src = url;
+        });
+    }
+
+    function toBlob(canvas, quality) {
+        return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    }
+
+    async function prepare(file, options) {
+        const maxEdge = (options && options.maxEdge) || DEFAULT_MAX_EDGE;
+        const maxBytes = (options && options.maxBytes) || DEFAULT_MAX_BYTES;
+        if (!file) throw fail('Aucune photo sélectionnée.', 'EMPTY');
+        const name = String(file.name || '');
+        const type = String(file.type || '');
+        if (HEIC.test(name) || HEIC.test(type)) {
+            throw fail('Le format HEIC n’est pas pris en charge. Choisissez une photo JPEG, PNG ou WebP (iPhone : Réglages › Appareil photo › Formats › Le plus compatible).', 'HEIC');
+        }
+        if (type && !ACCEPTED.test(type)) throw fail('Format non pris en charge. Choisissez une photo JPEG, PNG ou WebP.', 'FORMAT');
+        let bitmap;
+        try { bitmap = await decode(file); } catch (_) { throw fail('Cette photo ne peut pas être lue. Choisissez une photo JPEG, PNG ou WebP.', 'DECODE'); }
+        const sourceWidth = bitmap.width || bitmap.naturalWidth;
+        const sourceHeight = bitmap.height || bitmap.naturalHeight;
+        if (!sourceWidth || !sourceHeight) throw fail('Cette photo ne peut pas être lue.', 'DECODE');
+        let edge = Math.min(maxEdge, Math.max(sourceWidth, sourceHeight));
+        let blob = null;
+        for (let pass = 0; pass < 4 && (!blob || blob.size > maxBytes); pass += 1) {
+            const scale = edge / Math.max(sourceWidth, sourceHeight);
+            const width = Math.max(1, Math.round(sourceWidth * scale));
+            const height = Math.max(1, Math.round(sourceHeight * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#FFFFFF';
+            context.fillRect(0, 0, width, height);
+            context.drawImage(bitmap, 0, 0, width, height);
+            let quality = 0.86;
+            blob = await toBlob(canvas, quality);
+            while (blob && blob.size > maxBytes && quality > 0.5) {
+                quality -= 0.12;
+                blob = await toBlob(canvas, quality);
+            }
+            edge = Math.round(edge * 0.75);
+        }
+        if (bitmap.close) bitmap.close();
+        if (!blob || blob.size > maxBytes) throw fail('Cette photo est trop lourde. Choisissez-en une plus petite.', 'TOO_LARGE');
+        const base = (name.replace(/\.[^.]+$/, '') || 'photo').replace(/[^a-z0-9_-]+/gi, '-').slice(0, 40) || 'photo';
+        const output = new File([blob], base + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+        try { Object.defineProperty(output, '__lyannPrepared', { value: true }); } catch (_) { /* non bloquant */ }
+        return output;
+    }
+
+    return Object.freeze({ prepare, DEFAULT_MAX_BYTES, DEFAULT_MAX_EDGE });
+})();
+
 function holdMediaUrl(bucket, objectPath) {
     const binding = resolveLyannClientBinding();
     if (!binding.ok) throw new Error('Environnement média non configuré.');
@@ -1098,12 +1177,15 @@ const LYANN_API_CLIENT = {
             return { error: { code: 'P0001', message: 'PORTFOLIO_QUOTA_REACHED: Limite de photos atteinte. Vos photos existantes sont conservées.' } };
         }
 
-        const fileExt = file.name ? file.name.split('.').pop() : 'png';
-        const filePath = `${userId}/portfolio_${Date.now()}.${fileExt}`;
+        // Toute photo passe par la préparation (taille et format lisibles par la vérification automatique).
+        if (!file.__lyannPrepared) {
+            try { file = await window.LYANN_IMAGE_PREPARE.prepare(file); } catch (prepError) { return { error: { message: prepError.message } }; }
+        }
+        const filePath = `${userId}/portfolio_${Date.now()}.jpg`;
 
         const { error: uploadError } = await this.supabase.storage
             .from('portfolio-images-hold')
-            .upload(filePath, file, { upsert: true });
+            .upload(filePath, file, { upsert: false, contentType: 'image/jpeg' });
 
         if (uploadError) return { error: uploadError };
 
@@ -3479,16 +3561,18 @@ window.LyannFavoritesService = {
         for (const fav of rawFavs) {
             try {
                 if (fav.entity_type === 'PROFILE') {
-                    const { data: p } = await supabaseClient
-                        .from('profiles')
-                        .select('id, first_name, last_name, avatar_url, city, territory, role, primary_activity, skills')
+                    // La table profiles n'est lisible que par son propriétaire (RLS) : un autre membre doit passer par la vue publique.
+                    const { data: p, error: profileError } = await supabaseClient
+                        .from('public_profiles')
+                        .select('id, first_name, last_name, avatar_url, city, territory, professional_status, is_pro')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
+                    if (profileError) console.warn('[FAVORITES_SERVICE] profil favori illisible:', fav.entity_id, profileError.message);
 
                     if (p) {
                         const formattedName = window.formatPublicName ? window.formatPublicName(p, null, 'Lyanneur') : `${p.first_name || 'Lyanneur'}${p.last_name ? '.' + p.last_name.charAt(0).toUpperCase() : ''}`.trim();
                         const loc = p.city || p.territory || 'Guadeloupe';
-                        const skillsStr = Array.isArray(p.skills) && p.skills.length > 0 ? p.skills.slice(0, 2).join(', ') : (p.primary_activity || p.role || 'Membre LYANN');
+                        const skillsStr = p.is_pro ? 'Professionnel LYANN' : 'Membre LYANN';
                         hydrated.push({
                             favId: fav.id,
                             entity_type: 'PROFILE',
@@ -3529,12 +3613,21 @@ window.LyannFavoritesService = {
                 } else if (fav.entity_type === 'BOKANTAJ_POST') {
                     const { data: post } = await supabaseClient
                         .from('bokantaj_posts')
-                        .select('id, headline, content, media_urls, created_at, author_id, profiles:author_id(first_name, last_name, avatar_url)')
+                        .select('id, headline, content, media_urls, created_at, author_id')
                         .eq('public_moderation_status', 'approved')
                         .eq('id', fav.entity_id)
                         .maybeSingle();
 
                     if (post) {
+                        // Auteur via la vue publique (la jointure directe sur profiles renvoie null pour un autre membre).
+                        if (post.author_id) {
+                            const { data: author } = await supabaseClient
+                                .from('public_profiles')
+                                .select('first_name, last_name, avatar_url')
+                                .eq('id', post.author_id)
+                                .maybeSingle();
+                            post.profiles = author || null;
+                        }
                         const authorName = post.profiles ? (window.formatPublicName ? window.formatPublicName(post.profiles, null, 'Membre') : `${post.profiles.first_name}${post.profiles.last_name ? '.' + post.profiles.last_name.charAt(0).toUpperCase() : ''}`) : 'Membre';
                         const dateStr = post.created_at ? new Date(post.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
                         const excerpt = post.headline || post.content?.substring(0, 80) || 'Publication Bokantaj';
