@@ -181,7 +181,7 @@ Une seule requête `SELECT` : noms des déclencheurs UPDATE de `requests`/`servi
 4. mesure du rétro-remplissage `05` **deux fois, en sous-transactions annulées** (telle quelle, puis contexte service) ;
 5. `05` en contexte service → `06` double écriture → `08` projection historique ;
 6. état après application, verrous tenus, empreinte du catalogue ;
-7. les contrôles `07` (V01–V22) ;
+7. les contrôles `07` (V01–V23) ;
 8. `09` retour arrière, puis comparaison catalogue et données avec l'état de référence ;
 9. **exception volontaire `P3R01`** : tout est annulé, le rapport JSON voyage dans le message d'erreur.
 
@@ -206,7 +206,7 @@ LYANN_P3_AUTHORIZED=<phrase> LYANN_SUPABASE_ACCESS_TOKEN_FILE=<fichier> node scr
 
 Le script les évalue (`evaluateReport`) et sort en erreur si l'une est vraie :
 
-1. un contrôle V01–V22 (hors informatifs) renvoie des lignes ;
+1. un contrôle V01–V23 (hors informatifs) renvoie des lignes ;
 2. un objet **préexistant** change, hors `lyann_sync_profile_skills(uuid,text[])` ;
 3. `09` ne restitue pas le catalogue de référence ;
 4. une colonne historique de `requests`, `services`, `lyann_taxonomy` change après application ou après retour arrière ;
@@ -244,7 +244,7 @@ Le script les évalue (`evaluateReport`) et sort en erreur si l'une est vraie :
 
 | Fichier | Rôle |
 |---|---|
-| `docs/taxonomy/migration-draft/03,05,06,07,09` | X5, garde de modération, politique C, V18–V22 |
+| `docs/taxonomy/migration-draft/03,05,06,07,09` | X5, garde de modération, politique C, V18–V23 |
 | `scripts/taxonomy-v2/build.js` | génère 05 |
 | `scripts/taxonomy-v2/moderation-fixture.js` | vrai code de modération (70/71) pour le banc |
 | `scripts/taxonomy-v2/validate-sql-pglite.js` | banc complet (116 contrôles) ; accepte maintenant un point d'accroche pour P3 |

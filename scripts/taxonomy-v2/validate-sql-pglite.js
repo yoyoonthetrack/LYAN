@@ -77,6 +77,9 @@ async function run(opts = {}) {
             await db.exec(`INSERT INTO public.requests(title, category, taxonomy_id) VALUES (${q(`req-${cat}-${i}`)}, ${q(cat)}, ${tax})`);
         }
     }
+    // Constat P3 (Staging réel) : une demande APPROUVÉE porte une feuille qui recouvre plusieurs métiers (« Mécanique Automobile | Diagnostic & Démarrage »).
+    // Le rétro-remplissage la laisse sans nœud par décision (X5) : V09 ne doit pas la signaler. Le banc la reproduit désormais.
+    await db.exec(`INSERT INTO public.requests(title, category, taxonomy_id) VALUES ('req-cross-trade-leaf', 'Mécanique Automobile', (SELECT id FROM public.lyann_taxonomy WHERE category = 'Mécanique Automobile' AND subcategory = 'Diagnostic & Démarrage'))`);
     const userA = '11111111-1111-1111-1111-111111111111';
     const userB = '22222222-2222-2222-2222-222222222222';
     await db.exec(`INSERT INTO auth.users VALUES ('${userA}'), ('${userB}')`);
@@ -368,6 +371,23 @@ async function run(opts = {}) {
     const negX5 = await runVerify(['V18']);
     await db.exec('ROLLBACK');
     step('contrôle négatif : V18 détecte une spécialité choisie à partir d\'une feuille ambiguë', (negX5.V18 || []).length === 1, JSON.stringify(negX5.V18));
+
+    // Régression P3 (Staging, 11 nov. 2026) : une demande APPROUVÉE sur une feuille qui recouvre plusieurs métiers reste sans nœud PAR DÉCISION (X5).
+    // V09 ne doit pas la signaler (elle est comptée par V23) ; il doit en revanche continuer de signaler une demande sur une feuille qui, elle, a un nœud.
+    {
+        await db.exec('BEGIN');
+        await db.exec('ALTER TABLE public.requests DISABLE TRIGGER USER');
+        const crossLeafId = (await rows(`SELECT id FROM public.lyann_taxonomy WHERE category = 'DJ & Son' AND subcategory = 'Animation musicale'`))[0].id;
+        await db.exec(`INSERT INTO public.requests(title, category, taxonomy_id, public_moderation_status) VALUES ('zz-p3-cross', 'DJ & Son', '${crossLeafId}', 'approved')`);
+        const v09a = await runVerify(['V09']);
+        const v23 = verify.find((b) => /'V23/.test(b));
+        const v23rows = await rows(v23.split('\n').slice(1).filter((l) => !l.startsWith('--')).join('\n').trim().replace(/;\s*$/, ''));
+        await db.exec(`INSERT INTO public.requests(title, category, taxonomy_id, public_moderation_status) VALUES ('zz-p3-gap', 'Plomberie', '${leafId}', 'approved')`);
+        const v09b = await runVerify(['V09']);
+        await db.exec('ROLLBACK');
+        step('V09 (régression P3) : une demande approuvée sur une feuille multi-métiers n\'est pas une anomalie (décision X5), V23 la compte', (v09a.V09 || []).length === 0 && Number(v23rows[0].n) >= 1, JSON.stringify({ v09: v09a.V09, v23: v23rows }));
+        step('contrôle négatif : V09 signale toujours une demande approuvée dont la feuille a un nœud et qui n\'en porte pas', (v09b.V09 || []).length === 1, JSON.stringify(v09b.V09));
+    }
 
     // --- Rollback ---
     await db.exec(`DELETE FROM public.services WHERE owner_id='${userB}'`);

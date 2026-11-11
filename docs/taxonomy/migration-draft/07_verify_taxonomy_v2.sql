@@ -38,9 +38,13 @@ WHERE t.node_code IS NULL
                   WHERE m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory
                     AND m.mapping_kind IN ('split', 'merge', 'ambiguous') AND cardinality(m.alt_codes) > 0);
 
--- V09 (après backfill) — demandes classées à l'ancienne mais sans nœud v2 (hors demandes volontairement exclues du rétro-remplissage : modération en cours, voir V22)
+-- V09 (après backfill) — demandes classées à l'ancienne mais sans nœud v2, HORS :
+--   · demandes volontairement exclues du rétro-remplissage (modération en cours, voir V22) ;
+--   · demandes dont la feuille recouvre plusieurs métiers (décision X5 : aucun nœud n'est inventé ; même exclusion que V08, comptées par V23).
 SELECT 'V09 demande classée sans nœud' AS check, r.id FROM public.requests r WHERE r.taxonomy_id IS NOT NULL AND r.taxonomy_node_code IS NULL
-  AND r.public_moderation_status = 'approved' AND r.title_pending IS NULL AND r.description_pending IS NULL;
+  AND r.public_moderation_status = 'approved' AND r.title_pending IS NULL AND r.description_pending IS NULL
+  AND NOT EXISTS (SELECT 1 FROM public.lyann_taxonomy t JOIN public.lyann_taxonomy_legacy_map m ON m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory
+                  WHERE t.id = r.taxonomy_id AND t.node_code IS NULL AND m.mapping_kind IN ('split', 'merge', 'ambiguous') AND cardinality(m.alt_codes) > 0);
 
 -- V10 — cohérence ancien/nouveau : une demande ne peut pas pointer un nœud v2 SANS RAPPORT avec celui de sa feuille.
 -- Même nœud, spécialité du métier de la feuille, ou métier de la feuille (le client v2 peut être plus précis que l'ancienne feuille, jamais ailleurs).
@@ -121,3 +125,9 @@ SELECT 'V21 titre de compétence en collision' AS check, k AS title_key, count(*
 -- V22 — informatif : demandes volontairement exclues du rétro-remplissage (modération en cours : statut non approuvé ou modification en attente)
 SELECT 'V22 demandes exclues (modération)' AS info, count(*) AS n FROM public.requests
 WHERE taxonomy_node_code IS NULL AND (public_moderation_status IS DISTINCT FROM 'approved' OR title_pending IS NOT NULL OR description_pending IS NOT NULL);
+
+-- V23 — informatif : demandes laissées « à classer » parce que leur feuille historique recouvre plusieurs métiers (décision X5)
+SELECT 'V23 demandes sur feuille multi-métiers' AS info, count(*) AS n FROM public.requests r JOIN public.lyann_taxonomy t ON t.id = r.taxonomy_id
+WHERE r.taxonomy_node_code IS NULL AND t.node_code IS NULL
+  AND EXISTS (SELECT 1 FROM public.lyann_taxonomy_legacy_map m WHERE m.legacy_kind = 'taxonomy_leaf' AND m.legacy_key = t.universe || '|' || t.category || '|' || t.subcategory
+              AND m.mapping_kind IN ('split', 'merge', 'ambiguous') AND cardinality(m.alt_codes) > 0);

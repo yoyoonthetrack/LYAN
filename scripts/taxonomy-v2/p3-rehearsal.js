@@ -13,7 +13,7 @@
  *   0. garde-fous de session (délais), état de référence (catalogue, lignes), contrôle des prérequis ;
  *   1. 01 → 04 (schéma, colonnes, recherche, amorçage) ;
  *   2. mesure du rétro-remplissage 05 dans deux sous-transactions annulées : « tel quel » puis en contexte « service » (effets sur la modération) ;
- *   3. 05 (contexte service) → 06 → 08 ; 07 (V01-V22) ; mesure des changements sur les objets préexistants ;
+ *   3. 05 (contexte service) → 06 → 08 ; 07 (V01-V23) ; mesure des changements sur les objets préexistants ;
  *   4. 09 (retour arrière) jouée dans la même transaction : le catalogue et les données doivent redevenir IDENTIQUES à l'état de référence ;
  *   5. rapport, puis annulation de la transaction.
  */
@@ -174,7 +174,7 @@ END;`) + ';',
         "INSERT INTO pg_temp.p3_out VALUES ('locks_held', (SELECT coalesce(jsonb_agg(DISTINCT l.relation::regclass::text || ':' || l.mode), '[]'::jsonb) FROM pg_locks l WHERE l.pid = pg_backend_pid() AND l.locktype = 'relation' AND l.mode IN ('AccessExclusiveLock', 'ShareRowExclusiveLock') AND l.relation::regclass::text IN ('requests', 'services', 'lyann_taxonomy')));",
         `CREATE TEMP TABLE p3_catalog_after AS ${CATALOG_SQL};`);
 
-    s.push('', '-- ===== 07 — contrôles V01-V22 =====');
+    s.push('', '-- ===== 07 — contrôles V01-V23 =====');
     checks.forEach((c, i) => {
         const key = `${c.id}#${i}`;
         if (c.info) s.push(`INSERT INTO pg_temp.p3_out VALUES ('${key}', (SELECT coalesce(jsonb_agg(to_jsonb(q)), '[]'::jsonb) FROM (${c.sql}) q));`);
