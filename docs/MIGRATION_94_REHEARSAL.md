@@ -1,7 +1,7 @@
 # Migration 94 — verrou visiteur : répétition transactionnelle (Staging)
 
-Statut : **NON APPLIQUÉE** (ni Staging, ni Production). Cette note documente la répétition annulée
-et la preuve de retour arrière. L'application durable exige une autorisation séparée.
+Statut : **APPLIQUÉE sur Staging uniquement le 2026-11-12 (Phase 3.2C-4, voir `docs/MIGRATION_94_APPLIED_STAGING.md`) ; jamais en Production**. Cette note documente la répétition annulée
+et la preuve de retour arrière. L.application a été autorisée séparément (3.2C-4).
 
 - Projet : Staging `tdktfbtqceldlaeqjtow` uniquement. Production `gzispjfoywklpqatjyop` : jamais.
 - Migration : `94_visitor_member_detail_lock_staging.sql` — retour arrière : `94_visitor_member_detail_lock_rollback.sql`.
