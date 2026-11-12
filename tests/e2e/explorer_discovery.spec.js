@@ -10,8 +10,8 @@ function qaCredentials(actor) {
 }
 
 // Public real-backend journeys. No synthetic profiles, Requests, or successful API mocks.
-async function ready(page, mode = 'annonces') {
-  if (mode === 'annonces') {
+async function ready(page, mode = 'annonces', { member = mode === 'annonces' } = {}) {
+  if (member) {
     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
     const error = await page.evaluate(async ({email,password}) => {
       const result = await window.LYANN_API_CLIENT.login(email, password);
@@ -23,6 +23,11 @@ async function ready(page, mode = 'annonces') {
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy', 'false', { timeout: 20000 });
   await expect(page.locator('#explorerResults')).not.toHaveAttribute('data-state', 'ERROR');
 }
+// 3.2C : la catégorie, le service et la zone vivent dans le panneau secondaire « Filtres et zone ».
+async function openFilters(page) {
+  if (!(await page.locator('#explorerFilters').evaluate(el => el.open || getComputedStyle(el).display !== 'none'))) await page.getByRole('button', { name: 'Filtres et zone' }).click();
+}
+async function applyFilters(page) { await page.getByRole('button', { name: 'Afficher les résultats' }).click(); }
 function observe(page) {
   const errors = [], failures = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -41,7 +46,7 @@ test('Annonces renders persisted public Requests and opens their real detail', a
   await expect(page.locator('#explorerResults [data-request-id]')).toHaveCount(rows.length);
   const card = page.locator(`#explorerResults [data-request-id="${rows[0].id}"]`);
   await expect(card).toContainText(rows[0].title);
-  await card.getByRole('button', { name: 'Détails', exact: true }).click();
+  await card.locator('[data-action="detail"]').click();
   await expect(page.locator('#lyannDetailModal')).toBeVisible();
   await expect(page.locator('#lyannDetailTitle')).toHaveText(rows[0].title);
   await expect(page.locator('#lyannDetailBody')).toContainText(rows[0].description);
@@ -49,16 +54,16 @@ test('Annonces renders persisted public Requests and opens their real detail', a
   expect(telemetry.failures).toEqual([]);
 });
 
-test('Lyanneurs queries real profiles/services and opens canonical profile', async ({ page }) => {
+test('Lyanneurs queries real profiles/services and opens canonical profile (member)', async ({ page }) => {
   const telemetry = observe(page);
-  await ready(page, 'lyanneurs');
+  await ready(page, 'lyanneurs', { member: true });
   const profile = await page.evaluate(async () => (await window.LYANN_EXPLORER_REPOSITORY.load()).find(p => p.services.length));
   expect(profile, 'Backend must contain a public profile with an active service').toBeTruthy();
   await page.getByRole('searchbox').fill(profile.services[0].title);
-  await page.getByRole('button', { name: 'Rechercher', exact:true }).click();
+  await page.getByRole('searchbox').press('Enter');
   const card = page.locator(`#explorerResults [data-member-id="${profile.id}"]`);
   await expect(card).toBeVisible();
-  await card.locator('.explorer-quote-text, .explorer-skills-text, h2').first().click();
+  await card.locator('.explorer-person-overlay').click();
   await expect(page.locator('#publicMemberProfileModal')).toBeVisible();
   await expect(page.locator('#publicMemberProfileModal')).toContainText(profile.services[0].title);
   await expect(page.locator('#publicMemberProfileModal [data-lyann-route="messages"]')).toHaveAttribute('data-contact-id', profile.id);
@@ -66,16 +71,16 @@ test('Lyanneurs queries real profiles/services and opens canonical profile', asy
   expect(telemetry.failures).toEqual([]);
 });
 
-test('Lyanneur avatar and name open the canonical profile, not only the explicit button', async ({page}) => {
+test('Lyanneur avatar and name open the canonical profile, not only the explicit button (member)', async ({page}) => {
   const telemetry = observe(page);
-  await ready(page, 'lyanneurs');
+  await ready(page, 'lyanneurs', { member: true });
   const profile = await page.evaluate(async () => (await window.LYANN_EXPLORER_REPOSITORY.load()).find(p => p.services.length));
   expect(profile, 'Backend must contain a public profile with an active service').toBeTruthy();
-  const trigger = page.locator(`#explorerResults [data-member-id="${profile.id}"] .explorer-person-zone`)
-    .getByRole('button', {name:/^Voir le profil de /});
+  // 3.2C : la zone d'identité est le bouton « Voir le profil de … » (44 × 44) ; la carte entière n'ouvre plus rien d'autre.
+  const trigger = page.locator(`#explorerResults [data-member-id="${profile.id}"]`).getByRole('button', {name:/^Voir le profil de /});
   const box = await trigger.boundingBox();
-  expect(box.width, 'Avatar and name zone stays a real touch target').toBeGreaterThanOrEqual(44);
-  expect(box.height, 'Avatar and name zone stays a real touch target').toBeGreaterThanOrEqual(44);
+  expect(box.width, 'Avatar zone stays a real touch target').toBeGreaterThanOrEqual(44);
+  expect(box.height, 'Avatar zone stays a real touch target').toBeGreaterThanOrEqual(44);
   for (const position of [{x:20, y:22}, {x:box.width - 10, y:14}]) {
     await trigger.click({position});
     await expect(page.locator('#publicMemberProfileModal')).toBeVisible();
@@ -87,28 +92,33 @@ test('Lyanneur avatar and name open the canonical profile, not only the explicit
   expect(telemetry.failures).toEqual([]);
 });
 
-test('Both modes use the same database taxonomy and removable category filter', async ({page}) => {
+test('Both modes use the same taxonomy families, and a family filter persists and is removable', async ({page}) => {
   test.setTimeout(60000);
   await ready(page);
-  const categories = await page.locator('#explorerCategory option').allTextContents();
-  const category = await page.evaluate(async () => {
-    const repo = window.LYANN_EXPLORER_REPOSITORY;
-    const [requests, taxonomy] = await Promise.all([repo.loadRequests(), repo.taxonomy()]);
-    return taxonomy.find(t => requests.some(r => r.taxonomy_id === t.id || r.category === t.category))?.category;
-  });
-  expect(category).toBeTruthy();
-  await page.locator('#explorerCategory').selectOption(category);
-  await expect(page.locator('#explorerActiveFilters')).toContainText(category);
-  const requestIds = await page.locator('#explorerResults [data-request-id]').evaluateAll(nodes => nodes.map(n => n.dataset.requestId));
-  expect(requestIds.length).toBeGreaterThan(0);
+  const tiles = async () => page.locator('.lyann-family').evaluateAll(nodes => nodes.map(n => n.dataset.family));
+  const families = await tiles();
+  expect(families.length).toBeGreaterThan(0);
+  // 3.2C : la catégorie est une famille de la taxonomie V2 (tuile), plus un <select>.
+  let chosen = null;
+  for (const code of families) {
+    await page.locator(`.lyann-family[data-family="${code}"]`).click();
+    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state', /SUCCESS|EMPTY/);
+    if (await page.locator('#explorerResults [data-request-id]').count()) { chosen = code; break; }
+  }
+  expect(chosen, 'At least one family holds an open annonce').toBeTruthy();
+  const active = page.locator(`.lyann-family[data-family="${chosen}"]`);
+  await expect(active).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveURL(new RegExp(`family=${chosen}`));
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
-  expect(await page.locator('#explorerCategory option').allTextContents()).toEqual(categories);
-  await expect(page.locator('#explorerCategory')).toHaveValue(category);
-  await page.getByRole('button', {name:`Retirer le filtre ${category}`,exact:true}).click();
-  await expect(page.locator('#explorerCategory')).toHaveValue('');
+  expect(await tiles()).toEqual(families);
+  await expect(page.locator(`.lyann-family[data-family="${chosen}"]`)).toHaveAttribute('aria-pressed', 'true');
+  await page.locator(`.lyann-family[data-family="${chosen}"]`).click();   // second click removes the filter
+  await expect(page.locator('.lyann-family[aria-pressed="true"]')).toHaveCount(0);
+  await expect(page).not.toHaveURL(/family=/);
   await page.goto('/results.html?mode=lyanneurs&area=', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
+  expect(await tiles(), 'Lyanneurs and Annonces share the same families').toEqual(families);
   await expect(page.locator('#explorerTitle')).toHaveText('Lyanneurs');
   await expect(page.locator('#explorer')).toHaveAttribute('data-mode','lyanneurs');
 });
@@ -118,7 +128,7 @@ for (const mode of ['annonces', 'lyanneurs']) {
     test.setTimeout(60000);
     await ready(page, mode);
     await page.getByRole('searchbox').fill('zzzz_aucun_resultat_998877');
-    await page.getByRole('button', {name:'Rechercher',exact:true}).click();
+    await page.getByRole('searchbox').press('Enter');
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state', 'EMPTY');
     await expect(page.locator('#explorerResults')).toContainText(mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.');
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -175,9 +185,10 @@ for (const width of [390,1440]) {
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
     await expect(page.locator('#explorer [role="tab"]')).toHaveCount(0);
     await expect(page.locator('#explorerTitle')).toHaveText('Annonces');
-    await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeVisible();
+    // 3.2C (maquette Option 3) : l'écran Annonces n'a plus de bouton « Publier » ; le point d'entrée est « Poster une annonce » sur Découvrir.
+    await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeHidden();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    const targets = await page.locator('#explorer button:visible, #explorer select:visible, #explorer input:visible').evaluateAll(nodes => nodes.map(n => ({text:n.textContent,height:n.getBoundingClientRect().height,width:n.getBoundingClientRect().width})));
+    const targets = await page.locator('#explorer button:visible:not(.explorer-search-submit), #explorer select:visible, #explorer input:visible').evaluateAll(nodes => nodes.map(n => ({text:n.textContent,height:n.getBoundingClientRect().height,width:n.getBoundingClientRect().width})));
     expect(targets.filter(t => t.height < 44 || t.width < 44)).toEqual([]);
     await page.screenshot({path:`artifacts/explorer/annonces-${width}.png`,fullPage:true});
     await page.goto('/results.html?mode=lyanneurs&area=', { waitUntil: 'domcontentloaded' });
@@ -190,19 +201,16 @@ for (const width of [390,1440]) {
   });
 }
 
-test('A canonical category also selects a real published service in Lyanneurs', async ({page}) => {
+test('A family also selects real published services in Lyanneurs', async ({page}) => {
   await ready(page,'lyanneurs');
-  await page.locator('#explorerCategory').selectOption({label:'Ménage'});
+  const before = await page.locator('#explorerResults [data-member-id]').count();
+  await page.locator('.lyann-family[data-family="entretien"]').click();
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
-  await expect(page.locator('#explorerResults')).toContainText('Ménage & Entretien');
-  const expected = await page.evaluate(async () => {
-    const repo = window.LYANN_EXPLORER_REPOSITORY;
-    const [profiles, taxonomy] = await Promise.all([repo.load(), repo.taxonomy()]);
-    return repo.discover(profiles, taxonomy, { query:'', category:'Ménage', service:'', area:'', territory:'', commune:'', urgency:'', budget:'' }, 'lyanneurs').map(p => p.id).sort();
-  });
   const rendered = await page.locator('#explorerResults [data-member-id]').evaluateAll(nodes => nodes.map(n => n.dataset.memberId));
-  expect(expected.length).toBeGreaterThan(0);
-  expect(rendered.sort()).toEqual(expected);
+  expect(rendered.length).toBeGreaterThan(0);
+  expect(rendered.length, 'the family narrows the list').toBeLessThan(before);
+  expect(new Set(rendered).size, 'no duplicated profile').toBe(rendered.length);
+  await expect(page).toHaveURL(/family=entretien/);
 });
 
 test('Filter sheet Enter applies the search; Escape discards unapplied edits', async ({page}) => {
@@ -243,25 +251,29 @@ test('Lyanneurs filters preserve Request-only criteria when switching modes', as
   await expect(page.locator('#explorerBudget')).toHaveValue('150');
 });
 
-test('In-place authentication updates own-profile actions without reload', async ({page}) => {
+test('In-place authentication updates own-annonce actions without reload', async ({page}) => {
   const telemetry = observe(page);
   await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
   const result = await page.evaluate(async ({email,password}) => {
     const res = await window.LYANN_API_CLIENT.login(email, password);
     return {id:res.data?.user?.id,error:res.error?.message};
-  }, qaCredentials('B'));
+  }, qaCredentials('A'));
   expect(result.error).toBeFalsy();
   expect(result.id).toBeTruthy();
-  // The QA profile is public but has no persisted service. The card is completed
-  // in the browser response only, so this does not validate a stored service.
-  await installPublishedServiceFixture(page, result.id);
-  await page.goto('/results.html?mode=lyanneurs&area=', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy', 'false', { timeout: 20000 });
-  const card = page.locator(`[data-member-id="${result.id}"]`);
-  await expect(card).toBeVisible();
-  await expect(card.locator('[data-action="contact"]')).toHaveCount(0);
+  // 3.2C : une carte de Lyanneur n'a plus d'action « Contacter » (la fiche, réservée aux membres, la porte). L'état « connecté » se lit donc sur
+  // la carte d'annonce : sa propre annonce n'offre pas « Lyanner » ; déconnecté en place, la même carte l'offre.
+  // Une annonce ouverte est ajoutée à la réponse du navigateur seulement (aucune écriture en base).
+  await installRequestFixtures(page, result.id);
+  await page.goto('/results.html?mode=annonces&area=', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
+  const own = await page.evaluate(async id => (await window.LYANN_EXPLORER_REPOSITORY.loadRequests()).find(r => r.requester_id === id && r.status === 'OPEN'), result.id);
+  expect(own, 'The browser fixture supplies one open annonce owned by the signed-in account').toBeTruthy();
+  const card = page.locator(`#explorerResults [data-request-id="${own.id}"]`);
+  await expect(card).toContainText('Votre annonce');
+  await expect(card.locator('[data-action="help"]')).toHaveCount(0);
   await page.evaluate(() => window.LYANN_API_CLIENT.logout());
-  await expect(card.locator('[data-action="contact"]')).toBeVisible();
+  await expect(card.locator('[data-action="help"]')).toBeVisible();
+  await expect(card).not.toContainText('Votre annonce');
   expect(telemetry.failures).toEqual([]);
   expect(telemetry.errors).toEqual([]);
 });
@@ -273,8 +285,8 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
     if (r.method() === 'POST' && /\/rest\/v1\/(requests|bokantaj_posts|rpc\/send_request_invitations)/.test(r.url())) writes.push(r.url());
   });
   await ready(page); // Publishing is an authenticated interaction; keep all wizard assertions.
-  await page.goto('/results.html?mode=annonces', { waitUntil: 'domcontentloaded' });
-  await page.locator('.explorer-results-heading .explorer-publish').click();
+  await page.goto('/discover.html', { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-lyann-publish]').first().click();
   await page.locator('#wizardDescInput').fill('Une fuite sous mon évier, besoin de réparer la plomberie.');
   await expect(page.locator('#wizardTitleBlock')).toBeHidden();
   await page.locator('#wizardBtnNext').click();
@@ -282,7 +294,7 @@ test('Bokantaj Request wizard reaches real-taxonomy review without writing or of
   await expect(page.locator('#wizardTitleBlock')).toBeVisible();
   const titleChoice = page.locator('#wizardTitleChoices input[type="radio"]').first();
   const titleInput = page.locator('#wizardTitleInput');
-  await expect(titleChoice.or(titleInput)).toBeVisible({ timeout: 20000 });
+  await expect(titleChoice.or(titleInput).first()).toBeVisible({ timeout: 20000 });
   if (await titleChoice.isVisible()) await titleChoice.check();
   else await titleInput.fill('Réparer une fuite sous évier');
   for (const step of [4,5,6]) {
@@ -333,7 +345,7 @@ test('Own annonce card shows details and favorites but no help action', async ({
     await expect(card).toContainText('Votre annonce');
     await expect(card.locator('[data-action="help"]')).toHaveCount(0);
     await expect(card.locator('.btn-fav-toggle')).toBeVisible();
-    await card.getByRole('button',{name:'Détails',exact:true}).click();
+    await card.locator('[data-action="detail"]').click();
     await expect(page.locator('#lyannDetailTitle')).toHaveText(request.title);
     await expect(page.locator('#lyannDetailModal').getByRole('button',{name:'Lyanner',exact:true})).toHaveCount(0);
     await page.locator('#closeLyannDetailModalBtn').click();

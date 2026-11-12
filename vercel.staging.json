@@ -8,6 +8,9 @@
   "functions": {
     "api/render.js": {
       "includeFiles": "*.html"
+    },
+    "api/index.js": {
+      "includeFiles": "commune-geo.js"
     }
   },
   "rewrites": [

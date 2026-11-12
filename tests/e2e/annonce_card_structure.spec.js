@@ -109,21 +109,15 @@ test('A legacy budget of zero reads as a quote, never as a free job', async ({ p
   await expect(price).not.toContainText('0 €');
 });
 
-test('Détails reveals the complete description and the structured facts', async ({ page }) => {
+// 3.2C-3 : le détail complet est réservé aux membres. Pour un visiteur, « Voir l'annonce » ouvre l'invitation et le texte complet n'atteint jamais la page.
+// (L'affichage structuré du détail pour un membre est couvert par explorer_discovery.spec.js, sur une annonce réelle.)
+test('Visitor: « Voir l’annonce » opens the invitation and the complete description never reaches the page', async ({ page }) => {
   const row = enrichedRequest();
   await openWithStub(page, [row], { preciseFix: ABYMES });
-  await page.locator(`[data-request-id="${row.id}"]`).getByRole('button', { name: "Voir l'annonce", exact: true }).click();
-
-  await expect(page.locator('#lyannDetailTitle')).toHaveText(row.title);
-  await expect(page.locator('#lyannDetailAge')).toContainText('il y a 23 min');
-  const body = page.locator('#lyannDetailBody');
-  await expect(body).toContainText('trois heures sur place');
-  await expect(body).toContainText('Le Gosier');
-  await expect(body).toContainText('Sam. 3 oct. · 18h');
-  await expect(body).toContainText('Fourchette annoncée');
-  await expect(body).toContainText('150 – 300 €');
-  await expect(body).toContainText('Pro vérifié');
-  await expect(body).toContainText('4,8 (12)');
+  await page.locator(`[data-request-id="${row.id}"]`).locator('[data-action="detail"]').click();
+  await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+  await expect(page.locator('#lyannDetailModal')).not.toBeVisible();
+  expect(await page.content()).not.toContain('trois heures sur place');
 });
 
 for (const width of [390, 1440]) {

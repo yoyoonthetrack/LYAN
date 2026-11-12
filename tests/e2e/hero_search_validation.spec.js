@@ -24,7 +24,9 @@ test.describe('LYANN V1 — Accueil story and Explorer search', () => {
   test('Search lives in Explorer', async ({ page }) => {
     await page.goto('/results.html');
     await expect(page.locator('#explorerSearchForm')).toHaveCount(1);
-    await expect(page.locator('#explorerSearchForm')).toBeHidden();
+    // 3.2C (maquette Option 3) : la recherche est visible dans l'en-tête de l'écran, plus derrière « Filtres et zone ».
+    await expect(page.locator('#explorerSearchForm')).toBeVisible();
+    await expect(page.locator('#explorerSearchInput')).toBeVisible();
     await page.getByRole('button', { name: 'Filtres et zone' }).click();
     await expect(page.locator('#explorerSearchInput')).toBeVisible();
   });

@@ -66,7 +66,7 @@
         if (!d || !d.body) return false;
         let el = d.getElementById(ID) || build();
         opener = d.activeElement && d.activeElement !== d.body ? d.activeElement : null;
-        el.dataset.action = String(action || '');
+        el.setAttribute('data-gate-for', String(action || '')); // jamais data-action : app-router traite [data-action="favorite"] comme un contrôle protégé
         el.hidden = false;
         d.body.classList.add('lyann-vgate-open');
         requestAnimationFrame(() => el.classList.add('is-open'));

@@ -482,6 +482,12 @@
                     + `<span class="lyann-family-disc">${V2().iconSvg(f.icon, 'lyann-family-icon')}</span><span class="lyann-family-label">${escape(f.short)}</span></button>`;
             }).join('');
             if (focused) host.querySelector(`[data-family="${focused}"]`)?.focus({ preventScroll: true });
+            // Mobile : la rangée défile ; la famille choisie reste visible (rien à faire quand la grille tient en largeur).
+            const activeTile = host.querySelector('.lyann-family.is-active');
+            if (activeTile && host.scrollWidth > host.clientWidth + 1) {
+                const left = activeTile.offsetLeft - (host.clientWidth - activeTile.offsetWidth) / 2;
+                host.scrollLeft = Math.max(0, left);
+            }
             renderTaxoBar();
             renderRefine();
         }

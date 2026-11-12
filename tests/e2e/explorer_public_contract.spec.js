@@ -153,13 +153,21 @@ for (const width of [390,1440]) test(`Anonymous Explorer at ${width}px uses only
   const card = page.locator(`[data-request-id="${body.requests[0].id}"]`);
   await expect(card).toContainText(body.requests[0].title);
   await expect(card.getByRole('button',{name:'Lyanner',exact:true})).toBeVisible();
-  await card.getByRole('button',{name:'Détails',exact:true}).click();
-  await expect(page.locator('#lyannDetailTitle')).toHaveText(body.requests[0].title);
-  await page.locator('#btnHelpLyannFromModal').click();
-  await expect(page.locator('#loginModal')).toBeVisible();
+  // 3.2C-2/3 : le visiteur voit la liste ; le détail d'une annonce demande un compte. Aucune lecture de détail ni de table brute.
+  const detailReads = [];
+  page.on('request', r => { if (/\/v1\/explorer\/requests\/[0-9a-f-]{36}/.test(r.url())) detailReads.push(r.url()); });
+  await card.locator('[data-action="detail"]').click();
+  await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+  await expect(page.locator('#lyannDetailModal')).not.toBeVisible();
+  await page.locator('#lyannVisitorGate button.lyann-vgate-link').click();
+  await card.getByRole('button',{name:'Lyanner',exact:true}).click();
+  await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+  await page.locator('#lyannVisitorGate button.lyann-vgate-link').click();
   expect(await page.evaluate(() => sessionStorage.getItem('pending_lyann_help'))).toBeNull();
   await page.goto(`/results.html?mode=annonces&area=&openLyann=${body.requests[0].id}`);
-  await expect(page.locator('#lyannDetailTitle')).toHaveText(body.requests[0].title);
+  await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+  await expect(page.locator('#lyannDetailModal')).not.toBeVisible();
+  expect(detailReads).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(rawReads).toEqual([]);
   expect(errors).toEqual([]);

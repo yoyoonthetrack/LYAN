@@ -82,6 +82,14 @@ test('public annonce projection: a commune is returned only when the text IS a c
     assert.match(handlerSource, /Object\.keys\(req\.query\)\.some\(k => k !== 'offset'\)/, 'no caller-supplied filter or select');
 });
 
+test('the invitation never carries data-action (app-router treats [data-action="favorite"] as a protected control and would re-open it)', () => {
+    const src = read('visitor-gate.js');
+    assert.doesNotMatch(src, /dataset\.action\s*=|setAttribute\(\s*['"]data-action['"]/);
+    assert.match(src, /setAttribute\('data-gate-for'/);
+    const router = read('app-router.js');
+    assert.match(router, /\[data-action="favorite"\]/, 'the router selector this test protects against');
+});
+
 test('public annonce projection withholds the full description from visitors (excerpt only)', () => {
     const { excerpt, EXCERPT_LENGTH } = require('../api/public-explorer-requests.js');
     const long = 'Je cherche quelqu\'un pour intervenir chez moi. '.repeat(20);
@@ -93,19 +101,52 @@ test('public annonce projection withholds the full description from visitors (ex
     assert.match(handlerSource, /description: excerpt\(row\.description\)/);
 });
 
-test('the database lock is PREPARED (not applied) with a rollback and post-conditions', () => {
+test('the database lock is PREPARED (not applied) with a rollback, post-conditions and backward-compatible visitor reads', () => {
     const up = read('94_visitor_member_detail_lock_staging.sql');
     const down = read('94_visitor_member_detail_lock_rollback.sql');
     assert.match(up, /NOT APPLIED/);
-    assert.match(up, /REVOKE SELECT ON public\.reviews FROM anon/);
-    assert.match(up, /REVOKE SELECT ON public\.user_portfolio_items FROM anon/);
-    assert.match(up, /column_name <> 'bio'/);
-    assert.match(up, /has_column_privilege\('anon', 'public\.public_profiles', 'bio', 'SELECT'\)/);
+    // reviews, portfolio and recommendations: members only, anon gets zero rows (no REVOKE, so older clients do not get an error)
+    for (const t of ['reviews', 'user_portfolio_items', 'recommendations']) {
+        assert.match(up, new RegExp(`CREATE POLICY "Members read ${t}" ON public\\.${t}[\\s\\S]*?TO authenticated`));
+        assert.match(up, new RegExp(`DROP POLICY IF EXISTS "Public read ${t}" ON public\\.${t}`));
+    }
+    assert.doesNotMatch(up.replace(/--.*$/gm, ''), /REVOKE\s+SELECT/i, 'no column or table REVOKE: select(*) keeps working for older clients');
+    // bio: masked for anon only, same columns
+    assert.match(up, /CASE WHEN current_user = 'anon' THEN NULL::text ELSE p\.bio END AS bio/);
+    // SECURITY DEFINER detail RPCs
+    assert.match(up, /REVOKE EXECUTE ON FUNCTION public\.get_user_trust_and_reputation\(uuid\) FROM PUBLIC, anon/);
+    assert.match(up, /REVOKE EXECUTE ON FUNCTION public\.get_public_profile_pro_status\(uuid\) FROM PUBLIC, anon/);
+    assert.match(up, /GRANT\s+EXECUTE ON FUNCTION public\.get_user_trust_and_reputation\(uuid\) TO authenticated, service_role/);
+    // storage listing
+    assert.match(up, /CREATE POLICY "Members read portfolio_images" ON storage\.objects FOR SELECT TO authenticated/);
+    assert.match(up, /CREATE POLICY "Members read request-photos" ON storage\.objects FOR SELECT TO authenticated/);
+    assert.match(up, /DO \$post\$/);
     assert.doesNotMatch(up, /gzispjfoywklpqatjyop/, 'no Production reference');
     assert.match(up, /^BEGIN;/m);
     assert.match(up, /COMMIT;\s*$/);
-    assert.match(down, /Public read reviews/);
-    assert.match(down, /GRANT SELECT ON public\.public_profiles TO anon/);
+    // exact rollback
+    for (const t of ['reviews', 'user_portfolio_items', 'recommendations']) assert.match(down, new RegExp(`CREATE POLICY "Public read ${t}"`));
+    assert.match(down, /GRANT EXECUTE ON FUNCTION public\.get_user_trust_and_reputation\(uuid\) TO PUBLIC, anon, authenticated, service_role/);
+    assert.match(down, /CREATE POLICY "Public read portfolio_images" ON storage\.objects FOR SELECT USING/);
+    assert.match(down, /^\s+p\.bio,$/m, 'the previous view definition exposes bio again');
+    assert.doesNotMatch(down, /current_user/);
+});
+
+test('the Staging rehearsal is one statement that always aborts and never commits', () => {
+    const { buildRehearsalSql, buildSnapshotSql, STAGING_REF } = require('../scripts/rehearse-migration-94.js');
+    const sql = buildRehearsalSql();
+    assert.match(sql, /^DO \$rehearsal\$/);
+    assert.doesNotMatch(sql, /\bCOMMIT\b|\bBEGIN;/i, 'the migration BEGIN/COMMIT are stripped; only plpgsql BEGIN remains');
+    assert.match(sql, /RAISE EXCEPTION 'REHEARSAL_REPORT %'/, 'the report travels in an exception, which rolls everything back');
+    assert.ok(sql.trim().endsWith('$rehearsal$;'), 'a single statement');
+    assert.equal((sql.match(/\$rehearsal\$/g) || []).length, 2);
+    assert.match(sql, /REHEARSAL REFUSED/);
+    assert.equal(STAGING_REF, 'tdktfbtqceldlaeqjtow');
+    assert.doesNotMatch(sql, /gzispjfoywklpqatjyop/);
+    for (const role of ["'anon'", "'authenticated'", "'service_role'"]) assert.ok(sql.includes(role), `probes ${role}`);
+    assert.match(sql, /admin_members/, 'a real administrator identity is probed');
+    for (const section of ['policies', 'rel_acl', 'col_acl', 'fn_acl', 'views', 'data']) assert.ok(sql.includes(`'${section}'`), section);
+    assert.doesNotMatch(buildSnapshotSql(), /\b(insert|update|delete|alter|drop|create|grant|revoke)\b/i, 'the snapshot is read-only');
 });
 
 test('the local preview serves the real public handler against Staging and never ships the service key to the browser bundle', () => {

@@ -7,8 +7,9 @@ test.describe('Explorer business persistence — approved staging only', () => {
   test('Bokantaj Request creation persists in Annonces only; own Request has no help action', async ({page}) => {
     const authorId = await login(page,'REQUESTER');
     const description = `Explorer validation ${Date.now()} : besoin de réparer une fuite sous mon évier.`;
-    await page.goto('/results.html?mode=annonces');
-    await page.locator('.explorer-results-heading .explorer-publish').click();
+    // 3.2C : le point d'entrée de publication est « Poster une annonce » sur Découvrir (l'écran Annonces n'a plus de bouton Publier).
+    await page.goto('/discover.html');
+    await page.locator('[data-lyann-publish]').first().click();
     await page.locator('#wizardDescInput').fill(description);
     for (const step of [2,4,5,6]) {
       await page.locator('#wizardBtnNext').click();
@@ -26,10 +27,18 @@ test.describe('Explorer business persistence — approved staging only', () => {
     await page.getByRole('button',{name:'Voir les annonces',exact:true}).click();
     await expect(page).toHaveURL(/results\.html/);
     const card = page.locator(`[data-request-id="${created.id}"]`);
-    await expect(card).toContainText(description);
+    // 3.2C : la carte porte la taxonomie et un titre court, jamais la description complète.
+    await expect(card).toBeVisible();
+    await expect(card).not.toContainText(description);
+    expect(created.description).toBe(description);
     await expect(card.locator('[data-action="help"]')).toHaveCount(0);
     await page.reload();
-    await expect(card).toContainText(description);
+    await expect(card).toBeVisible();
+    const persisted = await page.evaluate(async id => {
+      const {data,error} = await window.LYANN_API_CLIENT.supabase.from('requests').select('description').eq('id',id).single();
+      if(error)throw error; return data.description;
+    },created.id);
+    expect(persisted).toBe(description);
     await page.goto('/feed.html');
     await expect(page.locator('#flashFeedContainer')).not.toContainText(description);
     const rows = await page.evaluate(async text => {
@@ -77,7 +86,9 @@ test.describe('Explorer business persistence — approved staging only', () => {
     expect((await send).ok()).toBe(true);
     await expect(page.locator('#chatMessagesContainer')).toContainText(content);
     await page.reload();
-    await page.locator(`[data-member-id="${person.id}"] [data-action="contact"]`).click();
+    await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
+    await page.locator(`[data-member-id="${person.id}"] [data-action="profile"]`).click();
+    await page.locator('#publicMemberProfileModal [data-lyann-route="messages"]').click();
     await expect(page.locator('#chatHeaderName')).toHaveText(person.name);
     await expect(page.locator('#chatMessagesContainer')).toContainText(content);
   });

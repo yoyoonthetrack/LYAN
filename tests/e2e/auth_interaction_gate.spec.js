@@ -92,14 +92,24 @@ async function publicExplorer(page, mode='annonces') {
   await page.goto(`/results.html?mode=${mode}&area=`);
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
 }
+// 3.2C-3 : l'écran Annonces n'a plus de bouton « Publier » (maquette Option 3). Le visiteur publie depuis Découvrir (« Poster une annonce »).
+async function publishFromDiscover(page) {
+  await page.goto('/discover.html');
+  const cta = page.locator('[data-lyann-publish]').first();
+  await expect(cta).toBeVisible();
+  await cta.click();
+}
+// Une écriture métier = toute requête REST non GET, sauf les RPC STABLE que PostgREST expose en POST et qui ne font que lire.
+const READ_ONLY_RPC = /\/rest\/v1\/rpc\/(?:lyann_support_user_id|lyann_public_badges)(?:\?|$)/;
+const isBusinessWrite = r => r.url().includes('/rest/v1/') && r.method() !== 'GET' && !(r.method() === 'POST' && READ_ONLY_RPC.test(r.url()));
 for (const [label,mode,selector] of [
-  ['Favorite','annonces','.btn-fav-toggle'],['Contact','lyanneurs','[data-action="contact"]'],
-  ['Lyanner','annonces','[data-action="help"]'],['Publish Request','annonces','.explorer-publish'],
-  ['Annonce author','annonces','.explorer-person-overlay']
+  ['Favorite','annonces','.btn-fav-toggle'],['Lyanneur profile','lyanneurs','.explorer-person-overlay'],
+  ['Lyanner','annonces','[data-action="help"]'],['Publish Request','discover','[data-lyann-publish]'],
+  ['Annonce author','annonces','.explorer-annonce-avatar']
 ]) test(`Anonymous ${label} invokes the shared auth gate without a business write`, async ({page}) => {
   const writes=[];
-  page.on('request',r=>{if(r.url().includes('/rest/v1/') && r.method()!=='GET')writes.push(r.url());});
-  await publicExplorer(page,mode);
+  page.on('request',r=>{if(isBusinessWrite(r))writes.push(r.url());});
+  if (mode === 'discover') await page.goto('/discover.html'); else await publicExplorer(page,mode);
   await page.evaluate(()=>window.__gateActions=[]);
   await page.evaluate(()=>window.addEventListener('lyann:interaction-auth-required',e=>window.__gateActions.push(e.detail.action)));
   await page.locator(selector).first().click();
@@ -126,16 +136,12 @@ for(const [label,selector] of [['Comment','.btn-comments-toggle'],['Reaction','.
 for(const action of ['publish','requestHelp','favorite']) test(`Real login returns anonymous ${action} to its correct public context without submitting`,async({page})=>{
   const email=process.env.LYANN_E2E_QA_B_EMAIL,password=process.env.LYANN_E2E_QA_B_PASSWORD;
   expect(email,'QA identity supplied through runner environment').toBeTruthy();expect(password).toBeTruthy();
-  await publicExplorer(page);
-  const card=page.locator('[data-request-id]').first();const id=await card.getAttribute('data-request-id');
-  const writes=[];page.on('request',r=>{
-    if(!r.url().includes('/rest/v1/') || r.method()==='GET') return;
-    // PostgREST exposes this STABLE lookup as POST. It only reads the support id.
-    if(r.method()==='POST' && /\/rest\/v1\/rpc\/lyann_support_user_id(?:\?|$)/.test(r.url())) return;
-    writes.push(r.url());
-  });
-  if(action==='publish')await page.locator('.explorer-publish').first().click();
+  const writes=[];page.on('request',r=>{ if(isBusinessWrite(r)) writes.push(r.url()); });
+  let card,id;
+  if(action==='publish')await publishFromDiscover(page);
   else {
+    await publicExplorer(page);
+    card=page.locator('[data-request-id]').first();id=await card.getAttribute('data-request-id');
     await card.locator(action==='favorite'?'.btn-fav-toggle':'[data-action="help"]').click();
     await expect(page.locator('#lyannVisitorGate')).toBeVisible();
     await page.locator('#lyannVisitorGate [data-vgate="login"]').click();
@@ -170,7 +176,7 @@ test('Request detail by id is invitation-gated for visitors: no detail read, no 
 test('Anonymous « Détails » shows the invitation and keeps the requested annonce for after sign-in',async({page})=>{
   await publicExplorer(page);
   const card=page.locator('[data-request-id]').first();const id=await card.getAttribute('data-request-id');
-  await card.getByRole('button',{name:'Détails',exact:true}).click();
+  await card.locator('[data-action="detail"]').click();
   await expect(page.locator('#lyannVisitorGate')).toBeVisible();
   await expect(page.locator('#lyannDetailModal')).not.toBeVisible();
   expect(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('lyann_interaction_intent')))).toMatchObject({action:'requestDetail',payload:{requestId:id}});
@@ -187,17 +193,23 @@ test('Authentication resolving does not mistake a restored session for an anonym
 });
 
 const {requireWriteBackend}=require('./helpers/approved-backend');
-for(const action of ['contact','favorite'])test(`Approved staging: anonymous ${action} → login → canonical persisted outcome`,async({page})=>{
+for(const action of ['contact','favorite'])test(`Approved staging: anonymous ${action} → invitation → login → canonical persisted outcome`,async({page})=>{
   await requireWriteBackend(page);
   await publicExplorer(page,action==='contact'?'lyanneurs':'annonces');
   const card=page.locator(action==='contact'?'[data-member-id]':'[data-request-id]').first();
   const id=await card.getAttribute(action==='contact'?'data-member-id':'data-request-id');
-  await card.locator(action==='contact'?'[data-action="contact"]':'.btn-fav-toggle').click();
+  // 3.2C-2 : la fiche d'un Lyanneur et le favori d'une annonce passent d'abord par l'invitation ; « Me connecter » ouvre la connexion.
+  await card.locator(action==='contact'?'.explorer-person-overlay':'.btn-fav-toggle').click();
+  await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+  await page.locator('#lyannVisitorGate [data-vgate="login"]').click();
   await expect(page.locator('#loginModal')).toBeVisible();
-  await page.locator('#loginEmail').fill(process.env.LYANN_E2E_HELPER_EMAIL);
-  await page.locator('#loginPassword').fill(process.env.LYANN_E2E_HELPER_PASSWORD);
+  await page.locator('#loginEmail').fill(process.env.LYANN_E2E_HELPER_EMAIL||process.env.LYANN_E2E_QA_A_EMAIL);
+  await page.locator('#loginPassword').fill(process.env.LYANN_E2E_HELPER_PASSWORD||process.env.LYANN_E2E_QA_A_PASSWORD);
   await page.locator('#loginForm button[type=submit]').click();
   if(action==='contact'){
+    // Membre connecté : la fiche reprend là où le visiteur l'avait demandée, puis la messagerie est accessible.
+    await expect(page.locator('#publicMemberProfileModal')).toBeVisible();
+    await page.locator('#publicMemberProfileModal button',{hasText:'Contacter'}).first().click();
     await expect(page.locator('#chatModal')).toBeVisible();
     await expect.poll(()=>page.evaluate(()=>window.LYANN_ACTIVE_CHAT_CONTACT?.id)).toBe(id);
     const name=await page.evaluate(async id=>{
@@ -211,15 +223,14 @@ for(const action of ['contact','favorite'])test(`Approved staging: anonymous ${a
     await button.click();
     await expect.poll(()=>page.evaluate(id=>window.LyannFavoritesService.isFavorite('REQUEST',id),id)).toBe(!before);
     await page.reload();await page.evaluate(id=>window.openLyannDetailModal(id),id);
-    await expect(button).toHaveAttribute('aria-pressed',String(!before));
+    await expect(button).toHaveAttribute('aria-label',!before?'Retirer des favoris':'Ajouter aux favoris'); // l'état du favori est porté par le nom accessible (le bouton n'expose pas aria-pressed)
     await button.click();
     await expect.poll(()=>page.evaluate(id=>window.LyannFavoritesService.isFavorite('REQUEST',id),id)).toBe(before);
   }
 });
 
 test('Cancellation clears the intent and login/register switching preserves it until cancellation',async({page})=>{
-  await publicExplorer(page);
-  await page.locator('.explorer-publish').first().click();
+  await publishFromDiscover(page);
   await page.locator('#switchToSignupBtn').click();
   expect(await page.evaluate(()=>window.LYANN_ROUTER.hasAuthIntent())).toBe(true);
   await page.locator('#closeOnboardingBtn').click();
@@ -229,7 +240,7 @@ test('Cancellation clears the intent and login/register switching preserves it u
 test('Pending publication survives reload and resumes after real authentication',async({page})=>{
   const email=process.env.LYANN_E2E_QA_B_EMAIL,password=process.env.LYANN_E2E_QA_B_PASSWORD;
   expect(email).toBeTruthy();expect(password).toBeTruthy();
-  await publicExplorer(page);await page.locator('.explorer-publish').first().click();await page.reload();
+  await publishFromDiscover(page);await page.reload();
   expect(await page.evaluate(()=>window.LYANN_ROUTER.hasAuthIntent())).toBe(true);
   await page.evaluate(()=>window.openLoginModal());
   await page.locator('#loginEmail').fill(email);await page.locator('#loginPassword').fill(password);

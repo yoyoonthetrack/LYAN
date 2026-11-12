@@ -26,3 +26,9 @@ test('duplicate or query cron paths are rejected', () => {
     const problems = cronProblems(broken);
     assert.ok(problems.some((item) => /double|illisible|absent/.test(item)));
 });
+
+test('the Staging function ships commune-geo.js, required by the public annonces API', () => {
+    const uploaded = stagingUploadConfig(root, staging);
+    assert.equal(uploaded.functions['api/index.js'].includeFiles, 'commune-geo.js');
+    assert.equal(require('fs').existsSync(require('path').join(__dirname, '..', 'commune-geo.js')), true);
+});
