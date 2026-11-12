@@ -12,6 +12,7 @@
 | **P5** | Correspondance héritée, **rétro-remplissage en contexte service explicite**, double écriture, projection héritée | `05` (variante service) → `06` → `08` | 1 | Le rétro-remplissage a besoin du référentiel (P4) ; l'ordre 05 → 06 → 08 est celui rejoué et mesuré par P3. |
 | **S10** | RPC `lyann_resolve_legacy_skill` (précision d'une compétence par son membre) | `post-migration-draft/10_resolve_legacy_skill.sql` | 1 | Ne sert à rien avant P5 ; indépendante de P4/P5. |
 | **S100** | `REVOKE TRUNCATE, TRIGGER, REFERENCES` sur `services` | `security-draft/100_services_dangerous_privileges_staging.sql` | 1 | Fermeture d'une surface sans lien avec la taxonomie, donc en dernier : en cas d'anomalie, on sait que ce n'est pas elle qui a cassé P4/P5. |
+| **S101** | `REVOKE MAINTAIN` sur `services` (VACUUM, ANALYZE, REINDEX, CLUSTER) | `security-draft/101_services_maintain_privilege_staging.sql` | 1 | Complète S100 (reste de la surface d'administration de `services`). Indépendante de P4/P5/S10 ; vérifiée à part. |
 
 `07` (vérifications) n'est jamais « appliqué » : ses contrôles V01–V23 sont exécutés dans les transactions P4/P5 (assertions avant `COMMIT`) **et** relus depuis une nouvelle connexion après chaque étape. `09` est le retour arrière, jamais lancé automatiquement.
 
@@ -46,12 +47,12 @@ Les empreintes complètes (y compris celles de 10, de 100 et des SQL générés)
 ```
 LYANN_P45_AUTHORIZED=I-AUTHORIZE-P4-P5-ON-tdktfbtqceldlaeqjtow \
 LYANN_P45_TOKEN_FILE=<fichier du jeton neuf> \
-node scripts/taxonomy-v2/p45-staging.js --execute [--steps P4,P5,S10,S100]
+node scripts/taxonomy-v2/p45-staging.js --execute [--steps P4,P5,S10,S100,S101]
 ```
 
-**Exécution en deux temps (facultative).** `--steps P4` s'arrête après P4 et sa vérification, et écrit dans le rapport (`artifacts/p45-staging/run-*.json`, `report.P4.catalog`) l'empreinte du catalogue obtenue. La suite se lance alors avec `--steps P5,S10,S100 --resume-catalog <md5>:<objets>` : le pré-vol exige que P4 soit appliquée **et** que le catalogue soit exactement celui relevé (sinon arrêt), et refuse une reprise contenant P4. Sans `--resume-catalog`, tout nouveau lancement est refusé tant que des objets v2 existent. Conserver les **deux** dossiers de sauvegarde : seul le premier (avant P4) permet la restauration complète.
+**Exécution en deux temps (facultative).** `--steps P4` s'arrête après P4 et sa vérification, et écrit dans le rapport (`artifacts/p45-staging/run-*.json`, `report.P4.catalog`) l'empreinte du catalogue obtenue. La suite se lance alors avec `--steps P5,S10,S100,S101 --resume-catalog <md5>:<objets>` : le pré-vol exige que P4 soit appliquée **et** que le catalogue soit exactement celui relevé (sinon arrêt), et refuse une reprise contenant P4. Sans `--resume-catalog`, tout nouveau lancement est refusé tant que des objets v2 existent. Conserver les **deux** dossiers de sauvegarde : seul le premier (avant P4) permet la restauration complète.
 
-`--preflight-only` s'arrête après le pré-vol (recommandé juste avant l'autorisation finale : lecture seule). `--plan` affiche ce déroulé, `--print P4|P5|S10|S100|PREFLIGHT|VERIFY` imprime le SQL exact.
+`--preflight-only` s'arrête après le pré-vol (recommandé juste avant l'autorisation finale : lecture seule). `--plan` affiche ce déroulé, `--print P4|P5|S10|S100|S101|PREFLIGHT|VERIFY` imprime le SQL exact.
 
 | # | Action | Arrêt immédiat si… |
 |---|---|---|
@@ -65,6 +66,7 @@ node scripts/taxonomy-v2/p45-staging.js --execute [--steps P4,P5,S10,S100]
 | 5 | **Vérification P5** | idem |
 | 6 | **S10**, vérification | idem |
 | 7 | **S100**, vérification finale ; privilèges structurels de `services` retirés | idem |
+| 8 | **S101** (facultative), vérification : `MAINTAIN` absent pour `anon`/`authenticated`, seul `acl:services` change dans le catalogue | idem |
 
 **Aucune relance automatique, aucune étape suivante après un arrêt.** Un échec SQL est suivi d'un `ROLLBACK;` défensif et d'une relecture du catalogue : l'exécuteur indique si l'état est « annulation propre, rien appliqué » ou « ÉTAT À EXAMINER ».
 
@@ -118,7 +120,7 @@ node scripts/taxonomy-v2/p45-staging.js --restore-plan <dossier> [--revert-100] 
 |---|---|
 | **Échec SQL pendant P4 ou P5** | La transaction est annulée par Postgres ; l'exécuteur le confirme (catalogue identique) et s'arrête. **Rien à restaurer.** |
 | Anomalie constatée **après** `COMMIT` (vérification en échec) | Arrêt. Lire le rapport (`artifacts/p45-staging/run-*.json`). Si les anciennes applications ou les données sont en cause : exécuter le plan de restauration complet. |
-| Restauration complète (`--revert-100` si S100 a été appliquée) | UNE transaction : verrou exclusif ; retrait de `lyann_resolve_legacy_skill` (**le rollback 10 avant 09**, sinon la fonction dépendrait de tables supprimées) ; **09** (retire tout le v2, colonnes comprises) ; rollback de 100 (rend les trois privilèges exactement tels qu'ils étaient) ; puis, **en contexte service** (pour ne rien remettre en modération), **réinsertion des lignes supprimées et réécriture des seules lignes qui diffèrent** de la sauvegarde. |
+| Restauration complète (`--revert-100` si S100, `--revert-101` si S101 a été appliquée) | UNE transaction : verrou exclusif ; retrait de `lyann_resolve_legacy_skill` (**le rollback 10 avant 09**, sinon la fonction dépendrait de tables supprimées) ; **09** (retire tout le v2, colonnes comprises) ; rollback de 100 (rend les trois privilèges exactement tels qu'ils étaient) ; puis, **en contexte service** (pour ne rien remettre en modération), **réinsertion des lignes supprimées et réécriture des seules lignes qui diffèrent** de la sauvegarde. |
 | Seules des données sont à rétablir, le v2 reste (`--data-only`) | Même mécanique sans 09 ; les colonnes v2 (rattachements) ne sont jamais écrasées. |
 
 **Prouvé sur le banc** : après un déroulé complet et un sinistre simulé (demande réécrite, service supprimé, ligne de taxonomie altérée), la restauration redonne des tables identiques à la sauvegarde, **le même nombre de lignes et de tâches de modération**, aucun objet v2, aucune colonne v2, un catalogue identique (aucun objet ajouté ni retiré, ensemble de privilèges de `services` identique).
@@ -130,6 +132,8 @@ node scripts/taxonomy-v2/p45-staging.js --restore-plan <dossier> [--revert-100] 
 - **Modération** : le rétro-remplissage s'exécute en **contexte service explicite** (`set_config('request.jwt.claim.role','service_role',true)`, décision X6, mesurée sur Staging par P3 : +0 file / +0 tâche contre +78 / +22 en contexte normal) ; l'exécuteur compare file et tâches avant/après dans la transaction **et** depuis une nouvelle connexion.
 - **Surface** : nouvelles tables avec RLS, aucune écriture pour `anon`, `SECURITY DEFINER` avec `search_path` fixé, `REVOKE` explicite, pas d'effet externe (`NOTIFY`, `COPY`, `nextval`), pas de `TRUNCATE` ni de désactivation de déclencheur ou de RLS : le linter de l'exécuteur le refuse et des tests l'établissent.
 - **S100** : refuse de s'appliquer si une routine `SECURITY INVOKER` s'appuie sur `TRUNCATE`/`CREATE TRIGGER`/`REFERENCES … services` ; instantané des dépendances (clés étrangères, déclencheurs, règles, RLS), des politiques et des autres privilèges, comparé après ; `service_role` et `postgres` conservent leurs droits (contrôle `has_table_privilege`) ; refus atomique en cas de privilèges dépendants (`GRANT OPTION`). À contrôler sur Staging seulement : `authenticator` (le script le recontrôle) et `supabase_admin`.
+- **S101** : refuse de s'appliquer (avant toute écriture) si `anon`, `authenticated` ou `authenticator` héritent de `MAINTAIN` par le rôle prédéfini `pg_maintain` (un `REVOKE` de table ne le retirerait pas), ou si une routine `SECURITY INVOKER` lance VACUUM/ANALYZE/REINDEX/CLUSTER/REFRESH MATERIALIZED VIEW sur `services` ; mêmes instantanés que S100 (autres privilèges avec transmissibilité et donneur, politiques, FK, déclencheurs, règles, RLS) ; `service_role` et `postgres` conservent `MAINTAIN`. **Limite connue, non traitée** : `LOCK TABLE … ACCESS EXCLUSIVE` reste permis par `UPDATE`/`DELETE` (règle de PostgreSQL) ; les privilèges par défaut du schéma `public` accordent encore `arwdDxtm` à `anon`/`authenticated` sur les tables FUTURES (hors périmètre de 100 et 101).
+- **Déclencheurs UPDATE examinés** : six avant P5 (liste de `p3-rehearsal.js`). Après P5, en **reprise seulement**, les trois déclencheurs introduits par P5 (`requests.lyann_requests_derive_node_trg`, `requests.lyann_requests_legacy_projection_trg`, `services.lyann_services_derive_node_trg`) sont reconnus **sur preuve d'identité, jamais sur leur nom** : le pré-vol relève leur définition (`pg_get_triggerdef`), leur état (activé), leur fonction (schéma `public`, `SECURITY DEFINER`, `search_path` figé, propriétaire `postgres`) et l'empreinte MD5 du corps (`pg_proc.prosrc`), puis les compare au contrat calculé depuis les brouillons 06 et 08 (`p5TriggerContracts()`). Tout écart, et tout autre déclencheur, arrête l'exécution avant écriture.
 - **Aucun secret** dans les scripts, rapports ou sauvegardes ; `Bearer` jamais journalisé.
 
 ## 8. Risques résiduels et décisions
@@ -155,6 +159,8 @@ Tout le reste (ordre, vérifications, arrêts, restauration) est tranché.
 | `tests/taxonomy-p45.test.js` | déroulé complet sur PGlite avec une API factice : arrêts, annulations, restauration, jeton, Production |
 | `docs/taxonomy/security-draft/100_*` | S100 durci (garde de dépendances, instantanés) et son rollback |
 | `tests/taxonomy-security-100.test.js` | 100 : privilèges effectifs, héritage, données, idempotence, `GRANT OPTION`, rollback |
+| `docs/taxonomy/security-draft/101_*` | S101 (`MAINTAIN`) et son rollback |
+| `tests/taxonomy-security-101.test.js` | 101 : effet exact, `pg_maintain`, routines `SECURITY INVOKER`, `GRANT OPTION`, ordre avec 100, rollback |
 | `docs/taxonomy/post-migration-draft/10_resolve_legacy_skill*.sql` | S10 et son rollback |
 | `scripts/taxonomy-v2/unattached-skills.js`, `docs/taxonomy/generated/unattached-skills.{json,csv}` | analyse des 52 compétences |
 | `tests/taxonomy-p45-skills.test.js` | analyse, RPC 10 sur le banc, hygiène des fichiers |

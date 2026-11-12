@@ -14,6 +14,7 @@ const { spawnSync } = require('node:child_process');
 const p45 = require('../scripts/taxonomy-v2/p45-staging');
 const p3 = require('../scripts/taxonomy-v2/p3-rehearsal');
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'taxonomy-v2', 'p45-staging.js');
+const P5_TRIGGERS = ['requests.lyann_requests_derive_node_trg', 'requests.lyann_requests_legacy_projection_trg', 'services.lyann_services_derive_node_trg'];
 const sha = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
 const runBench = async (afterSetup, extra = {}) => {
@@ -28,6 +29,8 @@ const runBench = async (afterSetup, extra = {}) => {
         await ctx.db.exec('GRANT ALL ON public.services TO service_role');
         // État réel de Staging (audit) : anon et authenticated détiennent TRUNCATE, TRIGGER, REFERENCES sur services — c'est ce que S100 retire.
         await ctx.db.exec('GRANT TRUNCATE, TRIGGER, REFERENCES ON public.services TO anon, authenticated');
+        // Idem pour MAINTAIN (PostgreSQL 17) : privilège par défaut des tables créées par postgres sous Supabase — c'est ce que S101 retire.
+        await ctx.db.exec('GRANT SELECT, INSERT, UPDATE, DELETE, MAINTAIN ON public.services TO anon, authenticated; GRANT MAINTAIN ON public.services TO service_role');
         await afterSetup(ctx, out);
     } });
     return { report, out };
@@ -58,7 +61,7 @@ const tablesHash = async (rows) => (await rows(`SELECT md5(
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 
 test('P4/P5 : les SQL générés passent le linter ; une transaction, COMMIT final unique, aucun effet externe, aucune Production, Staging seulement', () => {
-    for (const [name, b] of Object.entries({ P4: p45.buildP4(), P5: p45.buildP5(null), S10: p45.buildS10(), S100: p45.buildS100() })) {
+    for (const [name, b] of Object.entries({ P4: p45.buildP4(), P5: p45.buildP5(null), S10: p45.buildS10(), S100: p45.buildS100(), S101: p45.buildS101() })) {
         assert.deepEqual(p45.lint(b.sql, name), [], name);
         assert.doesNotMatch(b.sql, /gzispjfoywklpqatjyop/, name);
     }
@@ -271,14 +274,15 @@ test('banc : déroulé complet (pré-vol, sauvegarde, P4, vérification, P5, vé
             nodes: (await rows('SELECT count(*)::int n FROM public.lyann_taxonomy_node'))[0].n,
             requestsWithNode: (await rows("SELECT count(*)::int n FROM public.requests WHERE taxonomy_node_code IS NOT NULL"))[0].n,
             fnS10: (await rows("SELECT count(*)::int n FROM pg_proc WHERE proname = 'lyann_resolve_legacy_skill'"))[0].n,
-            structural: (await rows("SELECT has_table_privilege('anon', 'public.services', 'TRUNCATE') a, has_table_privilege('authenticated', 'public.services', 'REFERENCES') b"))[0] };
+            structural: (await rows("SELECT has_table_privilege('anon', 'public.services', 'TRUNCATE') a, has_table_privilege('authenticated', 'public.services', 'REFERENCES') b"))[0],
+            maintain: (await rows("SELECT has_table_privilege('anon', 'public.services', 'MAINTAIN') a, has_table_privilege('authenticated', 'public.services', 'MAINTAIN') b, has_table_privilege('service_role', 'public.services', 'MAINTAIN') c, has_table_privilege('anon', 'public.services', 'SELECT') d"))[0] };
         o.rows = rows;
         o.verify = (await p45.orchestrate({ api: fakeApi(db), log: () => {}, backupDir: path.join(dir, 'unused'), expectedCatalog: undefined, onlyPreflight: true })).stopped;
     });
     if (report.skipped) { t.skip(report.reason); return; }
     assert.equal(out.result.stopped, null, JSON.stringify(out.result.stopped));
     assert.equal(out.result.ok, true);
-    assert.deepEqual(out.result.steps.map((s) => s.step), ['pré-vol', 'sauvegarde', 'P4', 'P5', 'S10', 'S100']);
+    assert.deepEqual(out.result.steps.map((s) => s.step), ['pré-vol', 'sauvegarde', 'P4', 'P5', 'S10', 'S100', 'S101']);
     assert.ok(out.result.steps.every((s) => s.ok));
     assert.equal(out.after.hash, out.before.hash, 'colonnes historiques identiques (requests, services, lyann_taxonomy)');
     assert.deepEqual(out.after.mod, out.before.mod, 'aucune ligne ni tâche de modération ajoutée');
@@ -287,6 +291,7 @@ test('banc : déroulé complet (pré-vol, sauvegarde, P4, vérification, P5, vé
     assert.ok(out.after.requestsWithNode > 0, 'rétro-remplissage effectué');
     assert.equal(out.after.fnS10, 1);
     assert.deepEqual(out.after.structural, { a: false, b: false }, 'S100 : privilèges structurels retirés');
+    assert.deepEqual(out.after.maintain, { a: false, b: false, c: true, d: true }, 'S101 : MAINTAIN retiré à anon et authenticated, conservé par service_role, SELECT intact');
     // Après application, un nouveau pré-vol doit refuser de rejouer (objets v2 présents).
     assert.ok(out.verify && /objets v2 existent déjà/.test(out.verify.reasons.join(' ')));
     // Sauvegarde : permissions strictes, empreintes valides, contenu relisible, falsification détectée.
@@ -297,7 +302,7 @@ test('banc : déroulé complet (pré-vol, sauvegarde, P4, vérification, P5, vé
     assert.equal(backup.manifest.project, p45.STAGING_REF);
     assert.ok(backup.rows.requests.length > 0 && backup.rows.services.length > 0 && backup.rows.lyann_taxonomy.length > 0);
     assert.ok(backup.rows.requests.every((r) => !('taxonomy_node_code' in r)), 'la sauvegarde est celle d\'AVANT P4');
-    assert.deepEqual(Object.keys(backup.manifest.scripts).sort(), ['P4', 'P5', 'S10', 'S100']);
+    assert.deepEqual(Object.keys(backup.manifest.scripts).sort(), ['P4', 'P5', 'S10', 'S100', 'S101']);
     fs.appendFileSync(path.join(b, 'services.ndjson'), '{"id":"x"}\n');
     assert.throws(() => p45.readBackup(b), /sauvegarde altérée : services\.ndjson/);
 });
@@ -320,6 +325,10 @@ test('banc : P4 seul, puis reprise séparée (P5, S10, S100) avec l\'empreinte r
         o.r5 = await p45.orchestrate({ api: fakeApi(db), log: () => {}, backupDir: path.join(dir, 'b5'), steps: ['P5', 'S10', 'S100'], resume: recorded });
         o.afterP5 = (await rows('SELECT count(*)::int n FROM public.requests WHERE taxonomy_node_code IS NOT NULL'))[0].n;
         o.s100 = (await rows("SELECT has_table_privilege('anon', 'public.services', 'TRUNCATE') AS a"))[0].a;
+        // S101 dans une exécution SÉPARÉE, après P5 : les trois déclencheurs de P5 sont reconnus sur preuve de leur identité (définition PostgreSQL réelle).
+        o.triggersSeen = (await rows("SELECT string_agg(c.relname || '.' || t.tgname, ',') s FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid WHERE NOT t.tgisinternal AND c.relname IN ('requests', 'services') AND t.tgname LIKE 'lyann\\_%\\_trg'"))[0].s;
+        o.r101 = await p45.orchestrate({ api: fakeApi(db), log: () => {}, backupDir: path.join(dir, 'b101'), steps: ['S101'], resume: await digestOf(rows) });
+        o.maintain = (await rows("SELECT has_table_privilege('anon', 'public.services', 'MAINTAIN') a, has_table_privilege('service_role', 'public.services', 'MAINTAIN') b"))[0];
     });
     if (report.skipped) { t.skip(report.reason); return; }
     assert.equal(out.r4.ok, true, JSON.stringify(out.r4.stopped));
@@ -333,6 +342,10 @@ test('banc : P4 seul, puis reprise séparée (P5, S10, S100) avec l\'empreinte r
     assert.deepEqual(out.r5.steps.map((s) => s.step), ['pré-vol', 'sauvegarde', 'P5', 'S10', 'S100']);
     assert.ok(out.afterP5 > 0);
     assert.equal(out.s100, false);
+    assert.deepEqual(out.triggersSeen.split(',').sort(), P5_TRIGGERS);
+    assert.equal(out.r101.ok, true, JSON.stringify(out.r101.stopped));
+    assert.deepEqual(out.r101.steps.map((x) => x.step), ['pré-vol', 'sauvegarde', 'S101']);
+    assert.deepEqual(out.maintain, { a: false, b: true });
 });
 
 test('banc : la reprise exige que P4 soit appliquée', async (t) => {
@@ -456,7 +469,7 @@ test('banc : restauration — 10 puis 09 rétablissent le catalogue, les lignes 
         o.corrupted = (await tablesHash(rows)) !== o.baseline.hash;
         o.mod0 = (await rows('SELECT (SELECT count(*)::int FROM public.content_moderation_queue) q, (SELECT count(*)::int FROM public.moderation_jobs) j'))[0];
         const backup = p45.readBackup(path.join(dir, 'b'));
-        const sql = p45.buildRestoreSql(backup, { revert100: true });
+        const sql = p45.buildRestoreSql(backup, { revert100: true, revert101: true });
         o.restoreHasNoSecret = !/sbp_|Bearer/.test(sql);
         await db.exec(sql);
         o.catalogDiff = p45.diffCatalog(backup.catalog, await rows(p45.CATALOG_EXPORT_SQL));
@@ -513,4 +526,124 @@ test('documentation : le runbook P4/P5 existe, porte les sections citées par le
     assert.match(p45.PLAN, /NON AUTORISÉ/);
     assert.doesNotMatch(p45.PLAN, /gzispjfoywklpqatjyop/);
     for (const [f, h] of Object.entries(p45.fingerprints())) if (f.startsWith('migration-draft/0')) assert.ok(doc.includes(h.slice(0, 16)), `empreinte de ${f} absente du runbook`);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Déclencheurs UPDATE introduits par P5 : reconnus sur PREUVE d'identité, jamais sur leur seul nom ; un déclencheur réellement inconnu arrête toujours
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+test('déclencheurs P5 : le contrat est calculé depuis les brouillons 06 et 08 (définition, fonction, empreinte du corps), pas depuis une liste de noms', () => {
+    const c = p45.p5TriggerContracts();
+    assert.deepEqual(Object.keys(c).sort(), P5_TRIGGERS);
+    assert.deepEqual(P5_TRIGGERS.map((k) => c[k].fn), ['lyann_derive_request_node', 'lyann_fill_request_legacy', 'lyann_derive_service_node']);
+    for (const k of P5_TRIGGERS) { assert.match(c[k].srcMd5, /^[0-9a-f]{32}$/); assert.match(c[k].def, /^CREATE TRIGGER \w+ BEFORE INSERT OR UPDATE OF .+ FOR EACH ROW EXECUTE FUNCTION \w+\(\)$/); }
+    // Empreintes relevées sur Staging le 12 nov. 2026 (pg_proc.prosrc) : le contrat issu des brouillons est bien ce que PostgreSQL a stocké.
+    assert.equal(c['requests.lyann_requests_derive_node_trg'].srcMd5, '545277d7a40253f53694cc1bdf8d3a90');
+    assert.equal(c['services.lyann_services_derive_node_trg'].srcMd5, '563aa87ff347968825c817ac1b93ccd1');
+    assert.equal(c['requests.lyann_requests_legacy_projection_trg'].srcMd5, 'afe0b74d4c9ce4bc5b63eb8d6cef8c27');
+    // Aucun n'est dans la liste des six déclencheurs examinés avant P5 : la reconnaissance passe uniquement par le contrat.
+    for (const k of P5_TRIGGERS) assert.ok(!p3.REVIEWED_UPDATE_TRIGGERS.includes(k), k);
+});
+
+const resumePreflight = () => {
+    const c = p45.p5TriggerContracts();
+    const pf = goodPreflight();
+    pf.v2_tables = 9; pf.v2_columns = 5; pf.v2_functions = 12;
+    pf.update_triggers = [...p3.REVIEWED_UPDATE_TRIGGERS, ...P5_TRIGGERS].sort();
+    pf.update_trigger_defs = Object.fromEntries(P5_TRIGGERS.map((k) => [k, { def: c[k].def, enabled: 'O', fn: c[k].fn, fn_schema: 'public', secdef: true, config: ['search_path=public, pg_temp'], owner: 'postgres', src_md5: c[k].srcMd5 }]));
+    return pf;
+};
+
+test('déclencheurs P5 : en reprise, identité prouvée = GO ; hors reprise, ou sur le seul nom, ou altéré = arrêt explicite ; un déclencheur inconnu arrête toujours', () => {
+    assert.deepEqual(p45.evaluatePreflight(resumePreflight(), p45.PROVEN_CATALOG, { resume: true }), { go: true, stops: [] });
+    // Hors reprise (P4 pas encore appliquée) : jamais reconnus.
+    const notResumed = p45.evaluatePreflight(resumePreflight(), p45.PROVEN_CATALOG, { resume: false });
+    assert.equal(notResumed.go, false);
+    assert.ok(notResumed.stops.some((x) => /déclencheur\(s\) UPDATE non examiné/.test(x)));
+    const altered = {
+        'définition différente (colonnes surveillées)': (d, k) => { d[k].def = d[k].def.replace('UPDATE OF', 'UPDATE OF id,'); },
+        'désactivé': (d, k) => { d[k].enabled = 'D'; },
+        'mode réplica': (d, k) => { d[k].enabled = 'R'; },
+        'autre fonction': (d, k) => { d[k].fn = 'z_noop'; },
+        'fonction hors schéma public': (d, k) => { d[k].fn_schema = 'extensions'; },
+        'corps modifié': (d, k) => { d[k].src_md5 = '0'.repeat(32); },
+        'SECURITY INVOKER': (d, k) => { d[k].secdef = false; },
+        'search_path non figé': (d, k) => { d[k].config = []; },
+        'autre propriétaire': (d, k) => { d[k].owner = 'supabase_admin'; },
+        'définition non relevée': (d, k) => { delete d[k]; },
+    };
+    for (const [name, mutate] of Object.entries(altered)) for (const k of P5_TRIGGERS) {
+        const pf = resumePreflight(); mutate(pf.update_trigger_defs, k);
+        const v = p45.evaluatePreflight(pf, p45.PROVEN_CATALOG, { resume: true });
+        assert.equal(v.go, false, `${name} : ${k}`);
+        assert.ok(v.stops.some((x) => x.includes(k) && /non conforme à son contrat/.test(x)), `${name} : ${k} : ${v.stops}`);
+    }
+    // Un déclencheur réellement inconnu arrête, même en reprise et même avec les trois de P5 conformes ; un nom voisin de ceux de P5 ne suffit pas.
+    for (const inconnu of ['requests.trg_inconnu', 'services.lyann_services_derive_node_trg_bis', 'lyann_taxonomy.lyann_requests_derive_node_trg']) {
+        const pf = resumePreflight(); pf.update_triggers.push(inconnu);
+        const v = p45.evaluatePreflight(pf, p45.PROVEN_CATALOG, { resume: true });
+        assert.equal(v.go, false, inconnu);
+        assert.match(v.stops.join(' '), new RegExp(`non examiné\\(s\\) : ${inconnu.replace(/\./g, '\\.')}`));
+    }
+});
+
+test('déclencheurs P5 : sur le banc, l\'identité réelle (PostgreSQL) est reconnue après P5 ; chaque altération arrête la reprise avant toute écriture ; un déclencheur inconnu aussi', async (t) => {
+    const dir = tmpDir('triggers');
+    const { report, out } = await runBench(async ({ db, rows }, o) => {
+        const e0 = await digestOf(rows);
+        await p45.orchestrate({ api: fakeApi(db), log: () => {}, backupDir: path.join(dir, 'b4'), steps: ['P4'], expectedCatalog: e0 });
+        const r5 = await p45.orchestrate({ api: fakeApi(db), log: () => {}, backupDir: path.join(dir, 'b5'), steps: ['P5'], resume: await digestOf(rows) });
+        o.p5 = r5.ok;
+        const attempt = async (label, setup, revert) => {
+            if (setup) await db.exec(setup);
+            const res = await p45.orchestrate({ api: fakeApi(db), log: () => {}, backupDir: path.join(dir, label), steps: ['S101'], onlyPreflight: true, resume: await digestOf(rows) });
+            (o.cases = o.cases || {})[label] = { ok: res.ok, step: res.stopped && res.stopped.step, reasons: res.stopped ? res.stopped.reasons.join(' ') : '', backup: fs.existsSync(path.join(dir, label)) };
+            if (revert) await db.exec(revert);
+        };
+        await attempt('conforme');
+        await attempt('desactive', 'ALTER TABLE public.requests DISABLE TRIGGER lyann_requests_derive_node_trg', 'ALTER TABLE public.requests ENABLE TRIGGER lyann_requests_derive_node_trg');
+        await attempt('invoker', 'ALTER FUNCTION public.lyann_fill_request_legacy() SECURITY INVOKER', 'ALTER FUNCTION public.lyann_fill_request_legacy() SECURITY DEFINER');
+        await attempt('search_path', 'ALTER FUNCTION public.lyann_derive_service_node() RESET search_path', "ALTER FUNCTION public.lyann_derive_service_node() SET search_path = public, pg_temp");
+        await attempt('colonnes', 'DROP TRIGGER lyann_services_derive_node_trg ON public.services; CREATE TRIGGER lyann_services_derive_node_trg BEFORE INSERT OR UPDATE OF title ON public.services FOR EACH ROW EXECUTE FUNCTION public.lyann_derive_service_node()',
+            'DROP TRIGGER lyann_services_derive_node_trg ON public.services; CREATE TRIGGER lyann_services_derive_node_trg BEFORE INSERT OR UPDATE OF title, category, taxonomy_node_code ON public.services FOR EACH ROW EXECUTE FUNCTION public.lyann_derive_service_node()');
+        await attempt('autre_fonction', 'CREATE FUNCTION public.z_noop() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$ BEGIN RETURN NEW; END $$; DROP TRIGGER lyann_requests_legacy_projection_trg ON public.requests; CREATE TRIGGER lyann_requests_legacy_projection_trg BEFORE INSERT OR UPDATE OF taxonomy_node_code ON public.requests FOR EACH ROW EXECUTE FUNCTION public.z_noop()',
+            'DROP TRIGGER lyann_requests_legacy_projection_trg ON public.requests; CREATE TRIGGER lyann_requests_legacy_projection_trg BEFORE INSERT OR UPDATE OF taxonomy_node_code ON public.requests FOR EACH ROW EXECUTE FUNCTION public.lyann_fill_request_legacy(); DROP FUNCTION public.z_noop()');
+        await attempt('inconnu', 'CREATE FUNCTION public.z_noop2() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$; CREATE TRIGGER trg_inconnu BEFORE UPDATE ON public.services FOR EACH ROW EXECUTE FUNCTION public.z_noop2()',
+            'DROP TRIGGER trg_inconnu ON public.services; DROP FUNCTION public.z_noop2()');
+        await attempt('retour_conforme');
+        // Dernier cas (non réversible ici) : corps d'une fonction réécrit, nom et définition du déclencheur inchangés.
+        await attempt('corps', "CREATE OR REPLACE FUNCTION public.lyann_derive_request_node() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$ BEGIN RETURN NEW; END $$");
+    });
+    if (report.skipped) { t.skip(report.reason); return; }
+    assert.equal(out.p5, true);
+    const c = out.cases;
+    for (const k of ['conforme', 'retour_conforme']) { assert.equal(c[k].ok, true, `${k} : ${c[k].reasons}`); }
+    for (const k of ['desactive', 'invoker', 'search_path', 'colonnes', 'autre_fonction', 'corps']) {
+        assert.equal(c[k].ok, false, k); assert.equal(c[k].step, 'pré-vol', k);
+        assert.match(c[k].reasons, /non conforme à son contrat/, k);
+        assert.equal(c[k].backup, false, `${k} : aucune sauvegarde ni écriture`);
+    }
+    assert.match(c.desactive.reasons, /désactivé/);
+    assert.match(c.invoker.reasons, /SECURITY DEFINER/);
+    assert.match(c.search_path.reasons, /search_path/);
+    assert.match(c.colonnes.reasons, /définition différente/);
+    assert.match(c.autre_fonction.reasons, /fonction attendue public\.lyann_fill_request_legacy/);
+    assert.match(c.corps.reasons, /corps de la fonction différent/);
+    assert.equal(c.inconnu.ok, false);
+    assert.match(c.inconnu.reasons, /non examiné\(s\) : services\.trg_inconnu/);
+});
+
+test('S101 : le vérificateur exige MAINTAIN absent après S101 et autorise le seul changement d\'ACL de services', () => {
+    const ctx = () => ({ stage: 'P5', preflight: goodPreflight(), catalogDiff: { changed: ['fn:lyann_sync_profile_skills(uuid,text[])'], removed: [], added: ['rel:lyann_taxonomy_node'] }, with100: false });
+    const withS101 = ctx(); withS101.with101 = true; withS101.catalogDiff.changed.push('acl:services');
+    const base = goodVerify(); base.security.maintain_on_services = ['anon', 'authenticated'];
+    assert.equal(p45.evaluateVerify(base, withS101).go, false, 'MAINTAIN encore présent après S101');
+    const ok = goodVerify(); ok.security.maintain_on_services = [];
+    assert.equal(p45.evaluateVerify(ok, withS101).go, true);
+    // Sans S101, un changement d'ACL de services reste une anomalie ; MAINTAIN présent est seulement noté.
+    const noS101 = ctx(); noS101.catalogDiff.changed.push('acl:services');
+    assert.equal(p45.evaluateVerify(ok, noS101).go, false);
+    const noted = p45.evaluateVerify(base, ctx());
+    assert.ok(noted.notes.some((n) => /MAINTAIN de services inchangé/.test(n)));
 });

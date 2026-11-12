@@ -6,7 +6,7 @@
  * LYANN_P45_TOKEN_FILE ; le jeton de P3 est refusé s'il figure dans la liste des jetons révoqués). Il refuse tout chemin contenant l'identifiant Production.
  * Sans --execute il ne se connecte à rien :
  *   node scripts/taxonomy-v2/p45-staging.js --plan                       déroulé, effets attendus, conditions d'arrêt
- *   node scripts/taxonomy-v2/p45-staging.js --print P4|P5|PREFLIGHT|VERIFY|S10|S100   SQL exact de l'étape (aucun accès réseau)
+ *   node scripts/taxonomy-v2/p45-staging.js --print P4|P5|PREFLIGHT|VERIFY|S10|S100|S101   SQL exact de l'étape (aucun accès réseau)
  *   node scripts/taxonomy-v2/p45-staging.js --fingerprints               empreintes SHA-256 des scripts qui seront exécutés
  *
  * Séquence (chaque étape s'arrête au premier écart ; AUCUNE étape suivante n'est lancée après un écart) :
@@ -17,7 +17,7 @@
  *   4. P5  = 05 (rétro-remplissage en contexte « service » explicite, décision X6) → 06 → 08 en UNE transaction, contrôles V01-V23, aucune ligne de
  *      modération ajoutée, aucune colonne historique modifiée, COMMIT seulement si tout est conforme ;
  *   5. vérification P5 depuis une NOUVELLE connexion ;
- *   6. S10 (précision des anciennes compétences par le membre) puis S100 (privilèges de services) : deux transactions séparées, facultatives (--steps) ;
+ *   6. S10 (précision des anciennes compétences par le membre) puis S100 et S101 (privilèges de services) : transactions séparées, facultatives (--steps) ;
  *   7. vérification finale complète (V01-V23, catalogue, sécurité, modération, empreinte hors schéma public).
  * La restauration (09, puis rétablissement des lignes depuis la sauvegarde si nécessaire) est générée par --restore-plan, jamais lancée automatiquement.
  */
@@ -38,7 +38,7 @@ const PRODUCTION_REF = 'gzispjfoywklpqatjyop';
 const AUTHORIZATION_PHRASE = `I-AUTHORIZE-P4-P5-ON-${STAGING_REF}`;
 /** Catalogue public de Staging tel que prouvé par P3 (2e passage) : tout écart depuis = quelqu'un a modifié le schéma, la répétition ne couvre plus l'état réel. */
 const PROVEN_CATALOG = { digest: 'fc36d9446b02ef7fad0dc706337b26b4', objects: 2381 };
-const STEPS = ['P4', 'P5', 'S10', 'S100'];
+const STEPS = ['P4', 'P5', 'S10', 'S100', 'S101'];
 const TABLES = ['requests', 'services', 'lyann_taxonomy'];
 const NEW_COLUMNS = { requests: ['taxonomy_node_code', 'taxonomy_node_source'], services: ['taxonomy_node_code', 'taxonomy_node_source'], lyann_taxonomy: ['node_code'] };
 const P4_CHECKS = ['V01', 'V02', 'V03', 'V04', 'V05', 'V06', 'V12'];
@@ -62,6 +62,29 @@ const HEADER_SETTINGS = [
 const countOfQualified = (qualified) => `CASE WHEN to_regclass('${qualified}') IS NULL THEN NULL ELSE (xpath('/row/c/text()', query_to_xml('select count(*) as c from ${qualified}', false, true, '')))[1]::text::bigint END`;
 const countOf = (table) => `CASE WHEN to_regclass('public.${table}') IS NULL THEN NULL ELSE (xpath('/row/c/text()', query_to_xml('select count(*) as c from public.${table}', false, true, '')))[1]::text::bigint END`;
 
+/**
+ * Contrat des déclencheurs UPDATE introduits par P5 (06 et 08), calculé depuis les BROUILLONS versionnés (jamais depuis la base) :
+ * { 'table.déclencheur' : { def, fn, srcMd5 } }. Un déclencheur de ce nom n'est reconnu après P5 que si sa définition, sa fonction (corps, SECURITY DEFINER,
+ * search_path figé, propriétaire) et son état correspondent exactement à ce contrat ; sinon il reste « non examiné » et le pré-vol s'arrête.
+ */
+const normalizeTriggerDef = (t) => String(t).replace(/\bpublic\./g, '').replace(/\s+/g, ' ').replace(/\s*;\s*$/, '').trim();
+function p5TriggerContracts() {
+    const out = {};
+    for (const key of ['06', '08']) {
+        const raw = loadDrafts()[key];   // corps de fonction TELS QUE stockés par PostgreSQL (commentaires internes compris) : l'empreinte doit correspondre à pg_proc.prosrc
+        const sql = raw.replace(/^\s*--.*$/gm, '');
+        const bodies = {};
+        for (const m of raw.matchAll(/CREATE (?:OR REPLACE )?FUNCTION public\.(\w+)\([^)]*\)[\s\S]*?AS (\$[a-z0-9_]*\$)([\s\S]*?)\2/g)) bodies[m[1]] = sha256md5(m[3]);
+        for (const m of sql.matchAll(/CREATE TRIGGER (\w+)\s+((?:BEFORE|AFTER)[^;]*?)\s+ON public\.(\w+)\s+FOR EACH ROW EXECUTE FUNCTION public\.(\w+)\(\)\s*;/g)) {
+            const [, name, when, table, fn] = m;
+            if (!bodies[fn]) throw new Error(`contrat de déclencheur : fonction ${fn} introuvable dans le brouillon ${key}`);
+            out[`${table}.${name}`] = { def: normalizeTriggerDef(`CREATE TRIGGER ${name} ${when} ON public.${table} FOR EACH ROW EXECUTE FUNCTION public.${fn}()`), fn, srcMd5: bodies[fn] };
+        }
+    }
+    return out;
+}
+const sha256md5 = (text) => crypto.createHash('md5').update(text).digest('hex');
+
 /** Une seule instruction SELECT en lecture seule : état de la base avant toute écriture. */
 function buildPreflightSql() {
     return `SELECT jsonb_build_object(
@@ -74,6 +97,10 @@ function buildPreflightSql() {
      'moderation_queue', ${countOf('content_moderation_queue')}, 'moderation_jobs', ${countOf('moderation_jobs')}),
  'prohibited_not_cancelled', (SELECT count(*) FROM public.requests r WHERE to_jsonb(r) ->> 'safety_status' = 'PROHIBITED' AND to_jsonb(r) ->> 'status' IS DISTINCT FROM 'CANCELLED'),
  'update_triggers', (SELECT coalesce(jsonb_agg(c.relname || '.' || t.tgname ORDER BY c.relname, t.tgname), '[]'::jsonb) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname IN ('requests', 'services', 'lyann_taxonomy') AND NOT t.tgisinternal AND (t.tgtype & 16) <> 0),
+ 'update_trigger_defs', (SELECT coalesce(jsonb_object_agg(c.relname || '.' || t.tgname, jsonb_build_object('def', pg_get_triggerdef(t.oid), 'enabled', t.tgenabled::text, 'fn', p.proname, 'fn_schema', p.pronamespace::regnamespace::text,
+     'secdef', p.prosecdef, 'config', coalesce(p.proconfig, '{}'), 'owner', pg_get_userbyid(p.proowner), 'src_md5', md5(p.prosrc), 'internal', t.tgisinternal)), '{}'::jsonb)
+     FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_proc p ON p.oid = t.tgfoid
+     WHERE n.nspname = 'public' AND c.relname IN ('requests', 'services', 'lyann_taxonomy') AND NOT t.tgisinternal AND (t.tgtype & 16) <> 0),
  'sessions', jsonb_build_object(
      'idle_in_transaction', (SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND state LIKE 'idle in transaction%'),
      'prepared', (SELECT count(*) FROM pg_prepared_xacts),
@@ -81,6 +108,20 @@ function buildPreflightSql() {
      'locks_on_targets', (SELECT count(*) FROM pg_locks l WHERE l.locktype = 'relation' AND l.pid <> pg_backend_pid() AND l.relation IN ('public.requests'::regclass, 'public.services'::regclass, 'public.lyann_taxonomy'::regclass) AND l.mode IN ('ShareLock', 'ShareRowExclusiveLock', 'ExclusiveLock', 'AccessExclusiveLock'))),
  'catalog', (SELECT jsonb_build_object('digest', md5(string_agg(k || '=' || v, E'\\n' ORDER BY k)), 'objects', count(*)) FROM (${p3.CATALOG_SQL}) c)
 ) AS preflight`;
+}
+
+/** Compare un déclencheur relevé en base à son contrat (brouillon) : liste d'écarts (vide = identité prouvée). */
+function triggerContractViolations(contract, found) {
+    if (!found) return ['définition non relevée par le pré-vol'];
+    const why = [];
+    if (normalizeTriggerDef(found.def) !== contract.def) why.push('définition différente');
+    if (found.enabled !== 'O') why.push('désactivé ou en mode réplica');
+    if (found.fn !== contract.fn || found.fn_schema !== 'public') why.push(`fonction attendue public.${contract.fn}`);
+    if (found.src_md5 !== contract.srcMd5) why.push('corps de la fonction différent du brouillon versionné');
+    if (found.secdef !== true) why.push('fonction non SECURITY DEFINER');
+    if (!(found.config || []).some((c) => /^search_path=/.test(c))) why.push('search_path non figé');
+    if (found.owner !== 'postgres') why.push(`propriétaire ${found.owner}`);
+    return why;
 }
 
 /** Évalue un pré-vol : { go, stops[] }. `expected` : { digest, objects } (défaut : catalogue prouvé par P3). `options.resume` : reprise après P4 (les objets v2 DOIVENT alors exister). */
@@ -97,7 +138,15 @@ function evaluatePreflight(pf, expected, options) {
     if (pf.counts && Number(pf.counts.requests) > 20000) stops.push('requests dépasse 20 000 lignes : ce n\'est pas la volumétrie validée par P3');
     if (pf.counts && (pf.counts.moderation_queue === null || pf.counts.moderation_jobs === null)) stops.push('tables de modération introuvables : le contrôle « aucune modération ajoutée » serait impossible');
     if (Number(pf.prohibited_not_cancelled) > 0) stops.push(`${pf.prohibited_not_cancelled} demande(s) PROHIBITED non annulée(s) : un UPDATE de rétro-remplissage forcerait status = CANCELLED`);
-    const unknown = (pf.update_triggers || []).filter((x) => !p3.REVIEWED_UPDATE_TRIGGERS.includes(x));
+    const unknown = [];
+    const contracts = p5TriggerContracts();
+    for (const x of (pf.update_triggers || [])) {
+        if (p3.REVIEWED_UPDATE_TRIGGERS.includes(x)) continue;
+        // Un déclencheur introduit par P5 n'est reconnu qu'en reprise (P5 déjà appliquée) ET si son identité est prouvée ; jamais sur son seul nom.
+        if (!resume || !contracts[x]) { unknown.push(x); continue; }
+        const why = triggerContractViolations(contracts[x], (pf.update_trigger_defs || {})[x]);
+        if (why.length) stops.push(`déclencheur P5 « ${x} » non conforme à son contrat : ${why.join(', ')}`);
+    }
     if (unknown.length) stops.push(`déclencheur(s) UPDATE non examiné(s) : ${unknown.join(', ')}`);
     const s = pf.sessions || {};
     if (s.idle_in_transaction > 0) stops.push(`${s.idle_in_transaction} session(s) « idle in transaction »`);
@@ -315,6 +364,7 @@ END;`) + ';',
 
 const buildS10 = () => { const sql = read(POST, '10_resolve_legacy_skill.sql'); return { sql, bytes: Buffer.byteLength(sql), sha256: sha256(sql) }; };
 const buildS100 = () => { const sql = read(SECURITY, '100_services_dangerous_privileges_staging.sql'); return { sql, bytes: Buffer.byteLength(sql), sha256: sha256(sql) }; };
+const buildS101 = () => { const sql = read(SECURITY, '101_services_maintain_privilege_staging.sql'); return { sql, bytes: Buffer.byteLength(sql), sha256: sha256(sql) }; };
 
 /** Garde-fous statiques du SQL d'écriture. Renvoie la liste des anomalies (vide = conforme). */
 function lint(sql, kind) {
@@ -328,12 +378,15 @@ function lint(sql, kind) {
     if (!/COMMIT\s*;\s*$/.test(full.trim())) problems.push('COMMIT n\'est pas la dernière instruction');
     if (/\bROLLBACK\b/i.test(code)) problems.push('ROLLBACK explicite dans le script');
     // S100 retire justement TRUNCATE : le mot y figure (REVOKE et garde de dépendances) ; il est exigé sous la forme exacte ci-dessous.
-    const forbidden = kind === 'S100' ? /\b(ALTER\s+SYSTEM|CREATE\s+ROLE|ALTER\s+ROLE|DROP\s+ROLE|pg_terminate_backend|pg_cancel_backend|pg_sleep|session_replication_role)\b/i : /\b(TRUNCATE|ALTER\s+SYSTEM|CREATE\s+ROLE|ALTER\s+ROLE|DROP\s+ROLE|pg_terminate_backend|pg_cancel_backend|pg_sleep|session_replication_role)\b/i;
+    const forbidden = kind === 'S100' || kind === 'S101' ? /\b(ALTER\s+SYSTEM|CREATE\s+ROLE|ALTER\s+ROLE|DROP\s+ROLE|pg_terminate_backend|pg_cancel_backend|pg_sleep|session_replication_role)\b/i : /\b(TRUNCATE|ALTER\s+SYSTEM|CREATE\s+ROLE|ALTER\s+ROLE|DROP\s+ROLE|pg_terminate_backend|pg_cancel_backend|pg_sleep|session_replication_role)\b/i;
     if (forbidden.test(full.replace(/pg_temp\./g, ''))) problems.push('instruction interdite');
     if (kind === 'S100' && !/REVOKE\s+TRUNCATE,\s*TRIGGER,\s*REFERENCES\s+ON\s+TABLE\s+public\.services\s+FROM\s+PUBLIC,\s*anon,\s*authenticated\s*;/i.test(full)) problems.push('REVOKE attendu absent');
+    if (kind === 'S101' && !/REVOKE\s+MAINTAIN\s+ON\s+TABLE\s+public\.services\s+FROM\s+PUBLIC,\s*anon,\s*authenticated\s*;/i.test(full)) problems.push('REVOKE attendu absent');
+    if (kind === 'S101' && /\bGRANT\b|\bREVOKE\b(?!\s+MAINTAIN\s+ON\s+TABLE\s+public\.services\s+FROM\s+PUBLIC,\s*anon,\s*authenticated\s*;)/i.test(full.replace(/\$[a-z0-9_]*\$[\s\S]*?\$[a-z0-9_]*\$/g, ''))) problems.push('S101 ne doit contenir que le REVOKE MAINTAIN');
     if (/\bDISABLE\s+TRIGGER\b|\bDISABLE\s+ROW\s+LEVEL\s+SECURITY\b|\bFORCE\s+ROW\b/i.test(full)) problems.push('désactivation de déclencheur ou de sécurité de ligne');
     if (/\b(nextval|setval|pg_notify|NOTIFY|LISTEN|dblink|pg_net|http_post|http_get|COPY\s)\b/i.test(full)) problems.push('effet externe ou non annulable');
-    if (/CREATE\s+(UNIQUE\s+)?INDEX\s+CONCURRENTLY|VACUUM|REINDEX/i.test(full)) problems.push('opération interdite en transaction');
+    // S101 retire MAINTAIN (VACUUM, REINDEX…) : ces mots figurent dans sa garde de dépendances (expression régulière) ; seul CONCURRENTLY reste interdit.
+    if ((kind === 'S101' ? /CREATE\s+(UNIQUE\s+)?INDEX\s+CONCURRENTLY/i : /CREATE\s+(UNIQUE\s+)?INDEX\s+CONCURRENTLY|VACUUM|REINDEX/i).test(full)) problems.push('opération interdite en transaction');
     if (/\bDROP\s+(TABLE|SCHEMA|DATABASE)\b(?!\s+IF\s+EXISTS\s+(public\.)?(lyann_))/i.test(full)) problems.push('suppression de table, schéma ou base');
     if (kind === 'P4' || kind === 'P5') {
         if (/\bUPDATE\s+public\.(requests|services)\b/i.test(full) && kind === 'P4') problems.push('P4 ne doit écrire aucune ligne historique');
@@ -366,7 +419,8 @@ function buildVerifySql(onlyIds) {
    'anon_write_on_new_tables', (SELECT coalesce(jsonb_agg(t.relname || ':' || p), '[]'::jsonb) FROM (${newTables}) t, unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) p WHERE has_table_privilege('anon', t.oid, p)),
    'definer_functions_without_search_path', (SELECT coalesce(jsonb_agg(p.proname), '[]'::jsonb) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef AND p.proname = ANY (ARRAY[${V2_FUNCTIONS.map(lit).join(', ')}, 'lyann_node_related_to', 'lyann_request_legacy_matches_node', 'lyann_service_legacy_matches_node', 'lyann_legacy_value_is_placeholder']) AND NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) cfg WHERE cfg LIKE 'search_path=%')),
    'anon_executable_v2_functions', (SELECT coalesce(jsonb_agg(p.proname ORDER BY p.proname), '[]'::jsonb) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = ANY (ARRAY[${V2_FUNCTIONS.map(lit).join(', ')}, 'lyann_node_related_to', 'lyann_request_legacy_matches_node', 'lyann_service_legacy_matches_node', 'lyann_legacy_value_is_placeholder']) AND has_function_privilege('anon', p.oid, 'EXECUTE')),
-   'historical_privileges_on_services', (SELECT coalesce(jsonb_agg(r || ':' || p), '[]'::jsonb) FROM unnest(ARRAY['anon', 'authenticated']) r, unnest(ARRAY['TRUNCATE', 'TRIGGER', 'REFERENCES']) p WHERE has_table_privilege(r, 'public.services', p))),
+   'historical_privileges_on_services', (SELECT coalesce(jsonb_agg(r || ':' || p), '[]'::jsonb) FROM unnest(ARRAY['anon', 'authenticated']) r, unnest(ARRAY['TRUNCATE', 'TRIGGER', 'REFERENCES']) p WHERE has_table_privilege(r, 'public.services', p)),
+   'maintain_on_services', (SELECT CASE WHEN current_setting('server_version_num')::int < 170000 THEN '[]'::jsonb ELSE (SELECT coalesce(jsonb_agg(r), '[]'::jsonb) FROM unnest(ARRAY['anon', 'authenticated']) r WHERE has_table_privilege(r, 'public.services', 'MAINTAIN')) END)),
  'moderation', jsonb_build_object('queue', ${countOf('content_moderation_queue')}, 'jobs', ${countOf('moderation_jobs')}),
  'counts', jsonb_build_object('requests', ${countOf('requests')}, 'services', ${countOf('services')}, 'lyann_taxonomy', ${countOf('lyann_taxonomy')}),
  'coverage', jsonb_build_object('requests_with_node', (SELECT count(*) FROM public.requests r WHERE to_jsonb(r) ->> 'taxonomy_node_code' IS NOT NULL), 'services_with_node', (SELECT count(*) FROM public.services x WHERE to_jsonb(x) ->> 'taxonomy_node_code' IS NOT NULL)),
@@ -413,6 +467,9 @@ function evaluateVerify(report, ctx) {
     const s100 = (sec.historical_privileges_on_services || []);
     if (c.with100 && s100.length) stops.push(`privilèges structurels encore présents sur services : ${s100.join(', ')}`);
     if (!c.with100 && s100.length) notes.push(`privilèges structurels de services inchangés (correctif 100 non appliqué) : ${s100.length}`);
+    const m101 = (sec.maintain_on_services || []);
+    if (c.with101 && m101.length) stops.push(`MAINTAIN encore présent sur services : ${m101.join(', ')}`);
+    if (!c.with101 && m101.length) notes.push(`MAINTAIN de services inchangé (correctif 101 non appliqué) : ${m101.join(', ')}`);
     if (c.preflight && report && report.moderation) {
         const pre = c.preflight.counts || {};
         if (Number(report.moderation.queue) !== Number(pre.moderation_queue) || Number(report.moderation.jobs) !== Number(pre.moderation_jobs)) {
@@ -425,7 +482,7 @@ function evaluateVerify(report, ctx) {
     }
     if (c.catalogDiff) {
         const allowedChanged = new Set(p3.EXPECTED_CHANGED);
-        if (c.with100) allowedChanged.add('acl:services');
+        if (c.with100 || c.with101) allowedChanged.add('acl:services');
         if (stage === 'P4') { allowedChanged.delete('fn:lyann_sync_profile_skills(uuid,text[])'); }
         const bad = c.catalogDiff.changed.filter((k) => !allowedChanged.has(k)).concat(c.catalogDiff.removed);
         if (bad.length) stops.push(`objets préexistants modifiés ou retirés : ${bad.slice(0, 8).join(', ')}`);
@@ -520,6 +577,7 @@ function buildRestoreSql(backup, options) {
         s.push('-- R1.b  09 — retour arrière de la taxonomie v2', stripTransaction(files['09']));
     }
     if (opts.revert100) s.push('-- R1.c  retour arrière du correctif 100 (rend à anon/authenticated les trois privilèges retirés)', stripTransaction(read(SECURITY, '100_services_dangerous_privileges_rollback.sql')));
+    if (opts.revert101) s.push('-- R1.d  retour arrière du correctif 101 (rend MAINTAIN à anon/authenticated)', stripTransaction(read(SECURITY, '101_services_maintain_privilege_rollback.sql')));
     s.push("SELECT set_config('request.jwt.claim.role', 'service_role', true);");
     for (const table of TABLES) {
         const rows = backup.rows[table];
@@ -612,7 +670,7 @@ async function orchestrate({ api, log, backupDir, steps, now, onlyPreflight, exp
     if (onlyPreflight) { result.ok = true; return result; }
 
     // 1. Sauvegarde
-    const built = { P4: buildP4(expected), P5: buildP5(null), S10: buildS10(), S100: buildS100() };
+    const built = { P4: buildP4(expected), P5: buildP5(null), S10: buildS10(), S100: buildS100(), S101: buildS101() };
     for (const [name, b] of Object.entries(built)) { const problems = lint(b.sql, name); if (problems.length) return stop('lint', [`${name} : ${problems.join(' ; ')}`]); }
     const q = async (sql) => { const r = await api.sql(sql); if (!r.ok) throw new Error(`sauvegarde : ${r.message}`); return r.rows; };
     const backup = await writeBackup({ query: q, dir: backupDir, preflight: pf, now, scripts: Object.fromEntries(Object.entries(built).map(([k, v]) => [k, v.sha256])) });
@@ -622,7 +680,7 @@ async function orchestrate({ api, log, backupDir, steps, now, onlyPreflight, exp
     result.steps.push({ step: 'sauvegarde', ok: true, dir: backup.dir });
     const catalogBefore = JSON.parse(fs.readFileSync(path.join(backupDir, 'catalog.json'), 'utf8'));
 
-    let with100 = false;
+    let with100 = false; let with101 = false;
     for (const step of wanted) {
         if (step === 'P5') {
             // P5 vérifie en tête de transaction que le catalogue est EXACTEMENT celui qu'on vient de mesurer (rien n'a bougé entre la mesure et l'exécution).
@@ -644,10 +702,11 @@ async function orchestrate({ api, log, backupDir, steps, now, onlyPreflight, exp
             return stop(step, [`échec SQL : ${res.message}`, step === 'P4' || step === 'P5' ? (cleanAbort ? 'catalogue identique à l\'état de départ : annulation propre, rien n\'a été appliqué' : 'ÉTAT À EXAMINER : le catalogue diffère de l\'état de départ, ne rien relancer, voir la procédure de restauration') : 'état à examiner avant toute action']);
         }
         if (step === 'S100') with100 = true;
+        if (step === 'S101') with101 = true;
         const verify = unwrap(await api.sql(buildVerifySql(step === 'P4' ? P4_CHECKS : null)), 'verify');
         const fp1 = unwrap(await api.sql(buildFingerprintSql()), 'fingerprint');
         const catalogAfter = await q(CATALOG_EXPORT_SQL);
-        const verdict = evaluateVerify(verify, { stage: step === 'P4' ? 'P4' : 'P5', preflight: pf, catalogDiff: diffCatalog(catalogBefore, catalogAfter), fingerprintBefore: fp0, fingerprintAfter: fp1, with100 });
+        const verdict = evaluateVerify(verify, { stage: step === 'P4' ? 'P4' : 'P5', preflight: pf, catalogDiff: diffCatalog(catalogBefore, catalogAfter), fingerprintBefore: fp0, fingerprintAfter: fp1, with100, with101 });
         result.steps.push({ step, ok: verdict.go, ms: Date.now() - t0, notes: verdict.notes, stops: verdict.stops });
         const pfAfter = unwrap(await api.sql(buildPreflightSql()), 'preflight');
         result.report[step] = { verify, notes: verdict.notes, catalog: pfAfter && pfAfter.catalog, ms: Date.now() - t0 };
@@ -670,6 +729,8 @@ function fingerprints() {
     out['post-migration-draft/10_resolve_legacy_skill_rollback.sql'] = sha256(read(POST, '10_resolve_legacy_skill_rollback.sql'));
     out['security-draft/100_services_dangerous_privileges_staging.sql'] = sha256(read(SECURITY, '100_services_dangerous_privileges_staging.sql'));
     out['security-draft/100_services_dangerous_privileges_rollback.sql'] = sha256(read(SECURITY, '100_services_dangerous_privileges_rollback.sql'));
+    out['security-draft/101_services_maintain_privilege_staging.sql'] = sha256(read(SECURITY, '101_services_maintain_privilege_staging.sql'));
+    out['security-draft/101_services_maintain_privilege_rollback.sql'] = sha256(read(SECURITY, '101_services_maintain_privilege_rollback.sql'));
     const p4 = buildP4(); const p5 = buildP5();
     out['généré : P4 (01→04 + assertions)'] = p4.sha256;
     out['généré : P5 (05 service → 06 → 08 + assertions)'] = p5.sha256;
@@ -680,15 +741,15 @@ const PLAN = `
 P4/P5 — déroulé exécutable (NON AUTORISÉ à ce jour)
   Pré-requis : autorisation écrite spécifique ; jeton Supabase NEUF (LYANN_P45_TOKEN_FILE) — celui de P3 doit être révoqué ; projet ${STAGING_REF} ; sauvegarde dans un dossier local 0700.
   0  Identité du projet (API) puis pré-vol en lecture seule : catalogue = celui prouvé par P3 (${PROVEN_CATALOG.digest}, ${PROVEN_CATALOG.objects} objets), aucun objet v2,
-     aucune session ouverte, aucun verrou, aucune demande PROHIBITED non annulée, six déclencheurs UPDATE examinés, tables de modération présentes.
+     aucune session ouverte, aucun verrou, aucune demande PROHIBITED non annulée, six déclencheurs UPDATE examinés (en reprise, + les trois de P5 reconnus sur preuve d'identité : définition, fonction, corps), tables de modération présentes.
   1  Sauvegarde logique locale (requests, services, lyann_taxonomy, catalogue, fonctions) + manifeste SHA-256, contrôle du nombre de lignes.
   2  P4 = 01 → 04, une transaction, verrou exclusif préalable, V01-V06 et V12 + « aucun objet préexistant modifié » + « aucune colonne historique modifiée » + « aucune modération ajoutée » dans la transaction.
   3  Vérification P4 depuis une nouvelle connexion (V, sécurité des objets v2, modération, sessions, catalogue, empreinte hors schéma public).
   4  P5 = 05 (contexte « service » explicite) → 06 → 08, une transaction, V01-V23 et mêmes assertions ; seul objet préexistant modifié : lyann_sync_profile_skills(uuid,text[]).
-  5  Vérification P5 (idem).   6  S10 (précision des compétences par le membre) puis S100 (privilèges de services), transactions séparées.   7  Vérification finale.
+  5  Vérification P5 (idem).   6  S10 (précision des compétences par le membre), S100 (TRUNCATE/TRIGGER/REFERENCES de services) puis S101 (MAINTAIN de services), transactions séparées.   7  Vérification finale.
   Arrêt immédiat au premier écart ; aucune étape suivante ; aucune relance automatique. Restauration : --restore-plan <dossier de sauvegarde> (jamais lancée automatiquement).
   Détail : docs/taxonomy/14-p4-p5-staging-runbook.md
-  Commande   : LYANN_P45_AUTHORIZED=${AUTHORIZATION_PHRASE} LYANN_P45_TOKEN_FILE=<fichier> node scripts/taxonomy-v2/p45-staging.js --execute [--steps P4,P5,S10,S100]
+  Commande   : LYANN_P45_AUTHORIZED=${AUTHORIZATION_PHRASE} LYANN_P45_TOKEN_FILE=<fichier> node scripts/taxonomy-v2/p45-staging.js --execute [--steps P4,P5,S10,S100,S101]
 `;
 
 function readToken(file) {
@@ -727,9 +788,9 @@ async function execute(args) {
 }
 
 module.exports = {
-    buildPreflightSql, buildFingerprintSql, buildP4, buildP5, buildS10, buildS100, buildVerifySql, buildRestoreSql, evaluatePreflight, evaluateVerify, diffCatalog,
+    buildPreflightSql, buildFingerprintSql, buildP4, buildP5, buildS10, buildS100, buildS101, buildVerifySql, buildRestoreSql, evaluatePreflight, evaluateVerify, diffCatalog,
     lint, writeBackup, readBackup, exportTable, orchestrate, isRevokedToken, assertStagingPath, makeApi, fingerprints, readToken,
-    AUTHORIZATION_PHRASE, PROVEN_CATALOG, STEPS, TABLES, NEW_COLUMNS, P4_CHECKS, PLAN, STAGING_REF, PRODUCTION_REF, CATALOG_EXPORT_SQL,
+    AUTHORIZATION_PHRASE, PROVEN_CATALOG, STEPS, p5TriggerContracts, triggerContractViolations, TABLES, NEW_COLUMNS, P4_CHECKS, PLAN, STAGING_REF, PRODUCTION_REF, CATALOG_EXPORT_SQL,
 };
 
 if (require.main === module) {
@@ -739,12 +800,12 @@ if (require.main === module) {
     else if (args.includes('--fingerprints')) console.log(JSON.stringify(fingerprints(), null, 2));
     else if (args.includes('--print')) {
         const which = String(args[args.indexOf('--print') + 1] || '').toUpperCase();
-        const table = { P4: buildP4, P5: buildP5, S10: buildS10, S100: buildS100, PREFLIGHT: () => ({ sql: buildPreflightSql() }), VERIFY: () => ({ sql: buildVerifySql() }) };
-        if (!table[which]) { console.error('Usage : --print P4|P5|S10|S100|PREFLIGHT|VERIFY'); process.exit(2); }
+        const table = { P4: buildP4, P5: buildP5, S10: buildS10, S100: buildS100, S101: buildS101, PREFLIGHT: () => ({ sql: buildPreflightSql() }), VERIFY: () => ({ sql: buildVerifySql() }) };
+        if (!table[which]) { console.error('Usage : --print P4|P5|S10|S100|S101|PREFLIGHT|VERIFY'); process.exit(2); }
         console.log(table[which]().sql);
     } else if (args.includes('--restore-plan')) {
         const dir = args[args.indexOf('--restore-plan') + 1];
         if (!dir) { console.error('Usage : --restore-plan <dossier de sauvegarde>'); process.exit(2); }
-        process.stdout.write(`${buildRestoreSql(readBackup(dir), { dataOnly: args.includes('--data-only'), revert100: args.includes('--revert-100') })}\n`);
+        process.stdout.write(`${buildRestoreSql(readBackup(dir), { dataOnly: args.includes('--data-only'), revert100: args.includes('--revert-100'), revert101: args.includes('--revert-101') })}\n`);
     } else console.log(PLAN);
 }

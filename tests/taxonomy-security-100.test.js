@@ -172,5 +172,5 @@ test('100 : fichiers prêts mais jamais exécutables par un script de l\'applica
     };
     walk(root);
     const allowed = new Set(['scripts/taxonomy-v2/validate-quotas-pglite.js', 'tests/taxonomy-quota.test.js', 'tests/taxonomy-security-100.test.js']);
-    assert.deepEqual(refs.filter((r) => !allowed.has(r) && !/^tests\/taxonomy-p45/.test(r) && !/^scripts\/taxonomy-v2\/p45-/.test(r)), []);
+    assert.deepEqual(refs.filter((r) => !allowed.has(r) && !/^tests\/taxonomy-(p45|security-101)/.test(r) && !/^scripts\/taxonomy-v2\/p45-/.test(r)), []);
 });
