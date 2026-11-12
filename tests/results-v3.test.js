@@ -24,10 +24,10 @@ for (const re of forbidden) {
 }
 assert.doesNotMatch(html, /editorial-highlights/, 'the editorial module is Découvrir-only');
 
-// Header (V3.1C): photo ratio, compact (capped at 160 px), official copy, WebP assets that exist.
-const headerH = Number((css.match(/\.results-v3-header \{[^}]*?max-height:\s*(\d+)px/) || [])[1]);
-assert.ok(headerH >= 140 && headerH <= 165, `header max height ${headerH}px must be 140-165px`);
-assert.match(css, /\.results-v3-header \{[^}]*aspect-ratio: 758 \/ 331/);
+// Header (3.2C): compact photo header (capped at 160 px), left-aligned title on the photo, official copy, WebP assets that exist.
+const headerH = Number((css.match(/\.results-v3-header \{[^}]*?\bheight:\s*(\d+)px/) || [])[1]);
+assert.ok(headerH >= 140 && headerH <= 165, `header height ${headerH}px must be 140-165px`);
+assert.match(css, /\.results-v3-overlay \{[^}]*text-align: left/);
 assert.match(html, /<h1 id="explorerTitle">Lyanneurs<\/h1>/);
 assert.match(ui, /title: 'Lyanneurs', subtitle: 'Des talents et des pros près de chez vous'/);
 assert.match(ui, /title: 'Annonces', subtitle: 'Des besoins réels autour de vous'/);
@@ -40,13 +40,13 @@ for (const f of ['header-lyanneurs.webp', 'header-annonces.webp']) {
 assert.match(ui, /Rechercher un talent, un service…/);
 assert.match(ui, /Rechercher une annonce, un besoin…/);
 
-// Rail: at most six entries, Plus opens the real categories, sober SVG icons.
-// Tous + at most 4 families + Plus = 6 visible entries
-assert.match(ui, /let domains = ranked\.slice\(0, 4\)/);
-assert.match(ui, /domains = \[\.\.\.domains\.slice\(0, 3\), selectedFamily\]/);
-assert.match(ui, /data-action="more-categories"/);
-assert.match(html, /id="explorerCategorySheet"/);
-assert.match(ui, /<svg/);
+// Families (3.2C): the eight real V2 families as round pictograms, a job panel opens below; no old rail, no « Plus » sheet.
+assert.match(ui, /V2\(\)\.FAMILIES\.map/);
+assert.match(ui, /class="lyann-family/);
+assert.match(html, /id="explorerJobPanel"/);
+assert.doesNotMatch(html, /id="explorerCategorySheet"/);
+assert.doesNotMatch(ui, /data-action="more-categories"|ranked\.slice\(0, 4\)/);
+assert.match(ui, /<svg|iconSvg/);
 
 // Toggle: Liste / Carte, equal weight, only in Annonces; no sixth tab.
 assert.match(html, /data-view="list"[\s\S]*Liste[\s\S]*data-view="map"[\s\S]*Carte/);
@@ -60,7 +60,7 @@ assert.match(ui, /document\.body\.classList\.toggle\('explorer-annonces-map-view
 
 // Every rule of the page-level stylesheet is scoped.
 const selectors = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{[^{}]*\}/g, '{}').split('{}').map((s) => s.trim()).filter((s) => s && !s.startsWith('@'));
-const unscoped = selectors.flatMap((s) => s.split(',').map((x) => x.trim())).filter((x) => x && !/main#explorer|^(:root|body\.results-page|body\[data-explorer-mode="annonces"\] \.mobile-bottom-nav \.nav-tab\.active$|\.explorer-category-sheet|\})/.test(x) && !/^\d+%$|^(from|to)$/.test(x));
+const unscoped = selectors.flatMap((s) => s.split(',').map((x) => x.trim())).filter((x) => x && !/main#explorer|^(:root|body\.results-page|body\[data-explorer-mode(="annonces")?\] \.mobile-bottom-nav \.nav-tab\.active$|\.explorer-category-sheet|\})/.test(x) && !/^\d+%$|^(from|to)$/.test(x));
 assert.deepEqual(unscoped.slice(0, 5), [], 'results-v3.css selectors must be scoped to main#explorer');
 
 // No fabricated data in the cards.

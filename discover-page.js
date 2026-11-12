@@ -1,5 +1,5 @@
 /* LYANN — Découvrir V1.
- * Assemble les annonces et les profils déjà fournis par l'explorateur.
+ * Assemble les annonces déjà fournies par l'explorateur.
  * Aucun nouveau moteur de recherche et aucune donnée inventée.
  */
 (function () {
@@ -48,19 +48,6 @@
         return readable;
     }
 
-    function talentActivity(profile) {
-        const service = (profile.services || []).find(item => item && (item.title || item.name));
-        return service ? String(service.title || service.name).trim() : '';
-    }
-
-    function talentPlace(profile) {
-        const territory = territoryName(profile.territory);
-        if (territory && typeof window.formatProfileLocation === 'function') {
-            return window.formatProfileLocation(profile.city, territory);
-        }
-        return [profile.city, territory].filter(Boolean).join(' · ');
-    }
-
     function territoryKeyFromLabel(value) {
         const resolver = window.LYANN_BOKANTAJ_QUERY?.territoryKeyFromLabel;
         return typeof resolver === 'function' ? resolver(value) : '';
@@ -73,10 +60,6 @@
             if (key && key !== 'all') return key;
         } catch (_) {}
         return '';
-    }
-
-    function profileTerritoryKey(profile) {
-        return territoryKeyFromLabel(profile?.territory) || '';
     }
 
     function requestTerritoryKey(row) {
@@ -98,12 +81,19 @@
         window.location.href = `results.html?mode=annonces&openLyann=${encodeURIComponent(row.id)}`;
     }
 
-    function openTalent(profile) {
-        if (typeof window.openPublicMemberProfile === 'function') {
-            window.openPublicMemberProfile(profile.id);
-            return;
-        }
-        window.location.href = `results.html?mode=lyanneurs&action=member&id=${encodeURIComponent(profile.id)}`;
+    // Accueil : « Bonjour Prénom » pour un membre dont le prénom est connu, sinon « Bienvenue sur LYANN ». Jamais de prénom inventé.
+    function greetingFor(profile) {
+        const raw = String(profile?.first_name || '').trim().split(/\s+/)[0];
+        if (!raw) return 'Bienvenue sur LYANN';
+        const name = typeof window !== 'undefined' && typeof window.capitalizeLyannName === 'function' ? window.capitalizeLyannName(raw) : raw.charAt(0).toUpperCase() + raw.slice(1);
+        return `Bonjour ${name}`;
+    }
+
+    function applyGreeting() {
+        const target = document.getElementById('discoverHello');
+        if (!target) return;
+        const snapshot = window.LYANN_AUTH_STATE?.getSnapshot?.();
+        target.textContent = greetingFor(snapshot?.profile || snapshot?.user || null);
     }
 
     function state(title, text, action) {
@@ -124,28 +114,6 @@
                 <span>${escapeText(placeLabel(row))}${price ? ` · ${escapeText(price)}` : ''}</span>
             </span>
             <i class="ph ph-caret-right" aria-hidden="true"></i>
-        </button>`;
-    }
-
-    function talentCard(profile) {
-        const format = window.LYANN_ANNONCE_FORMAT;
-        const name = window.formatPublicName?.(profile, null, 'Lyanneur') || profile.name || 'Lyanneur';
-        const activity = talentActivity(profile);
-        const rating = format?.ratingLabel?.(profile) || '';
-        const avatar = window.getLyannAvatarUrl?.(profile.avatar_url) || profile.avatar || '';
-        const photo = avatar
-            ? `<img src="${escapeText(avatar)}" alt="" width="52" height="52" loading="lazy">`
-            : '<span class="discover-avatar-fallback" aria-hidden="true"></span>';
-        const ratingHtml = rating
-            ? `<span class="discover-talent-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span>${escapeText(rating)}</span></span>`
-            : '';
-        return `<button type="button" class="discover-talent-mini" data-member-id="${escapeText(profile.id)}">
-            <span class="discover-talent-photo">${photo}</span>
-            <span class="discover-talent-body">
-                <h3>${escapeText(name)}</h3>
-                ${activity ? `<span class="discover-talent-skill">${escapeText(activity)}</span>` : ''}
-                ${ratingHtml}
-            </span>
         </button>`;
     }
 
@@ -237,11 +205,9 @@
         if (!root || root.dataset.ready === '1') return;
         root.dataset.ready = '1';
         const needs = document.getElementById('discoverNeeds');
-        const talents = document.getElementById('discoverTalents');
         const form = document.getElementById('discoverSearchForm');
         const query = document.getElementById('discoverQuery');
         let requests = [];
-        let profiles = [];
 
         form?.addEventListener('submit', event => {
             event.preventDefault();
@@ -254,6 +220,7 @@
         });
 
         document.getElementById('discoverOfferTalents')?.addEventListener('click', goOfferTalents);
+        window.addEventListener('lyann:auth-state', applyGreeting);
 
         window.addEventListener('lyann:auth-state', (event) => {
             if (!event.detail?.authenticated) return;
@@ -284,32 +251,19 @@
             if (row) openRequest(row);
         });
 
-        talents?.addEventListener('click', event => {
-            const retry = event.target.closest('[data-discover-action="retry-talents"]');
-            if (retry) { load(); return; }
-            const card = event.target.closest('[data-member-id]');
-            if (!card) return;
-            const row = profiles.find(item => item.id === card.dataset.memberId);
-            if (row) openTalent(row);
-        });
-
         async function load() {
             const repo = window.LYANN_EXPLORER_REPOSITORY;
             renderAdvice();
             if (!repo) {
                 needs.innerHTML = state('Découvrir est indisponible.', 'Rechargez la page dans un instant.', 'retry-needs');
-                talents.innerHTML = state('Les talents ne peuvent pas être affichés.', 'Rechargez la page dans un instant.', 'retry-talents');
                 needs.setAttribute('aria-busy', 'false');
-                talents.setAttribute('aria-busy', 'false');
                 return;
             }
             needs.setAttribute('aria-busy', 'true');
-            talents.setAttribute('aria-busy', 'true');
             needs.innerHTML = state('Chargement des annonces', 'Les besoins publics arrivent.');
-            talents.innerHTML = state('Chargement des talents', 'Les profils publics arrivent.');
             const territoryKey = await resolveDiscoverTerritoryKey();
             loadHighlights(territoryKey);
-            const [requestResult, talentResult] = await Promise.allSettled([repo.loadRequests(), repo.load()]);
+            const [requestResult] = await Promise.allSettled([repo.loadRequests()]);
             if (requestResult.status === 'fulfilled') {
                 const eligible = requestResult.value.filter(eligibleRequest);
                 const rankedNeeds = prioritizeTerritory(eligible, territoryKey, requestTerritoryKey);
@@ -321,27 +275,15 @@
                 requests = [];
                 needs.innerHTML = state('Les annonces n\'ont pas pu être chargées.', 'Vérifiez votre connexion, puis réessayez.', 'retry-needs');
             }
-            if (talentResult.status === 'fulfilled') {
-                const rankedProfiles = talentResult.value
-                    .filter(profile => talentActivity(profile))
-                    .sort((a, b) => (Number(b.reviews_count) || 0) - (Number(a.reviews_count) || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'fr'));
-                const rankedTalents = prioritizeTerritory(rankedProfiles, territoryKey, profileTerritoryKey);
-                profiles = rankedTalents.items.slice(0, 3);
-                talents.innerHTML = profiles.length
-                    ? profiles.map(talentCard).join('')
-                    : state('Aucun talent à afficher pour le moment.', 'Explorez l\'annuaire Lyanneurs.');
-            } else {
-                profiles = [];
-                talents.innerHTML = state('Les talents n\'ont pas pu être chargés.', 'Vérifiez votre connexion, puis réessayez.', 'retry-talents');
-            }
             needs.setAttribute('aria-busy', 'false');
-            talents.setAttribute('aria-busy', 'false');
         }
 
-        const start = () => load().catch(() => {
-            needs.innerHTML = state('Les annonces n\'ont pas pu être chargées.', 'Vérifiez votre connexion, puis réessayez.', 'retry-needs');
-            talents.innerHTML = state('Les talents n\'ont pas pu être chargés.', 'Vérifiez votre connexion, puis réessayez.', 'retry-talents');
-        });
+        const start = () => {
+            applyGreeting();
+            return load().catch(() => {
+                needs.innerHTML = state('Les annonces n\'ont pas pu être chargées.', 'Vérifiez votre connexion, puis réessayez.', 'retry-needs');
+            });
+        };
         if (window.LYANN_AUTH_STATE?.ready) window.LYANN_AUTH_STATE.ready().then(start, start);
         else start();
     }
@@ -352,6 +294,6 @@
         else init();
     }
     if (typeof module !== 'undefined' && module.exports) {
-        module.exports = { eligibleRequest, territoryName, prioritizeTerritory, profileTerritoryKey, requestTerritoryKey };
+        module.exports = { eligibleRequest, territoryName, prioritizeTerritory, requestTerritoryKey, greetingFor };
     }
 })();

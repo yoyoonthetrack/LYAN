@@ -29,42 +29,37 @@ test('Honey tokens are the validated soft values, never saturated yellows', () =
     }
 });
 
-test('Both headers share one structure: rounded photo, no shadow, no filter, no veil, text on the right', () => {
+test('Both headers share one structure: rounded universe-colour block, photo fading into it, left title, no dark badge', () => {
     const header = rule(css, 'main#explorer .results-v3-header');
-    assert.match(header, /border-radius: 20px;/);
+    assert.match(header, /border-radius: 24px;/);
     assert.match(header, /box-shadow: none;/);
     assert.match(header, /filter: none;/);
-    assert.match(header, /aspect-ratio: 758 \/ 331/);
-    assert.match(header, /max-height: 160px/);
-    assert.doesNotMatch(header, /gradient|background-image|vignette|margin: 0 calc/);
+    assert.match(header, /background: var\(--hdr-bg\)/);
+    const height = Number((header.match(/\bheight: (\d+)px/) || [])[1]);
+    assert.ok(height >= 140 && height <= 165, `header height ${height}px`);
+    // One colour per universe: green primary for Lyanneurs, honey for Annonces.
+    assert.match(css, /--hdr-bg: var\(--lyann-green-primary\); --hdr-ink: #fff;/);
+    assert.match(css, /main#explorer\[data-mode="annonces"\] \.results-v3-header \{ --hdr-bg: var\(--lyann-honey\); --hdr-ink: var\(--lyann-green-deep\)/);
     const photo = rule(css, 'main#explorer .results-v3-photo');
     assert.match(photo, /filter: none;/);
     assert.match(photo, /box-shadow: none;/);
-    assert.match(photo, /object-position: center 0%;/);
-    // No full-size veil: the overlay is a small block pinned bottom-right, with a flat translucent green (no gradient).
+    assert.match(photo, /mask-image: linear-gradient\(90deg, transparent/);
+    // The title sits directly on the colour: left aligned, no dark rectangle, no text shadow.
     const overlay = rule(css, 'main#explorer .results-v3-overlay');
-    assert.doesNotMatch(overlay, /gradient|inset: 0/);
-    assert.match(overlay, /width: fit-content/);
-    assert.match(overlay, /text-align: right/);
-    assert.match(overlay, /right: 8px/);
-    assert.match(rule(css, 'main#explorer .results-v3-overlay h1'), /text-align: right/);
-    assert.match(rule(css, 'main#explorer .results-v3-overlay p'), /text-align: right/);
+    assert.doesNotMatch(overlay, /rgba\(22, 61, 45|inset: 0|width: fit-content/);
+    assert.match(overlay, /text-align: left/);
+    assert.match(overlay, /background: none/);
+    assert.match(rule(css, 'main#explorer .results-v3-overlay h1'), /text-align: left/);
+    assert.match(rule(css, 'main#explorer .results-v3-overlay p'), /text-align: left/);
     assert.doesNotMatch(css, /text-shadow: 0/);
-    // The same header rules apply to both modes (the only per-mode rule is the Annonces vertical centring and accent).
-    assert.equal((css.match(/\.results-v3-header \{/g) || []).length, 3, 'base, map-view hide, desktop width');
     assert.ok(html.includes('class="results-v3-photo is-lyanneurs"') && html.includes('class="results-v3-photo is-annonces"'));
     assert.match(html, /is-lyanneurs" src="assets\/universe-v3\/header-lyanneurs\.webp[^"]*" alt="" width="758" height="331"/);
     assert.match(html, /is-annonces" src="assets\/universe-v3\/header-annonces\.webp[^"]*" alt="" width="758" height="331"/);
 });
 
-test('Title block keeps white text readable on the local chip', () => {
-    const chip = (rule(css, 'main#explorer .results-v3-overlay').match(/background: rgba\(22, 61, 45, ([0-9.]+)\)/) || [])[1];
-    assert.ok(Number(chip) >= 0.6, 'chip alpha');
-    // Worst case: a pure white photo pixel behind the chip.
-    const a = Number(chip);
-    const mixed = [22, 61, 45].map((v) => Math.round(v * a + 255 * (1 - a)));
-    const hex = `#${mixed.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-    assert.ok(ratio('#FFFFFF', hex) >= 3, `white title over the lightest pixel: ${ratio('#FFFFFF', hex).toFixed(2)}:1 (large text, 3:1)`);
+test('Title contrast on the universe colour is WCAG AA (large text and the 0.82 rem subtitle)', () => {
+    assert.ok(ratio('#FFFFFF', '#246B49') >= 4.5, `white on green primary: ${ratio('#FFFFFF', '#246B49').toFixed(2)}:1`);
+    assert.ok(ratio('#163D2D', '#EBC568') >= 7, `deep green on honey: ${ratio('#163D2D', '#EBC568').toFixed(2)}:1`);
 });
 
 test('Annonces: honey accents only, scoped to the annonces mode', () => {
@@ -73,13 +68,14 @@ test('Annonces: honey accents only, scoped to the annonces mode', () => {
         /main#explorer\[data-mode="annonces"\] \.explorer-annonce \.explorer-fact-price \.explorer-fact-text \{[^}]*var\(--lyann-honey-pastel\)/,
         /main#explorer\[data-mode="annonces"\] \.explorer-annonce \.explorer-fact-icon \{ color: var\(--lyann-honey-icon\); \}/,
         /main#explorer\[data-mode="annonces"\] \.explorer-search \.explorer-search-icon \{ color: var\(--lyann-honey-icon\); \}/,
-        /main#explorer\[data-mode="annonces"\] \.lyann-pill\.is-active \{ box-shadow: inset 0 0 0 2px var\(--lyann-honey\); \}/,
-        /\.results-v3-overlay h1::after \{[^}]*background: var\(--lyann-yellow\)/
+        /main#explorer\[data-mode="annonces"\] \{\s*--fam-disc: var\(--lyann-honey\); --fam-ink: var\(--lyann-green-deep\);/
     ]) assert.match(css, re);
     assert.doesNotMatch(css, /\[data-mode="lyanneurs"\][^{]*\{[^}]*honey/);
-    // The common components stay green: search border, Liste / Carte, filter rail.
+    // The common components stay green: Liste / Carte, Lyanneurs family discs and active job chips.
     assert.match(css, /main#explorer \.explorer-view-toggle button\.is-active \{ background: var\(--r3-green\)/);
-    assert.match(css, /main#explorer \.lyann-pill\.is-active \{ background: var\(--r3-green\)/);
+    assert.match(css, /main#explorer \{\s*--fam-disc: var\(--lyann-green-primary\); --fam-ink: #fff;/);
+    // No stray yellow dot on the filter button or in the navigation.
+    assert.match(css, /\.explorer-filters-icon\.has-active-filters::after \{ content: none; display: none; \}/);
 });
 
 test('"Voir l\'annonce" is soft honey with deep green text, no gloss', () => {
@@ -92,7 +88,8 @@ test('"Voir l\'annonce" is soft honey with deep green text, no gloss', () => {
 });
 
 test('Annonces tab in the native bar: very light honey, scoped to the annonces mode', () => {
-    assert.match(css, /body\[data-explorer-mode="annonces"\] \.mobile-bottom-nav \.nav-tab\.active \{ background: var\(--lyann-honey-pastel\); border-radius: 18px; color: var\(--lyann-text-primary\); \}/);
+    assert.match(css, /body\[data-explorer-mode\] \.mobile-bottom-nav \.nav-tab\.active \{[^}]*border-radius: 18px;[^}]*background: var\(--lyann-green-pastel\);/);
+    assert.match(css, /body\[data-explorer-mode="annonces"\] \.mobile-bottom-nav \.nav-tab\.active \{ background: var\(--lyann-honey-pastel\); \}/);
     assert.ok(!/mobile-bottom-nav/.test(fs.readFileSync('discover-v3.css', 'utf8')), 'Découvrir untouched');
 });
 

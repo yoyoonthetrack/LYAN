@@ -52,10 +52,10 @@ test('Map summary is one short line', () => {
 
 test('Headers, cards and back-office layout keep the validated direction', () => {
     const css = fs.readFileSync('results-v3.css', 'utf8');
-    assert.match(css, /\.results-v3-photo \{[^}]*object-position: center 0%;/);
-    assert.match(css, /\[data-mode="lyanneurs"\] \.results-v3-photo\.is-lyanneurs \{ display: block; \}/);
+    assert.match(css, /\[data-mode="lyanneurs"\] \.results-v3-photo\.is-lyanneurs \{ display: block; object-position: 100% 0%; \}/, 'faces stay whole');
+    assert.match(css, /\[data-mode="annonces"\] \.results-v3-photo\.is-annonces \{ display: block; object-position: 0% 0%; \}/);
     assert.match(css, /\.explorer-annonce\.explorer-card \{ background: var\(--lyann-white\);/);
-    assert.match(css, /\.results-v3-overlay h1 \{[^}]*text-align: right/);
+    assert.match(css, /\.results-v3-overlay h1 \{[^}]*text-align: left/);
     const highlight = fs.readFileSync('editorial-highlights.css', 'utf8');
     assert.match(highlight, /aspect-ratio: 2 \/ 1/);
     const admin = fs.readFileSync('admin.html', 'utf8');

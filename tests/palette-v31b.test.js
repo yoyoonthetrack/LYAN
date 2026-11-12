@@ -39,13 +39,13 @@ test('application rules', () => {
     const r = fs.readFileSync('results-v3.css', 'utf8');
     assert.match(d, /body\.discover-page \{ background: var\(--lyann-cream\); \}/);
     assert.match(r, /body\.results-page\[data-explorer-mode="annonces"\][\s\S]*\{ background: var\(--lyann-cream\); \}/, 'one cream for every results mode');
-    assert.match(d, /\.is-help \{ background: var\(--lyann-green-action\); color: #fff; \}/);
-    assert.match(d, /\.is-offer \{ background: var\(--lyann-yellow\); color: var\(--lyann-text-primary\); \}/);
+    assert.match(d, /\.discover-post-cta \{[^}]*var\(--lyann-honey\)[^}]*var\(--lyann-green-soft\)/, 'publish button: honey fading into a very light green, tokens only');
     assert.match(r, /--r3-green: var\(--lyann-green-primary\)/, 'active filters and primary actions');
     assert.match(r, /--r3-pastel: var\(--lyann-green-pastel\)/, 'inactive filters');
     assert.match(r, /\.explorer-annonce\.explorer-card \{ background: var\(--lyann-white\); border: 1px solid var\(--lyann-border\)/);
     assert.match(r, /\.explorer-profile-row \{[^}]*border: 1px solid var\(--lyann-border\)[^}]*background: var\(--lyann-white\)/);
-    assert.match(r, /\.lyann-pill\.is-active \{ background: var\(--r3-green\); border: 0; color: #fff;/);
+    assert.match(r, /\.explorer-job-chip\.is-active \{[^}]*background: var\(--fam-chip-on\)/);
+    assert.match(r, /--fam-disc: var\(--lyann-green-primary\); --fam-ink: #fff;/, 'Lyanneurs discs: green with white pictograms');
     assert.match(r, /\.btn-primary,[\s\S]*background: var\(--lyann-green-primary\) !important/);
 });
 
@@ -74,7 +74,7 @@ test('the reference secondary text colour is NOT used for text: it fails AA', ()
 test('the decorative border stays decorative; fields and controls use the 3:1 border', () => {
     const r = fs.readFileSync('results-v3.css', 'utf8');
     const d = fs.readFileSync('discover-v3.css', 'utf8');
-    assert.match(r, /\.explorer-search \{[^}]*border: 1px solid var\(--lyann-border-control\)/);
+    assert.match(r, /\.explorer-search \{[^}]*border: 1(\.5)?px solid var\(--lyann-border-control\)/);
     assert.match(d, /\.discover-search-bar \{[^}]*border: 1px solid var\(--lyann-border-control\)/);
     assert.ok(ratio(tokens['lyann-border'], tokens['lyann-white']) < 3, 'documented: #C6D6CA is below 3:1, so it never outlines a control');
 });

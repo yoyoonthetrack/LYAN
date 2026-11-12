@@ -21,12 +21,12 @@
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261027v26">
+    <link rel="stylesheet" href="style.css?v=20261112a">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
     <link rel="stylesheet" href="discover.css?v=20261104a">
     <link rel="stylesheet" href="lyann-palette-v31b.css?v=20261112c">
     <link rel="stylesheet" href="editorial-highlights.css?v=20261111b">
-    <link rel="stylesheet" href="discover-v3.css?v=20261111b">
+    <link rel="stylesheet" href="discover-v3.css?v=20261112d">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -148,7 +148,12 @@
         </div>
     </div>
 
-    <main id="discover" class="discover-main discover-v3">
+    <main id="discover" class="discover-main discover-v3 discover-v32c">
+        <header class="discover-welcome">
+            <p id="discoverHello" class="discover-hello">Bienvenue sur LYANN</p>
+            <h1 class="discover-heading">De quoi avez-vous besoin&nbsp;?</h1>
+        </header>
+
         <section class="discover-search" aria-label="Rechercher">
             <form id="discoverSearchForm" role="search">
                 <label class="sr-only" for="discoverQuery">Rechercher un service</label>
@@ -160,17 +165,13 @@
             </form>
         </section>
 
-        <section class="discover-actions" aria-label="Actions principales">
-            <a class="discover-action-card is-help" href="results.html?mode=lyanneurs">
-                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-hand-heart"></i></span>
-                <span class="discover-action-text"><strong>Trouver de l'aide</strong></span>
-                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
-            </a>
-            <a class="discover-action-card is-offer" href="results.html?mode=annonces" id="discoverOfferTalents">
-                <span class="discover-action-icon" aria-hidden="true"><i class="ph ph-briefcase"></i></span>
-                <span class="discover-action-text"><strong>Proposer mes talents</strong></span>
-                <i class="ph ph-caret-right discover-action-chevron" aria-hidden="true"></i>
-            </a>
+        <section class="discover-post" aria-label="Poster une annonce">
+            <button type="button" class="discover-post-cta" data-lyann-publish>
+                <span class="discover-post-icon" aria-hidden="true"><i class="ph ph-plus"></i></span>
+                <span class="discover-post-text"><strong>Poster une annonce</strong><span>Décrivez votre besoin, les Lyanneurs vous répondent</span></span>
+                <i class="ph ph-arrow-right discover-post-go" aria-hidden="true"></i>
+            </button>
+            <a class="discover-offer-link" href="results.html?mode=annonces" id="discoverOfferTalents">Vous proposez un service ? <strong>Proposer mes talents</strong><i class="ph ph-caret-right" aria-hidden="true"></i></a>
         </section>
 
         <section id="discoverHighlights" class="discover-block discover-highlights" aria-labelledby="discoverHighlightsTitle" hidden>
@@ -183,24 +184,20 @@
         <section class="discover-block discover-categories" aria-labelledby="discoverCategoriesTitle">
             <div class="discover-block-head">
                 <h2 id="discoverCategoriesTitle" class="discover-section-title">Explorer les services</h2>
-                <a href="results.html?mode=lyanneurs">Tous les services</a>
+                <a href="results.html?mode=lyanneurs">Tous les Lyanneurs</a>
             </div>
-            <div class="discover-service-rail">
-                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=jardinage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19c3-5 6-8 10-10"/></svg><span>Jardinage</span></a>
-                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=bricolage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0 5 5L20 12l-3 3-1-1-8 8-3-3 8-8-1-1 3-3z" transform="scale(.86) translate(1.5 0)"/></svg><span>Bricolage</span></a>
-                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=menage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg><span>Maison &amp; ménage</span></a>
-                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=beaute"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="18" r="2.5"/><path d="M8.5 16.5L19 5M15.5 16.5L5 5"/></svg><span>Beauté</span></a>
-                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;family=numerique"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg><span>Numérique</span></a>
-                <a class="discover-service-tile" href="results.html?mode=lyanneurs&amp;more=1"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg><span>Et plus</span></a>
-            </div>
-        </section>
-
-        <section class="discover-block" aria-labelledby="discoverTalentsTitle">
-            <div class="discover-block-head">
-                <h2 id="discoverTalentsTitle" class="discover-section-title">Découvrez nos talents</h2>
-                <a href="results.html?mode=lyanneurs">Tous les talents</a>
-            </div>
-            <div id="discoverTalents" class="discover-grid discover-grid-talents" aria-live="polite" aria-busy="true"></div>
+            <nav class="discover-domains" aria-label="Domaines de services">
+                <a class="discover-domain" data-tile="tile_depannage" href="results.html?mode=lyanneurs&amp;family=maison&amp;groups=depannage,equipement"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a4 4 0 0 0-5.1 5.2L3.8 17.3a1.9 1.9 0 0 0 2.7 2.7l5.8-5.8a4 4 0 0 0 5.2-5.1l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></span><span class="discover-domain-label">Dépannage maison</span></a>
+                <a class="discover-domain" data-tile="tile_travaux" href="results.html?mode=lyanneurs&amp;family=maison&amp;groups=travaux,petits"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12.5 6.5 16 3l5 5-3.5 3.5"/><path d="m11 8 5 5"/><path d="M13.5 10.5 4.7 19.3a1.4 1.4 0 0 1-2-2l8.8-8.8"/></svg></span><span class="discover-domain-label">Travaux &amp; rénovation</span></a>
+                <a class="discover-domain" data-tile="tile_jardin" href="results.html?mode=lyanneurs&amp;family=jardin"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19c3-5 6-8 10-10"/></svg></span><span class="discover-domain-label">Jardin &amp; extérieur</span></a>
+                <a class="discover-domain" data-tile="tile_menage" href="results.html?mode=lyanneurs&amp;family=entretien"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m19 3-6.5 6.5"/><path d="M9.5 9.5 14.5 14.5l-4.2 4.2a2.1 2.1 0 0 1-3 0L5.3 16.7a2.1 2.1 0 0 1 0-3z"/><path d="M8 17l-3 3M11 18l-2 2"/></svg></span><span class="discover-domain-label">Ménage &amp; entretien</span></a>
+                <a class="discover-domain" data-tile="tile_beaute" href="results.html?mode=lyanneurs&amp;family=beaute"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20c-4 0-7.5-2.5-8-6.5 3-.2 5.5 1 8 3.5 2.5-2.5 5-3.7 8-3.5-.5 4-4 6.5-8 6.5z"/><path d="M12 17c-2-2-3-4-3-6.5a3 3 0 0 1 6 0c0 2.5-1 4.5-3 6.5z"/></svg></span><span class="discover-domain-label">Beauté &amp; bien-être</span></a>
+                <a class="discover-domain" data-tile="tile_transport" href="results.html?mode=lyanneurs&amp;family=transport"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6.5h11V16H3z"/><path d="M14 9.5h4l3 3.2V16h-7"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17.5" cy="17.5" r="1.8"/></svg></span><span class="discover-domain-label">Transport &amp; véhicules</span></a>
+                <a class="discover-domain" data-tile="tile_famille" href="results.html?mode=lyanneurs&amp;family=famille"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17.5" cy="9.5" r="2.3"/><path d="M16.2 14.3c3 0 4.8 2 4.8 4.7"/></svg></span><span class="discover-domain-label">Famille &amp; assistance</span></a>
+                <a class="discover-domain" data-tile="tile_fetes" href="results.html?mode=lyanneurs&amp;family=evenement"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.5 13.5A4 4 0 1 1 9 5.8a3.8 3.8 0 0 1 6 0 4 4 0 1 1 1.5 7.7"/><path d="M7.5 13.5V20h9v-6.5"/><path d="M7.5 17h9"/></svg></span><span class="discover-domain-label">Événementiel &amp; cuisine</span></a>
+                <a class="discover-domain" data-tile="tile_numerique" href="results.html?mode=lyanneurs&amp;family=numerique"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.5" y="5" width="15" height="10.5" rx="1.5"/><path d="M2.5 19h19"/></svg></span><span class="discover-domain-label">Numérique &amp; services pros</span></a>
+                <a class="discover-domain is-discovery" data-tile="tile_autres" href="results.html?mode=annonces&amp;family=autres"><span class="discover-domain-disc"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/></svg></span><span class="discover-domain-label">Autres</span></a>
+            </nav>
         </section>
 
         <section class="discover-block" aria-labelledby="discoverNeedsTitle">
@@ -219,8 +216,18 @@
         </section>
 
         <a class="discover-map-banner" href="results.html?mode=annonces&amp;view=map" aria-labelledby="discoverMapTitle">
-            <span class="discover-map-banner-icon" aria-hidden="true"><i class="ph ph-map-pin"></i></span>
-            <strong id="discoverMapTitle">Explorer les besoins sur la carte</strong>
+            <svg class="discover-map-art" viewBox="0 0 112 72" aria-hidden="true" focusable="false">
+                <rect width="112" height="72" rx="14" fill="#E5F0E6"/>
+                <path d="M-4 52c18-14 30-6 46-16s24-22 44-22 24 4 34 0" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+                <path d="M30 76c4-16 14-22 24-26s20-14 26-30" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+                <path d="M-2 22c14 4 24 0 34-8" fill="none" stroke="#C9DDCD" stroke-width="3" stroke-linecap="round"/>
+                <path d="M72 76c2-10 10-14 18-16s16-8 22-16" fill="none" stroke="#C9DDCD" stroke-width="3" stroke-linecap="round"/>
+                <path d="M38 40c0 0-10-9-10-16a10 10 0 0 1 20 0c0 7-10 16-10 16z" fill="#246B49"/>
+                <circle cx="38" cy="24" r="4" fill="#FFFFFF"/>
+                <path d="M84 36c0 0-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z" fill="#EBC568"/>
+                <circle cx="84" cy="25" r="2.8" fill="#163D2D"/>
+            </svg>
+            <span class="discover-map-text"><strong id="discoverMapTitle">Explorer les besoins sur la carte</strong><span>Voyez les annonces près de chez vous</span></span>
             <span class="discover-map-banner-go" aria-hidden="true"><i class="ph ph-arrow-right"></i></span>
         </a>
     </main>
@@ -1240,7 +1247,7 @@
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
     <script src="editorial-highlights-view.js?v=20261110a"></script>
-    <script src="discover-page.js?v=20261110a" defer></script>
+    <script src="discover-page.js?v=20261112a" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

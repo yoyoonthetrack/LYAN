@@ -7,12 +7,18 @@
         const repo = window.LYANN_EXPLORER_REPOSITORY;
         const escape = value => window.escapeHtmlAttr(String(value ?? ''));
         const params = new URLSearchParams(location.search);
+        const V2 = () => window.LYANN_MARKETPLACE_TAXONOMY;
+        const cleanGroups = value => String(value || '').split(',').map(g => g.trim()).filter(g => /^[a-z0-9_]+$/.test(g)).join(',');
+        /** Référentiel V2 chargé en lecture ; null tant qu'il n'est pas disponible (lignes historiques : pont minimal). */
+        let v2Index = null;
         let mode = params.get('mode') === 'annonces' ? 'annonces' : 'lyanneurs';
         let filters = { query: params.get('query') || params.get('searchInput') || '',
             category: params.get('category') || '', service: params.get('service') || '',
             area: params.get('area') ?? params.get('citySelect') ?? params.get('locationSelect') ?? '',
-            territory: params.get('territory') || '', commune: params.get('commune') || '', urgency: params.get('urgency') || '', budget: params.get('budget') || '', family: params.get('family') || '' };
-        const explicitFilter = ['query','searchInput','category','service','area','citySelect','locationSelect','territory','commune','urgency','budget','family'].some(key => params.has(key));
+            territory: params.get('territory') || '', commune: params.get('commune') || '', urgency: params.get('urgency') || '', budget: params.get('budget') || '',
+            // Référentiel V2 : family = code de famille, groups = groupes (liste), job = code de métier, specialty = code de spécialité.
+            family: V2().normalizeFamilyParam(params.get('family')), groups: cleanGroups(params.get('groups')), job: params.get('job') || '', specialty: params.get('specialty') || '' };
+        const explicitFilter = ['query','searchInput','category','service','area','citySelect','locationSelect','territory','commune','urgency','budget','family','groups','job','specialty'].some(key => params.has(key));
         if (!explicitFilter) {
             try {
                 const saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + mode) || 'null');
@@ -20,7 +26,8 @@
                     filters = {
                         query: saved.query || '', category: saved.category || '', service: saved.service || '',
                         area: saved.area || '', territory: saved.territory || '', commune: saved.commune || '',
-                        urgency: saved.urgency || '', budget: saved.budget || '', family: saved.family || ''
+                        urgency: saved.urgency || '', budget: saved.budget || '', family: V2().normalizeFamilyParam(saved.family),
+                        groups: cleanGroups(saved.groups), job: saved.job || '', specialty: saved.specialty || ''
                     };
                 }
             } catch (_) {}
@@ -79,6 +86,13 @@
             const label = kind === 'annonce' ? 'Annonce' : 'Profil';
             return `<span class="explorer-type-pill is-${kind}">${label}</span>`;
         }
+        // Petit avatar rond de l'auteur, à gauche du titre. Il ouvre le profil public ; sans identifiant (contrat visiteur) il invite à se connecter.
+        function authorAvatar(r, label) {
+            const memberId = r.requester_id || r.profiles?.id;
+            const img = `<img src="${avatar(r.profiles)}" alt="" width="36" height="36" loading="lazy" onerror="window.handleAvatarError(this)">`;
+            if (!memberId && currentUserId()) return `<span class="explorer-annonce-avatar" aria-hidden="true">${img}</span>`;
+            return `<button type="button" class="explorer-annonce-avatar" data-action="profile"${memberId ? ` data-id="${escape(memberId)}"` : ''} aria-label="${memberId ? `Voir le profil de ${escape(label)}` : `Se connecter pour voir le profil de ${escape(label)}`}">${img}</button>`;
+        }
         function requestCard(r, showType = false) {
             const own = Boolean(currentUserId()) && r.requester_id === currentUserId();
             const authorName = name(r.profiles);
@@ -98,13 +112,16 @@
                     </div>
                     ${favorite('REQUEST', r.id)}
                 </div>
-                <h2 class="explorer-annonce-title">${escape(format()?.shortTitle(r.title) || r.title)}</h2>
+                <div class="explorer-annonce-titlerow">
+                    ${authorAvatar(r, authorName)}
+                    <h2 class="explorer-annonce-title">${escape(format()?.shortTitle(r.title) || r.title)}</h2>
+                </div>
                 <ul class="explorer-annonce-facts">
                     ${annonceFact('ph-map-pin', 'Lieu', placeText(r), distanceKnown ? 'Distance approximative entre communes' : '', 'explorer-fact-location')}
                     ${annonceFact('ph-currency-eur', 'Prix', format()?.priceLabel(r), '', 'explorer-fact-price')}
                     ${annonceFact('ph-calendar-blank', 'Date', format()?.dateLabel(r), '', 'explorer-fact-date')}
                 </ul>
-                <div class="explorer-person explorer-person-zone explorer-annonce-author">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<img src="${avatar(r.profiles)}" alt="" loading="lazy" onerror="window.handleAvatarError(this)"><span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
+                <div class="explorer-person explorer-person-zone explorer-annonce-author">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
                 <div class="explorer-card-actions explorer-annonce-actions"><button class="btn btn-primary" data-action="detail" data-id="${escape(r.id)}">Voir l'annonce →</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
             </article>`;
         }
@@ -409,95 +426,122 @@
                 syncCommunes(filters.territory, filters.commune);
             }
             const chips = [];
+            const territoryName = value => String(value || '').replace(/\s*\(\d+\)/, '').replace('La Réunion', 'Réunion');
             for (const key of ['query','service','area','territory','commune','urgency','budget']) {
-                if (!filters[key] || mode === 'lyanneurs' && ['area','urgency','budget'].includes(key) || mode === 'annonces' && ['territory','commune'].includes(key)) continue;
-                const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : key === 'urgency' ? dateModeLabel(filters[key]) : filters[key];
+                if (!filters[key] || mode === 'lyanneurs' && ['area','urgency','budget'].includes(key) || mode === 'annonces' && key === 'commune') continue;
+                const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : key === 'urgency' ? dateModeLabel(filters[key]) : key === 'territory' ? territoryName(filters[key]) : filters[key];
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
+            }
+            // Métier V2 : la famille se voit déjà dans la grille ; on ne liste que les entrées de Découvrir (groupes, « Autres »), le métier et la spécialité.
+            const taxonomyChip = (key, label) => label && chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
+            if (filters.groups) taxonomyChip('groups', groupsLabel() || V2().familyMeta(filters.family)?.short);
+            else if (filters.family === 'autres') taxonomyChip('family', 'Autres besoins');
+            taxonomyChip('job', filters.job && nodeLabel(filters.job));
+            taxonomyChip('specialty', filters.specialty && nodeLabel(filters.specialty));
+            // Territoire rapide, à côté de la recherche
+            const quick = $('explorerTerritoryQuick');
+            if (quick) {
+                quick.innerHTML = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(territoryName(t))}</option>`).join('');
+                quick.value = filters.territory;
             }
             $('explorerActiveFilters').innerHTML = chips.join('');
             const filterIcon = $('explorerFiltersIcon');
             if (filterIcon) {
-                const active = chips.length > 0 || Boolean(filters.service || filters.urgency || filters.budget);
+                const active = Boolean(filters.service || filters.urgency || filters.budget || (mode === 'annonces' ? filters.area : filters.commune));
                 filterIcon.classList.toggle('has-active-filters', active);
                 filterIcon.hidden = false;
             }
         }
-        // One horizontal rail, six entries at most: Tous, the four domains that really have results, then Plus.
-        // Domains come from the existing map families, so List, Map and the rail share one taxonomy.
-        const RAIL_PRIORITY = ['bricolage', 'jardinage', 'menage', 'beaute', 'plomberie', 'electricite', 'numerique', 'quotidien'];
-        const RAIL_LABEL = { menage: 'Maison & ménage', quotidien: 'Au quotidien' };
-        const RAIL_ICON = {
-            all: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/>',
-            bricolage: '<path d="M14.5 6.5a4 4 0 0 0 5 5l.5.5-3 3-1-1-8 8-3-3 8-8-1-1 3-3z" transform="scale(.9) translate(1 0)"/>',
-            jardinage: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19c3-5 6-8 10-10"/>',
-            menage: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',
-            beaute: '<circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="18" r="2.5"/><path d="M8.5 16.5L19 5M15.5 16.5L5 5"/>',
-            plomberie: '<path d="M12 3c3 4 5 7 5 10a5 5 0 0 1-10 0c0-3 2-6 5-10z"/>',
-            electricite: '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
-            numerique: '<rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>',
-            quotidien: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
-            more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
-            tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1"/>'
-        };
-        const railIcon = key => `<svg viewBox="0 0 24 24" aria-hidden="true" class="lyann-pill-icon">${RAIL_ICON[key] || RAIL_ICON.tag}</svg>`;
-        const familyLabel = id => RAIL_LABEL[id] || mapFamiliesApi()?.familyMeta(id)?.label || id;
-        function serviceFamily(service) {
+        // Familles de métiers V2 : huit pastilles rondes, puis un panneau « métiers » (et spécialités) sous la famille choisie.
+        // Les codes et la hiérarchie viennent du référentiel V2 lu en base (marketplace-taxonomy.js) ; la carte garde ses huit pictos historiques.
+        let jobPanelClosed = false;
+        let showAllJobs = false;
+        const legacyFamilyForRow = (row, list) => {
             const api = mapFamiliesApi();
-            const category = String(service?.category || '').trim();
-            if (service?.taxonomy_id || (category && category.toLowerCase() !== 'general')) return api.familyForRow(service, leaves);
-            return api.familyForCategory(service?.title);
-        }
-        const recordFamilies = record => {
-            const api = mapFamiliesApi();
-            if (!api) return [];
-            return mode === 'annonces' ? [api.familyForRow(record, leaves)] : [...new Set((record.services || []).map(serviceFamily))];
+            if (!api) return '';
+            const category = String(row?.category || '').trim();
+            if (mode === 'annonces' || row?.taxonomy_id || (category && category.toLowerCase() !== 'general')) return api.familyForRow(row, list);
+            return api.familyForCategory(row?.title);
         };
-        function familyCounts() {
-            const counts = {};
-            for (const record of records) for (const id of recordFamilies(record)) counts[id] = (counts[id] || 0) + 1;
-            return counts;
-        }
+        const v2Ctx = () => ({ index: v2Index, leaves, legacyFamilyForRow });
+        const taxonomyFilter = () => ({ family: filters.family, groups: filters.groups ? filters.groups.split(',') : [], job: filters.job, specialty: filters.specialty });
+        const taxonomyActive = () => Boolean(filters.family || filters.groups || filters.job || filters.specialty);
+        const recordRows = record => (mode === 'annonces' ? [record] : (record.services || []));
+        const recordMatchesTaxonomy = (record, filter = taxonomyFilter()) => recordRows(record).some(row => V2().rowMatches(row, filter, v2Ctx()));
+        const nodeLabel = code => v2Index?.byCode.get(code)?.label_fr || '';
+        const groupsLabel = () => {
+            const wanted = (filters.groups || '').split(',').filter(Boolean).sort().join(',');
+            const tile = V2().TILES.find(t => t.family === filters.family && t.groups && [...t.groups].sort().join(',') === wanted);
+            if (tile) return tile.label;
+            return (v2Index?.families[filters.family]?.groups || []).filter(g => wanted.split(',').includes(g.code)).map(g => g.label).filter(Boolean).join(' · ');
+        };
         function renderCategoryPills() {
             const host = $('explorerCategoryPills');
-            const api = mapFamiliesApi();
-            if (!host || !api) return;
-            const counts = familyCounts();
-            const ranked = [...RAIL_PRIORITY].sort((a, b) => (counts[b] ? 1 : 0) - (counts[a] ? 1 : 0) || RAIL_PRIORITY.indexOf(a) - RAIL_PRIORITY.indexOf(b));
-            let domains = ranked.slice(0, 4);
-            const entries = [];
-            const selectedFamily = filters.family || (filters.category ? api.familyForCategory(filters.category) : '');
-            if (selectedFamily && !domains.includes(selectedFamily)) domains = [...domains.slice(0, 3), selectedFamily];
-            for (const id of domains) {
-                const exact = filters.category && !filters.family && id === selectedFamily;
-                entries.push({ key: id, label: exact ? filters.category : familyLabel(id), family: id, active: filters.family === id || (!!exact) });
-            }
-            const pill = (attrs, active, icon, label, extra = '') => `<button type="button" class="lyann-pill${active ? ' is-active' : ''}${extra}" ${attrs} aria-pressed="${active ? 'true' : 'false'}">${railIcon(icon)}<span>${escape(label)}</span></button>`;
-            host.innerHTML = pill('data-family=""', !filters.family && !filters.category, 'all', 'Tous')
-                + entries.map(e => pill(`data-family="${escape(e.family)}"${e.label !== familyLabel(e.family) ? ` data-category="${escape(filters.category)}"` : ''}`, e.active, e.family, e.label)).join('')
-                + pill('data-action="more-categories"', false, 'more', 'Plus', ' lyann-pill-more');
+            if (!host || !V2()) return;
+            host.innerHTML = V2().FAMILIES.map(f => {
+                const active = filters.family === f.code;
+                return `<button type="button" class="lyann-family${active ? ' is-active' : ''}" data-family="${escape(f.code)}" aria-pressed="${active ? 'true' : 'false'}">`
+                    + `<span class="lyann-family-disc">${V2().iconSvg(f.icon, 'lyann-family-icon')}</span><span class="lyann-family-label">${escape(f.short)}</span></button>`;
+            }).join('');
+            renderJobPanel();
         }
-        function renderCategorySheet() {
-            const api = mapFamiliesApi();
-            const body = $('explorerCategorySheetBody');
-            if (!body || !api) return;
-            const counts = familyCounts();
-            const chip = (attrs, label, active) => `<button type="button" class="explorer-map-category-chip${active ? ' is-active' : ''}" ${attrs} aria-pressed="${active ? 'true' : 'false'}"><span>${escape(label)}</span></button>`;
-            const categories = [...new Set(leaves.map(t => t.category))].sort((a, b) => a.localeCompare(b, 'fr'));
-            body.innerHTML = `<div class="explorer-map-category-grid">${chip('data-sheet-family=""', 'Tous', !filters.family && !filters.category)}`
-                + api.FAMILIES.filter(f => counts[f.id] || filters.family === f.id).map(f => chip(`data-sheet-family="${escape(f.id)}"`, familyLabel(f.id), filters.family === f.id)).join('')
-                + `</div><h3 class="explorer-sheet-group">Catégories</h3><div class="explorer-map-category-grid">`
-                + categories.map(c => chip(`data-sheet-category="${escape(c)}"`, c, filters.category === c && !filters.family)).join('') + '</div>';
+        function renderJobPanel() {
+            const panel = $('explorerJobPanel');
+            if (!panel) return;
+            const family = v2Index?.families[filters.family];
+            const meta = V2().familyMeta(filters.family);
+            if (!family || !meta || !family.trades || jobPanelClosed) { panel.hidden = true; panel.innerHTML = ''; return; }
+            // Comptes calculés sur les mêmes résultats que la liste, hors critères de métier : un métier vide n'est proposé qu'à la demande.
+            const base = repo.discover(records, leaves, { ...filters, family: '', groups: '', job: '', specialty: '' }, mode)
+                .filter(record => recordMatchesTaxonomy(record, { family: filters.family, groups: taxonomyFilter().groups, job: '', specialty: '' }));
+            // Un profil compte une seule fois par métier, même s'il propose plusieurs services de ce métier.
+            const counts = {};
+            base.forEach(record => {
+                Object.keys(V2().countByTrade(recordRows(record), v2Ctx())).forEach(code => { counts[code] = (counts[code] || 0) + 1; });
+            });
+            const allowed = new Set(taxonomyFilter().groups);
+            const groups = family.groups.filter(g => !allowed.size || allowed.has(g.code));
+            const visible = trade => showAllJobs || counts[trade.code] || filters.job === trade.code;
+            const total = groups.reduce((n, g) => n + g.trades.length, 0);
+            const hasEmpty = groups.some(g => g.trades.some(t => !counts[t.code] && filters.job !== t.code));
+            const chip = (attrs, label, active, count) => `<button type="button" class="explorer-job-chip${active ? ' is-active' : ''}" ${attrs} aria-pressed="${active ? 'true' : 'false'}"><span>${escape(label)}</span>${count ? `<span class="explorer-job-count">${count}</span>` : ''}</button>`;
+            const body = groups.map(group => {
+                const trades = group.trades.filter(visible);
+                if (!trades.length) return '';
+                const selected = trades.find(t => t.code === filters.job);
+                const specialties = selected && selected.specialties.length
+                    ? `<div class="explorer-job-specialties" role="group" aria-label="Spécialités : ${escape(selected.label)}">${selected.specialties.map(sp => chip(`data-specialty="${escape(sp.code)}"`, sp.label, filters.specialty === sp.code, 0)).join('')}</div>` : '';
+                return `<div class="explorer-job-group">${group.label ? `<p class="explorer-job-group-title">${escape(group.label)}</p>` : ''}<div class="explorer-job-chips">${trades.map(t => chip(`data-job="${escape(t.code)}"`, t.label, filters.job === t.code, counts[t.code] || 0)).join('')}</div>${specialties}</div>`;
+            }).join('');
+            panel.innerHTML = `<div class="explorer-job-head"><strong>${escape(meta.short)}</strong><button type="button" class="explorer-job-close" data-action="jobs-close" aria-label="Replier les métiers"><i class="ph ph-x" aria-hidden="true"></i></button></div>`
+                + (body || '<p class="explorer-job-empty">Aucun métier de cette famille n\'est encore proposé ici.</p>')
+                + (hasEmpty
+                    ? `<button type="button" class="explorer-job-more" data-action="jobs-more">${showAllJobs ? 'Voir moins de métiers' : `Voir tous les métiers (${total})`}</button>` : '');
+            panel.hidden = false;
         }
-        function openCategorySheet() {
-            renderCategorySheet();
-            $('explorerCategorySheet')?.showModal();
+        function clearTaxonomy() { filters.family = ''; filters.groups = ''; filters.job = ''; filters.specialty = ''; }
+        function chooseFamily(code) {
+            const same = filters.family === code && !filters.groups;
+            clearTaxonomy();
+            if (!same) { filters.family = code; filters.category = ''; filters.service = ''; }
+            jobPanelClosed = false; showAllJobs = false;
+            render({ quiet: true });
         }
-        function chooseCategory({ family = '', category = '' }) {
-            filters.family = family;
-            filters.category = category;
-            filters.service = '';
-            $('explorerCategorySheet')?.close();
-            search();
+        function chooseJob(code) {
+            filters.job = filters.job === code ? '' : code;
+            filters.specialty = '';
+            render({ quiet: true });
+        }
+        function chooseSpecialty(code) {
+            filters.specialty = filters.specialty === code ? '' : code;
+            render({ quiet: true });
+        }
+        const cleanTerritory = value => window.LyanAI.normalizeText(String(value || '').replace(/\s*\(\d+\)/g, ''));
+        function annonceInTerritory(record) {
+            const wanted = cleanTerritory(filters.territory);
+            const geo = inferGeography(record.location);
+            if (geo.territory) return cleanTerritory(geo.territory) === wanted;
+            return cleanTerritory(record.location).includes(wanted);
         }
         function render(options = {}) {
             syncControls();
@@ -506,7 +550,8 @@
             // Non-enumerable: read by the Lyanneurs ordering only, never written to the URL or the stored filters.
             Object.defineProperty(filters, 'viewerTerritory', { value: viewerTerritory, enumerable: false, writable: true, configurable: true });
             let results = repo.discover(records, leaves, filters, mode);
-            if (filters.family && mapFamiliesApi()) results = results.filter(record => recordFamilies(record).includes(filters.family));
+            if (taxonomyActive()) results = results.filter(record => recordMatchesTaxonomy(record));
+            if (mode === 'annonces' && filters.territory) results = results.filter(annonceInTerritory);
             const mapScoped = mode === 'annonces' && mapAvailable() ? rowsForMapFamilies(results) : results;
             const countLabel = mode === 'annonces'
                 ? (mapScoped.length <= 1 ? 'annonce' : 'annonces')
@@ -569,9 +614,9 @@
             }
             try {
                 await window.LYANN_AUTH_STATE?.ready?.();
-                const [data, taxonomy] = await Promise.all([mode === 'annonces' ? repo.loadRequests({force}) : repo.load({force}), repo.taxonomy(force)]);
+                const [data, taxonomy, index] = await Promise.all([mode === 'annonces' ? repo.loadRequests({force}) : repo.load({force}), repo.taxonomy(force), V2().load(window.LYANN_API_CLIENT?.supabase, force)]);
                 if (token !== revision) return;
-                records = data; leaves = taxonomy;
+                records = data; leaves = taxonomy; v2Index = index;
                 if (mode === 'annonces') $('explorerUrgency').innerHTML = '<option value="">Tous les délais</option>' + [...new Set(data.map(r => format()?.dateMode(r)).filter(Boolean))].map(u => `<option value="${escape(u)}">${escape(dateModeLabel(u))}</option>`).join('');
                 render({ quiet, reframe: !quiet && areaChanged });
             } catch (error) {
@@ -589,7 +634,8 @@
             }
         }
         function reset() {
-            filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:'',family:''};
+            filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:'',family:'',groups:'',job:'',specialty:''};
+            jobPanelClosed = false; showAllJobs = false;
             mapFamilyFilter = null;
             mapFamilyDraft = null;
             closeMapCategorySheet();
@@ -604,9 +650,11 @@
             }
             const button = event.target.closest('button');
             if (!button) return;
-            if (button.dataset.action === 'more-categories') { openCategorySheet(); return; }
-            if (button.dataset.sheetFamily !== undefined) { chooseCategory({ family: button.dataset.sheetFamily }); return; }
-            if (button.dataset.sheetCategory !== undefined) { chooseCategory({ category: button.dataset.sheetCategory }); return; }
+            if (button.classList.contains('lyann-family')) { chooseFamily(button.dataset.family); return; }
+            if (button.dataset.job !== undefined) { chooseJob(button.dataset.job); return; }
+            if (button.dataset.specialty !== undefined) { chooseSpecialty(button.dataset.specialty); return; }
+            if (button.dataset.action === 'jobs-close') { jobPanelClosed = true; renderJobPanel(); return; }
+            if (button.dataset.action === 'jobs-more') { showAllJobs = !showAllJobs; renderJobPanel(); return; }
             if (button.dataset.view && button.closest('#explorerViewToggle')) { setView(button.dataset.view); return; }
             if (button.dataset.mode) {
                 const nextMode = button.dataset.mode;
@@ -623,13 +671,10 @@
                 filters[button.dataset.remove] = '';
                 if (button.dataset.remove === 'territory') filters.commune = '';
                 if (button.dataset.remove === 'category') filters.service = '';
+                if (['groups', 'family'].includes(button.dataset.remove)) clearTaxonomy();
+                if (button.dataset.remove === 'job') filters.specialty = '';
+                if (['groups', 'family', 'job', 'specialty'].includes(button.dataset.remove)) { render({ quiet: true }); return; }
                 search(); return;
-            }
-            if (button.classList.contains('lyann-pill')) {
-                // Selecting the active entry again goes back to Tous.
-                const wasActive = button.classList.contains('is-active');
-                chooseCategory(wasActive ? {} : { family: button.dataset.category ? '' : (button.dataset.family || ''), category: button.dataset.category || '' });
-                return;
             }
             if (button.classList.contains('explorer-publish')) { window.openLyannWizard(filters.query); return; }
             const row = records.find(r => r.id === button.dataset.id);
@@ -686,8 +731,11 @@
         });
         $('explorerFilters').addEventListener('click', event => { if (event.target === $('explorerFilters')) $('explorerFilters').close(); });
         $('explorerReset').addEventListener('click', () => { $('explorerFilters').close(); reset(); });
-        $('explorerCategorySheetClose')?.addEventListener('click', () => $('explorerCategorySheet').close());
-        $('explorerCategorySheet')?.addEventListener('click', event => { if (event.target === $('explorerCategorySheet')) $('explorerCategorySheet').close(); });
+        $('explorerTerritoryQuick')?.addEventListener('change', () => {
+            filters.territory = $('explorerTerritoryQuick').value;
+            filters.commune = '';
+            render({ quiet: true, reframe: true });
+        });
         $('explorerMapCategoryGrid')?.addEventListener('click', onMapCategoryGridClick);
         $('explorerMapCategoryClose')?.addEventListener('click', closeMapCategorySheet);
         $('explorerMapCategoryApply')?.addEventListener('click', applyMapCategoryFilter);
@@ -742,7 +790,6 @@
             if (!params.has('territory') && !params.has('commune') && filters.area) Object.assign(filters, inferGeography(filters.area));
             await refreshSavedArea(identity);
             await search();
-            if (params.get('more') === '1' && mode === 'lyanneurs') openCategorySheet();
             if (params.get('openLyann')) {
                 const request = records.find(r => r.id === params.get('openLyann'));
                 if (mode === 'annonces' && request) window.openLyannDetailModal(request.id, request);

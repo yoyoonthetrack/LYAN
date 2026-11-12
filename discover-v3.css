@@ -1,4 +1,4 @@
-/* Découvrir V3 (phase 3.1A) — accueil compact: recherche, deux actions, À la une, services, talents, annonces, carte.
+/* Découvrir (3.1A, recomposé en 3.2C) — en-tête d'accueil, recherche, « Poster une annonce », À la une, dix domaines (2 × 5), annonces du moment, carte.
  * Chargé après discover.css : seules les règles sous .discover-v3 changent. Palette: crème, vert profond, jaune doux. */
 .discover-v3 {
     /* Couleurs : jetons de lyann-palette-v31b.css uniquement. */
@@ -14,10 +14,18 @@
     padding-right: 16px;
 }
 body.discover-page { background: var(--lyann-cream); }
+/* Pas de double réserve : le corps réserve déjà la hauteur de la barre native (page entièrement atteignable, sans grand vide). */
+body.is-native-app .discover-main.discover-v3,
+body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
 .discover-v3 .discover-search,
-.discover-v3 .discover-actions,
+.discover-v3 .discover-post,
 .discover-v3 .discover-block,
-.discover-v3 .discover-map-banner { margin-bottom: 14px; }
+.discover-v3 .discover-map-banner { margin-bottom: 18px; }
+
+/* En-tête d'accueil */
+.discover-v3 .discover-welcome { margin: 4px 2px 14px; }
+.discover-v3 .discover-hello { margin: 0 0 2px; font-size: 0.9rem; line-height: 1.2; font-weight: 700; color: var(--lyann-green-primary); }
+.discover-v3 .discover-heading { margin: 0; font-family: Outfit, sans-serif; font-size: clamp(1.55rem, 7vw, 1.9rem); line-height: 1.1; font-weight: 800; letter-spacing: -0.015em; color: var(--d3-green); }
 
 /* Recherche */
 .discover-v3 .discover-search-bar {
@@ -39,20 +47,20 @@ body.discover-page { background: var(--lyann-cream); }
 }
 .discover-v3 .discover-search-submit i { font-size: 1rem; color: #fff; }
 
-/* Deux actions */
-.discover-v3 .discover-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-@media (max-width: 360px) { .discover-v3 .discover-actions { grid-template-columns: 1fr 1fr; } .discover-v3 .discover-action-icon { display: none; } }
-.discover-v3 .discover-action-card {
-    display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 8px 10px 8px 12px;
-    border: 0; border-radius: 16px; text-decoration: none; box-shadow: 0 6px 16px rgba(22, 61, 45, 0.14);
+/* « Poster une annonce » : bouton large, du miel vers un vert très léger (vert profond dessus : 7,3:1 minimum). */
+.discover-v3 .discover-post-cta {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; padding: 10px 14px 10px 12px; text-align: left; cursor: pointer;
+    border: 1px solid rgba(22, 61, 45, 0.12); border-radius: 22px; color: var(--d3-green); font-family: Outfit, sans-serif;
+    background: var(--lyann-honey); background: linear-gradient(105deg, var(--lyann-honey) 0%, color-mix(in srgb, var(--lyann-honey) 62%, var(--lyann-green-soft)) 55%, color-mix(in srgb, var(--lyann-honey) 38%, var(--lyann-green-soft)) 100%); box-shadow: 0 8px 20px rgba(22, 61, 45, 0.14);
 }
-.discover-v3 .discover-action-card.is-help { background: var(--lyann-green-action); color: #fff; }
-.discover-v3 .discover-action-card.is-offer { background: var(--lyann-yellow); color: var(--lyann-text-primary); }
-.discover-v3 .discover-action-icon { flex: 0 0 auto; width: auto; height: auto; padding: 0; background: transparent; font-size: 1.45rem; color: inherit; }
-.discover-v3 .discover-action-card.is-offer .discover-action-icon { background: transparent; color: var(--lyann-text-primary); }
-.discover-v3 .discover-action-text { flex: 1; min-width: 0; }
-.discover-v3 .discover-action-text strong { display: block; font-size: 0.9rem; line-height: 1.15; color: inherit; }
-.discover-v3 .discover-action-chevron { flex: 0 0 auto; font-size: 0.95rem; color: inherit; }
+.discover-v3 .discover-post-icon { flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--d3-green); color: #fff; font-size: 1.4rem; }
+.discover-v3 .discover-post-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.discover-v3 .discover-post-text strong { font-size: 1.08rem; line-height: 1.15; font-weight: 800; }
+.discover-v3 .discover-post-text span { font-size: 0.76rem; line-height: 1.25; font-weight: 600; color: var(--d3-green); }
+.discover-v3 .discover-post-go { flex: 0 0 auto; font-size: 1.15rem; color: var(--d3-green); }
+.discover-v3 .discover-offer-link { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 40px; margin-top: 4px; font-size: 0.84rem; color: var(--lyann-text-secondary-aa); text-decoration: none; }
+.discover-v3 .discover-offer-link strong { color: var(--lyann-green-action); font-weight: 800; }
+.discover-v3 .discover-offer-link .ph { font-size: 0.85rem; color: var(--lyann-green-action); }
 
 /* Titres de section */
 .discover-v3 .discover-block-head { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
@@ -65,31 +73,14 @@ body.discover-page { background: var(--lyann-cream); }
 /* À la une : le module n'occupe de place que s'il a de vraies cartes */
 .discover-v3 .discover-highlights[hidden] { display: none; }
 
-/* Services : rail compact d'icônes sobres */
-.discover-v3 .discover-service-rail { display: flex; gap: 8px; margin: 0 -16px; padding: 0 16px 4px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-inline: 16px; }
-.discover-v3 .discover-service-rail::-webkit-scrollbar { display: none; }
-.discover-v3 .discover-service-tile {
-    flex: 0 0 74px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-    min-height: 74px; padding: 8px 4px; scroll-snap-align: start; text-align: center; text-decoration: none;
-    background: var(--d3-pastel); border-radius: 16px; color: var(--d3-ink);
-}
-.discover-v3 .discover-service-tile svg { width: 26px; height: 26px; fill: none; stroke: var(--d3-green-2); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.discover-v3 .discover-service-tile span { font-size: 0.68rem; line-height: 1.1; font-weight: 700; hyphens: none; overflow-wrap: normal; }
-
-/* Talents : rail de cartes compactes */
-.discover-v3 .discover-grid-talents { display: flex; gap: 10px; margin: 0 -16px; padding: 0 16px 4px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-inline: 16px; }
-.discover-v3 .discover-grid-talents::-webkit-scrollbar { display: none; }
-.discover-v3 .discover-talent-mini {
-    flex: 0 0 min(62%, 220px); display: flex; align-items: center; gap: 10px; padding: 8px; text-align: left; scroll-snap-align: start;
-    background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 16px; box-shadow: var(--lyann-shadow-card); color: var(--d3-ink); cursor: pointer;
-}
-.discover-v3 .discover-talent-mini .discover-talent-photo { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 14px; overflow: hidden; background: var(--d3-pastel); }
-.discover-v3 .discover-talent-mini img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.discover-v3 .discover-talent-mini .discover-talent-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.discover-v3 .discover-talent-mini h3 { margin: 0; font-size: 0.88rem; line-height: 1.15; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.discover-v3 .discover-talent-mini .discover-talent-skill { display: block; align-self: auto; padding: 0; border: 0; border-radius: 0; background: none; font-size: 0.76rem; font-weight: 600; color: var(--lyann-text-secondary-aa); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.discover-v3 .discover-talent-mini .discover-talent-rating { display: inline-flex; align-items: center; gap: 3px; font-size: 0.74rem; font-weight: 800; }
-.discover-v3 .discover-talent-mini .discover-talent-rating i { color: var(--lyann-star); font-size: 0.8rem; }
+/* Dix domaines : deux rangées de cinq disques verts, pictogrammes blancs ; « Autres » (découverte) en miel. */
+.discover-v3 .discover-domains { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px 4px; }
+.discover-v3 .discover-domain { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; text-align: center; text-decoration: none; color: var(--d3-ink); }
+.discover-v3 .discover-domain-disc { display: grid; place-items: center; width: 100%; max-width: 54px; aspect-ratio: 1; border-radius: 50%; background: var(--d3-green-2); }
+.discover-v3 .discover-domain-disc svg { width: 52%; height: 52%; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.discover-v3 .discover-domain.is-discovery .discover-domain-disc { background: var(--lyann-honey); }
+.discover-v3 .discover-domain.is-discovery .discover-domain-disc svg { stroke: var(--d3-green); fill: var(--d3-green); }
+.discover-v3 .discover-domain-label { font-size: 0.66rem; line-height: 1.15; font-weight: 700; hyphens: none; overflow-wrap: normal; }
 
 /* Annonces du moment : lignes compactes */
 .discover-v3 .discover-grid-needs { display: flex; flex-direction: column; gap: 8px; }
@@ -106,19 +97,22 @@ body.discover-page { background: var(--lyann-cream); }
 .discover-v3 .discover-state h3 { margin: 0 0 2px; font-size: 0.88rem; }
 .discover-v3 .discover-state p { margin: 0; font-size: 0.78rem; color: var(--lyann-text-secondary-aa); }
 
-/* Carte */
+/* Carte : petite illustration vectorielle intégrée */
 .discover-v3 .discover-map-banner {
-    display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 10px 12px; text-decoration: none; color: var(--d3-ink);
-    background: linear-gradient(100deg, var(--lyann-green-pastel) 0%, var(--lyann-green-soft) 100%); border: 1px solid var(--lyann-border); border-radius: 18px; box-shadow: var(--lyann-shadow-card);
+    display: flex; align-items: center; gap: 12px; min-height: 84px; padding: 10px 12px 10px 10px; text-decoration: none; color: var(--d3-ink);
+    background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 22px; box-shadow: var(--lyann-shadow-card);
 }
-.discover-v3 .discover-map-banner-icon { flex: 0 0 auto; font-size: 1.5rem; color: var(--d3-green-2); }
-.discover-v3 .discover-map-banner strong { flex: 1; font-size: 0.92rem; line-height: 1.2; }
+.discover-v3 .discover-map-art { flex: 0 0 96px; width: 96px; height: 64px; border-radius: 14px; }
+.discover-v3 .discover-map-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.discover-v3 .discover-map-text strong { font-size: 0.95rem; line-height: 1.2; font-weight: 800; }
+.discover-v3 .discover-map-text span { font-size: 0.76rem; line-height: 1.25; color: var(--lyann-text-secondary-aa); }
 .discover-v3 .discover-map-banner-go { flex: 0 0 34px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--d3-green); color: #fff; }
 
 @media (min-width: 720px) {
     .discover-v3 { padding-top: 96px; }
     .discover-v3 .lyann-highlight-rail { margin: 0; padding-left: 0; padding-right: 0; }
-    .discover-v3 .discover-service-rail, .discover-v3 .discover-grid-talents { margin: 0; padding-left: 0; padding-right: 0; }
+    .discover-v3 .discover-domains { gap: 16px 10px; }
+    .discover-v3 .discover-domain-label { font-size: 0.8rem; }
 }
 
 /* Petits écrans (≤ 400 px) : le placeholder doit rester entier */
@@ -128,6 +122,5 @@ body.discover-page { background: var(--lyann-cream); }
 }
 
 .discover-v3 .discover-search-bar input::placeholder { color: var(--lyann-text-secondary-aa); opacity: 1; }
-.discover-v3 .discover-service-tile { border: 1px solid transparent; }
 .discover-v3 a:focus-visible, .discover-v3 button:focus-visible { outline: 3px solid var(--lyann-focus); outline-offset: 2px; }
-.discover-v3 .discover-action-card.is-help:focus-visible { outline-color: var(--lyann-text-primary); }
+.discover-v3 .discover-post-cta:focus-visible { outline-color: var(--lyann-text-primary); }

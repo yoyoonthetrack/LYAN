@@ -22,11 +22,11 @@
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
-    <link rel="stylesheet" href="style.css?v=20261027v26">
+    <link rel="stylesheet" href="style.css?v=20261112a">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
     <link rel="stylesheet" href="needs-map.css?v=20261105pins">
-    <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261105ux">
-    <link rel="stylesheet" href="results-v3.css?v=20261112e">
+    <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261112a">
+    <link rel="stylesheet" href="results-v3.css?v=20261112g">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -166,12 +166,21 @@
                     <input id="explorerSearchInput" type="search" placeholder="Rechercher un talent, un service…" autocomplete="off" enterkeyhint="search">
                     <button type="submit" class="explorer-search-submit" aria-label="Rechercher"><i class="ph ph-arrow-right" aria-hidden="true"></i></button>
                 </form>
-                <button type="button" id="explorerFiltersIcon" class="explorer-filters-icon explorer-annonces-list-only" aria-label="Filtres et zone" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></button>
+            </div>
+            <div class="explorer-quickbar">
+                <label class="explorer-territory-pick" for="explorerTerritoryQuick">
+                    <i class="ph ph-map-pin" aria-hidden="true"></i>
+                    <span class="sr-only">Territoire</span>
+                    <select id="explorerTerritoryQuick" aria-label="Territoire"><option value="">Tous les territoires</option></select>
+                    <i class="ph ph-caret-down explorer-territory-caret" aria-hidden="true"></i>
+                </label>
+                <button type="button" id="explorerFiltersIcon" class="explorer-filters-icon explorer-annonces-list-only" aria-label="Filtres et zone" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i><span>Filtres</span></button>
             </div>
             <div class="explorer-tools explorer-tools--annonces explorer-annonces-list-only">
                 <div class="explorer-category-rail-wrap">
-                    <div id="explorerCategoryPills" class="lyann-pills" aria-label="Catégories"></div>
+                    <div id="explorerCategoryPills" class="explorer-family-grid" role="group" aria-label="Familles de métiers"></div>
                 </div>
+                <div id="explorerJobPanel" class="explorer-job-panel" hidden></div>
                 <label class="explorer-category lyann-category-native">Catégorie
                     <select id="explorerCategory"><option value="">Toutes les catégories</option></select>
                 </label>
@@ -211,10 +220,6 @@
                 </div>
                 <div class="explorer-sheet-actions"><button type="button" id="explorerReset" class="btn btn-outline">Réinitialiser</button><button value="apply" class="btn btn-primary">Afficher les résultats</button></div>
             </form>
-        </dialog>
-        <dialog id="explorerCategorySheet" class="explorer-filter-sheet explorer-category-sheet" aria-labelledby="explorerCategorySheetTitle">
-            <div class="explorer-sheet-heading"><div><h2 id="explorerCategorySheetTitle">Toutes les catégories</h2><p class="explorer-sheet-sub">Choisissez un domaine ou une catégorie précise.</p></div><button type="button" id="explorerCategorySheetClose" aria-label="Fermer">×</button></div>
-            <div class="explorer-sheet-body" id="explorerCategorySheetBody"></div>
         </dialog>
         <dialog id="explorerMapCategorySheet" class="explorer-filter-sheet explorer-map-category-sheet" aria-labelledby="explorerMapCategoryTitle">
             <form method="dialog" id="explorerMapCategoryForm">
@@ -1247,9 +1252,10 @@
     <script src="commune-distance.js?v=20261019-drom5"></script>
     <script src="needs-map-category-families.js?v=20261105pins"></script>
     <script src="needs-map.js?v=20261111a"></script>
+    <script src="marketplace-taxonomy.js?v=20261112b"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
-    <script src="explorer-ui.js?v=20261111a" defer></script>
+    <script src="explorer-ui.js?v=20261112b" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->
