@@ -1,0 +1,39 @@
+{
+  "project_ref": "tdktfbtqceldlaeqjtow",
+  "project_name": "Lyann-staging-v2",
+  "taken_at_utc": "2026-11-12T08:30:00Z",
+  "git_sha": "4eef59d79fdb68df3c4c9d383c7ea78db70eec2a",
+  "state": "after migration 94 (applied), before migration 95 (not applied)",
+  "fingerprints_md5": {
+    "col_acl": "b75213796e1bbcc6abea7c72256f50a5",
+    "data_v2": "50f8507d336b58f579bcc68a6101cb84",
+    "fn_acl": "21a4ccdbc6dfbf0f66d0a3a7d7cd6bd5",
+    "policies": "7b87e80cfabaff84de5311db5335de14",
+    "rel_acl": "b73a110ef62de84d7d6111e3907ac95e",
+    "views": "6144ae1e8b4985e5a25eb4e5fd7f24e2"
+  },
+  "functions": [
+    {
+      "sig": "lyann_ensure_support_welcome(p_user_id uuid)",
+      "owner": "postgres", "secdef": true, "search_path": "public",
+      "body_md5": "4615da642405ebe2b2662a08b19a2ce3",
+      "acl": ["postgres=X/postgres", "anon=X/postgres", "authenticated=X/postgres", "service_role=X/postgres"]
+    },
+    {
+      "sig": "lyann_insert_notification(p_user_id uuid, p_type text, p_title text, p_body text, p_entity_type text, p_entity_id text)",
+      "owner": "postgres", "secdef": true, "search_path": "public",
+      "body_md5": "f3b9ba91ca9e7e92510cb92012be97d0",
+      "acl": ["postgres=X/postgres", "anon=X/postgres", "authenticated=X/postgres", "service_role=X/postgres"]
+    },
+    {
+      "sig": "lyann_pair_conversation(p_user_a uuid, p_user_b uuid)",
+      "owner": "postgres", "secdef": true, "search_path": "public",
+      "body_md5": "dbffc2ca51b44842b853916ce5670af8",
+      "acl": ["postgres=X/postgres", "anon=X/postgres", "authenticated=X/postgres", "service_role=X/postgres"]
+    }
+  ],
+  "effective_before": { "anon": true, "authenticated": true, "service_role": true, "postgres_owner": true, "authenticator": false },
+  "default_privileges_cause": "pg_default_acl postgres/public/f and supabase_admin/public/f grant EXECUTE to anon, authenticated, service_role on every new function",
+  "roles": { "anon": "inherit, no bypassrls", "authenticated": "inherit, no bypassrls", "service_role": "bypassrls", "postgres": "bypassrls", "authenticator": "member of anon, authenticated, service_role (noinherit)" },
+  "restore": "95_internal_helper_rpc_lockdown_rollback.sql: GRANT EXECUTE on the three functions TO anon, authenticated, service_role (restores the ACL above exactly; no PUBLIC entry existed)"
+}
