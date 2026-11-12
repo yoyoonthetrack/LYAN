@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, webkit, devices } = require('playwright');
-const { buildBundle, serve, loadStagingEnv } = require('./preview-v32c');
+const { buildBundle, serve, loadStagingEnv, createPreviewBackend } = require('./preview-v32c');
 
 const root = path.join(__dirname, '..');
 const arg = (name, def) => { const hit = process.argv.slice(2).find((a) => a.startsWith(`--${name}=`)); return hit ? hit.split('=')[1] : def; };
@@ -26,7 +26,7 @@ const SCREENS = [
 
 (async () => {
     const info = buildBundle(path.join(root, 'artifacts', 'phase-3-2c', '.bundle'));
-    const server = await serve(info.dir, 0);
+    const server = await serve(info.dir, 0, '127.0.0.1', createPreviewBackend());
     const origin = `http://127.0.0.1:${server.address().port}`;
     const browser = await (engine === 'chromium' ? chromium : webkit).launch();
     const checks = [];

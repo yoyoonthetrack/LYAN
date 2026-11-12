@@ -13,27 +13,26 @@ body.results-page,
 body.results-page[data-explorer-mode="annonces"],
 body.results-page[data-explorer-mode="lyanneurs"] { background: var(--lyann-cream); }
 
-/* Header 3.2C : photo fondue dans une couleur d'univers (vert Lyanneurs, miel Annonces), titre à gauche posé directement dessus.
- * Aucun badge sombre, aucune ombre : la photo se fond vers la couleur par un masque, le texte repose sur la couleur pleine (blanc sur
- * vert primaire 6,41:1 ; vert profond sur miel 7,31:1). Même structure et mêmes proportions pour les deux univers. */
+/* Header 3.2C-2 : une photo naturelle, sans voile ni dégradé, et un titre posé sur un fond uni de l'univers (vert pastel Lyanneurs, miel pastel Annonces).
+ * Mobile : la photo en haut (visages entiers), le titre dessous. Ordinateur : titre à gauche, photo à droite. Le titre ne recouvre jamais la photo ;
+ * le contraste vient du fond uni (vert profond sur pastel : 10:1 et plus). Un trait de couleur sous le titre marque l'univers. */
 main#explorer .results-v3-header {
-    --hdr-bg: var(--lyann-green-primary); --hdr-ink: #fff; --hdr-accent: var(--lyann-honey);
-    position: relative; display: flex; align-items: center; width: 100%; height: 156px; margin: 0 0 14px; overflow: hidden;
+    --hdr-bg: var(--lyann-green-pastel); --hdr-ink: var(--lyann-green-deep); --hdr-accent: var(--lyann-green-primary);
+    position: relative; display: flex; flex-direction: column; align-items: stretch; width: 100%; margin: 0 0 14px; padding: 10px 10px 4px; overflow: hidden;
     background: var(--hdr-bg); border-radius: 24px; box-shadow: none; filter: none;
 }
-main#explorer[data-mode="annonces"] .results-v3-header { --hdr-bg: var(--lyann-honey); --hdr-ink: var(--lyann-green-deep); --hdr-accent: var(--lyann-green-deep); }
+main#explorer[data-mode="annonces"] .results-v3-header { --hdr-bg: var(--lyann-honey-pastel); --hdr-accent: var(--lyann-honey-icon); }
 main#explorer .results-v3-photo {
-    position: absolute; top: 0; right: 0; bottom: 0; left: auto; width: 70%; height: 100%; object-fit: cover; display: none; filter: none; box-shadow: none;
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 42%); mask-image: linear-gradient(90deg, transparent 0%, #000 42%);
+    display: none; position: static; width: 100%; height: 108px; object-fit: cover; border-radius: 16px; filter: none; box-shadow: none; -webkit-mask-image: none; mask-image: none;
 }
-/* Lyanneurs : l'homme au centre et l'aîné à droite restent entiers. */
-main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; object-position: 100% 0%; }
+/* Lyanneurs : les trois visages restent entiers. */
+main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; object-position: 50% 6%; }
 /* Annonces : la voisine perplexe et la fuite restent entières. */
-main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; object-position: 0% 0%; }
-main#explorer .results-v3-overlay { position: relative; z-index: 1; display: block; max-width: 58%; padding: 0 0 0 20px; text-align: left; color: var(--hdr-ink); pointer-events: none; background: none; }
-main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: clamp(1.9rem, 8.4vw, 2.3rem); line-height: 1.04; font-weight: 800; letter-spacing: -0.015em; color: var(--hdr-ink); text-align: left; text-shadow: none; }
-main#explorer .results-v3-overlay h1::after { content: ""; display: block; width: 44px; height: 4px; margin: 8px 0 0; border-radius: 4px; background: var(--hdr-accent); }
-main#explorer .results-v3-overlay p { margin: 8px 0 0; max-width: 13em; font-size: 0.82rem; line-height: 1.3; font-weight: 600; color: var(--hdr-ink); text-align: left; text-shadow: none; }
+main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; object-position: 40% 8%; }
+main#explorer .results-v3-overlay { position: relative; display: block; max-width: none; padding: 10px 10px 8px; text-align: left; color: var(--hdr-ink); pointer-events: none; background: none; }
+main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: clamp(1.75rem, 8vw, 2.1rem); line-height: 1.05; font-weight: 800; letter-spacing: -0.015em; color: var(--hdr-ink); text-align: left; text-shadow: none; }
+main#explorer .results-v3-overlay h1::after { content: ""; display: block; width: 48px; height: 4px; margin: 8px 0 0; border-radius: 4px; background: var(--hdr-accent); }
+main#explorer .results-v3-overlay p { margin: 8px 0 0; max-width: 26em; font-size: 0.9rem; line-height: 1.3; font-weight: 600; color: var(--hdr-ink); text-align: left; text-shadow: none; }
 body.is-native-app[data-explorer-mode] main#explorer #explorerPanel { margin-top: 0; }
 
 /* Recherche : une ligne pleine largeur, puis territoire + filtres juste dessous */
@@ -86,13 +85,8 @@ main#explorer .lyann-family-label { max-width: 100%; font-size: 0.7rem; line-hei
 main#explorer .lyann-family.is-active .lyann-family-disc { box-shadow: 0 0 0 3px var(--lyann-cream), 0 0 0 5.5px var(--fam-ring); }
 main#explorer .lyann-family.is-active .lyann-family-label { font-weight: 800; }
 main#explorer .lyann-family:focus-visible { outline: 3px solid var(--lyann-focus); outline-offset: 3px; border-radius: 14px; }
-main#explorer .explorer-job-panel { margin: 12px 0 0; padding: 12px 12px 14px; background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 20px; box-shadow: var(--lyann-shadow-card); }
-main#explorer .explorer-job-panel[hidden] { display: none; }
-main#explorer .explorer-job-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
-main#explorer .explorer-job-head strong { font-size: 0.98rem; font-weight: 800; color: var(--r3-ink); }
-main#explorer .explorer-job-close { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--fam-tint); color: var(--r3-ink); cursor: pointer; }
 main#explorer .explorer-job-group + .explorer-job-group { margin-top: 12px; }
-main#explorer .explorer-job-group-title { margin: 0 0 6px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--lyann-text-secondary-aa); }
+main#explorer .explorer-job-group-title { margin: 0 0 8px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--lyann-text-secondary-aa); }
 main#explorer .explorer-job-chips, main#explorer .explorer-job-specialties { display: flex; flex-wrap: wrap; gap: 8px; }
 main#explorer .explorer-job-specialties { margin: 10px 0 0 6px; padding-left: 10px; border-left: 3px solid var(--fam-chip-on); }
 main#explorer .explorer-job-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--lyann-border-control); border-radius: 999px; background: var(--lyann-white); color: var(--r3-ink); font: 700 0.84rem Outfit, sans-serif; cursor: pointer; }
@@ -100,9 +94,8 @@ main#explorer .explorer-job-specialties .explorer-job-chip { min-height: 36px; b
 main#explorer .explorer-job-chip.is-active { background: var(--fam-chip-on); border-color: var(--fam-chip-on); color: var(--fam-chip-on-ink); }
 main#explorer .explorer-job-count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--fam-tint); color: var(--r3-ink); font-size: 0.7rem; font-weight: 800; }
 main#explorer .explorer-job-chip.is-active .explorer-job-count { background: rgba(255, 255, 255, 0.28); color: inherit; }
-main#explorer .explorer-job-more { display: block; width: 100%; min-height: 40px; margin: 12px 0 0; border: 0; border-radius: 12px; background: none; color: var(--lyann-green-action); font: 800 0.84rem Outfit, sans-serif; cursor: pointer; }
 main#explorer .explorer-job-empty { margin: 4px 0 0; font-size: 0.84rem; color: var(--lyann-text-secondary-aa); }
-main#explorer .explorer-job-chip:focus-visible, main#explorer .explorer-job-close:focus-visible, main#explorer .explorer-job-more:focus-visible { outline: 3px solid var(--lyann-focus); outline-offset: 2px; }
+main#explorer .explorer-job-chip:focus-visible { outline: 3px solid var(--lyann-focus); outline-offset: 2px; }
 main#explorer .explorer-active-filters { margin: 0 0 8px; }
 main#explorer .explorer-active-filters:empty { display: none; }
 
@@ -161,15 +154,45 @@ body.results-page.explorer-annonces-map-view main#explorer .explorer-search-row 
 body.results-page.explorer-annonces-map-view main#explorer .explorer-view-toggle { margin-bottom: 8px; }
 body.results-page.explorer-annonces-map-view main#explorer .results-v3-header { display: none; }
 
+/* Largeur : jetons communs de lyann-layout.css (même mesure que Découvrir). */
+main#explorer.explorer-page { max-width: var(--lyann-page-max, 100%); margin-left: auto; margin-right: auto; box-sizing: border-box; }
 @media (min-width: 720px) {
-    main#explorer.explorer-page { max-width: 820px; margin-left: auto; margin-right: auto; }
-    main#explorer .results-v3-header { height: 208px; border-radius: 28px; }
-    main#explorer .results-v3-photo { width: 62%; }
-    main#explorer .results-v3-overlay { padding-left: 32px; max-width: 46%; }
-    main#explorer .results-v3-overlay h1 { font-size: 2.8rem; }
-    main#explorer .results-v3-overlay p { font-size: 1rem; }
+    main#explorer.explorer-page { padding-left: var(--lyann-page-gutter); padding-right: var(--lyann-page-gutter); }
+    main#explorer .results-v3-header { flex-direction: row; align-items: stretch; min-height: 232px; padding: 14px; border-radius: 28px; }
+    main#explorer .results-v3-overlay { order: 1; flex: 1 1 44%; align-self: center; padding: 8px 24px 8px 22px; }
+    main#explorer .results-v3-photo { order: 2; flex: 0 0 56%; width: 56%; height: auto; min-height: 204px; border-radius: 20px; }
+    main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { object-position: 50% 14%; }
+    main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { object-position: 30% 20%; }
+    main#explorer .results-v3-overlay h1 { font-size: clamp(2.4rem, 3.6vw, 3.2rem); }
+    main#explorer .results-v3-overlay h1::after { width: 64px; height: 5px; margin-top: 12px; }
+    main#explorer .results-v3-overlay p { margin-top: 12px; font-size: 1.08rem; }
+    /* Recherche et filtres : une seule rangée large. */
+    main#explorer .explorer-search-row { margin-bottom: 12px; }
+    main#explorer .explorer-quickbar { max-width: 560px; }
     main#explorer .explorer-family-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px 8px; }
     main#explorer .lyann-family-disc { width: 60px; height: 60px; }
+}
+@media (min-width: 1024px) {
+    main#explorer .results-v3-header { min-height: 248px; }
+    main#explorer .results-v3-photo { min-height: 220px; }
+    main#explorer .lyann-family-disc { width: 68px; height: 68px; }
+    main#explorer .lyann-family-icon { width: 31px; height: 31px; }
+    main#explorer .lyann-family-label { font-size: 0.8rem; }
+}
+@media (min-width: 1280px) {
+    main#explorer .results-v3-header { min-height: 264px; }
+    main#explorer .results-v3-photo { min-height: 236px; }
+}
+/* Résultats : plusieurs colonnes dès la tablette large. Les cartes se répartissent, elles ne s'étirent pas. */
+@media (min-width: 720px) {
+    main#explorer .explorer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; align-items: stretch; }
+    main#explorer .explorer-grid > .explorer-state,
+    main#explorer .explorer-grid > .explorer-group-title,
+    main#explorer .explorer-grid > h2,
+    main#explorer .explorer-grid > h3 { grid-column: 1 / -1; }
+}
+@media (min-width: 1280px) {
+    main#explorer .explorer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* Petits écrans (≤ 400 px) : le placeholder doit rester entier */
@@ -239,4 +262,67 @@ body[data-explorer-mode="annonces"] .mobile-bottom-nav .nav-tab.active { backgro
     main#explorer .explorer-search { padding-left: 30px; }
     main#explorer .explorer-search .explorer-search-icon { left: 9px; }
     main#explorer .explorer-search input::placeholder { font-size: 12px; letter-spacing: -0.02em; }
+}
+
+/* ── 3.2C-2 · Filtre de métiers : barre compacte + panneau « Affiner » ───────────────────────────────────────────────
+ * Choisir une famille filtre aussitôt la liste ; seule une ligne discrète apparaît (« Maison & travaux · 20 métiers » + Affiner / Réinitialiser).
+ * Sans famille choisie, elle n'occupe aucune place. « Affiner » ouvre une feuille basse (mobile) ou un popover ancré à la barre (ordinateur) ;
+ * les résultats restent derrière, la page ne défile pas et la carte n'est pas redimensionnée (le panneau est superposé, jamais inséré dans le flux). */
+main#explorer .explorer-taxo-wrap { position: relative; margin: 0 0 10px; }
+main#explorer .explorer-taxo-wrap:has(.explorer-taxo-bar[hidden]) { margin: 0; }
+main#explorer .explorer-taxo-bar { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 6px 4px 14px; background: var(--fam-tint); border: 1px solid var(--lyann-border); border-radius: 16px; }
+main#explorer .explorer-taxo-bar[hidden] { display: none; }
+main#explorer .explorer-taxo-label { flex: 1; min-width: 0; margin: 0; display: flex; flex-direction: column; font-size: 0.86rem; line-height: 1.2; color: var(--r3-ink); }
+main#explorer .explorer-taxo-label strong, main#explorer .explorer-taxo-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+main#explorer .explorer-taxo-label .sep { display: none; }
+main#explorer .explorer-taxo-label span { font-size: 0.78rem; color: var(--lyann-text-secondary-aa); }
+main#explorer .explorer-taxo-label strong { font-weight: 800; }
+main#explorer .explorer-taxo-label span { font-weight: 600; }
+main#explorer .explorer-taxo-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 0 12px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--lyann-green-action); font: 800 0.84rem Outfit, sans-serif; cursor: pointer; }
+main#explorer .explorer-taxo-btn[hidden] { display: none; }
+main#explorer .explorer-taxo-btn.is-primary { background: var(--lyann-white); border-color: var(--lyann-border-control); color: var(--r3-ink); }
+main#explorer .explorer-taxo-btn .ph { font-size: 1rem; color: var(--r3-green); }
+main#explorer .explorer-taxo-btn:focus-visible, main#explorer .explorer-refine-icon:focus-visible { outline: 3px solid var(--lyann-focus); outline-offset: 2px; }
+main#explorer[data-mode="annonces"] .explorer-taxo-btn .ph { color: var(--lyann-honey-icon); }
+/* Visible aussi en mode Carte (les familles, elles, restent sur la liste). */
+body.results-page.explorer-annonces-map-view main#explorer .explorer-taxo-wrap { margin-bottom: 8px; }
+
+main#explorer .explorer-refine-backdrop { position: fixed; inset: 0; z-index: 1990; background: rgba(22, 61, 45, 0.38); touch-action: none; }
+main#explorer .explorer-refine-backdrop[hidden], main#explorer .explorer-refine[hidden] { display: none !important; }
+main#explorer .explorer-refine {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 2000; display: flex; flex-direction: column;
+    height: 60vh; height: 60dvh; max-height: 92vh; max-height: 92dvh; background: var(--lyann-white);
+    border-radius: 24px 24px 0 0; box-shadow: 0 -14px 40px rgba(22, 61, 45, 0.22); outline: none;
+    transform: translateY(105%); transition: transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.2s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+main#explorer .explorer-refine.is-open { transform: none; }
+main#explorer .explorer-refine.is-expanded { height: 92vh; height: 92dvh; }
+main#explorer .explorer-refine-grab { display: grid; place-items: center; height: 22px; cursor: grab; touch-action: none; }
+main#explorer .explorer-refine-grab span { width: 42px; height: 5px; border-radius: 3px; background: var(--lyann-border-control); }
+main#explorer .explorer-refine-head { display: flex; align-items: center; gap: 6px; padding: 0 12px 8px 18px; touch-action: none; }
+main#explorer .explorer-refine-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 1.08rem; font-weight: 800; color: var(--r3-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+main#explorer .explorer-refine-icon { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--fam-tint); color: var(--r3-ink); cursor: pointer; }
+main#explorer .explorer-refine-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 4px 18px 12px; }
+main#explorer .explorer-refine-foot { padding: 10px 18px 14px; border-top: 1px solid var(--lyann-border); }
+main#explorer .explorer-refine-foot .btn { width: 100%; min-height: 48px; justify-content: center; font-weight: 800; }
+main#explorer .explorer-job-chip.is-empty { color: var(--lyann-text-secondary-aa); background: var(--lyann-cream); font-weight: 600; }
+@media (min-width: 900px) {
+    main#explorer .explorer-taxo-bar { display: inline-flex; width: auto; max-width: 100%; }
+    main#explorer .explorer-taxo-label { flex-direction: row; align-items: baseline; gap: 0; font-size: 0.9rem; }
+    main#explorer .explorer-taxo-label .sep { display: inline; }
+    main#explorer .explorer-taxo-label span { font-size: inherit; color: var(--r3-ink); }
+    main#explorer .explorer-taxo-wrap { display: flex; flex-wrap: wrap; }
+    main#explorer .explorer-refine-backdrop { display: none !important; }
+    main#explorer .explorer-refine-grab, main#explorer .explorer-refine-icon.is-expand { display: none; }
+    main#explorer .explorer-refine {
+        position: absolute; top: calc(100% + 8px); bottom: auto; left: 0; right: auto; width: min(720px, 100%); height: auto; max-height: min(62vh, 560px);
+        border-radius: 20px; border: 1px solid var(--lyann-border); box-shadow: 0 18px 44px rgba(22, 61, 45, 0.2); padding-bottom: 0;
+        transform: translateY(-6px); opacity: 0; transition: opacity 0.16s ease, transform 0.16s ease;
+    }
+    main#explorer .explorer-refine.is-open { transform: none; opacity: 1; }
+    main#explorer .explorer-refine-head { padding-top: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    main#explorer .explorer-refine { transition: none; }
 }

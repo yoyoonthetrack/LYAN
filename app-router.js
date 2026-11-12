@@ -159,13 +159,16 @@
 
   // Product policy: reading is public; mutations and personal surfaces require a session.
   const interactionPolicy = Object.freeze({
-    home: 'public', explorer: 'public', bokantaj: 'public', requestDetail: 'public',
-    publicProfile: 'public', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public', legal: 'public',
+    home: 'public', explorer: 'public', bokantaj: 'public', requestDetail: 'context',
+    publicProfile: 'context', search: 'public', filters: 'public', pricing: 'public', help: 'public', about: 'public', legal: 'public',
     favorite: 'context', messages: 'continue', support: 'continue', requestHelp: 'context', requestAuthor: 'context', publish: 'continue',
     comment: 'context', reaction: 'context', communityPublish: 'context', proposal: 'context',
     missionAction: 'context', profile: 'continue', account: 'continue', activity: 'continue',
     favorites: 'continue', finances: 'continue', settings: 'continue', payment: 'continue'
   });
+  // Phase 3.2C-2 : lire les cartes, chercher et filtrer restent publics ; ouvrir une fiche (Lyanneur, annonce) ou agir demande un compte.
+  // Ces actions ouvrent l'invitation « Envie d'en savoir plus ? » (visitor-gate.js) au lieu de la fenêtre de connexion seule.
+  const VISITOR_GATE_ACTIONS = new Set(['requestDetail', 'publicProfile', 'favorite', 'requestHelp', 'requestAuthor']);
   const INTENT_KEY = 'lyann_interaction_intent';
   let pendingIntent = null;
   let resuming = false;
@@ -210,7 +213,9 @@
       const el = document.getElementById(id);
       if (el) { el.classList.remove('active'); el.style.display = 'none'; }
     }
-    openLoginPrompt();
+    const gated = VISITOR_GATE_ACTIONS.has(action) || (action === 'messages' && (payload.contactId || payload.requestId));
+    if (gated && typeof window.LYANN_VISITOR_GATE?.open === 'function') window.LYANN_VISITOR_GATE.open(action, payload);
+    else openLoginPrompt();
     window.dispatchEvent(new CustomEvent('lyann:interaction-auth-required', { detail: { action } }));
     return false;
   }
@@ -229,6 +234,11 @@
       const p = intent.payload || {};
       if (interactionPolicy[intent.action] === 'continue') {
         await go(intent.action, p);
+      } else if (intent.action === 'requestDetail' && (p.requestId || p.id)) {
+        // La fiche demandée avant la connexion s'ouvre d'elle-même ; aucune action (aide, favori, message) n'est rejouée.
+        await window.openLyannDetailModal?.(p.requestId || p.id);
+      } else if (intent.action === 'publicProfile' && (p.memberId || p.id)) {
+        await window.openPublicMemberProfile?.(p.memberId || p.id);
       } else if (['requestHelp', 'requestAuthor'].includes(intent.action) && p.requestId) {
         // Restore the real Request. The user confirms help or opens the author again;
         // no invitation, proposal or mission is created by signing in.

@@ -18,15 +18,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@72,700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Phosphor Icons -->
-    <link rel="stylesheet" href="lyann-palette-v31b.css?v=20261112c">
+    <link rel="stylesheet" href="lyann-palette-v31b.css?v=20261112d">
     <link rel="stylesheet" href="vendor/phosphor/phosphor.css?v=2.1.2">
     
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261112a">
+    <link rel="stylesheet" href="visitor-gate.css?v=20261112a">
     <link rel="stylesheet" href="explorer.css?v=20261018pub">
     <link rel="stylesheet" href="needs-map.css?v=20261105pins">
     <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261112a">
-    <link rel="stylesheet" href="results-v3.css?v=20261112g">
+    <link rel="stylesheet" href="lyann-layout.css?v=20261112a">
+    <link rel="stylesheet" href="results-v3.css?v=20261112h">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
@@ -180,11 +182,28 @@
                 <div class="explorer-category-rail-wrap">
                     <div id="explorerCategoryPills" class="explorer-family-grid" role="group" aria-label="Familles de métiers"></div>
                 </div>
-                <div id="explorerJobPanel" class="explorer-job-panel" hidden></div>
                 <label class="explorer-category lyann-category-native">Catégorie
                     <select id="explorerCategory"><option value="">Toutes les catégories</option></select>
                 </label>
                 <button id="explorerFiltersButton" class="btn btn-outline explorer-filters-inline" aria-haspopup="dialog"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Filtres et zone</button>
+            </div>
+            <div class="explorer-taxo-wrap">
+                <div id="explorerTaxoBar" class="explorer-taxo-bar" role="group" aria-label="Filtre de métiers actif" hidden>
+                    <p class="explorer-taxo-label" role="status" aria-live="polite"></p>
+                    <button type="button" id="explorerRefineBtn" class="explorer-taxo-btn is-primary" data-action="taxo-refine" aria-haspopup="dialog" aria-expanded="false" aria-controls="explorerRefine"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i><span>Affiner</span></button>
+                    <button type="button" class="explorer-taxo-btn" data-action="taxo-reset">Réinitialiser</button>
+                </div>
+                <div id="explorerRefineBackdrop" class="explorer-refine-backdrop" hidden></div>
+                <div id="explorerRefine" class="explorer-refine" role="dialog" aria-modal="true" aria-labelledby="explorerRefineTitle" tabindex="-1" hidden>
+                    <div class="explorer-refine-grab" aria-hidden="true"><span></span></div>
+                    <div class="explorer-refine-head">
+                        <h2 id="explorerRefineTitle">Affiner</h2>
+                        <button type="button" class="explorer-refine-icon is-expand" data-action="refine-expand" aria-pressed="false" aria-label="Agrandir le panneau"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5-5 5 5M7 14l5 5 5-5"/></svg></button>
+                        <button type="button" class="explorer-refine-icon" data-action="refine-close" aria-label="Fermer"><i class="ph ph-x" aria-hidden="true"></i></button>
+                    </div>
+                    <div id="explorerRefineBody" class="explorer-refine-body"></div>
+                    <div class="explorer-refine-foot"><button type="button" id="explorerRefineDone" class="btn btn-primary" data-action="refine-close">Voir les résultats</button></div>
+                </div>
             </div>
             <div id="explorerActiveFilters" class="explorer-active-filters explorer-annonces-list-only" aria-label="Filtres actifs"></div>
             <div id="explorerViewToggle" class="explorer-view-toggle" role="group" aria-label="Affichage des annonces" hidden>
@@ -1220,6 +1239,7 @@
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
     <script src="app-router.js?v=20261018legal"></script>
+    <script src="visitor-gate.js?v=20261112a"></script>
     <script src="api-client.js?v=20261019-coherence"></script>
     <script src="session-store.js"></script>
     <script src="auth-state.js"></script>
@@ -1255,7 +1275,7 @@
     <script src="marketplace-taxonomy.js?v=20261112b"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261025skel"></script>
-    <script src="explorer-ui.js?v=20261112b" defer></script>
+    <script src="explorer-ui.js?v=20261112c" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

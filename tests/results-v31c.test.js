@@ -29,28 +29,28 @@ test('Honey tokens are the validated soft values, never saturated yellows', () =
     }
 });
 
-test('Both headers share one structure: rounded universe-colour block, photo fading into it, left title, no dark badge', () => {
+test('Both headers share one structure: natural photo (no veil), solid universe colour behind the title, left title, coloured line', () => {
     const header = rule(css, 'main#explorer .results-v3-header');
-    assert.match(header, /border-radius: 24px;/);
     assert.match(header, /box-shadow: none;/);
     assert.match(header, /filter: none;/);
     assert.match(header, /background: var\(--hdr-bg\)/);
-    const height = Number((header.match(/\bheight: (\d+)px/) || [])[1]);
-    assert.ok(height >= 140 && height <= 165, `header height ${height}px`);
-    // One colour per universe: green primary for Lyanneurs, honey for Annonces.
-    assert.match(css, /--hdr-bg: var\(--lyann-green-primary\); --hdr-ink: #fff;/);
-    assert.match(css, /main#explorer\[data-mode="annonces"\] \.results-v3-header \{ --hdr-bg: var\(--lyann-honey\); --hdr-ink: var\(--lyann-green-deep\)/);
+    assert.doesNotMatch(header, /gradient/);
+    // One identity per universe: green pastel + green line for Lyanneurs, honey pastel + honey line for Annonces.
+    assert.match(css, /--hdr-bg: var\(--lyann-green-pastel\); --hdr-ink: var\(--lyann-green-deep\); --hdr-accent: var\(--lyann-green-primary\);/);
+    assert.match(css, /main#explorer\[data-mode="annonces"\] \.results-v3-header \{ --hdr-bg: var\(--lyann-honey-pastel\); --hdr-accent: var\(--lyann-honey-icon\); \}/);
     const photo = rule(css, 'main#explorer .results-v3-photo');
     assert.match(photo, /filter: none;/);
     assert.match(photo, /box-shadow: none;/);
-    assert.match(photo, /mask-image: linear-gradient\(90deg, transparent/);
-    // The title sits directly on the colour: left aligned, no dark rectangle, no text shadow.
+    assert.match(photo, /mask-image: none;/);
+    assert.doesNotMatch(photo, /gradient/);
+    // The title never covers the photo: left aligned, no dark rectangle, no text shadow, a small coloured line under it.
     const overlay = rule(css, 'main#explorer .results-v3-overlay');
     assert.doesNotMatch(overlay, /rgba\(22, 61, 45|inset: 0|width: fit-content/);
     assert.match(overlay, /text-align: left/);
     assert.match(overlay, /background: none/);
     assert.match(rule(css, 'main#explorer .results-v3-overlay h1'), /text-align: left/);
     assert.match(rule(css, 'main#explorer .results-v3-overlay p'), /text-align: left/);
+    assert.match(css, /\.results-v3-overlay h1::after \{[^}]*background: var\(--hdr-accent\)/);
     assert.doesNotMatch(css, /text-shadow: 0/);
     assert.ok(html.includes('class="results-v3-photo is-lyanneurs"') && html.includes('class="results-v3-photo is-annonces"'));
     assert.match(html, /is-lyanneurs" src="assets\/universe-v3\/header-lyanneurs\.webp[^"]*" alt="" width="758" height="331"/);
@@ -58,8 +58,9 @@ test('Both headers share one structure: rounded universe-colour block, photo fad
 });
 
 test('Title contrast on the universe colour is WCAG AA (large text and the 0.82 rem subtitle)', () => {
-    assert.ok(ratio('#FFFFFF', '#246B49') >= 4.5, `white on green primary: ${ratio('#FFFFFF', '#246B49').toFixed(2)}:1`);
-    assert.ok(ratio('#163D2D', '#EBC568') >= 7, `deep green on honey: ${ratio('#163D2D', '#EBC568').toFixed(2)}:1`);
+    assert.ok(ratio('#163D2D', '#E5F0E6') >= 7, `deep green on green pastel: ${ratio('#163D2D', '#E5F0E6').toFixed(2)}:1`);
+    assert.ok(ratio('#163D2D', '#F9E9BC') >= 7, `deep green on honey pastel: ${ratio('#163D2D', '#F9E9BC').toFixed(2)}:1`);
+    assert.ok(ratio('#FFFFFF', '#246B49') >= 4.5, 'white on green primary (publish button text zone)');
 });
 
 test('Annonces: honey accents only, scoped to the annonces mode', () => {

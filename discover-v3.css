@@ -8,11 +8,17 @@
     --d3-yellow: var(--lyann-yellow);
     --d3-cream: var(--lyann-cream);
     --d3-ink: var(--lyann-text-primary);
-    max-width: 720px;
+    /* Largeur : jetons communs de lyann-layout.css (identiques à Lyanneurs et Annonces). */
+    width: 100%;
+    max-width: var(--lyann-page-max, 720px);
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
     padding-top: calc(76px + env(safe-area-inset-top, 0px));
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: var(--lyann-page-gutter, 16px);
+    padding-right: var(--lyann-page-gutter, 16px);
 }
+.discover-main.discover-v3 { width: 100%; max-width: var(--lyann-page-max, 720px); padding-left: var(--lyann-page-gutter, 16px); padding-right: var(--lyann-page-gutter, 16px); }
 body.discover-page { background: var(--lyann-cream); }
 /* Pas de double réserve : le corps réserve déjà la hauteur de la barre native (page entièrement atteignable, sans grand vide). */
 body.is-native-app .discover-main.discover-v3,
@@ -47,17 +53,33 @@ body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
 }
 .discover-v3 .discover-search-submit i { font-size: 1rem; color: #fff; }
 
-/* « Poster une annonce » : bouton large, du miel vers un vert très léger (vert profond dessus : 7,3:1 minimum). */
+/* « Poster une annonce » : dégradé du miel vif (à gauche, sous le + ) vers le vert profond (à droite).
+ * Le texte blanc commence après la zone miel, là où le fond est déjà vert : blanc / vert primaire 6,41:1, blanc / vert profond 11:1.
+ * L'interpolation oklch garde un passage jaune-vert vif (pas de milieu gris ou beige) ; sRGB sert de repli. */
 .discover-v3 .discover-post-cta {
-    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; padding: 10px 14px 10px 12px; text-align: left; cursor: pointer;
-    border: 1px solid rgba(22, 61, 45, 0.12); border-radius: 22px; color: var(--d3-green); font-family: Outfit, sans-serif;
-    background: var(--lyann-honey); background: linear-gradient(105deg, var(--lyann-honey) 0%, color-mix(in srgb, var(--lyann-honey) 62%, var(--lyann-green-soft)) 55%, color-mix(in srgb, var(--lyann-honey) 38%, var(--lyann-green-soft)) 100%); box-shadow: 0 8px 20px rgba(22, 61, 45, 0.14);
+    --cta-gap: 26px;
+    position: relative; display: flex; align-items: center; gap: var(--cta-gap); width: 100%; min-height: 76px; padding: 11px 16px 11px 16px; text-align: left; cursor: pointer; overflow: hidden;
+    border: 0; border-radius: 24px; color: var(--lyann-white); font-family: Outfit, sans-serif;
+    background: var(--lyann-green-primary);
+    background: linear-gradient(90deg, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 40px, var(--lyann-green-primary) 104px, var(--lyann-green-deep) 100%);
+    background: linear-gradient(90deg in oklch, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 40px, var(--lyann-green-primary) 104px, var(--lyann-green-deep) 100%);
+    box-shadow: 0 10px 24px rgba(22, 61, 45, 0.24);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.discover-v3 .discover-post-icon { flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--d3-green); color: #fff; font-size: 1.4rem; }
-.discover-v3 .discover-post-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.discover-v3 .discover-post-text strong { font-size: 1.08rem; line-height: 1.15; font-weight: 800; }
-.discover-v3 .discover-post-text span { font-size: 0.76rem; line-height: 1.25; font-weight: 600; color: var(--d3-green); }
-.discover-v3 .discover-post-go { flex: 0 0 auto; font-size: 1.15rem; color: var(--d3-green); }
+.discover-v3 .discover-post-icon { flex: 0 0 54px; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: var(--lyann-white); color: var(--d3-green); font-size: 1.6rem; box-shadow: 0 3px 10px rgba(22, 61, 45, 0.22); }
+.discover-v3 .discover-post-icon .ph { font-weight: 700; }
+.discover-v3 .discover-post-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.discover-v3 .discover-post-text strong { font-size: 1.14rem; line-height: 1.15; font-weight: 800; color: var(--lyann-white); }
+.discover-v3 .discover-post-text span { font-size: 0.8rem; line-height: 1.25; font-weight: 600; color: var(--lyann-white); }
+.discover-v3 .discover-post-go { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); font-size: 1.1rem; color: var(--lyann-white); transition: transform 0.18s ease; }
+@media (hover: hover) and (min-width: 900px) {
+    .discover-v3 .discover-post-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(22, 61, 45, 0.3); }
+    .discover-v3 .discover-post-cta:hover .discover-post-go { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .discover-v3 .discover-post-cta, .discover-v3 .discover-post-go { transition: none; }
+    .discover-v3 .discover-post-cta:hover, .discover-v3 .discover-post-cta:hover .discover-post-go { transform: none; }
+}
 .discover-v3 .discover-offer-link { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 40px; margin-top: 4px; font-size: 0.84rem; color: var(--lyann-text-secondary-aa); text-decoration: none; }
 .discover-v3 .discover-offer-link strong { color: var(--lyann-green-action); font-weight: 800; }
 .discover-v3 .discover-offer-link .ph { font-size: 0.85rem; color: var(--lyann-green-action); }
@@ -112,6 +134,43 @@ body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
     .discover-v3 { padding-top: 96px; }
     .discover-v3 .lyann-highlight-rail { margin: 0; padding-left: 0; padding-right: 0; }
     .discover-v3 .discover-domains { gap: 16px 10px; }
+    .discover-v3 .discover-domain-label { font-size: 0.8rem; }
+    .discover-v3 .discover-grid-needs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+}
+/* Ordinateur : la page se recompose (accueil et recherche côte à côte, domaines sur une rangée, annonces en colonnes), elle ne s'étire pas. */
+@media (min-width: 900px) {
+    .discover-v3 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+    .discover-v3 > * { grid-column: 1 / -1; min-width: 0; }
+    .discover-v3 .discover-welcome { grid-column: 1 / span 5; align-self: center; margin-bottom: 18px; }
+    .discover-v3 .discover-search { grid-column: 6 / -1; align-self: center; }
+    .discover-v3 .discover-heading { font-size: clamp(1.9rem, 2.6vw, 2.5rem); }
+    .discover-v3 .discover-search-bar { min-height: 54px; border-radius: 18px; }
+    .discover-v3 .discover-search-bar input { font-size: 1.02rem; }
+    .discover-v3 .discover-post-cta { min-height: 88px; padding: 14px 22px 14px 20px; --cta-gap: 34px; border-radius: 28px;
+        background: linear-gradient(90deg, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 48px, var(--lyann-green-primary) 124px, var(--lyann-green-deep) 100%);
+        background: linear-gradient(90deg in oklch, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 48px, var(--lyann-green-primary) 124px, var(--lyann-green-deep) 100%); }
+    .discover-v3 .discover-post-icon { flex-basis: 60px; width: 60px; height: 60px; }
+    .discover-v3 .discover-post-text strong { font-size: 1.35rem; }
+    .discover-v3 .discover-post-text span { font-size: 0.95rem; }
+    .discover-v3 .discover-post-go { width: 44px; height: 44px; font-size: 1.3rem; }
+    .discover-v3 .discover-offer-link { justify-content: flex-start; }
+    .discover-v3 .lyann-highlight-rail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; gap: 16px; }
+    .discover-v3 .lyann-highlight-card, .discover-v3 .lyann-highlight-rail.is-few .lyann-highlight-card { flex: none; min-width: 0; max-width: none; }
+    .discover-v3 .discover-domains { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px 12px; }
+    .discover-v3 .discover-domain-disc { max-width: 72px; }
+    .discover-v3 .discover-domain-label { font-size: 0.86rem; }
+    .discover-v3 .discover-need-row { padding: 12px 14px 12px 12px; border-radius: 18px; }
+    .discover-v3 .discover-need-text strong { font-size: 0.96rem; }
+    .discover-v3 .discover-need-text span { font-size: 0.8rem; }
+    .discover-v3 .discover-map-banner { min-height: 104px; padding: 14px 18px 14px 14px; }
+    .discover-v3 .discover-map-art { flex-basis: 150px; width: 150px; height: 76px; }
+    .discover-v3 .discover-map-text strong { font-size: 1.1rem; }
+    .discover-v3 .discover-map-text span { font-size: 0.9rem; }
+}
+@media (min-width: 1100px) {
+    .discover-v3 .lyann-highlight-rail { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .discover-v3 .discover-domains { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 16px 10px; }
+    .discover-v3 .discover-domain-disc { max-width: 76px; }
     .discover-v3 .discover-domain-label { font-size: 0.8rem; }
 }
 

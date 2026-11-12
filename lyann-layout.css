@@ -1,0 +1,19 @@
+/* LYANN — largeurs de page communes (Découvrir, Lyanneurs, Annonces).
+ * Mobile : pleine largeur, gouttières de 16 px. Tablette puis ordinateur : le contenu s'élargit par paliers, centré, avec de vraies marges.
+ * Ces trois pages lisent les mêmes jetons : aucune ne garde sa propre largeur maximale. */
+:root {
+    --lyann-page-max: 100%;
+    --lyann-page-gutter: 16px;
+}
+@media (min-width: 720px) {
+    :root { --lyann-page-max: 920px; --lyann-page-gutter: 24px; }
+}
+@media (min-width: 1024px) {
+    :root { --lyann-page-max: 1120px; --lyann-page-gutter: 28px; }
+}
+@media (min-width: 1280px) {
+    :root { --lyann-page-max: 1280px; --lyann-page-gutter: 36px; }
+}
+@media (min-width: 1600px) {
+    :root { --lyann-page-max: 1360px; --lyann-page-gutter: 40px; }
+}

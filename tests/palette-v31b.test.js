@@ -39,7 +39,8 @@ test('application rules', () => {
     const r = fs.readFileSync('results-v3.css', 'utf8');
     assert.match(d, /body\.discover-page \{ background: var\(--lyann-cream\); \}/);
     assert.match(r, /body\.results-page\[data-explorer-mode="annonces"\][\s\S]*\{ background: var\(--lyann-cream\); \}/, 'one cream for every results mode');
-    assert.match(d, /\.discover-post-cta \{[^}]*var\(--lyann-honey\)[^}]*var\(--lyann-green-soft\)/, 'publish button: honey fading into a very light green, tokens only');
+    assert.match(d, /\.discover-post-cta \{[^}]*var\(--lyann-honey-bright\)[^}]*var\(--lyann-green-primary\)[^}]*var\(--lyann-green-deep\)/, 'publish button: bright honey into deep green, tokens only');
+    assert.match(d, /\.discover-post-text strong \{[^}]*color: var\(--lyann-white\)/, 'publish button text is white');
     assert.match(r, /--r3-green: var\(--lyann-green-primary\)/, 'active filters and primary actions');
     assert.match(r, /--r3-pastel: var\(--lyann-green-pastel\)/, 'inactive filters');
     assert.match(r, /\.explorer-annonce\.explorer-card \{ background: var\(--lyann-white\); border: 1px solid var\(--lyann-border\)/);

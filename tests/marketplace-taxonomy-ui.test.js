@@ -122,15 +122,17 @@ test('load never throws and returns null without a client or without data', asyn
     assert.equal(await T.load(failing, true), null);
 });
 
-test('Lyanneurs and Annonces: eight family discs, job panel, quick territory next to the search, filters kept', () => {
+test('Lyanneurs and Annonces: eight family discs, compact bar + Affiner sheet, quick territory next to the search, filters kept', () => {
     assert.match(results, /id="explorerCategoryPills"[^>]*explorer-family-grid/);
-    assert.match(results, /id="explorerJobPanel"/);
+    assert.match(results, /id="explorerTaxoBar"/);
+    assert.match(results, /id="explorerRefine"/);
+    assert.doesNotMatch(results, /id="explorerJobPanel"/);
     assert.match(results, /id="explorerTerritoryQuick"/);
     assert.match(results, /id="explorerFiltersIcon"/);
     assert.match(results, /marketplace-taxonomy\.js[\s\S]*explorer-repository\.js/, 'the taxonomy helper loads before the explorer');
     assert.ok(results.indexOf('explorerSearchForm') < results.indexOf('explorerTerritoryQuick') && results.indexOf('explorerTerritoryQuick') < results.indexOf('explorerCategoryPills'));
     assert.match(results, /data-view="list"[\s\S]*data-view="map"/, 'the map stays a sub-view of Annonces');
-    assert.match(ui, /data-action="jobs-more"/, 'trades without records are opened on demand');
+    assert.match(ui, /button.dataset.action === 'taxo-refine'/, 'the sub-trade browser opens only from « Affiner »');
     assert.match(ui, /FAMILIES\.map/);
 });
 

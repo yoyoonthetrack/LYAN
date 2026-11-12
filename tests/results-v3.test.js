@@ -8,7 +8,7 @@ const css = fs.readFileSync('results-v3.css', 'utf8');
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 
 // Order inside the results page: header, search, filters, (toggle), results. Nothing in between.
-const marks = ['results-v3-header', 'explorerSearchForm', 'explorerCategoryPills', 'explorerViewToggle', 'id="explorerResults"'];
+const marks = ['results-v3-header', 'explorerSearchForm', 'explorerCategoryPills', 'explorerTaxoBar', 'explorerViewToggle', 'id="explorerResults"'];
 let last = -1;
 for (const m of marks) {
     const at = main.indexOf(m);
@@ -24,9 +24,10 @@ for (const re of forbidden) {
 }
 assert.doesNotMatch(html, /editorial-highlights/, 'the editorial module is Découvrir-only');
 
-// Header (3.2C): compact photo header (capped at 160 px), left-aligned title on the photo, official copy, WebP assets that exist.
-const headerH = Number((css.match(/\.results-v3-header \{[^}]*?\bheight:\s*(\d+)px/) || [])[1]);
-assert.ok(headerH >= 140 && headerH <= 165, `header height ${headerH}px must be 140-165px`);
+// Header (3.2C-2): natural photo, no veil or gradient; mobile = photo on top and title below, desktop = title left and photo right.
+const photoH = Number((css.match(/\.results-v3-photo \{[^}]*?\bheight:\s*(\d+)px/) || [])[1]);
+assert.ok(photoH >= 90 && photoH <= 130, `mobile photo height ${photoH}px must stay compact (90-130px)`);
+assert.doesNotMatch(css.slice(css.indexOf('main#explorer .results-v3-header {'), css.indexOf('body.is-native-app[data-explorer-mode]')), /gradient\(|mask-image: linear/, 'no gradient or veil over the photo');
 assert.match(css, /\.results-v3-overlay \{[^}]*text-align: left/);
 assert.match(html, /<h1 id="explorerTitle">Lyanneurs<\/h1>/);
 assert.match(ui, /title: 'Lyanneurs', subtitle: 'Des talents et des pros près de chez vous'/);
@@ -40,10 +41,12 @@ for (const f of ['header-lyanneurs.webp', 'header-annonces.webp']) {
 assert.match(ui, /Rechercher un talent, un service…/);
 assert.match(ui, /Rechercher une annonce, un besoin…/);
 
-// Families (3.2C): the eight real V2 families as round pictograms, a job panel opens below; no old rail, no « Plus » sheet.
+// Families (3.2C): the eight real V2 families as round pictograms, a compact bar + « Affiner » sheet replace the old auto-opening panel; no old rail, no « Plus » sheet.
 assert.match(ui, /V2\(\)\.FAMILIES\.map/);
 assert.match(ui, /class="lyann-family/);
-assert.match(html, /id="explorerJobPanel"/);
+assert.match(html, /id="explorerTaxoBar"/);
+assert.match(html, /id="explorerRefine"[^>]*role="dialog"[^>]*aria-modal/);
+assert.doesNotMatch(html, /id="explorerJobPanel"/, 'the big sub-trade panel no longer opens by itself');
 assert.doesNotMatch(html, /id="explorerCategorySheet"/);
 assert.doesNotMatch(ui, /data-action="more-categories"|ranked\.slice\(0, 4\)/);
 assert.match(ui, /<svg|iconSvg/);

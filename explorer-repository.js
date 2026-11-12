@@ -6,11 +6,11 @@
     const normalize = value => window.LyanAI.normalizeText(String(value || ''));
 
     // Range through the complete public result set: never silently truncate at the API row cap.
-    async function readAll(table, configure = q => q) {
+    async function readAll(table, configure = q => q, columns = '*') {
         if (!client()?.supabase) throw new Error('Supabase unavailable');
         const rows = [];
         for (let start = 0; ; start += PAGE_SIZE) {
-            const { data, error } = await configure(client().supabase.from(table).select('*'))
+            const { data, error } = await configure(client().supabase.from(table).select(columns))
                 .order('id').range(start, start + PAGE_SIZE - 1);
             if (error) throw error;
             rows.push(...(data || []));
@@ -37,10 +37,15 @@
             avatar: window.getLyannAvatarUrl(p.avatar_url), source: 'SUPABASE' };
     }
 
+    // 3.2C-2 : un visiteur lit la liste avec des colonnes publiques explicites (ni biographie, ni champ réservé aux membres). La fiche détaillée,
+    // elle, demande un compte (visitor-gate). Les membres gardent la projection complète.
+    const PUBLIC_LIST_COLUMNS = 'id,first_name,last_name,avatar_url,territory,city,is_pro,professional_status,created_at,is_verified,is_pro_verified,average_rating,reviews_count';
+    const isMember = () => Boolean(window.LYANN_AUTH_STATE?.getSnapshot?.().userId);
+
     async function load(options = {}) {
         return cached('profiles', async () => {
             const [profiles, serviceRows] = await Promise.all([
-                readAll('public_profiles'), readAll('services')
+                readAll('public_profiles', q => q, isMember() ? '*' : PUBLIC_LIST_COLUMNS), readAll('services')
             ]);
             const api = client();
             if (api.decoratePlanBadges) await api.decoratePlanBadges(profiles);

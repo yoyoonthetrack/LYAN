@@ -4,7 +4,8 @@ The existing `LYANN_ROUTER` owns the interaction policy and `requireAuthForInter
 
 | Surface/action | Authentication | After login |
 | --- | --- | --- |
-| Explorer, Annonces, Lyanneurs, public Request/profile, Bokantaj reading, search, filters | Public | No login needed |
+| Découvrir, listes Lyanneurs et Annonces, carte et repères, Bokantaj reading, search, categories, filters, territory | Public | No login needed |
+| Lyanneur profile, Request detail (list, map, deep link), favourite, contact, « Lyanner » | Required (3.2C-2) | `visitor-gate.js` dialog « Envie d'en savoir plus ? » ; the requested profile / Request reopens after sign-in |
 | Contact/messages | Required | Existing messaging route and original recipient |
 | Publish Request | Required | Existing wizard, preserved search/prefill; no publication |
 | Je peux aider | Required | Real Request detail; user confirms help again |
@@ -19,7 +20,7 @@ The existing `LYANN_ROUTER` owns the interaction policy and `requireAuthForInter
 
 An intent stores only allowlisted contextual strings and the current internal URL in tab-scoped sessionStorage. It expires after 15 minutes. Cross-origin or non-product destinations are rejected. Successful login consumes the intent before continuing, preventing replay on duplicate auth events/token refresh. The original path/query/hash survive navigation/reload. Ready callbacks wait for feature handlers to be installed; session resolution errors fail closed rather than leaving callers waiting forever. Backend errors are never converted to authenticated state.
 
-Public Request detail opened by identifier now reuses the same public Explorer repository as discovery. It does not fall back to a raw anonymous `requests` query. Authenticated details and all messaging/favorite/proposal persistence remain owned by their existing implementations.
+Since 3.2C-2, Request detail and Lyanneur profile require an account. `openLyannDetailModal` and `openPublicMemberProfile` call `requireAuthForInteraction('requestDetail' | 'publicProfile')` before any read, so nothing is requested for a visitor. Visitors keep the public list projection (`/v1/explorer/requests`), which never carries a private location, contact or author identifier. This gate is a presentation layer: the server-side lock on the underlying reads (reviews, portfolio, bio) is prepared in `supabase/migrations_staging_v2/94_visitor_member_detail_lock_staging.sql` and is NOT applied. Authenticated details and all messaging/favorite/proposal persistence remain owned by their existing implementations.
 
 ## Validation boundaries
 

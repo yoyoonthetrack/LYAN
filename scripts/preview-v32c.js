@@ -7,6 +7,9 @@
  *   node scripts/preview-v32c.js [--port=8788] [--lan] [--out=artifacts/phase-3-2c/.bundle]
  *
  *   --lan : écoute aussi sur le réseau local (iPhone sur le même Wi-Fi). Sans cette option, seul 127.0.0.1 est exposé.
+ *   Par défaut, /v1/explorer/requests est servi par le VRAI gestionnaire public (api/public-explorer-requests.js) contre Staging :
+ *   même projection restreinte que le backend déployé (aucun accès direct aux annonces, localisation réduite au territoire).
+ *   La clé de service Staging reste dans CE processus (jamais dans le bundle navigateur). --no-backend désactive cette route.
  *   /__preview.json : SHA servi, branche, environnement et projet Supabase (aucun secret).
  *   ?shell=native : simule la coque de l'application (barre de 5 onglets) dans Safari ; ?shell=web revient au site web.
  *
@@ -64,6 +67,18 @@ function buildBundle(outDir) {
     return { dir: outDir, files: n };
 }
 
+/** Backend de preview : le gestionnaire public réel des annonces, branché sur Staging (clé de service côté serveur uniquement). */
+function createPreviewBackend() {
+    const env = loadStagingEnv();
+    const url = env.SUPABASE_URL || env.LYANN_SUPABASE_URL;
+    const key = env.SUPABASE_SERVICE_ROLE_KEY || env.LYANN_SUPABASE_SERVICE_ROLE_KEY;
+    if (!key) return null;
+    const { createClient } = require('@supabase/supabase-js');
+    const { createPublicRequestsHandler } = require('../api/public-explorer-requests');
+    const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    return { publicRequests: createPublicRequestsHandler(db, true) };
+}
+
 const git = (...args) => { try { return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim(); } catch (_) { return ''; } };
 
 /** Identité de ce qui est servi : SHA, branche, fichiers locaux modifiés parmi ceux servis (hors fichiers sans lien avec l'interface). */
@@ -85,13 +100,23 @@ function previewInfo(dir) {
 // Coque native simulée (même simulation que scripts/capture-v32c.js) : permet de voir la barre de 5 onglets dans Safari.
 const NATIVE_SHELL = "<script>try{window.Capacitor={isNativePlatform:function(){return true},getPlatform:function(){return 'ios'},Plugins:{App:{addListener:function(){return Promise.resolve({remove:function(){}})}}}}}catch(e){}</script>";
 
-function serve(dir, port, host = '127.0.0.1') {
+function serve(dir, port, host = '127.0.0.1', backend = null) {
     return new Promise((resolve) => {
         const server = http.createServer((req, res) => {
             const url = new URL(req.url, 'http://x');
             if (url.pathname === '/__preview.json') {
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
                 return res.end(JSON.stringify(previewInfo(dir), null, 2));
+            }
+            if (backend && req.method === 'GET' && url.pathname === '/v1/explorer/requests') {
+                // Mini-adaptateur Express pour le gestionnaire réel (req.query, res.set / status / json).
+                const out = { code: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } };
+                const shim = {
+                    set: (k, v) => { out.headers[k] = v; return shim; },
+                    status: (c) => { out.code = c; return shim; },
+                    json: (body) => { res.writeHead(out.code, out.headers); res.end(JSON.stringify(body)); return shim; }
+                };
+                return Promise.resolve(backend.publicRequests({ query: Object.fromEntries(url.searchParams) }, shim)).catch(() => { res.writeHead(503); res.end(); });
             }
             const shell = url.searchParams.get('shell');
             const cookieShell = /(?:^|;\s*)lyann_shell=(native|web)/.exec(req.headers.cookie || '');
@@ -114,7 +139,7 @@ function serve(dir, port, host = '127.0.0.1') {
     });
 }
 
-module.exports = { buildBundle, serve, loadStagingEnv, previewInfo };
+module.exports = { buildBundle, serve, loadStagingEnv, previewInfo, createPreviewBackend };
 
 if (require.main === module) {
     const arg = (name, def) => { const hit = process.argv.slice(2).find((a) => a.startsWith(`--${name}=`)); return hit ? hit.split('=')[1] : def; };
@@ -122,12 +147,14 @@ if (require.main === module) {
     const built = buildBundle(out);
     const lan = process.argv.includes('--lan');
     const lanIps = Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => i.address);
-    serve(out, Number(arg('port', 8788)), lan ? '0.0.0.0' : '127.0.0.1').then((s) => {
+    const backend = process.argv.includes('--no-backend') ? null : createPreviewBackend();
+    serve(out, Number(arg('port', 8788)), lan ? '0.0.0.0' : '127.0.0.1', backend).then((s) => {
         const port = s.address().port;
         const info = previewInfo(out);
         console.log(`Preview LYANN 3.2C (Staging ${STAGING_REF}, lecture) — ${info.branch} @ ${info.sha.slice(0, 12)} — ${built.files} fichiers`);
         console.log(`  Mac    : http://127.0.0.1:${port}/discover.html`);
         if (lan) lanIps.forEach((ip) => console.log(`  iPhone : http://${ip}:${port}/discover.html?shell=native`));
+        console.log(`  Annonces publiques : ${backend ? 'gestionnaire réel /v1/explorer/requests (Staging)' : 'route absente (--no-backend)'}`);
         console.log(`  Identité servie : http://127.0.0.1:${port}/__preview.json`);
     });
 }

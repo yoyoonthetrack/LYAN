@@ -36,11 +36,12 @@ function harness(authenticated = false) {
 
 test('Central policy separates public reading from every protected interaction domain', async () => {
   const h = harness();
-  for (const action of ['home','explorer','bokantaj','requestDetail','publicProfile','search','filters']) {
+  for (const action of ['home','explorer','bokantaj','search','filters']) {
     expect(await h.router.requireAuthForInteraction(action)).toBe(true);
   }
   expect(h.calls).toEqual([]);
-  for (const action of ['favorite','messages','requestHelp','publish','comment','reaction','communityPublish','proposal','missionAction','account']) {
+  // 3.2C-2 : lire, chercher et filtrer restent publics ; ouvrir une fiche (Lyanneur, annonce) demande un compte, comme contacter ou enregistrer.
+  for (const action of ['requestDetail','publicProfile','favorite','messages','requestHelp','publish','comment','reaction','communityPublish','proposal','missionAction','account']) {
     expect(await h.router.requireAuthForInteraction(action,{entityId:'fixture-entity'})).toBe(false);
     expect(h.calls.at(-1)).toEqual(['login']);
     const intent=JSON.parse(h.storage.get('lyann_interaction_intent'));
@@ -102,7 +103,14 @@ for (const [label,mode,selector] of [
   await page.evaluate(()=>window.__gateActions=[]);
   await page.evaluate(()=>window.addEventListener('lyann:interaction-auth-required',e=>window.__gateActions.push(e.detail.action)));
   await page.locator(selector).first().click();
-  await expect(page.locator('#loginModal')).toBeVisible();
+  // 3.2C-2 : tout sauf la publication affiche d'abord l'invitation « Envie d'en savoir plus ? » ; « Me connecter » ouvre ensuite la connexion.
+  if (label === 'Publish Request') await expect(page.locator('#loginModal')).toBeVisible();
+  else {
+    await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+    await expect(page.locator('#lyannVisitorGate')).toContainText("Envie d'en savoir plus ?");
+    await page.locator('#lyannVisitorGate [data-vgate="login"]').click();
+    await expect(page.locator('#loginModal')).toBeVisible();
+  }
   expect(await page.evaluate(()=>window.__gateActions.length)).toBeGreaterThan(0);
   expect(writes).toEqual([]);
 });
@@ -127,7 +135,11 @@ for(const action of ['publish','requestHelp','favorite']) test(`Real login retur
     writes.push(r.url());
   });
   if(action==='publish')await page.locator('.explorer-publish').first().click();
-  else await card.locator(action==='favorite'?'.btn-fav-toggle':'[data-action="help"]').click();
+  else {
+    await card.locator(action==='favorite'?'.btn-fav-toggle':'[data-action="help"]').click();
+    await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+    await page.locator('#lyannVisitorGate [data-vgate="login"]').click();
+  }
   await expect(page.locator('#loginModal')).toBeVisible();
   await page.locator('#loginEmail').fill(email);await page.locator('#loginPassword').fill(password);
   await page.locator('#loginForm button[type="submit"]').click();
@@ -142,27 +154,30 @@ for(const action of ['publish','requestHelp','favorite']) test(`Real login retur
   expect(await page.evaluate(()=>sessionStorage.getItem('lyann_interaction_intent'))).toBeNull();
 });
 
-test('Public Request detail by id uses the canonical public reader, without raw anonymous Requests reads',async({page,request})=>{
+test('Request detail by id is invitation-gated for visitors: no detail read, no raw anonymous Requests read',async({page,request})=>{
   const response=await request.get('/v1/explorer/requests');expect(response.ok()).toBe(true);
   const row=(await response.json()).requests[0];expect(row).toBeTruthy();
   const raw=[];page.on('request',r=>{if(/\/rest\/v1\/requests(?:\?|$)/.test(r.url()))raw.push(r.url());});
   await page.goto('/index.html');
   await page.evaluate(id=>window.openLyannDetailModal(id),row.id);
-  await expect(page.locator('#lyannDetailTitle')).toHaveText(row.title);
-  await expect(page.locator('#loginModal')).not.toBeVisible();expect(raw).toEqual([]);
+  await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+  await expect(page.locator('#lyannDetailModal')).not.toBeVisible();
+  expect(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('lyann_interaction_intent')))).toMatchObject({action:'requestDetail',payload:{requestId:row.id}});
+  expect(raw).toEqual([]);
 });
 
-// The public projection withholds the author identifier, so the annonce header must
-// offer sign-in rather than a dead zone or a stacked, empty profile.
-test('Anonymous annonce author header invokes the shared auth gate, never a dead zone',async({page})=>{
+// Les visiteurs ne voient plus le détail : l'en-tête auteur n'est donc plus atteignable sans compte, il n'y a pas de zone morte.
+test('Anonymous « Détails » shows the invitation and keeps the requested annonce for after sign-in',async({page})=>{
   await publicExplorer(page);
   const card=page.locator('[data-request-id]').first();const id=await card.getAttribute('data-request-id');
   await card.getByRole('button',{name:'Détails',exact:true}).click();
-  await expect(page.locator('#lyannDetailModal')).toBeVisible();
-  await page.locator('#lyannDetailAuthorBtn').click();
-  await expect(page.locator('#loginModal')).toBeVisible();
-  expect(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('lyann_interaction_intent')))).toMatchObject({action:'requestAuthor',payload:{requestId:id}});
-  await expect(page.locator('#publicMemberProfileModal')).not.toBeVisible();
+  await expect(page.locator('#lyannVisitorGate')).toBeVisible();
+  await expect(page.locator('#lyannDetailModal')).not.toBeVisible();
+  expect(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('lyann_interaction_intent')))).toMatchObject({action:'requestDetail',payload:{requestId:id}});
+  await page.locator('#lyannVisitorGate button.lyann-vgate-link').click();
+  await expect(page.locator('#lyannVisitorGate')).not.toBeVisible();
+  expect(await page.evaluate(()=>sessionStorage.getItem('lyann_interaction_intent'))).toBeNull();
+  await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
 });
 
 test('Authentication resolving does not mistake a restored session for an anonymous visitor',async()=>{

@@ -432,12 +432,7 @@
                 const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : key === 'urgency' ? dateModeLabel(filters[key]) : key === 'territory' ? territoryName(filters[key]) : filters[key];
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
             }
-            // Métier V2 : la famille se voit déjà dans la grille ; on ne liste que les entrées de Découvrir (groupes, « Autres »), le métier et la spécialité.
-            const taxonomyChip = (key, label) => label && chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
-            if (filters.groups) taxonomyChip('groups', groupsLabel() || V2().familyMeta(filters.family)?.short);
-            else if (filters.family === 'autres') taxonomyChip('family', 'Autres besoins');
-            taxonomyChip('job', filters.job && nodeLabel(filters.job));
-            taxonomyChip('specialty', filters.specialty && nodeLabel(filters.specialty));
+            // Métier V2 : famille, métier et spécialité sont portés par la barre compacte (renderTaxoBar), pas par des pastilles.
             // Territoire rapide, à côté de la recherche
             const quick = $('explorerTerritoryQuick');
             if (quick) {
@@ -454,8 +449,9 @@
         }
         // Familles de métiers V2 : huit pastilles rondes, puis un panneau « métiers » (et spécialités) sous la famille choisie.
         // Les codes et la hiérarchie viennent du référentiel V2 lu en base (marketplace-taxonomy.js) ; la carte garde ses huit pictos historiques.
-        let jobPanelClosed = false;
-        let showAllJobs = false;
+        let refineOpen = false;
+        let refineTrigger = null;
+        let lastResultCount = null;
         const legacyFamilyForRow = (row, list) => {
             const api = mapFamiliesApi();
             if (!api) return '';
@@ -478,53 +474,113 @@
         function renderCategoryPills() {
             const host = $('explorerCategoryPills');
             if (!host || !V2()) return;
+            // Le focus clavier survit au rendu : on le rend à la famille qui l'avait.
+            const focused = host.contains(document.activeElement) ? document.activeElement.dataset.family : null;
             host.innerHTML = V2().FAMILIES.map(f => {
                 const active = filters.family === f.code;
                 return `<button type="button" class="lyann-family${active ? ' is-active' : ''}" data-family="${escape(f.code)}" aria-pressed="${active ? 'true' : 'false'}">`
                     + `<span class="lyann-family-disc">${V2().iconSvg(f.icon, 'lyann-family-icon')}</span><span class="lyann-family-label">${escape(f.short)}</span></button>`;
             }).join('');
-            renderJobPanel();
+            if (focused) host.querySelector(`[data-family="${focused}"]`)?.focus({ preventScroll: true });
+            renderTaxoBar();
+            renderRefine();
         }
-        function renderJobPanel() {
-            const panel = $('explorerJobPanel');
-            if (!panel) return;
+        // Métiers et spécialités d'une famille (limités aux sous-groupes d'une entrée de Découvrir) ; null si la famille n'a pas de métiers (« Autres »).
+        function familyScope() {
             const family = v2Index?.families[filters.family];
-            const meta = V2().familyMeta(filters.family);
-            if (!family || !meta || !family.trades || jobPanelClosed) { panel.hidden = true; panel.innerHTML = ''; return; }
-            // Comptes calculés sur les mêmes résultats que la liste, hors critères de métier : un métier vide n'est proposé qu'à la demande.
+            if (!family || !family.trades) return null;
+            const allowed = new Set(taxonomyFilter().groups);
+            const groups = family.groups.filter(g => !allowed.size || allowed.has(g.code));
+            return { family, groups, total: groups.reduce((n, g) => n + g.trades.length, 0) };
+        }
+        const taxoName = () => groupsLabel() || V2()?.familyMeta(filters.family)?.short || (filters.family === 'autres' ? 'Autres besoins' : 'Métiers');
+        // Barre compacte sous les familles : « Maison & travaux · 20 métiers » + Affiner / Réinitialiser. Absente (aucune place) sans famille choisie.
+        function renderTaxoBar() {
+            const bar = $('explorerTaxoBar');
+            if (!bar) return;
+            if (!taxonomyActive() || !V2()) { bar.hidden = true; closeRefine({ restoreFocus: false }); return; }
+            const scope = familyScope();
+            let detail = '';
+            if (filters.specialty) detail = [nodeLabel(filters.job), nodeLabel(filters.specialty)].filter(Boolean).join(' › ');
+            else if (filters.job) detail = nodeLabel(filters.job);
+            else if (scope) detail = `${scope.total} métier${scope.total > 1 ? 's' : ''}`;
+            bar.querySelector('.explorer-taxo-label').innerHTML = `<strong>${escape(taxoName())}</strong>${detail ? `<span class="sep" aria-hidden="true">&nbsp;·&nbsp;</span><span>${escape(detail)}</span>` : ''}`;
+            $('explorerRefineBtn').hidden = !scope;
+            bar.hidden = false;
+        }
+        // Panneau « Affiner » : feuille basse sur mobile, popover ancré à la barre sur ordinateur. Les résultats restent derrière ; un appui sur un métier
+        // ou une spécialité est l'action explicite qui change le filtre (rien n'est choisi automatiquement).
+        function renderRefine() {
+            const host = $('explorerRefine');
+            if (!host || !refineOpen) return;
+            const scope = familyScope();
+            if (!scope) { closeRefine({ restoreFocus: false }); return; }
+            const body = $('explorerRefineBody');
+            const scrollTop = body.scrollTop;
+            const focusedKey = body.contains(document.activeElement)
+                ? (document.activeElement.dataset.job !== undefined ? `[data-job="${document.activeElement.dataset.job}"]` : document.activeElement.dataset.specialty !== undefined ? `[data-specialty="${document.activeElement.dataset.specialty}"]` : '') : '';
+            // Comptes calculés sur les mêmes résultats que la liste, hors critères de métier. Un profil compte une fois par métier.
             const base = repo.discover(records, leaves, { ...filters, family: '', groups: '', job: '', specialty: '' }, mode)
                 .filter(record => recordMatchesTaxonomy(record, { family: filters.family, groups: taxonomyFilter().groups, job: '', specialty: '' }));
-            // Un profil compte une seule fois par métier, même s'il propose plusieurs services de ce métier.
             const counts = {};
             base.forEach(record => {
                 Object.keys(V2().countByTrade(recordRows(record), v2Ctx())).forEach(code => { counts[code] = (counts[code] || 0) + 1; });
             });
-            const allowed = new Set(taxonomyFilter().groups);
-            const groups = family.groups.filter(g => !allowed.size || allowed.has(g.code));
-            const visible = trade => showAllJobs || counts[trade.code] || filters.job === trade.code;
-            const total = groups.reduce((n, g) => n + g.trades.length, 0);
-            const hasEmpty = groups.some(g => g.trades.some(t => !counts[t.code] && filters.job !== t.code));
-            const chip = (attrs, label, active, count) => `<button type="button" class="explorer-job-chip${active ? ' is-active' : ''}" ${attrs} aria-pressed="${active ? 'true' : 'false'}"><span>${escape(label)}</span>${count ? `<span class="explorer-job-count">${count}</span>` : ''}</button>`;
-            const body = groups.map(group => {
-                const trades = group.trades.filter(visible);
-                if (!trades.length) return '';
-                const selected = trades.find(t => t.code === filters.job);
+            const chip = (attrs, label, active, count) => `<button type="button" class="explorer-job-chip${active ? ' is-active' : ''}${!active && !count ? ' is-empty' : ''}" ${attrs} aria-pressed="${active ? 'true' : 'false'}"><span>${escape(label)}</span>${count ? `<span class="explorer-job-count">${count}</span>` : ''}</button>`;
+            $('explorerRefineTitle').textContent = `Affiner · ${taxoName()}`;
+            body.innerHTML = scope.groups.map(group => {
+                if (!group.trades.length) return '';
+                const selected = group.trades.find(t => t.code === filters.job);
                 const specialties = selected && selected.specialties.length
                     ? `<div class="explorer-job-specialties" role="group" aria-label="Spécialités : ${escape(selected.label)}">${selected.specialties.map(sp => chip(`data-specialty="${escape(sp.code)}"`, sp.label, filters.specialty === sp.code, 0)).join('')}</div>` : '';
-                return `<div class="explorer-job-group">${group.label ? `<p class="explorer-job-group-title">${escape(group.label)}</p>` : ''}<div class="explorer-job-chips">${trades.map(t => chip(`data-job="${escape(t.code)}"`, t.label, filters.job === t.code, counts[t.code] || 0)).join('')}</div>${specialties}</div>`;
-            }).join('');
-            panel.innerHTML = `<div class="explorer-job-head"><strong>${escape(meta.short)}</strong><button type="button" class="explorer-job-close" data-action="jobs-close" aria-label="Replier les métiers"><i class="ph ph-x" aria-hidden="true"></i></button></div>`
-                + (body || '<p class="explorer-job-empty">Aucun métier de cette famille n\'est encore proposé ici.</p>')
-                + (hasEmpty
-                    ? `<button type="button" class="explorer-job-more" data-action="jobs-more">${showAllJobs ? 'Voir moins de métiers' : `Voir tous les métiers (${total})`}</button>` : '');
-            panel.hidden = false;
+                return `<section class="explorer-job-group">${group.label ? `<h3 class="explorer-job-group-title">${escape(group.label)}</h3>` : ''}<div class="explorer-job-chips">${group.trades.map(t => chip(`data-job="${escape(t.code)}"`, t.label, filters.job === t.code, counts[t.code] || 0)).join('')}</div>${specialties}</section>`;
+            }).join('') || '<p class="explorer-job-empty">Aucun métier de cette famille n\'est encore proposé ici.</p>';
+            body.scrollTop = scrollTop;
+            if (focusedKey) body.querySelector(focusedKey)?.focus({ preventScroll: true });
+            syncRefineFooter();
+        }
+        function syncRefineFooter() {
+            const btn = $('explorerRefineDone');
+            if (!btn) return;
+            const n = lastResultCount;
+            const noun = mode === 'annonces' ? 'annonce' : 'Lyanneur';
+            btn.textContent = n === null ? 'Voir les résultats' : n === 0 ? 'Aucun résultat pour l\'instant' : `Voir ${n} ${noun}${n > 1 ? 's' : ''}`;
+        }
+        const refineSheetMode = () => Boolean(window.matchMedia?.('(max-width: 899.98px)').matches);
+        function openRefine(trigger) {
+            const host = $('explorerRefine');
+            if (!host || !familyScope()) return;
+            refineOpen = true;
+            refineTrigger = trigger || $('explorerRefineBtn');
+            host.classList.remove('is-expanded');
+            host.style.transform = '';
+            host.hidden = false;
+            host.setAttribute('aria-modal', refineSheetMode() ? 'true' : 'false');
+            $('explorerRefineBackdrop').hidden = !refineSheetMode();
+            $('explorerRefineBtn').setAttribute('aria-expanded', 'true');
+            renderRefine();
+            void host.offsetWidth;
+            host.classList.add('is-open');
+            host.querySelector('[data-action="refine-close"]')?.focus({ preventScroll: true });
+        }
+        function closeRefine({ restoreFocus = true } = {}) {
+            const host = $('explorerRefine');
+            if (!host || !refineOpen) return;
+            refineOpen = false;
+            host.classList.remove('is-open', 'is-expanded');
+            host.style.transform = '';
+            $('explorerRefineBackdrop').hidden = true;
+            $('explorerRefineBtn')?.setAttribute('aria-expanded', 'false');
+            const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            if (calm) host.hidden = true; else setTimeout(() => { if (!refineOpen) host.hidden = true; }, 260);
+            if (restoreFocus) (refineTrigger && !refineTrigger.hidden ? refineTrigger : document.querySelector('#explorerCategoryPills button'))?.focus?.({ preventScroll: true });
         }
         function clearTaxonomy() { filters.family = ''; filters.groups = ''; filters.job = ''; filters.specialty = ''; }
+        // Choisir une famille l'active et filtre tout de suite les résultats ; aucun panneau ne s'ouvre. Rappuyer sur la famille active la désactive.
         function chooseFamily(code) {
             const same = filters.family === code && !filters.groups;
             clearTaxonomy();
             if (!same) { filters.family = code; filters.category = ''; filters.service = ''; }
-            jobPanelClosed = false; showAllJobs = false;
             render({ quiet: true });
         }
         function chooseJob(code) {
@@ -557,6 +613,8 @@
                 ? (mapScoped.length <= 1 ? 'annonce' : 'annonces')
                 : (results.length <= 1 ? 'Lyanneur' : 'Lyanneurs');
             const displayCount = mode === 'annonces' && mapAvailable() ? mapScoped.length : results.length;
+            lastResultCount = displayCount;
+            syncRefineFooter();
             $('explorerSummary').textContent = `${displayCount} ${countLabel} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
             $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
             const container = $('explorerResults');
@@ -635,7 +693,7 @@
         }
         function reset() {
             filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:'',family:'',groups:'',job:'',specialty:''};
-            jobPanelClosed = false; showAllJobs = false;
+            closeRefine({ restoreFocus: false });
             mapFamilyFilter = null;
             mapFamilyDraft = null;
             closeMapCategorySheet();
@@ -653,8 +711,21 @@
             if (button.classList.contains('lyann-family')) { chooseFamily(button.dataset.family); return; }
             if (button.dataset.job !== undefined) { chooseJob(button.dataset.job); return; }
             if (button.dataset.specialty !== undefined) { chooseSpecialty(button.dataset.specialty); return; }
-            if (button.dataset.action === 'jobs-close') { jobPanelClosed = true; renderJobPanel(); return; }
-            if (button.dataset.action === 'jobs-more') { showAllJobs = !showAllJobs; renderJobPanel(); return; }
+            if (button.dataset.action === 'taxo-refine') { refineOpen ? closeRefine() : openRefine(button); return; }
+            if (button.dataset.action === 'refine-close') { closeRefine(); return; }
+            if (button.dataset.action === 'refine-expand') {
+                const expanded = $('explorerRefine').classList.toggle('is-expanded');
+                button.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+                button.setAttribute('aria-label', expanded ? 'Réduire le panneau' : 'Agrandir le panneau');
+                return;
+            }
+            if (button.dataset.action === 'taxo-reset') {
+                closeRefine({ restoreFocus: false });
+                clearTaxonomy();
+                render({ quiet: true });
+                document.querySelector('#explorerCategoryPills button')?.focus({ preventScroll: true });
+                return;
+            }
             if (button.dataset.view && button.closest('#explorerViewToggle')) { setView(button.dataset.view); return; }
             if (button.dataset.mode) {
                 const nextMode = button.dataset.mode;
@@ -710,6 +781,57 @@
             search();
         });
         $('explorerCategory').addEventListener('change', () => { filters.category = $('explorerCategory').value; filters.family = ''; filters.service = ''; search(); });
+        // Panneau Affiner : fermeture (Échap, fond, clic extérieur sur ordinateur), piège de focus en feuille, glissé vers le bas pour fermer / vers le haut pour agrandir.
+        $('explorerRefineBackdrop')?.addEventListener('click', () => closeRefine());
+        document.addEventListener('keydown', event => {
+            if (!refineOpen) return;
+            const host = $('explorerRefine');
+            if (event.key === 'Escape') { event.preventDefault(); closeRefine(); return; }
+            if (event.key !== 'Tab' || !refineSheetMode()) return;
+            const items = [...host.querySelectorAll('button:not([hidden]):not([disabled])')].filter(el => el.offsetParent !== null);
+            if (!items.length) return;
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === host)) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        });
+        document.addEventListener('click', event => {
+            if (!refineOpen || refineSheetMode()) return;
+            // composedPath : le chemin est figé à l'envoi, même si un rendu a retiré la cible du DOM entre-temps.
+            if (event.composedPath().some(node => node.id === 'explorerRefine' || node.id === 'explorerTaxoBar')) return;
+            closeRefine({ restoreFocus: false });
+        });
+        (() => {
+            const host = $('explorerRefine');
+            let drag = null;
+            if (!host) return;
+            host.addEventListener('pointerdown', event => {
+                if (!refineSheetMode() || event.target.closest('button') || !event.target.closest('.explorer-refine-grab, .explorer-refine-head')) return;
+                drag = { y: event.clientY, t: Date.now(), dy: 0 };
+                host.setPointerCapture?.(event.pointerId);
+                host.style.transition = 'none';
+            });
+            host.addEventListener('pointermove', event => {
+                if (!drag) return;
+                drag.dy = event.clientY - drag.y;
+                if (drag.dy > 0) host.style.transform = `translateY(${drag.dy}px)`;
+            });
+            const end = () => {
+                if (!drag) return;
+                const { dy, t } = drag;
+                drag = null;
+                host.style.transition = '';
+                const speed = dy / Math.max(1, Date.now() - t);
+                if (dy > 90 || (dy > 30 && speed > 0.6)) closeRefine();
+                else if (dy < -50) {
+                    host.style.transform = '';
+                    host.classList.add('is-expanded');
+                    host.querySelector('[data-action="refine-expand"]')?.setAttribute('aria-pressed', 'true');
+                } else host.style.transform = '';
+            };
+            host.addEventListener('pointerup', end);
+            host.addEventListener('pointercancel', end);
+        })();
         const openFilters = () => { syncControls(); $('explorerFilters').showModal(); };
         $('explorerFiltersButton').addEventListener('click', openFilters);
         $('explorerFiltersIcon')?.addEventListener('click', openFilters);

@@ -18,7 +18,7 @@ assert.match(results, /data-view="list"[\s\S]*data-view="map"/);
 assert.doesNotMatch(ui, /De quoi avez-vous besoin/);
 assert.match(ui, /Rechercher une annonce, un besoin…/);
 assert.match(ui, /explorer-annonces-map-view/);
-assert.match(results, /id="explorerJobPanel"/);
+assert.match(results, /id="explorerRefine"/);
 assert.doesNotMatch(ui, /data-action="more-categories"/);
 assert.match(ui, /area: filters\.area/);
 assert.match(ui, /reframe: options\.reframe/);

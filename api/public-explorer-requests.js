@@ -15,8 +15,42 @@ function eligible(row) {
     return row.visibility === 'PUBLIC' && row.status === 'OPEN' && row.safety_status === 'SAFE'
         && row.target_user_id === null && ['CLASSIFIED', 'UNCLASSIFIED'].includes(row.classification_status);
 }
+// Jeu officiel de centres de communes (commune-geo.js, même fichier que la carte). Lu une fois ; absent, la carte publique retombe sur le territoire.
+let communeKeys = null;
+function loadCommuneKeys() {
+    if (communeKeys) return communeKeys;
+    communeKeys = new Set();
+    try {
+        const source = require('fs').readFileSync(require('path').join(__dirname, '..', 'commune-geo.js'), 'utf8');
+        for (const match of source.matchAll(/"(\d{2,3})\|([a-z0-9 ]+)"\s*:/g)) communeKeys.add(`${match[1]}|${match[2]}`);
+    } catch (_) { /* territoire seul */ }
+    return communeKeys;
+}
+const foldName = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\u0153/g, 'oe').replace(/\u00e6/g, 'ae').replace(/[^a-z0-9]+/g, ' ').trim();
+// Une commune n'est publiée que si le texte EST exactement un nom de commune du jeu officiel (parenthèses mises à part) : le repère de carte reste le
+// centre de la commune. Une adresse, une rue ou un texte libre ne correspond à aucune commune et n'est jamais renvoyé.
+function publicCommune(value) {
+    const raw = String(value || '').trim();
+    if (!raw || raw.length > 80) return null;
+    const name = raw.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+    const folded = foldName(name);
+    if (!folded || /\d/.test(name)) return null;
+    const keys = loadCommuneKeys();
+    let code = (raw.match(/\b(97\d)\b/) || [])[1] || null;
+    if (!code) {
+        const candidates = [...keys].filter((k) => k.endsWith(`|${folded}`));
+        if (candidates.length !== 1) return null;
+        code = candidates[0].split('|')[0];
+    } else if (!keys.has(`${code}|${folded}`)) {
+        return null;
+    }
+    return /^97\d$/.test(code) ? `${name} (${code})` : name;
+}
 function publicLocation(value) {
-    // Unstructured location cannot safely supply a street or even a municipality.
+    const commune = publicCommune(value);
+    if (commune) return commune;
+    // Texte libre : ni rue ni commune, seulement un territoire reconnu sans ambiguïté.
     const text = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const territories = [['guadeloupe', 'Guadeloupe (971)'], ['martinique', 'Martinique (972)'],
         ['guyane', 'Guyane (973)'], ['reunion', 'La Réunion (974)'], ['mayotte', 'Mayotte (976)'],
@@ -98,4 +132,4 @@ function createPublicRequestsHandler(db, configured = true) {
         }
     };
 }
-module.exports = { createPublicRequestsHandler };
+module.exports = { createPublicRequestsHandler, publicLocation };

@@ -1,0 +1,49 @@
+/* Invitation visiteur « Envie d'en savoir plus ? » (3.2C-2) : feuille coulissante sur mobile, carte centrée sur ordinateur. */
+.lyann-vgate {
+    --vg-green: var(--lyann-green-primary, #246B49);
+    --vg-deep: var(--lyann-green-deep, #163D2D);
+    --vg-honey: var(--lyann-honey, #EBC568);
+    --vg-pastel: var(--lyann-green-pastel, #E5F0E6);
+    --vg-border: var(--lyann-border-control, #8DA797);
+    position: fixed; inset: 0; z-index: 2147483200; display: flex; align-items: flex-end; justify-content: center;
+    font-family: Outfit, sans-serif; color: var(--vg-deep);
+}
+.lyann-vgate[hidden] { display: none; }
+.lyann-vgate-backdrop { position: absolute; inset: 0; background: rgba(22, 61, 45, 0.5); opacity: 0; transition: opacity 0.2s ease; }
+.lyann-vgate.is-open .lyann-vgate-backdrop { opacity: 1; }
+.lyann-vgate-card {
+    position: relative; width: 100%; max-width: 440px; padding: 14px 22px calc(22px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box;
+    background: var(--lyann-white, #FFFFFF); border-radius: 26px 26px 0 0; text-align: center; box-shadow: 0 -12px 36px rgba(22, 61, 45, 0.22);
+    transform: translateY(24px); opacity: 0; transition: transform 0.24s ease, opacity 0.2s ease; outline: none;
+}
+.lyann-vgate.is-open .lyann-vgate-card { transform: none; opacity: 1; }
+.lyann-vgate-grab { display: block; width: 42px; height: 5px; margin: 0 auto 8px; border-radius: 99px; background: var(--vg-pastel); }
+.lyann-vgate-x {
+    position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+    background: transparent; color: var(--vg-deep); cursor: pointer;
+}
+.lyann-vgate-x:hover { background: var(--vg-pastel); }
+.lyann-vgate-x svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.lyann-vgate-art { display: inline-grid; place-items: center; width: 64px; height: 64px; margin: 6px 0 10px; border-radius: 50%; background: var(--vg-green); }
+.lyann-vgate-art svg { width: 32px; height: 32px; fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.lyann-vgate-title { margin: 0 0 8px; font-size: 1.45rem; line-height: 1.15; font-weight: 800; color: var(--vg-deep); }
+.lyann-vgate-text { margin: 0 auto 18px; max-width: 24em; font-size: 0.98rem; line-height: 1.45; color: var(--lyann-text-secondary-aa, #4F6358); }
+.lyann-vgate-primary, .lyann-vgate-secondary {
+    display: block; width: 100%; min-height: 50px; margin: 0 0 10px; padding: 0 18px; border-radius: 16px; font: 800 1rem Outfit, sans-serif; cursor: pointer;
+}
+.lyann-vgate-primary { border: 0; background: var(--vg-green); color: #fff; box-shadow: 0 8px 18px rgba(36, 107, 73, 0.28); }
+.lyann-vgate-primary:hover { background: var(--vg-deep); }
+.lyann-vgate-secondary { border: 1.5px solid var(--vg-green); background: var(--lyann-white, #FFFFFF); color: var(--vg-green); }
+.lyann-vgate-secondary:hover { background: var(--vg-pastel); }
+.lyann-vgate-link { min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--lyann-text-secondary-aa, #4F6358); font: 700 0.92rem Outfit, sans-serif; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lyann-vgate-link:hover { color: var(--vg-deep); }
+.lyann-vgate button:focus-visible { outline: 3px solid var(--lyann-focus, #1B5FD1); outline-offset: 2px; }
+body.lyann-vgate-open { overflow: hidden; }
+@media (min-width: 640px) {
+    .lyann-vgate { align-items: center; }
+    .lyann-vgate-card { border-radius: 26px; padding: 26px 30px 24px; transform: translateY(10px) scale(0.98); box-shadow: 0 24px 60px rgba(22, 61, 45, 0.3); }
+    .lyann-vgate-grab { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lyann-vgate-backdrop, .lyann-vgate-card { transition: none; }
+}

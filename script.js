@@ -1166,6 +1166,11 @@ safeDomReady(() => {
     window.resetProfileModalScroll = resetProfileModalScroll;
 
     async function openPublicMemberProfile(memberId, entryPoint) {
+        // 3.2C-2 : la fiche détaillée d'un membre demande un compte. Un visiteur voit l'invitation, la fiche n'est ni chargée ni rendue.
+        if (window.LYANN_ROUTER?.requireAuthForInteraction) {
+            const allowed = await window.LYANN_ROUTER.requireAuthForInteraction('publicProfile', { memberId: String(memberId || '') });
+            if (allowed !== true) return;
+        }
         const client = window.LYANN_API_CLIENT || window.apiClient;
         console.log('[PROFILE_ID_TRACE] openPublicMemberProfile memberId =', memberId);
 
@@ -11712,6 +11717,11 @@ window.closeLyannDetailSurface = function(reason = 'close') {
 };
 
 window.openLyannDetailModal = async function(requestId, initialData = null) {
+    // 3.2C-2 : le détail d'une annonce demande un compte. Aucune donnée détaillée n'est demandée avant l'authentification.
+    if (window.LYANN_ROUTER?.requireAuthForInteraction) {
+        const allowed = await window.LYANN_ROUTER.requireAuthForInteraction('requestDetail', { requestId: String(requestId || '') });
+        if (allowed !== true) return;
+    }
     const generation = ++lyannDetailOpenGeneration;
     let modal = document.getElementById('lyannDetailModal');
     if (!modal) {
