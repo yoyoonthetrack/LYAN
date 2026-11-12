@@ -4,7 +4,11 @@
  * Construit un bundle statique depuis l'arbre de travail (mêmes transformations HTML que le build mobile, clé anonyme Staging injectée),
  * puis le sert sur http://127.0.0.1:<port>. Aucun déploiement, aucun accès Production, aucune écriture.
  *
- *   node scripts/preview-v32c.js [--port=8788] [--out=artifacts/phase-3-2c/.bundle]
+ *   node scripts/preview-v32c.js [--port=8788] [--lan] [--out=artifacts/phase-3-2c/.bundle]
+ *
+ *   --lan : écoute aussi sur le réseau local (iPhone sur le même Wi-Fi). Sans cette option, seul 127.0.0.1 est exposé.
+ *   /__preview.json : SHA servi, branche, environnement et projet Supabase (aucun secret).
+ *   ?shell=native : simule la coque de l'application (barre de 5 onglets) dans Safari ; ?shell=web revient au site web.
  *
  * Le fichier .env.staging-v2 (non versionné) fournit URL et clé ANONYME ; la clé de service n'est jamais injectée ni affichée.
  */
@@ -12,6 +16,8 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const os = require('os');
+const { execFileSync } = require('child_process');
 const { assertStagingIsolation, STAGING_REF } = require('./staging-v2-guard');
 
 const root = path.join(__dirname, '..');
@@ -58,27 +64,70 @@ function buildBundle(outDir) {
     return { dir: outDir, files: n };
 }
 
-function serve(dir, port) {
+const git = (...args) => { try { return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim(); } catch (_) { return ''; } };
+
+/** Identité de ce qui est servi : SHA, branche, fichiers locaux modifiés parmi ceux servis (hors fichiers sans lien avec l'interface). */
+function previewInfo(dir) {
+    const served = fs.existsSync(dir) ? new Set(fs.readdirSync(dir)) : new Set();
+    const dirty = git('status', '--porcelain').split('\n').map((l) => l.slice(3).trim()).filter((f) => f && served.has(f));
+    return {
+        sha: git('rev-parse', 'HEAD'),
+        branch: git('rev-parse', '--abbrev-ref', 'HEAD'),
+        environment: 'staging',
+        supabaseProjectRef: STAGING_REF,
+        production: false,
+        writes: 'visiteur / comptes de test Staging uniquement',
+        servedFilesModifiedSinceCommit: dirty,
+        builtAt: new Date().toISOString()
+    };
+}
+
+// Coque native simulée (même simulation que scripts/capture-v32c.js) : permet de voir la barre de 5 onglets dans Safari.
+const NATIVE_SHELL = "<script>try{window.Capacitor={isNativePlatform:function(){return true},getPlatform:function(){return 'ios'},Plugins:{App:{addListener:function(){return Promise.resolve({remove:function(){}})}}}}}catch(e){}</script>";
+
+function serve(dir, port, host = '127.0.0.1') {
     return new Promise((resolve) => {
         const server = http.createServer((req, res) => {
             const url = new URL(req.url, 'http://x');
+            if (url.pathname === '/__preview.json') {
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+                return res.end(JSON.stringify(previewInfo(dir), null, 2));
+            }
+            const shell = url.searchParams.get('shell');
+            const cookieShell = /(?:^|;\s*)lyann_shell=(native|web)/.exec(req.headers.cookie || '');
+            const wantNative = (shell || (cookieShell && cookieShell[1])) === 'native';
             let file = path.join(dir, decodeURIComponent(url.pathname));
             if (!file.startsWith(dir)) { res.writeHead(403); return res.end(); }
             if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
             if (!fs.existsSync(file) && fs.existsSync(`${file}.html`)) file = `${file}.html`;
             if (!fs.existsSync(file)) { res.writeHead(404); return res.end('not found'); }
-            res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+            const headers = { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' };
+            if (shell === 'native' || shell === 'web') headers['Set-Cookie'] = `lyann_shell=${shell}; Path=/; SameSite=Lax`;
+            if (path.extname(file) === '.html' && wantNative) {
+                res.writeHead(200, headers);
+                return res.end(fs.readFileSync(file, 'utf8').replace(/<head[^>]*>/i, (m) => m + NATIVE_SHELL));
+            }
+            res.writeHead(200, headers);
             fs.createReadStream(file).pipe(res);
         });
-        server.listen(port || 0, '127.0.0.1', () => resolve(server));
+        server.listen(port || 0, host, () => resolve(server));
     });
 }
 
-module.exports = { buildBundle, serve, loadStagingEnv };
+module.exports = { buildBundle, serve, loadStagingEnv, previewInfo };
 
 if (require.main === module) {
     const arg = (name, def) => { const hit = process.argv.slice(2).find((a) => a.startsWith(`--${name}=`)); return hit ? hit.split('=')[1] : def; };
     const out = path.resolve(arg('out', path.join(root, 'artifacts', 'phase-3-2c', '.bundle')));
-    const info = buildBundle(out);
-    serve(out, Number(arg('port', 8788))).then((s) => console.log(`Preview LYANN 3.2C (Staging, lecture) : http://127.0.0.1:${s.address().port}/discover.html  (${info.files} fichiers)`));
+    const built = buildBundle(out);
+    const lan = process.argv.includes('--lan');
+    const lanIps = Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => i.address);
+    serve(out, Number(arg('port', 8788)), lan ? '0.0.0.0' : '127.0.0.1').then((s) => {
+        const port = s.address().port;
+        const info = previewInfo(out);
+        console.log(`Preview LYANN 3.2C (Staging ${STAGING_REF}, lecture) — ${info.branch} @ ${info.sha.slice(0, 12)} — ${built.files} fichiers`);
+        console.log(`  Mac    : http://127.0.0.1:${port}/discover.html`);
+        if (lan) lanIps.forEach((ip) => console.log(`  iPhone : http://${ip}:${port}/discover.html?shell=native`));
+        console.log(`  Identité servie : http://127.0.0.1:${port}/__preview.json`);
+    });
 }

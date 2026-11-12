@@ -57,8 +57,10 @@ const SCREENS = [
             if (ready) await page.waitForFunction(ready, null, { timeout: 25000 }).catch(() => {});
             await page.waitForTimeout(2500);
             if (name === 'messages') {
-                if (!(await page.locator('#tab-messages').count())) { errors.push('pas de barre native (messages ignoré)'); await page.close(); continue; }
-                await page.locator('#tab-messages').click().catch(() => {});
+                // Mobile : onglet Messages de la barre native ; bureau : bouton Messages de l'en-tête.
+                const opener = (await page.locator('#tab-messages').count()) ? page.locator('#tab-messages') : page.locator('.nav-msg-btn.open-chat-trigger').first();
+                if (!(await opener.count())) { errors.push('pas de bouton Messages (écran ignoré)'); await page.close(); continue; }
+                await opener.click().catch(() => {});
                 await page.waitForTimeout(2500);
             }
             const m = await page.evaluate(() => {
