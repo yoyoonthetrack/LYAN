@@ -1,0 +1,12 @@
+{
+  "project_ref": "tdktfbtqceldlaeqjtow",
+  "applied_on": "2026-11-12, phase 3.2C-5.2 (exact time not recorded)",
+  "git_sha_at_apply": "c56dc22525a42f666012a029b0bca193864a9905",
+  "migration_sha256": "c5fe97cf1da4ad321684932ddc55d092447c27472e0e92cf862d6b1cf4c5023c",
+  "transaction": "single BEGIN ... COMMIT with pre and post assertions; returned [] (no error)",
+  "fingerprints_md5_before": {"col_acl": "b75213796e1bbcc6abea7c72256f50a5", "data": "a050a78e19a98c55461498c6c0dc2e48", "fn_acl": "21a4ccdbc6dfbf0f66d0a3a7d7cd6bd5", "policies": "7b87e80cfabaff84de5311db5335de14", "rel_acl": "b73a110ef62de84d7d6111e3907ac95e", "views": "6144ae1e8b4985e5a25eb4e5fd7f24e2", "messaging": "9fd535baf71ec53479945f9458495768"},
+  "fingerprints_md5_after": {"col_acl": "b75213796e1bbcc6abea7c72256f50a5", "data": "a050a78e19a98c55461498c6c0dc2e48", "fn_acl": "b81c68fc6bb6c3aa55b03af56c6710c8", "policies": "7b87e80cfabaff84de5311db5335de14", "rel_acl": "b73a110ef62de84d7d6111e3907ac95e", "views": "6144ae1e8b4985e5a25eb4e5fd7f24e2", "messaging": "9fd535baf71ec53479945f9458495768"},
+  "acl_after": "{postgres=X/postgres,service_role=X/postgres} for the three functions; bodies, owner, SECURITY DEFINER and search_path unchanged",
+  "effective_after": {"anon": false, "authenticated": false, "authenticator": false, "service_role": true, "postgres": true},
+  "note": "The data fingerprint is the snapshot.sql one of 3.2C-3/3.2C-4 (a050a78e...). The extended data_v2 query of the 3.2C-5.1 rehearsal was not saved as a file and could not be replayed; the messaging fingerprint above (conversations, participants, messages, notifications, push_deliveries, user_blocks, requests) replaces it from this phase on."
+}

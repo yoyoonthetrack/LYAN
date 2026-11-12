@@ -1,0 +1,29 @@
+{
+  "project_ref": "tdktfbtqceldlaeqjtow",
+  "project_name": "Lyann-staging-v2",
+  "taken_on": "2026-11-12, phase 3.2C-5.2 (exact time not recorded)",
+  "git_sha": "c56dc22525a42f666012a029b0bca193864a9905",
+  "state": "after migration 95 (applied), before migration 96 (prepared, not applied)",
+  "fingerprints_md5": {
+    "col_acl": "b75213796e1bbcc6abea7c72256f50a5",
+    "data": "a050a78e19a98c55461498c6c0dc2e48",
+    "fn_acl": "b81c68fc6bb6c3aa55b03af56c6710c8",
+    "policies": "7b87e80cfabaff84de5311db5335de14",
+    "rel_acl": "b73a110ef62de84d7d6111e3907ac95e",
+    "views": "6144ae1e8b4985e5a25eb4e5fd7f24e2",
+    "messaging": "9fd535baf71ec53479945f9458495768"
+  },
+  "conversations_policies": [
+    {"name": "No direct insert on conversations for standard users", "cmd": "INSERT", "roles": "{public}", "permissive": true, "with_check": "is_current_user_admin()"},
+    {"name": "Participants can view conversation", "cmd": "SELECT", "roles": "{public}", "permissive": true, "using": "(is_current_user_conversation_participant(id) OR is_current_user_admin())"},
+    {"name": "Users can insert conversations", "cmd": "INSERT", "roles": "{public}", "permissive": true, "with_check": "true"}
+  ],
+  "conversations_table_grants_anon_authenticated": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE (Supabase default; only RLS limits them)",
+  "default_acl_functions": {
+    "postgres/public/f": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "supabase_admin/public/f": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}",
+    "global_entries": "none"
+  },
+  "restore96": "96_conversations_insert_policy_lockdown_rollback.sql: CREATE POLICY \"Users can insert conversations\" ON public.conversations FOR INSERT TO public WITH CHECK (true)",
+  "restore97": "97_default_function_privileges_lockdown_rollback.sql (97 has not been rehearsed on Staging nor applied)"
+}

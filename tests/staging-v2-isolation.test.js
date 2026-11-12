@@ -156,7 +156,7 @@ test('HTML inject throws if a service_role JWT is offered to the browser', () =>
 });
 
 test('built product HTML loads the runtime config before api-client', () => {
-  const html = buildHtml(fs.readFileSync(path.join(root, 'index.html'), 'utf8'));
+  const html = buildHtml(fs.readFileSync(path.join(root, 'discover.html'), 'utf8'));
   const runtimeAt = html.indexOf('lyann-runtime-config.js');
   const clientAt = html.indexOf('api-client.js');
   assert.ok(runtimeAt >= 0 && clientAt > runtimeAt);
