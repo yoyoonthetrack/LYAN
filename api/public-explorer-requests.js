@@ -58,13 +58,21 @@ function publicLocation(value) {
     const matches = territories.filter(([key]) => new RegExp(`(^|[^a-z])${key}([^a-z]|$)`).test(text));
     return matches.length === 1 ? matches[0][1] : null;
 }
+// Visiteur : un extrait suffit à la recherche et aux cartes ; le texte complet est réservé à la fiche (compte requis).
+const EXCERPT_LENGTH = 120;
+function excerpt(value) {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (text.length <= EXCERPT_LENGTH) return text;
+    const cut = text.slice(0, EXCERPT_LENGTH);
+    return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 60)).trim()}…`;
+}
 function project(row, profile) {
     const first = (profile?.first_name || '').trim();
     const initial = (profile?.last_name || '').replace(/[^a-zA-Z]/g, '').charAt(0).toUpperCase();
     const average = Number(profile?.average_rating);
     return {
         id: row.id, category: row.category, taxonomy_id: row.taxonomy_id,
-        title: row.title, description: row.description, budget: row.budget,
+        title: row.title, description: excerpt(row.description), budget: row.budget,
         location: publicLocation(row.location), urgency: row.urgency, created_at: row.created_at,
         // Null until migration 37 adds the columns; the card omits the line either way.
         date_mode: row.date_mode ?? null, scheduled_at: row.scheduled_at ?? null,
@@ -132,4 +140,4 @@ function createPublicRequestsHandler(db, configured = true) {
         }
     };
 }
-module.exports = { createPublicRequestsHandler, publicLocation };
+module.exports = { createPublicRequestsHandler, publicLocation, excerpt, EXCERPT_LENGTH };

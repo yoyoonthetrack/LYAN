@@ -82,6 +82,17 @@ test('public annonce projection: a commune is returned only when the text IS a c
     assert.match(handlerSource, /Object\.keys\(req\.query\)\.some\(k => k !== 'offset'\)/, 'no caller-supplied filter or select');
 });
 
+test('public annonce projection withholds the full description from visitors (excerpt only)', () => {
+    const { excerpt, EXCERPT_LENGTH } = require('../api/public-explorer-requests.js');
+    const long = 'Je cherche quelqu\'un pour intervenir chez moi. '.repeat(20);
+    const out = excerpt(long);
+    assert.ok(out.length <= EXCERPT_LENGTH + 1, `excerpt ${out.length} chars`);
+    assert.match(out, /…$/);
+    assert.equal(excerpt('Court texte'), 'Court texte');
+    assert.equal(excerpt(null), '');
+    assert.match(handlerSource, /description: excerpt\(row\.description\)/);
+});
+
 test('the database lock is PREPARED (not applied) with a rollback and post-conditions', () => {
     const up = read('94_visitor_member_detail_lock_staging.sql');
     const down = read('94_visitor_member_detail_lock_rollback.sql');
