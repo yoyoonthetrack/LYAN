@@ -164,6 +164,18 @@ Tout le reste (ordre, vérifications, arrêts, restauration) est tranché.
 | `docs/taxonomy/post-migration-draft/10_resolve_legacy_skill*.sql` | S10 et son rollback |
 | `scripts/taxonomy-v2/unattached-skills.js`, `docs/taxonomy/generated/unattached-skills.{json,csv}` | analyse des 52 compétences |
 | `tests/taxonomy-p45-skills.test.js` | analyse, RPC 10 sur le banc, hygiène des fichiers |
+| `tests/taxonomy-skill-editor-contract.test.js` | contrat de la future interface d'édition des compétences (52 compétences réelles) : titre historique intact, un seul appel `(p_service, p_node)`, 4 candidats au plus, aucune présélection |
 | `taxonomy-ux.js` (`describeSkill`, `resolveSkillArgs`) | affichage et édition des compétences après migration (indicateur désactivé) |
 | `api/app-version-policy.js`, `app-version-policy.js`, `api/server.js` | politique de version minimale (inerte) |
 | `tests/app-version-policy.test.js` | politique de version : inertie, route réelle, client |
+
+## 10. Périmètre exact de S10 et conditions d'arrêt (préparation du 12 nov. 2026, S10 NON appliquée)
+
+**Ce que S10 fait à son application** : `CREATE OR REPLACE FUNCTION public.lyann_resolve_legacy_skill(uuid, text)` (`SECURITY DEFINER`, `search_path` figé), puis `REVOKE ALL … FROM PUBLIC, anon` et `GRANT EXECUTE … TO authenticated`. **Aucune ligne de donnée n'est écrite, aucune table, aucun déclencheur, aucune politique, aucun privilège de table n'est touché.** Objets ajoutés au catalogue : une fonction (+ son ACL). Rollback : `10_resolve_legacy_skill_rollback.sql` (retire la fonction ; les précisions faites par des membres restent).
+
+**Ce que la fonction fera ensuite, sur action d'un membre seulement** : pour une compétence SANS nœud dont il est propriétaire, écrire `taxonomy_node_code` et `taxonomy_node_source = 'user'` (rien d'autre : titre, catégorie, description, prix, état inchangés), et ajouter `(user_id, node_code)` à `lyann_profile_skill`. Aucun quota n'est touché (le déclencheur de quota n'écoute pas `taxonomy_node_code`). Aucun métier n'est choisi à la place du membre (décision X5).
+
+**Répétition sur Staging en transaction annulée** (`artifacts/p45-staging/s10-rehearsal-staging.js`, rien de conservé) : 52 compétences sans nœud, 34 propriétaires (tous FREE, tous existants), 23 titres tous couverts par le rapport ; 52 précisions réussies par leur propriétaire (premier candidat = entrée de test) ; titre, catégorie, description, prix et état identiques ; quota inchangé pour chaque propriétaire ; modération 15/145 inchangée ; refus : compétence d'autrui et inexistante (`42501 Accès refusé`, même réponse), déjà classée (`22023`), `anon` (`42501`) ; avec la garde de quota activée, une nouvelle catégorie reste refusée (`CATEGORY_QUOTA_REACHED`) et l'ancienne RPC accepte les mêmes titres.
+
+**Conditions d'arrêt avant écriture** (exécuteur, reprise `--steps S10 --resume-catalog <empreinte>`) : projet ≠ Staging ; catalogue ≠ celui relevé après S101 ; déclencheur UPDATE inconnu ou non conforme à son contrat ; session `idle in transaction`, transaction préparée, verrou consultatif ou verrou sur `requests`/`services`/`lyann_taxonomy` ; objets v2 absents ; lint de S10 en échec ; nombre de lignes sauvegardées ≠ pré-vol.
+**Conditions d'arrêt après application** : toute anomalie V01–V23, objet préexistant modifié ou retiré, changement hors schéma `public`, modération modifiée, session ou verrou résiduel ; seul ajout attendu au catalogue : `fn:lyann_resolve_legacy_skill(uuid,text)`.
