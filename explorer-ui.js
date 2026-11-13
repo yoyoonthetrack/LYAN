@@ -222,7 +222,7 @@
                 <i class="ph ph-caret-right explorer-row-chevron" aria-hidden="true"></i>
             </article>`;
         }
-        const territories = () => Object.keys(window.LYANN_TERRITORY_DATASET || {}).filter(t => /\((971|972|973|974)\)/.test(t));
+        const territories = () => Object.keys(window.LYANN_TERRITORY_DATASET || {});
         function inferGeography(value, territoryHint = '') {
             const clean = v => window.LyanAI.normalizeText(String(v || '').replace(/\s*\(\d+\)/g, ''));
             const territory = territories().find(t => clean(t) === clean(territoryHint || value));
@@ -292,8 +292,8 @@
             const draft = api.canonicalFamilySelection(mapFamilyDraft || []);
             const allOn = draft.length === 0 || draft.length >= api.FAMILIES.length;
             const familyIcon = {
-                plomberie: 'ph-drop', electricite: 'ph-lightning', bricolage: 'ph-hammer', jardinage: 'ph-plant',
-                menage: 'ph-broom', beaute: 'ph-flower', numerique: 'ph-laptop', quotidien: 'ph-calendar-blank'
+                maison: 'ph-wrench', jardin: 'ph-plant', entretien: 'ph-broom', beaute: 'ph-flower',
+                transport: 'ph-truck', famille: 'ph-users', evenement: 'ph-cooking-pot', numerique: 'ph-laptop'
             };
             // Chaque puce reflète uniquement sa propre famille : « Toutes » n'allume jamais les autres puces.
             host.innerHTML = `<button type="button" class="explorer-map-category-chip${allOn ? ' is-active' : ''}" data-family="__all__" aria-pressed="${allOn ? 'true' : 'false'}">Toutes</button>`
@@ -322,6 +322,14 @@
             const api = mapFamiliesApi();
             if (!api) return;
             mapFamilyFilter = api.effectiveFamilyFilter(mapFamilyDraft || []);
+            if (mapFamilyFilter && mapFamilyFilter.length === 1) {
+                filters.family = mapFamilyFilter[0];
+                filters.groups = '';
+                filters.job = '';
+                filters.specialty = '';
+            } else {
+                clearTaxonomy();
+            }
             closeMapCategorySheet();
             render({ quiet: true });
         }
@@ -448,7 +456,7 @@
             }
         }
         // Familles de métiers V2 : huit pastilles rondes, puis un panneau « métiers » (et spécialités) sous la famille choisie.
-        // Les codes et la hiérarchie viennent du référentiel V2 lu en base (marketplace-taxonomy.js) ; la carte garde ses huit pictos historiques.
+        // La carte utilise les mêmes huit familles. Les codes viennent du référentiel lu en base.
         let refineOpen = false;
         let refineTrigger = null;
         let lastResultCount = null;
@@ -500,7 +508,7 @@
             return { family, groups, total: groups.reduce((n, g) => n + g.trades.length, 0) };
         }
         const taxoName = () => groupsLabel() || V2()?.familyMeta(filters.family)?.short || (filters.family === 'autres' ? 'Autres besoins' : 'Métiers');
-        // Barre compacte sous les familles : « Maison & travaux · 20 métiers » + Affiner / Réinitialiser. Absente (aucune place) sans famille choisie.
+        // Barre compacte : famille, métier choisi, puis le nombre de résultats. Pas le nombre de métiers du référentiel.
         function renderTaxoBar() {
             const bar = $('explorerTaxoBar');
             if (!bar) return;
@@ -509,7 +517,10 @@
             let detail = '';
             if (filters.specialty) detail = [nodeLabel(filters.job), nodeLabel(filters.specialty)].filter(Boolean).join(' › ');
             else if (filters.job) detail = nodeLabel(filters.job);
-            else if (scope) detail = `${scope.total} métier${scope.total > 1 ? 's' : ''}`;
+            else if (lastResultCount != null) {
+                const noun = mode === 'annonces' ? (lastResultCount > 1 ? 'annonces' : 'annonce') : (lastResultCount > 1 ? 'Lyanneurs' : 'Lyanneur');
+                detail = `${lastResultCount} ${noun}`;
+            }
             bar.querySelector('.explorer-taxo-label').innerHTML = `<strong>${escape(taxoName())}</strong>${detail ? `<span class="sep" aria-hidden="true">&nbsp;·&nbsp;</span><span>${escape(detail)}</span>` : ''}`;
             $('explorerRefineBtn').hidden = !scope;
             bar.hidden = false;
@@ -530,7 +541,14 @@
                 .filter(record => recordMatchesTaxonomy(record, { family: filters.family, groups: taxonomyFilter().groups, job: '', specialty: '' }));
             const counts = {};
             base.forEach(record => {
-                Object.keys(V2().countByTrade(recordRows(record), v2Ctx())).forEach(code => { counts[code] = (counts[code] || 0) + 1; });
+                const seen = new Set();
+                recordRows(record).forEach(row => {
+                    const node = v2Index?.byCode.get(V2().nodeCodeOf(row, leaves));
+                    if (!node) return;
+                    const trade = V2().tradeOfNode(node);
+                    if (trade && !seen.has(trade)) { counts[trade] = (counts[trade] || 0) + 1; seen.add(trade); }
+                    if (node.kind === 'specialty' && !seen.has(node.code)) { counts[node.code] = (counts[node.code] || 0) + 1; seen.add(node.code); }
+                });
             });
             const chip = (attrs, label, active, count) => `<button type="button" class="explorer-job-chip${active ? ' is-active' : ''}${!active && !count ? ' is-empty' : ''}" ${attrs} aria-pressed="${active ? 'true' : 'false'}"><span>${escape(label)}</span>${count ? `<span class="explorer-job-count">${count}</span>` : ''}</button>`;
             $('explorerRefineTitle').textContent = `Affiner · ${taxoName()}`;
@@ -538,7 +556,7 @@
                 if (!group.trades.length) return '';
                 const selected = group.trades.find(t => t.code === filters.job);
                 const specialties = selected && selected.specialties.length
-                    ? `<div class="explorer-job-specialties" role="group" aria-label="Spécialités : ${escape(selected.label)}">${selected.specialties.map(sp => chip(`data-specialty="${escape(sp.code)}"`, sp.label, filters.specialty === sp.code, 0)).join('')}</div>` : '';
+                    ? `<div class="explorer-job-specialties" role="group" aria-label="Spécialités : ${escape(selected.label)}">${selected.specialties.map(sp => chip(`data-specialty="${escape(sp.code)}"`, sp.label, filters.specialty === sp.code, counts[sp.code] || 0)).join('')}</div>` : '';
                 return `<section class="explorer-job-group">${group.label ? `<h3 class="explorer-job-group-title">${escape(group.label)}</h3>` : ''}<div class="explorer-job-chips">${group.trades.map(t => chip(`data-job="${escape(t.code)}"`, t.label, filters.job === t.code, counts[t.code] || 0)).join('')}</div>${specialties}</section>`;
             }).join('') || '<p class="explorer-job-empty">Aucun métier de cette famille n\'est encore proposé ici.</p>';
             body.scrollTop = scrollTop;
@@ -587,6 +605,7 @@
             const same = filters.family === code && !filters.groups;
             clearTaxonomy();
             if (!same) { filters.family = code; filters.category = ''; filters.service = ''; }
+            mapFamilyFilter = filters.family ? [filters.family] : null;
             render({ quiet: true });
         }
         function chooseJob(code) {
@@ -613,16 +632,28 @@
             Object.defineProperty(filters, 'viewerTerritory', { value: viewerTerritory, enumerable: false, writable: true, configurable: true });
             let results = repo.discover(records, leaves, filters, mode);
             if (taxonomyActive()) results = results.filter(record => recordMatchesTaxonomy(record));
+            const queryMatch = filters.query && v2Index ? V2().matchQuery(v2Index, filters.query) : null;
+            if (queryMatch && queryMatch.level !== 'none' && queryMatch.level !== 'text') {
+                results = results.filter(record => V2().rowMatchesQuery(recordRows(record), queryMatch, v2Ctx(), [record.name, record.title, record.description, record.bio].filter(Boolean).join(' ')));
+            }
             if (mode === 'annonces' && filters.territory) results = results.filter(annonceInTerritory);
-            const mapScoped = mode === 'annonces' && mapAvailable() ? rowsForMapFamilies(results) : results;
+            const stamped = mode === 'annonces' ? results.map(row => {
+                const family = v2Index ? V2().familyOf(row, v2Ctx()) : '';
+                return family ? Object.assign({}, row, { _v2Family: family }) : row;
+            }) : results;
+            if (mode === 'annonces' && mapFamiliesActive()) results = rowsForMapFamilies(stamped);
+            const mapScoped = mode === 'annonces' ? (mapFamiliesActive() ? results : stamped) : results;
             const countLabel = mode === 'annonces'
                 ? (mapScoped.length <= 1 ? 'annonce' : 'annonces')
                 : (results.length <= 1 ? 'Lyanneur' : 'Lyanneurs');
             const displayCount = mode === 'annonces' && mapAvailable() ? mapScoped.length : results.length;
             lastResultCount = displayCount;
             syncRefineFooter();
+            renderTaxoBar();
             $('explorerSummary').textContent = `${displayCount} ${countLabel} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
-            $('explorerRanking').textContent = mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.';
+            $('explorerRanking').textContent = queryMatch && queryMatch.question
+                ? queryMatch.question
+                : (mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.');
             const container = $('explorerResults');
             window.LYANN_SKELETON?.clear(container);
             if (mapAvailable()) {
@@ -630,7 +661,7 @@
                 setSurface(true);
                 container.replaceChildren();
                 ensureNeedsMap().update({
-                    rows: results,
+                    rows: mapScoped,
                     leaves,
                     area: filters.area,
                     reframe: options.reframe === true,
@@ -735,13 +766,22 @@
             if (button.dataset.view && button.closest('#explorerViewToggle')) { setView(button.dataset.view); return; }
             if (button.dataset.mode) {
                 const nextMode = button.dataset.mode;
-                if (mode === 'annonces' && nextMode !== 'annonces') {
-                    destroyNeedsMap();
-                    view = 'list';
-                    applyMapViewLayout();
+                if (nextMode !== mode && (nextMode === 'annonces' || nextMode === 'lyanneurs')) {
+                    syncUrl();
+                    const carried = { territory: filters.territory, commune: filters.commune, area: filters.area };
+                    if (mode === 'annonces' && nextMode !== 'annonces') {
+                        destroyNeedsMap();
+                        view = 'list';
+                        applyMapViewLayout();
+                    }
+                    mode = nextMode;
+                    let saved = null;
+                    try { saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + mode) || 'null'); } catch (_) {}
+                    filters = V2().filtersAcrossModes(carried, saved);
+                    mapFamilyFilter = filters.family ? [filters.family] : null;
+                    closeRefine({ restoreFocus: false });
+                    search();
                 }
-                mode = nextMode;
-                search();
                 return;
             }
             if (button.dataset.remove) {
@@ -882,6 +922,20 @@
             search();
         });
         window.addEventListener('lyann_request_created', () => { mode = 'annonces'; search(true); });
+        document.addEventListener('click', event => {
+            const link = event.target.closest && event.target.closest('[data-explorer-nav]');
+            if (!link) return;
+            const nextMode = link.getAttribute('data-explorer-nav');
+            if (nextMode !== 'annonces' && nextMode !== 'lyanneurs' || nextMode === mode) return;
+            syncUrl();
+            let saved = null;
+            try { saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + nextMode) || 'null'); } catch (_) {}
+            try {
+                sessionStorage.setItem('lyann-explorer-filters:' + nextMode, JSON.stringify(V2().filtersAcrossModes({
+                    territory: filters.territory, commune: filters.commune, area: filters.area
+                }, saved)));
+            } catch (_) {}
+        }, true);
         window.addEventListener('pageshow', event => { if (event.persisted) search(true); });
         // Leaving the page (tab, back swipe, app switch into the page cache) always releases the Carte lock;
         // a restored page re-applies it from its own state through search() above.

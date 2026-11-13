@@ -11,16 +11,16 @@
         .toLowerCase()
         .trim();
 
-    /** @type {ReadonlyArray<{id:string,label:string,tone:'green'|'yellow'}>} */
+    /** Huit familles V2, mêmes codes que marketplace-taxonomy.js. */
     const FAMILIES = Object.freeze([
-        { id: 'plomberie', label: 'Plomberie', tone: 'green' },
-        { id: 'electricite', label: 'Électricité', tone: 'yellow' },
-        { id: 'bricolage', label: 'Bricolage', tone: 'green' },
-        { id: 'jardinage', label: 'Jardinage', tone: 'yellow' },
-        { id: 'menage', label: 'Ménage', tone: 'yellow' },
-        { id: 'beaute', label: 'Beauté', tone: 'green' },
-        { id: 'numerique', label: 'Numérique', tone: 'yellow' },
-        { id: 'quotidien', label: 'Services du quotidien', tone: 'green' }
+        { id: 'maison', label: 'Maison & travaux', tone: 'green' },
+        { id: 'jardin', label: 'Jardin & extérieur', tone: 'yellow' },
+        { id: 'entretien', label: 'Ménage & entretien', tone: 'yellow' },
+        { id: 'beaute', label: 'Beauté & bien-être', tone: 'green' },
+        { id: 'transport', label: 'Transport & véhicules', tone: 'green' },
+        { id: 'famille', label: 'Famille & assistance', tone: 'yellow' },
+        { id: 'evenement', label: 'Événementiel & cuisine', tone: 'green' },
+        { id: 'numerique', label: 'Numérique & services pros', tone: 'yellow' }
     ]);
 
     const ALL_FAMILY_IDS = FAMILIES.map((f) => f.id);
@@ -126,9 +126,29 @@
         artisanat: 'quotidien'
     });
 
-    function familyForCategory(category) {
+    const OLD_TO_V2 = Object.freeze({
+        plomberie: 'maison', electricite: 'maison', bricolage: 'maison', jardinage: 'jardin',
+        menage: 'entretien', beaute: 'beaute', numerique: 'numerique'
+    });
+    const QUOTIDIEN_V2 = Object.freeze({
+        'mecanique automobile': 'transport', carrosserie: 'transport', pneumatiques: 'transport', 'lavage auto': 'transport',
+        depannage: 'transport', covoiturage: 'transport', 'livraison & manutention': 'transport', courses: 'famille',
+        aeroport: 'transport', colis: 'transport', demenagement: 'transport',
+        'soutien scolaire': 'famille', langues: 'famille', permis: 'transport',
+        'garde d enfants': 'famille', 'garde d’enfants': 'famille', 'personnes agees': 'famille', 'personnes âgées': 'famille',
+        accompagnement: 'famille', 'garde d animaux': 'famille', toilettage: 'famille', education: 'famille',
+        photographie: 'evenement', 'aide administrative': 'numerique', comptabilite: 'numerique', traduction: 'numerique', redaction: 'numerique',
+        couture: 'beaute', 'cuisine & patisserie': 'evenement', 'cuisine & pâtisserie': 'evenement', 'traiteur domicile': 'evenement',
+        patisserie: 'evenement', 'cours de musique': 'evenement', 'poterie & ceramique': 'evenement', 'poterie & céramique': 'evenement',
+        'sport & coaching': 'famille', fitness: 'famille', danse: 'evenement', natation: 'famille', yoga: 'famille',
+        'arts martiaux': 'famille', bateau: 'transport', peche: 'famille', plongee: 'famille', 'plongée': 'famille', voile: 'transport',
+        'dj & son': 'evenement', traiteur: 'evenement', decoration: 'evenement', animation: 'evenement', videaste: 'evenement', 'vidéaste': 'evenement',
+        evenement: 'evenement', 'événement': 'evenement', 'peinture & dessin': 'evenement', artisanat: 'evenement'
+    });
+
+    function legacyFamilyId(category) {
         const key = normalize(category);
-        if (!key) return 'quotidien';
+        if (!key) return '';
         if (CATEGORY_FAMILY[key]) return CATEGORY_FAMILY[key];
         if (key.includes('plomb')) return 'plomberie';
         if (key.includes('electr') || key.includes('eclair')) return 'electricite';
@@ -136,17 +156,32 @@
         if (key.includes('menage') || key.includes('nettoy')) return 'menage';
         if (key.includes('coiff') || key.includes('beaute') || key.includes('esthet') || key.includes('barbier') || key.includes('ongle')) return 'beaute';
         if (key.includes('informat') || key.includes('ordinateur') || key.includes('web') || key.includes('smartphone') || key.includes('wifi')) return 'numerique';
-        if (key.includes('bricol') || key.includes('macon') || key.includes('peint') || key.includes('menuis') || key.includes('carrel')) return 'bricolage';
-        return 'quotidien';
+        if (key.includes('bricol') || key.includes('macon') || key.includes('peint') || key.includes('menuis') || key.includes('carrel') || key.includes('clim')) return 'bricolage';
+        if (key.includes('covoit') || key.includes('livraison') || key.includes('voiture') || key.includes('camion')) return 'quotidien';
+        return '';
+    }
+
+    function familyForCategory(category) {
+        const key = normalize(category);
+        if (QUOTIDIEN_V2[key]) return QUOTIDIEN_V2[key];
+        const old = legacyFamilyId(category);
+        if (old === 'quotidien') {
+            if (key.includes('enfant') || key.includes('senior') || key.includes('animaux') || key.includes('scolaire')) return 'famille';
+            if (key.includes('cuisin') || key.includes('photo') || key.includes('mariage') || key.includes('traiteur') || key.includes('musique')) return 'evenement';
+            if (key.includes('voiture') || key.includes('livr') || key.includes('transport') || key.includes('camion') || key.includes('aeroport')) return 'transport';
+            return '';
+        }
+        return OLD_TO_V2[old] || '';
     }
 
     function familyForRow(row, leaves = []) {
-        if (!row) return 'quotidien';
+        if (!row) return '';
+        if (row._v2Family && ALL_FAMILY_IDS.includes(row._v2Family)) return row._v2Family;
         if (row.taxonomy_id && Array.isArray(leaves) && leaves.length) {
             const leaf = leaves.find((t) => t.id === row.taxonomy_id);
             if (leaf?.category) return familyForCategory(leaf.category);
         }
-        return familyForCategory(row.category);
+        return familyForCategory(row.category || row.title);
     }
 
     function filterRowsByFamilies(rows, selectedFamilies, leaves = []) {
@@ -179,7 +214,7 @@
     }
 
     function familyMeta(id) {
-        return FAMILIES.find((f) => f.id === id) || FAMILIES.find((f) => f.id === 'quotidien');
+        return FAMILIES.find((f) => f.id === id) || { id: '', label: '', tone: 'green' };
     }
 
     const api = Object.freeze({

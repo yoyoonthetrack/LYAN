@@ -87,7 +87,7 @@
     }
 
     /* ── Index du référentiel (lignes lyann_taxonomy_node actives + lyann_taxonomy_group) ── */
-    function buildIndex(nodeRows, groupRows) {
+    function buildIndex(nodeRows, groupRows, termRows, ambiguousRows) {
         const rows = Array.isArray(nodeRows) ? nodeRows.filter((r) => r && r.code && r.active !== false) : [];
         if (!rows.length) return null;
         const byCode = new Map(rows.map((r) => [r.code, r]));
@@ -113,7 +113,108 @@
             groups.sort((a, b) => a.order - b.order);
             families[family] = { code: family, groups, trades: familyTrades.length };
         }
-        return { byCode, families };
+        const terms = (Array.isArray(termRows) ? termRows : [])
+            .filter((t) => t && t.node_code && t.term_norm && byCode.has(t.node_code))
+            .map((t) => ({ node_code: t.node_code, norm: fold(t.term_norm), type: t.term_type || '' }));
+        const ambiguous = new Map((Array.isArray(ambiguousRows) ? ambiguousRows : [])
+            .filter((a) => a && a.term_norm && a.question_fr)
+            .map((a) => [fold(a.term_norm), String(a.question_fr)]));
+        return { byCode, families, terms, ambiguous };
+    }
+
+    const fold = (value) => String(value == null ? '' : value)
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[’']/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+
+    /**
+     * Interprète une saisie avec le référentiel chargé. Un métier ou une spécialité ne s'élargit jamais à toute sa famille.
+     * level : none | text | family | node | clarify
+     */
+    function matchQuery(index, query) {
+        const q = fold(query);
+        const tokens = q.split(' ').filter(Boolean);
+        const empty = { level: 'none', codes: [], family: '', question: '', tokens };
+        if (!q || !index || !index.byCode) return empty;
+        const hits = [];
+        const push = (node, score) => {
+            if (!node || node.kind === 'family' || node.family_code === 'autres' || node.active === false) return;
+            hits.push({ code: node.code, score, kind: node.kind, family: node.family_code || '', trade: tradeOfNode(node) });
+        };
+        for (const node of index.byCode.values()) {
+            const label = fold(node.label_fr);
+            if (!label) continue;
+            if (label === q) push(node, 100);
+            else if (q.length >= 4 && (label.startsWith(q) || label.split(' ').includes(q))) push(node, 80);
+        }
+        for (const term of index.terms || []) {
+            if (term.norm === q) push(index.byCode.get(term.node_code), 100);
+            else if (q.length >= 4 && term.norm.startsWith(q)) push(index.byCode.get(term.node_code), 80);
+            else if (tokens.length > 1 && tokens.every((token) => ` ${term.norm} `.includes(` ${token} `))) push(index.byCode.get(term.node_code), 70);
+        }
+        const family = FAMILIES.find((item) => fold(item.short) === q);
+        const best = hits.reduce((max, hit) => Math.max(max, hit.score), 0);
+        const top = hits.filter((hit) => hit.score === best && best >= 70);
+        const question = index.ambiguous && index.ambiguous.get(q);
+        if (question) {
+            const codes = new Set(top.map((hit) => hit.code));
+            for (const term of index.terms || []) {
+                if (term.norm !== q && !term.norm.split(' ').includes(q)) continue;
+                const node = index.byCode.get(term.node_code);
+                if (!node || node.family_code === 'autres' || node.kind === 'family') continue;
+                codes.add(node.kind === 'specialty' ? (node.parent_code || node.code) : node.code);
+            }
+            return { level: 'clarify', codes: [...codes], family: '', question, tokens };
+        }
+        if (family && best < 100) return { level: 'family', codes: [], family: family.code, question: '', tokens };
+        if (!top.length) return { level: 'text', codes: [], family: '', question: '', tokens };
+        const trades = new Set(top.map((hit) => hit.trade).filter(Boolean));
+        if (trades.size > 1) {
+            return { level: 'clarify', codes: [...new Set(top.map((hit) => hit.code))], family: '', question: 'Plusieurs métiers correspondent. Choisissez-en un.', tokens };
+        }
+        const codes = new Set();
+        for (const hit of top) {
+            codes.add(hit.code);
+            if (hit.kind === 'trade') {
+                for (const node of index.byCode.values()) if (node.parent_code === hit.code) codes.add(node.code);
+            } else if (hit.trade) codes.add(hit.trade);
+        }
+        return { level: 'node', codes: [...codes], family: top[0].family, question: '', tokens };
+    }
+
+    /** Une ligne reste visible si son nœud est dans le résultat, ou si son propre texte contient la saisie. Aucun métier n'est inventé. */
+    function rowMatchesQuery(rows, match, ctx, extraText) {
+        if (!match || match.level === 'none' || match.level === 'text') return true;
+        const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+        const own = fold([extraText, ...list.map((row) => [row.title, row.name, row.description, row.category].filter(Boolean).join(' '))].join(' '));
+        const textHit = match.tokens.length > 0 && match.tokens.every((token) => own.includes(token));
+        if (match.level === 'family') return list.some((row) => familyOf(row, ctx) === match.family) || textHit;
+        const allowed = new Set(match.codes || []);
+        const nodeHit = list.some((row) => allowed.has(nodeCodeOf(row, ctx && ctx.leaves)));
+        return nodeHit || textHit;
+    }
+
+    /** Filtres d'une autre page : le territoire choisi suit, la famille et le métier de la page quittée ne suivent pas. */
+    function filtersAcrossModes(current, savedNext) {
+        const next = {
+            query: '', category: '', service: '', area: '', territory: '', commune: '', urgency: '', budget: '', family: '', groups: '', job: '', specialty: ''
+        };
+        const saved = savedNext && typeof savedNext === 'object' ? savedNext : {};
+        for (const key of Object.keys(next)) if (saved[key] != null) next[key] = String(saved[key]);
+        const from = current && typeof current === 'object' ? current : {};
+        // Une famille, un métier ou une recherche appartiennent à la page qui les a choisis.
+        next.query = '';
+        next.category = '';
+        next.service = '';
+        next.family = '';
+        next.groups = '';
+        next.job = '';
+        next.specialty = '';
+        if (from.territory) {
+            next.territory = String(from.territory);
+            next.commune = String(from.commune || '');
+        }
+        if (from.area) next.area = String(from.area);
+        return next;
     }
 
     /** Code V2 d'une ligne (annonce ou service) : code posé sur la ligne, sinon code porté par la feuille historique. */
@@ -132,7 +233,11 @@
         const { index, leaves, legacyFamilyForRow } = ctx || {};
         const node = index && index.byCode.get(nodeCodeOf(row, leaves));
         if (node) return node.family_code || '';
-        if (typeof legacyFamilyForRow === 'function') return LEGACY_FAMILY_BRIDGE[legacyFamilyForRow(row, leaves)] || '';
+        if (typeof legacyFamilyForRow === 'function') {
+            const legacy = String(legacyFamilyForRow(row, leaves) || '');
+            if (FAMILY_CODES.includes(legacy) || legacy === 'autres') return legacy;
+            return LEGACY_FAMILY_BRIDGE[legacy] || '';
+        }
         return '';
     }
 
@@ -177,12 +282,26 @@
         if (pending && !force) return pending;
         pending = (async () => {
             try {
-                const [nodes, groups] = await Promise.all([
-                    supabase.from('lyann_taxonomy_node').select('code,kind,parent_code,family_code,group_code,label_fr,sort_order,selectable,active').eq('active', true).order('sort_order').limit(2000),
-                    supabase.from('lyann_taxonomy_group').select('code,family_code,label_fr,sort_order').order('sort_order').limit(500)
+                const pages = async (table, columns, filter) => {
+                    const all = [];
+                    for (let from = 0; from < 12000; from += 1000) {
+                        let query = supabase.from(table).select(columns).range(from, from + 999);
+                        if (filter) query = filter(query);
+                        const { data, error } = await query;
+                        if (error || !Array.isArray(data) || !data.length) break;
+                        all.push(...data);
+                        if (data.length < 1000) break;
+                    }
+                    return all;
+                };
+                const [nodes, groups, terms, ambiguous] = await Promise.all([
+                    pages('lyann_taxonomy_node', 'code,kind,parent_code,family_code,group_code,label_fr,sort_order,selectable,active', (q) => q.eq('active', true).order('sort_order')),
+                    pages('lyann_taxonomy_group', 'code,family_code,label_fr,sort_order', (q) => q.order('sort_order')),
+                    pages('lyann_taxonomy_term', 'node_code,term_norm,term_type', (q) => q.eq('active', true)),
+                    pages('lyann_taxonomy_ambiguous_term', 'term_norm,question_fr')
                 ]);
-                if (nodes.error || !Array.isArray(nodes.data) || !nodes.data.length) return null;
-                return buildIndex(nodes.data, groups.error ? [] : groups.data);
+                if (!nodes.length) return null;
+                return buildIndex(nodes, groups, terms, ambiguous);
             } catch (_) {
                 return null;
             }
@@ -193,6 +312,7 @@
     return Object.freeze({
         ICONS, FAMILIES, FAMILY_CODES, TILES, LEGACY_FAMILY_BRIDGE,
         iconSvg, familyMeta, tileByCode, isFamilyCode, normalizeFamilyParam, tileHref,
-        buildIndex, nodeCodeOf, familyOf, tradeOfNode, rowMatches, countByTrade, load
+        buildIndex, nodeCodeOf, familyOf, tradeOfNode, rowMatches, countByTrade, load,
+        matchQuery, rowMatchesQuery, filtersAcrossModes, fold
     });
 });

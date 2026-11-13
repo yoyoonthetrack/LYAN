@@ -358,7 +358,13 @@
             menage: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 20v-2h16v2H4Zm2-3 2.5-9h7L18 17H6Zm3.5-7 1 3h3l1-3h-5Z"/></svg>',
             beaute: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2c2 3 2 5 0 7-2-2-2-4 0-7Zm-6 8c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5Zm12 0c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5Z"/></svg>',
             numerique: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 5h16v10H4V5Zm2 12h12v2H6v-2Zm2-10v6h8V7H8Z"/></svg>',
-            quotidien: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2H7V3Zm-2 4h14v12H5V7Zm2 2v8h10V9H7Zm1 1h3v2H8v-2Zm0 3h5v2H8v-2Z"/></svg>'
+            quotidien: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2H7V3Zm-2 4h14v12H5V7Zm2 2v8h10V9H7Zm1 1h3v2H8v-2Zm0 3h5v2H8v-2Z"/></svg>',
+            maison: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M9 3h6v2h-1v3.1c1.2.4 2.1 1.3 2.5 2.5H19v2h-1.1c-.4 2.2-2.2 3.9-4.5 4.1V19h3v2H7v-2h3v-2.3c-2.3-.2-4.1-1.9-4.5-4.1H4v-2h2.5c.4-1.2 1.3-2.1 2.5-2.5V5H9V3z"/></svg>',
+            jardin: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 22c-1.5-3-2-6-1-9 1-3 4-5 7-5-1 4-3 7-6 9 0 3 0 5 0 5s-2-2-2-5c-3-2-5-5-6-9 3 0 6 2 7 5 1 3 .5 6-1 9Z"/></svg>',
+            entretien: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 20v-2h16v2H4Zm2-3 2.5-9h7L18 17H6Zm3.5-7 1 3h3l1-3h-5Z"/></svg>',
+            transport: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 7h11v8H3V7Zm11 2h4l3 3v3h-7V9ZM6 17a2 2 0 1 0 .01 4A2 2 0 0 0 6 17Zm11 0a2 2 0 1 0 .01 4A2 2 0 0 0 17 17Z"/></svg>',
+            famille: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M9 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm7 2a2.4 2.4 0 1 1 0 4.8A2.4 2.4 0 0 1 16 6ZM3 19c0-3 2.4-5 6-5s6 2 6 5H3Zm10.2-4.2c2.6.3 4.8 2 4.8 4.2H21c0-2.4-1.6-4.4-4-5.1-.9-.8-2.1-1.3-3.8-.9Z"/></svg>',
+            evenement: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M8 4h8a4 4 0 0 1 1 7.9V20H7v-8.1A4 4 0 0 1 8 4Zm1 12h6v-4H9v4Z"/></svg>'
         });
 
         function groupVisualFamily(items) {
@@ -377,7 +383,7 @@
             const count = group.items.length;
             const visual = groupVisualFamily(group.items);
             const api = familiesApi();
-            const meta = api?.familyMeta(visual === 'mixed' ? 'quotidien' : visual) || { tone: 'green' };
+            const meta = visual === 'mixed' ? { tone: 'green' } : (api?.familyMeta(visual) || { tone: 'green' });
             const tone = meta.tone === 'yellow' ? 'is-tone-yellow' : 'is-tone-green';
             if (visual === 'mixed') {
                 return `<span class="needs-map-pin-face is-multi is-tone-neutral is-mixed" aria-hidden="true">${count}</span>`;

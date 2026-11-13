@@ -111,6 +111,13 @@
     window.findTerritoryAndIslandForCommune = findTerritoryAndIslandForCommune;
 
     function initProfileCompletion() {
+        if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' && !document.querySelector('script[data-lyann-skills-v2]')) {
+            const loader = document.createElement('script');
+            loader.src = 'profile-skills-v2.js?v=20261113d';
+            loader.dataset.lyannSkillsV2 = '1';
+            loader.onload = () => window.LYANN_PROFILE_SKILLS_V2 && window.LYANN_PROFILE_SKILLS_V2.mount();
+            document.head.appendChild(loader);
+        }
         const modal = document.getElementById('modalCompleteProfile');
         if (!modal) return;
 
@@ -318,6 +325,7 @@
                     } catch (e) {
                         console.warn('[PROFILE_COMPLETION] getUserSkills load error:', e);
                     }
+                    if (window.LYANN_PROFILE_SKILLS_V2 && typeof window.LYANN_PROFILE_SKILLS_V2.mount === 'function') window.LYANN_PROFILE_SKILLS_V2.mount();
                 } else if (localProf?.skills && Array.isArray(localProf.skills)) {
                     selectedSkills.clear();
                     localProf.skills.forEach(s => selectedSkills.add(s));
@@ -862,9 +870,11 @@
                     return; // DO NOT CLOSE MODAL ON MUTATION FAILURE
                 }
 
-                // Call Supabase DB skills sync (public.services)
+                // Call Supabase DB skills sync (public.services). L'éditeur V2 enregistre déjà chaque changement.
                 let skillsUpdateStatus = 'SUCCESS';
-                if (window.apiClient && typeof window.apiClient.syncUserSkills === 'function') {
+                if (window.LYANN_PROFILE_SKILLS_V2 && window.LYANN_PROFILE_SKILLS_V2.controlsSave) {
+                    skillsUpdateStatus = 'V2';
+                } else if (window.apiClient && typeof window.apiClient.syncUserSkills === 'function') {
                     const { data: skillsRes, error: skillsError } = await window.apiClient.syncUserSkills(userId, skillsArr);
                     if (skillsError) {
                         skillsUpdateStatus = 'ERROR';
