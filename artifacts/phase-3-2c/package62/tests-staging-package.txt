@@ -1,0 +1,37 @@
+✔ the package is exported from the commit and its contents are consistent (48.057334ms)
+✔ the package is deterministic: same commit, same manifest (937.496084ms)
+✔ required resources are present, forbidden and internal files are absent (3.415833ms)
+✔ map libraries and glyphs are tracked by Git and match their pinned hashes (32.389ms)
+✔ map assets still equal the files generated from the pinned npm packages (3.598584ms)
+✔ the lockfile is tracked and in sync with package.json (1.7545ms)
+✔ no secret, private key or privileged token is inside the package (25.961416ms)
+✔ vercel.staging-preview.json only differs from vercel.staging.json by its build steps (13.643167ms)
+✔ Preview build succeeds on a clean package and locks every page on Supabase Staging (325.458583ms)
+✔ Preview build refuses: missing Staging URL (99.505875ms)
+✔ Preview build refuses: missing anon key (96.889708ms)
+✔ Preview build refuses: Production URL (97.022416ms)
+✔ Preview build refuses: service_role key in the browser variable (98.32375ms)
+✔ Preview build refuses: anon key of another project (91.94425ms)
+✔ Preview build refuses: missing lock (89.488666ms)
+✔ Preview build refuses: inconsistent lock (91.088875ms)
+✔ Preview build refuses: not a Preview environment (94.947583ms)
+✔ Preview build refuses: not the staging runtime (100.059ms)
+✔ Preview build refuses: foreign Vercel project (94.366542ms)
+✔ Preview build refuses: live Stripe key (110.347834ms)
+✔ Preview build refuses: announced SHA is not the built SHA (90.371792ms)
+✔ Preview build refuses: no release SHA (92.857334ms)
+✔ Preview build refuses a package that was altered after export (254.558792ms)
+✔ Preview build refuses a corrupted or missing map asset (318.040042ms)
+✔ the deploy script builds its package from a commit and stays isolated (0.31225ms)
+✔ Preview env check accepts only a consistent Staging configuration (0.350166ms)
+✔ preview script cannot deploy to production or touch aliases (0.54775ms)
+✔ preview script refuses without its own authorization flag (5.447ms)
+✔ preview dry run prints a preview command for lyann-staging-preview only (1465.651875ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5198.516834

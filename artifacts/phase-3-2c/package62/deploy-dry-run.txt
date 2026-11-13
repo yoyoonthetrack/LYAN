@@ -1,0 +1,5 @@
+LIEN STAGING lyann-staging-preview prj_FHIKUKYa8IwpiitigUma4gTtTF6q
+ACCEPTÉ lyann-staging-preview prj_FHIKUKYa8IwpiitigUma4gTtTF6q
+Paquet : 396 fichiers, commit e56163af45b27ac01709956b33c53882edea1b4a, empreinte c106be84863b1b373552a83a51e2f927043e5f8c380295befb8c27e8de278a38
+Dossier : /tmp/lyann-dry/package (preuves : /tmp/lyann-dry/evidence)
+DRY npx vercel deploy --local-config vercel.staging-preview.json --project prj_FHIKUKYa8IwpiitigUma4gTtTF6q --scope team_Q2iI3QsUHFqSNkD3pjjg5d58 --environment preview --yes --build-env LYANN_VERCEL_CLI_DEPLOY=1 --build-env VERCEL_PROJECT_NAME=lyann-staging-preview --build-env LYANN_RELEASE_SHA=e56163af45b27ac01709956b33c53882edea1b4a --env LYANN_RELEASE_SHA=e56163af45b27ac01709956b33c53882edea1b4a --meta lyannReleaseSha=e56163af45b27ac01709956b33c53882edea1b4a --meta lyannPackageSha256=c106be84863b1b373552a83a51e2f927043e5f8c380295befb8c27e8de278a38

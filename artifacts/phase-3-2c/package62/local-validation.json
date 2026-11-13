@@ -1,0 +1,375 @@
+{
+  "package": {
+    "commit": "e56163af45b27ac01709956b33c53882edea1b4a",
+    "fileCount": 396,
+    "manifestSha256": "c106be84863b1b373552a83a51e2f927043e5f8c380295befb8c27e8de278a38"
+  },
+  "buildLog": [
+    "build-staging-preview: paquet e56163af45b27ac01709956b33c53882edea1b4a (396 fichiers, empreinte c106be84863b…)",
+    "build-staging-preview: 28 ressources de carte vérifiées",
+    "build-staging-preview: 17 pages construites, 16 verrouillées sur Supabase tdktfbtqceldlaeqjtow"
+  ],
+  "backendReal": true,
+  "probes": {
+    "sensitive": {
+      ".env": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".env.staging-v2": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".git/config": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".codex/config.toml": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".momentic-mcp/config.json": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".claude/skills/x": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".agents/skills/x": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".cursor/rules": {
+        "inPackage": false,
+        "http": 404
+      },
+      ".github/workflows/x.yml": {
+        "inPackage": false,
+        "http": 404
+      },
+      "work/x": {
+        "inPackage": false,
+        "http": 404
+      },
+      "docs/PHASE_3_2C_5_3_REPORT.md": {
+        "inPackage": false,
+        "http": 404
+      },
+      "tests/staging-package.test.js": {
+        "inPackage": false,
+        "http": 404
+      },
+      "artifacts/phase-3-2c/apply96/probe_post96.sql": {
+        "inPackage": false,
+        "http": 404
+      },
+      "migrations/96.sql": {
+        "inPackage": false,
+        "http": 404
+      },
+      "supabase/config.toml": {
+        "inPackage": false,
+        "http": 404
+      },
+      "scripts/deploy-staging.sh": {
+        "inPackage": false,
+        "http": 404
+      },
+      "scripts/vercel-target-gate.js": {
+        "inPackage": false,
+        "http": 404
+      },
+      "config/vercel-staging-allowlist.json": {
+        "inPackage": false,
+        "http": 404
+      },
+      "server.js": {
+        "inPackage": false,
+        "http": 404
+      },
+      "vercel.json": {
+        "inPackage": false,
+        "http": 404
+      },
+      "vercel.staging.json": {
+        "inPackage": false,
+        "http": 404
+      },
+      "CLAUDE.md": {
+        "inPackage": false,
+        "http": 404
+      },
+      "AGENTS.md": {
+        "inPackage": false,
+        "http": 404
+      },
+      "ios/App/App.xcodeproj/project.pbxproj": {
+        "inPackage": false,
+        "http": 404
+      },
+      "android/build.gradle": {
+        "inPackage": false,
+        "http": 404
+      },
+      "config/App.staging.entitlements": {
+        "inPackage": false,
+        "http": 404
+      },
+      "api/server_python.py": {
+        "inPackage": false,
+        "http": 404
+      },
+      "netlify.toml": {
+        "inPackage": false,
+        "http": 404
+      },
+      "momentic.config.yaml": {
+        "inPackage": false,
+        "http": 404
+      },
+      "node_modules/.package-lock.json": {
+        "inPackage": false,
+        "http": 404
+      }
+    },
+    "allAbsent": true
+  },
+  "viewports": [
+    {
+      "viewport": "desktop-1440",
+      "screens": {
+        "discover": {
+          "title": "LYANN — Découvrir",
+          "h1": "De quoi avez-vous besoin ?",
+          "overflowX": 0,
+          "lock": "tdktfbtqceldlaeqjtow",
+          "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+          "backend": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app",
+          "anonInjected": true,
+          "runtimeConfig": {
+            "ok": true,
+            "code": "INJECTED",
+            "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+            "backendOrigin": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app"
+          },
+          "productionRefused": "SUPABASE_LOCK_MISMATCH",
+          "missingRefused": "SUPABASE_CONFIG_REQUIRED",
+          "apiClient": "function",
+          "cards": 0,
+          "emptyState": ""
+        },
+        "lyanneurs": {
+          "title": "LYANN — Rechercher un Talent dans les DOM",
+          "h1": "Lyanneurs",
+          "overflowX": 0,
+          "lock": "tdktfbtqceldlaeqjtow",
+          "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+          "backend": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app",
+          "anonInjected": true,
+          "runtimeConfig": {
+            "ok": true,
+            "code": "INJECTED",
+            "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+            "backendOrigin": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app"
+          },
+          "productionRefused": "SUPABASE_LOCK_MISMATCH",
+          "missingRefused": "SUPABASE_CONFIG_REQUIRED",
+          "apiClient": "function",
+          "cards": 53,
+          "emptyState": ""
+        },
+        "annonces": {
+          "title": "LYANN — Rechercher un Talent dans les DOM",
+          "h1": "Annonces",
+          "overflowX": 0,
+          "lock": "tdktfbtqceldlaeqjtow",
+          "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+          "backend": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app",
+          "anonInjected": true,
+          "runtimeConfig": {
+            "ok": true,
+            "code": "INJECTED",
+            "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+            "backendOrigin": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app"
+          },
+          "productionRefused": "SUPABASE_LOCK_MISMATCH",
+          "missingRefused": "SUPABASE_CONFIG_REQUIRED",
+          "apiClient": "function",
+          "cards": 18,
+          "emptyState": ""
+        }
+      },
+      "hosts": {
+        "lyann-staging-preview-localcheck-yoyo-d85d.vercel.app": 423,
+        "fonts.googleapis.com": 5,
+        "cdn.jsdelivr.net": 5,
+        "fonts.gstatic.com": 5,
+        "api.dicebear.com": 4,
+        "browser.sentry-cdn.com": 5,
+        "tdktfbtqceldlaeqjtow.supabase.co": 64,
+        "staging.lyann.app": 2,
+        "images.unsplash.com": 4,
+        "tiles.openfreemap.org": 15
+      },
+      "failures": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "checks": {
+        "searchCards": 53,
+        "familyCount": 8,
+        "taxoBarVisible": true,
+        "refineOpen": true,
+        "refineClosed": true,
+        "visitorGate": true,
+        "mapCanvas": true,
+        "mapLibs": {
+          "leaflet": "function",
+          "maplibregl": "function",
+          "bridge": "function"
+        },
+        "mapGlyphRequests": 3,
+        "authScreen": {
+          "clientReady": "function",
+          "lock": "tdktfbtqceldlaeqjtow",
+          "fields": 5
+        }
+      },
+      "productionRequests": [],
+      "supabaseHosts": [
+        "tdktfbtqceldlaeqjtow.supabase.co"
+      ]
+    },
+    {
+      "viewport": "mobile-390",
+      "screens": {
+        "discover": {
+          "title": "LYANN — Découvrir",
+          "h1": "De quoi avez-vous besoin ?",
+          "overflowX": 0,
+          "lock": "tdktfbtqceldlaeqjtow",
+          "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+          "backend": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app",
+          "anonInjected": true,
+          "runtimeConfig": {
+            "ok": true,
+            "code": "INJECTED",
+            "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+            "backendOrigin": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app"
+          },
+          "productionRefused": "SUPABASE_LOCK_MISMATCH",
+          "missingRefused": "SUPABASE_CONFIG_REQUIRED",
+          "apiClient": "function",
+          "cards": 0,
+          "emptyState": ""
+        },
+        "lyanneurs": {
+          "title": "LYANN — Rechercher un Talent dans les DOM",
+          "h1": "Lyanneurs",
+          "overflowX": 0,
+          "lock": "tdktfbtqceldlaeqjtow",
+          "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+          "backend": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app",
+          "anonInjected": true,
+          "runtimeConfig": {
+            "ok": true,
+            "code": "INJECTED",
+            "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+            "backendOrigin": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app"
+          },
+          "productionRefused": "SUPABASE_LOCK_MISMATCH",
+          "missingRefused": "SUPABASE_CONFIG_REQUIRED",
+          "apiClient": "function",
+          "cards": 53,
+          "emptyState": ""
+        },
+        "annonces": {
+          "title": "LYANN — Rechercher un Talent dans les DOM",
+          "h1": "Annonces",
+          "overflowX": 0,
+          "lock": "tdktfbtqceldlaeqjtow",
+          "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+          "backend": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app",
+          "anonInjected": true,
+          "runtimeConfig": {
+            "ok": true,
+            "code": "INJECTED",
+            "url": "https://tdktfbtqceldlaeqjtow.supabase.co",
+            "backendOrigin": "https://lyann-staging-preview-localcheck-yoyo-d85d.vercel.app"
+          },
+          "productionRefused": "SUPABASE_LOCK_MISMATCH",
+          "missingRefused": "SUPABASE_CONFIG_REQUIRED",
+          "apiClient": "function",
+          "cards": 18,
+          "emptyState": ""
+        }
+      },
+      "hosts": {
+        "lyann-staging-preview-localcheck-yoyo-d85d.vercel.app": 421,
+        "fonts.googleapis.com": 5,
+        "cdn.jsdelivr.net": 5,
+        "fonts.gstatic.com": 5,
+        "api.dicebear.com": 4,
+        "browser.sentry-cdn.com": 5,
+        "tdktfbtqceldlaeqjtow.supabase.co": 49,
+        "staging.lyann.app": 1,
+        "images.unsplash.com": 2,
+        "tiles.openfreemap.org": 7
+      },
+      "failures": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "checks": {
+        "searchCards": 53,
+        "familyCount": 8,
+        "taxoBarVisible": true,
+        "refineOpen": true,
+        "refineClosed": true,
+        "visitorGate": true,
+        "mapCanvas": true,
+        "mapLibs": {
+          "leaflet": "function",
+          "maplibregl": "function",
+          "bridge": "function"
+        },
+        "mapGlyphRequests": 4,
+        "authScreen": {
+          "clientReady": "function",
+          "lock": "tdktfbtqceldlaeqjtow",
+          "fields": 5
+        }
+      },
+      "productionRequests": [],
+      "supabaseHosts": [
+        "tdktfbtqceldlaeqjtow.supabase.co"
+      ]
+    }
+  ],
+  "nonGet": [],
+  "readOnlyRpc": [
+    "POST https://tdktfbtqceldlaeqjtow.supabase.co/rest/v1/rpc/lyann_public_badges",
+    "POST https://tdktfbtqceldlaeqjtow.supabase.co/rest/v1/rpc/lyann_public_badges"
+  ],
+  "stagingHostRequests": [
+    "GET https://staging.lyann.app/v1/media/avatars-hold/7ac93e0b-0966-4007-9f38-57baf6405f95/avatar_1793200662594.png",
+    "GET https://staging.lyann.app/v1/media/avatars-hold/7ac93e0b-0966-4007-9f38-57baf6405f95/avatar_1793200662594.png",
+    "GET https://staging.lyann.app/v1/media/avatars-hold/7ac93e0b-0966-4007-9f38-57baf6405f95/avatar_1793200662594.png"
+  ],
+  "mapRequestsServed": 14,
+  "servedSample": [
+    "GET /vendor/phosphor/phosphor.css",
+    "GET /vendor/phosphor/Phosphor.woff2",
+    "GET /vendor/phosphor/Phosphor-Bold.woff2",
+    "GET /vendor/phosphor/Phosphor-Fill.woff2",
+    "GET /vendor/leaflet/leaflet.css",
+    "GET /vendor/maplibre/maplibre-gl.css",
+    "GET /vendor/leaflet/leaflet.js",
+    "GET /vendor/maplibre/maplibre-gl.js",
+    "GET /vendor/maplibre/leaflet-maplibre-gl.js",
+    "GET /assets/maps/lyann-liberty.json",
+    "GET /assets/maps/glyphs/Nunito Sans Italic/0-255.pbf",
+    "GET /assets/maps/glyphs/Nunito Sans Regular/0-255.pbf",
+    "GET /assets/maps/glyphs/Nunito Sans Bold/0-255.pbf",
+    "GET /assets/maps/glyphs/Nunito Sans Regular/256-511.pbf"
+  ]
+}
