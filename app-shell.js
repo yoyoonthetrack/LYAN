@@ -254,8 +254,9 @@ async function injectMobileInterface() {
         window.ensureDeterministicAppHeader();
     }
 
-    // 1. Member shell only. Visitors stay on the home page, without this bar.
-    if (isLoggedIn && !document.querySelector('.mobile-bottom-nav')) {
+    // The five tabs are the native shell. bienvenue.html keeps its own welcome screen.
+    // Messages and Profil ask for a session; Découvrir, Lyanneurs and Annonces stay readable.
+    if (!isMarketingLanding && !document.querySelector('.mobile-bottom-nav')) {
         document.body.classList.add('has-member-nav');
         const bottomNav = document.createElement('div');
         bottomNav.className = 'mobile-bottom-nav';

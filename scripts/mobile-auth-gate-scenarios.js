@@ -24,7 +24,8 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const QA = { email: process.env.LYANN_E2E_QA_A_EMAIL, password: process.env.LYANN_E2E_QA_A_PASSWORD };
 const admin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const TABS = ['tab-discover', 'tab-lyanneurs', 'tab-annonces', 'tab-messages', 'tab-profile'];
-const MEMBER_PAGES = ['discover.html', 'results.html?mode=lyanneurs', 'results.html?mode=annonces', 'feed.html', 'pricing.html', 'professional.html', 'about.html'];
+const PUBLIC_PAGES = ['discover.html', 'results.html?mode=lyanneurs', 'results.html?mode=annonces', 'about.html', 'how-it-works.html', 'pricing.html'];
+const PRIVATE_PAGES = ['feed.html', 'professional.html', 'payment-portal.html'];
 
 function serve() {
     return new Promise((resolve) => {
@@ -145,10 +146,23 @@ async function newUnconfirmedUser(redirectTo) {
 }
 
 const scenarios = {
-    // 1. Direct links to member pages without session -> welcome flow, nothing of the member UI is ever painted.
+    // 1. Public Marketplace stays open. Private pages still return to the welcome flow.
     async 'guest-direct-links'({ browser, origin }) {
         const { context, page } = await newPhone(browser);
-        for (const url of MEMBER_PAGES.concat(['index.html'])) {
+        for (const url of PUBLIC_PAGES) {
+            await page.goto(`${origin}/${url}`, { waitUntil: 'domcontentloaded' });
+            await page.waitForFunction(() => document.documentElement.getAttribute('data-lyann-mobile-auth') === 'GUEST', null, { timeout: 8000 }).catch(() => {});
+            const state = await page.evaluate(() => ({
+                path: location.pathname.split('/').pop() + location.search,
+                nav: document.querySelectorAll('.mobile-bottom-nav').length,
+                auth: window.LYANN_MOBILE_AUTH && window.LYANN_MOBILE_AUTH.getState()
+            }));
+            const stayed = !/bienvenue\.html/.test(state.path);
+            check('guest-direct-links', `${url} stays public`, stayed && state.auth === 'GUEST', state);
+            check('guest-direct-links', `${url} shows the five tabs`, state.nav === 1, state);
+            await page.evaluate(() => sessionStorage.removeItem('__qa_frames'));
+        }
+        for (const url of PRIVATE_PAGES) {
             await page.goto(`${origin}/${url}`, { waitUntil: 'domcontentloaded' });
             const went = await waitPath(page, /bienvenue\.html/);
             await wait(page, 700);
@@ -184,7 +198,7 @@ const scenarios = {
     // 2. Guest signs in from the welcome page: lands on the deep-linked page / Découvrir with the 5 tabs, no reload.
     async 'late-login-and-tabs'({ browser, origin }) {
         const { context, page } = await newPhone(browser);
-        await page.goto(`${origin}/results.html?mode=annonces`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`${origin}/feed.html`, { waitUntil: 'domcontentloaded' });
         await waitPath(page, /bienvenue\.html/);
         await page.click('#btnNativeLogin');
         await page.waitForFunction(() => !document.getElementById('nativeGuestAuthSheet')?.hidden, null, { timeout: 20000 });
@@ -192,14 +206,14 @@ const scenarios = {
         await page.fill('#nativeGuestLoginEmail', QA.email);
         await page.fill('#nativeGuestLoginPassword', QA.password);
         await page.click('#nativeGuestLoginForm button[type="submit"]');
-        const landed = await waitPath(page, /results\.html\?mode=annonces/);
+        const landed = await waitPath(page, /feed\.html/);
         check('late-login-and-tabs', 'after sign-in: back on the page that was requested', landed, page.url());
         await wait(page, 4000);
         const nav = await navInfo(page);
         check('late-login-and-tabs', 'five tabs, exactly one bar, visible', nav.count === 1 && JSON.stringify(nav.tabs) === JSON.stringify(TABS) && nav.visible && nav.inViewport, nav);
         // second login from a plain launch lands on Découvrir
         await logout(page);
-        await waitPath(page, /bienvenue\.html/);
+        await page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
         await ready(page);
         const login = await loginApi(page);
         const toDiscover = await waitPath(page, /discover\.html/);
@@ -233,10 +247,12 @@ const scenarios = {
         // logout on a member page
         await ready(page);
         await logout(page);
-        const out = await waitPath(page, /bienvenue\.html/);
-        check('restore-logout-expiry', 'logout: UI returns to the welcome flow', out, page.url());
+        await wait(page, 800);
+        const out = await page.evaluate(() => location.pathname.split('/').pop());
+        check('restore-logout-expiry', 'logout on Découvrir stays on the public home', out === 'discover.html', page.url());
         await page.goto(`${origin}/discover.html`, { waitUntil: 'domcontentloaded' });
-        check('restore-logout-expiry', 'after logout, Découvrir is closed', await waitPath(page, /bienvenue\.html/), page.url());
+        await wait(page, 800);
+        check('restore-logout-expiry', 'after logout, Découvrir stays open', /discover\.html/.test(page.url()), page.url());
         // definitive expiry: stored token expired and refresh token refused
         await ready(page);
         await page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
@@ -248,7 +264,8 @@ const scenarios = {
         });
         await context.route('**/auth/v1/token**', (route) => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'invalid_grant', error_description: 'Invalid Refresh Token: Refresh Token Not Found' }) }));
         await page.goto(`${origin}/discover.html`, { waitUntil: 'domcontentloaded' });
-        check('restore-logout-expiry', 'refused refresh token (definitive expiry): back to the welcome flow', await waitPath(page, /bienvenue\.html/), page.url());
+        await wait(page, 1500);
+        check('restore-logout-expiry', 'refused refresh token on Découvrir stays on the public page', /discover\.html/.test(page.url()), page.url());
         await context.close();
     },
 
@@ -294,7 +311,8 @@ const scenarios = {
         const guest = await newPhone(browser);
         await guest.context.route('**/cdn.jsdelivr.net/**', (route) => route.abort());
         await guest.page.goto(`${origin}/discover.html`, { waitUntil: 'domcontentloaded' });
-        check('network-failure', 'SDK unreachable without any stored session: welcome flow', await waitPath(guest.page, /bienvenue\.html/), guest.page.url());
+        await wait(guest.page, 9000);
+        check('network-failure', 'SDK unreachable without any stored session: Découvrir stays open', /discover\.html/.test(guest.page.url()), guest.page.url());
         await guest.context.close();
     },
 
@@ -344,7 +362,7 @@ const scenarios = {
         check('auth-returns', 'Découvrir after the link: five tabs', JSON.stringify(nav.tabs) === JSON.stringify(TABS) && nav.count === 1, nav);
         // recovery link
         await logout(page);
-        await waitPath(page, /bienvenue\.html/);
+        await page.goto(`${origin}/bienvenue.html`, { waitUntil: 'domcontentloaded' });
         await ready(page);
         await page.waitForFunction(() => window.__appUrlHandlers.length > 0, null, { timeout: 15000 });
         const rec = await mintToken('recovery', QA.email);

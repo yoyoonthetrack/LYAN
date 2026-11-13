@@ -9,7 +9,9 @@ const build = require('../shared-html-build.js');
 const { STATES } = gate;
 
 // 1. Which pages are gated.
-['discover.html', '/discover', 'results.html', 'feed.html', 'pricing.html', 'professional.html', 'about.html', 'how-it-works.html', 'payment-portal.html', '/results.html?mode=annonces']
+['discover.html', '/discover', 'results.html', '/results.html?mode=annonces', 'about.html', 'how-it-works.html', 'pricing.html']
+    .forEach((p) => assert.strictEqual(gate.classifyPath(p), 'public', p + ' must stay readable without a session'));
+['feed.html', 'professional.html', 'payment-portal.html']
     .forEach((p) => assert.strictEqual(gate.classifyPath(p), 'member', p + ' must need a session'));
 ['bienvenue.html', '/bienvenue'].forEach((p) => assert.strictEqual(gate.classifyPath(p), 'guest-entry', p));
 ['auth-callback.html', '/auth/callback', 'confirm-signup.html', '/confirm-signup', 'legal.html', 'confidentialite.html', 'index.html', '/', 'admin.html', 'admin-login.html', 'business-admin.html']

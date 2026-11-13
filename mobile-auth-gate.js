@@ -1,11 +1,15 @@
 /*
  * LYANN mobile authentication gate (Phase 3.0A).
  *
- * Inside the Capacitor app (iOS and Android) a visitor without a real Supabase session never sees a member page.
+ * Inside the Capacitor app (iOS and Android) a visitor can read the public Marketplace
+ * (Découvrir, Lyanneurs, Annonces, aide, à propos, tarifs). Messages, Profil and the
+ * other private pages still require a session. bienvenue.html stays a dedicated route.
  * The gate is a small state machine with three exclusive states:
  *
- *   CHECKING_SESSION  the session is being resolved. Nothing of the page is visible, only a loader.
- *   GUEST             no session. Only bienvenue.html (welcome slides + sign-in / sign-up) is reachable.
+ *   CHECKING_SESSION  the session is being resolved. A private page stays hidden. A public page
+ *                     stays hidden only while a stored token makes the answer uncertain.
+ *   GUEST             no session. Public pages are shown. A private page returns to bienvenue.html
+ *                     and remembers the requested address for after sign-in.
  *   AUTHENTICATED     a real session. Member pages are visible, the welcome page forwards to Découvrir.
  *
  * Source of truth: LYANN_AUTH_STATE, itself fed by supabase.auth.getSession() / onAuthStateChange. The legacy
@@ -31,8 +35,12 @@
   var OPEN_PAGES = {
     'auth-callback': 1, 'auth/callback': 1, 'confirm-signup': 1, 'legal': 1, 'confidentialite': 1,
     'admin': 1, 'admin-login': 1, 'business-admin': 1,
-    // index.html is only a redirect to discover.html (the page that follows is gated).
+    // index.html is only a redirect to discover.html.
     'index': 1
+  };
+  // Readable without a session. Opening a person or an annonce is gated later, in the page.
+  var PUBLIC_PAGES = {
+    discover: 1, results: 1, about: 1, 'how-it-works': 1, pricing: 1
   };
   var AUTH_ACTIONS = { email_confirmed: 1, open_login: 1, resend_confirmation: 1, reset_password: 1 };
 
@@ -44,18 +52,20 @@
     return parts[parts.length - 1] || 'index';
   }
 
-  // 'open' | 'guest-entry' | 'member'
+  // 'open' | 'guest-entry' | 'public' | 'member'
   function classifyPath(pathname) {
     var key = pageKey(pathname);
     if (OPEN_PAGES[key]) return 'open';
     if (key === 'bienvenue') return 'guest-entry';
+    if (PUBLIC_PAGES[key]) return 'public';
     return 'member';
   }
 
   function isSafeTarget(target) {
     if (typeof target !== 'string' || target.length > 600) return false;
     if (!/^[a-z0-9_-]+\.html(?:[?#][^\s]*)?$/i.test(target)) return false;
-    return classifyPath(target.split(/[?#]/)[0]) === 'member';
+    var klass = classifyPath(target.split(/[?#]/)[0]);
+    return klass === 'member' || klass === 'public';
   }
 
   // Only the authentication actions travel from a protected page to the welcome page.
@@ -251,7 +261,7 @@
     } else if (state === STATES.GUEST) {
       degraded = false;
       clearRetry();
-      if (kind === 'guest-entry') reveal();
+      if (kind === 'guest-entry' || kind === 'public') reveal();
       else toWelcome();
     }
   }
@@ -318,6 +328,7 @@
   // started. After 8 s the member gets the retry panel; the page stays closed and the session untouched.
   setTimeout(function () {
     if (state !== STATES.CHECKING) return;
+    if (kind === 'public' && !hasStoredToken()) { setState(STATES.GUEST); applyState(); return; }
     degraded = true;
     showPanel();
     var auth = window.LYANN_AUTH_STATE;
