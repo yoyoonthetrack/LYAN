@@ -40,7 +40,9 @@
   "excludePaths": [
     "assets/icon.png",
     "assets/splash.png",
-    "assets/maps/README.md"
+    "assets/maps/README.md",
+    "vercel.json",
+    "vercel.staging.json"
   ],
   "requiredResources": [
     "api/index.js",
