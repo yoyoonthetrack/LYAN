@@ -116,16 +116,21 @@
             if (category === normalize(leaf.category)) return true;
         }
         const terms = [specific ? '' : leaf.category, leaf.subcategory, ...(leaf.synonyms || [])].map(normalize).filter(Boolean);
-        if (terms.some(term => title.includes(term) || term.includes(title) && title.length >= 4)) return true;
+        const hasPhrase = (text, phrase) => {
+            const h = ` ${text} `;
+            const p = ` ${phrase} `;
+            return phrase && h.includes(p);
+        };
+        if (terms.some(term => hasPhrase(title, term) || (title.length >= 4 && hasPhrase(term, title)))) return true;
         if (specific) return false;
         const generic = new Set(['entretien','reparation','depannage','service','services','aide','cours','travaux','general']);
         return normalize(leaf.category).split(' ').filter(t => t.length >= 4 && !generic.has(t))
-            .some(t => title.includes(t) || category.includes(t));
+            .some(t => hasPhrase(title, t) || hasPhrase(category, t));
     }
 
     function discover(records, leaves, filters, mode) {
         const query = normalize(filters.query);
-        const terms = query.split(' ').filter(Boolean);
+        const terms = query.split(' ').filter(term => term.length >= 3);
         const selectedLeaves = leaves.filter(t => (!filters.category || t.category === filters.category) && (!filters.service || t.id === filters.service));
         const areaTerms = normalize(filters.area).split(' ').filter(Boolean);
         // Lyanneurs: when nothing narrows the territory, the reader's own territory comes first, otherwise the territory
@@ -145,7 +150,7 @@
             const text = normalize([record.name, record.first_name, record.last_name, record.profiles?.first_name, record.profiles?.last_name, record.title, record.description, record.bio,
                 ...services.flatMap(s => [s.title, s.description, s.category]),
                 ...related.flatMap(t => [t.category, t.subcategory, ...(t.synonyms || [])])].filter(Boolean).join(' '));
-            if (!terms.every(term => text.includes(term))) return false;
+            if (terms.length && !terms.every(term => ` ${text} `.includes(` ${term} `))) return false;
             const location = normalize(mode === 'annonces' ? record.location : [record.city, record.territory].filter(Boolean).join(' '));
             // Saved territory labels and Request locations can put the same
             // department code before or after the name (971 / Guadeloupe).

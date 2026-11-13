@@ -146,24 +146,30 @@
         evenement: 'evenement', 'événement': 'evenement', 'peinture & dessin': 'evenement', artisanat: 'evenement'
     });
 
+    /** Un radical ne compte que s'il est un mot, ou le début d'un mot. « menage » ne traverse pas « demenagement ». */
+    function hasStem(key, stem) {
+        return key.split(/[^a-z0-9]+/).filter(Boolean).some((word) => word === stem || word.startsWith(stem));
+    }
+
     function legacyFamilyId(category) {
         const key = normalize(category);
         if (!key) return '';
         if (CATEGORY_FAMILY[key]) return CATEGORY_FAMILY[key];
-        if (key.includes('plomb')) return 'plomberie';
-        if (key.includes('electr') || key.includes('eclair')) return 'electricite';
-        if (key.includes('jardin') || key.includes('elag') || key.includes('potager') || key.includes('tonte')) return 'jardinage';
-        if (key.includes('menage') || key.includes('nettoy')) return 'menage';
-        if (key.includes('coiff') || key.includes('beaute') || key.includes('esthet') || key.includes('barbier') || key.includes('ongle')) return 'beaute';
-        if (key.includes('informat') || key.includes('ordinateur') || key.includes('web') || key.includes('smartphone') || key.includes('wifi')) return 'numerique';
-        if (key.includes('bricol') || key.includes('macon') || key.includes('peint') || key.includes('menuis') || key.includes('carrel') || key.includes('clim')) return 'bricolage';
-        if (key.includes('covoit') || key.includes('livraison') || key.includes('voiture') || key.includes('camion')) return 'quotidien';
+        if (hasStem(key, 'plomb')) return 'plomberie';
+        if (hasStem(key, 'electr') || hasStem(key, 'eclair')) return 'electricite';
+        if (hasStem(key, 'jardin') || hasStem(key, 'elag') || hasStem(key, 'potager') || hasStem(key, 'tonte')) return 'jardinage';
+        if (hasStem(key, 'menage') || hasStem(key, 'nettoy')) return 'menage';
+        if (hasStem(key, 'coiff') || hasStem(key, 'beaute') || hasStem(key, 'esthet') || hasStem(key, 'barbier') || hasStem(key, 'ongle')) return 'beaute';
+        if (hasStem(key, 'informat') || hasStem(key, 'ordinateur') || hasStem(key, 'web') || hasStem(key, 'smartphone') || hasStem(key, 'wifi')) return 'numerique';
+        if (hasStem(key, 'bricol') || hasStem(key, 'macon') || hasStem(key, 'peint') || hasStem(key, 'menuis') || hasStem(key, 'carrel') || hasStem(key, 'clim')) return 'bricolage';
+        if (hasStem(key, 'covoit') || hasStem(key, 'livraison') || hasStem(key, 'voiture') || hasStem(key, 'camion')) return 'quotidien';
         return '';
     }
 
     function familyForCategory(category) {
         const key = normalize(category);
         if (QUOTIDIEN_V2[key]) return QUOTIDIEN_V2[key];
+        if (hasStem(key, 'demenage')) return 'transport';
         const old = legacyFamilyId(category);
         if (old === 'quotidien') {
             if (key.includes('enfant') || key.includes('senior') || key.includes('animaux') || key.includes('scolaire')) return 'famille';

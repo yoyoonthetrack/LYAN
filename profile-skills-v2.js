@@ -18,23 +18,40 @@
         if (list.includes(code)) return { ok: false, duplicate: true, message: 'Cette compétence est déjà sur votre profil.' };
         const limit = entitlements && entitlements.limits ? entitlements.limits.categories : null;
         const used = entitlements && entitlements.usage ? Number(entitlements.usage.categories) : null;
-        if (limit != null && used != null && used >= Number(limit)) return { ok: false, quota: true, message: 'Votre formule ne permet pas d’ajouter une compétence de plus.' };
+        if (entitlements && entitlements.enforced === true && limit != null && used != null && used >= Number(limit)) return { ok: false, quota: true, message: 'Votre formule ne permet pas d’ajouter une compétence de plus.' };
         return { ok: true, nodes: [...list, code] };
     }
 
-    function mount() {
-        if (!root || root.LYANN_SUPABASE_LOCK !== STAGING) return { mounted: false };
+    async function resolveUserId(client) {
+        if (root.LYANN_AUTH_STATE && typeof root.LYANN_AUTH_STATE.ready === 'function') {
+            try { await root.LYANN_AUTH_STATE.ready(); } catch (_) {}
+        }
+        const snapshot = root.LYANN_AUTH_STATE && root.LYANN_AUTH_STATE.getSnapshot && root.LYANN_AUTH_STATE.getSnapshot();
+        if (snapshot && snapshot.userId) return String(snapshot.userId);
+        if (client && typeof client.getCurrentUser === 'function') {
+            try {
+                const user = await client.getCurrentUser();
+                if (user && user.id) return String(user.id);
+            } catch (_) {}
+        }
+        return '';
+    }
+
+    async function mount() {
+        if (!root || root.LYANN_SUPABASE_LOCK !== STAGING) return { mounted: false, reason: 'lock' };
         const slot = root.document && root.document.getElementById('cpSkillsTagsContainer');
-        if (!slot || !root.LYANN_MARKETPLACE_TAXONOMY || !root.LYANN_TAXONOMY_UX) return { mounted: false };
+        if (!slot || !root.LYANN_MARKETPLACE_TAXONOMY || !root.LYANN_TAXONOMY_UX) return { mounted: false, reason: 'missing' };
         const client = root.LYANN_API_CLIENT || root.apiClient;
-        const userId = client && client.getCurrentUserId && client.getCurrentUserId();
-        if (!userId || !client.supabase) return { mounted: false };
+        const userId = await resolveUserId(client);
+        if (!userId || !client || !client.supabase) return { mounted: false, reason: userId ? 'client' : 'anonymous' };
         let host = root.document.getElementById('lyannSkillEditor');
         if (!host) {
             host = root.document.createElement('div');
             host.id = 'lyannSkillEditor';
             slot.insertAdjacentElement('beforebegin', host);
         }
+        if (host.dataset.bound === userId) return { mounted: true, controlsSave: true };
+        host.dataset.bound = userId;
         slot.hidden = true;
         const custom = root.document.getElementById('cpCustomSkill');
         if (custom) custom.closest('div').hidden = true;
@@ -146,7 +163,12 @@
             say(error ? 'Le retrait a échoué.' : 'Compétence retirée.');
             if (!error) await reload();
         });
-        root.LYANN_MARKETPLACE_TAXONOMY.load(client.supabase).then((loaded) => { index = loaded; reload(); });
+        say('Chargement des compétences…');
+        root.LYANN_MARKETPLACE_TAXONOMY.load(client.supabase).then((loaded) => {
+            index = loaded;
+            if (!loaded) say('Le référentiel des métiers est indisponible.');
+            return reload();
+        }).catch(() => say('Les compétences n’ont pas pu être chargées.'));
         return { mounted: true, controlsSave: true };
     }
 

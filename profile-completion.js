@@ -113,7 +113,7 @@
     function initProfileCompletion() {
         if (window.LYANN_SUPABASE_LOCK === 'tdktfbtqceldlaeqjtow' && !document.querySelector('script[data-lyann-skills-v2]')) {
             const loader = document.createElement('script');
-            loader.src = 'profile-skills-v2.js?v=20261113d';
+            loader.src = 'profile-skills-v2.js?v=20261113e';
             loader.dataset.lyannSkillsV2 = '1';
             loader.onload = () => window.LYANN_PROFILE_SKILLS_V2 && window.LYANN_PROFILE_SKILLS_V2.mount();
             document.head.appendChild(loader);

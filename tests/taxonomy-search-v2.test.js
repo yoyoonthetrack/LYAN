@@ -73,12 +73,77 @@ test('historical text still matches, and another trade does not', () => {
     assert.equal(historical.taxonomy_node_code, null);
 });
 
+test('fuite d\'eau keeps plumbers and ignores a biography', () => {
+    const match = codes("Fuite d'eau");
+    const plumber = { title: 'Plomberie', taxonomy_node_code: null };
+    const specialty = { title: 'Recherche de fuite', taxonomy_node_code: 'plomberie_fuite' };
+    const biographyOnly = { title: 'Électricité', description: 'intervention après une fuite d eau', taxonomy_node_code: 'electricite' };
+    assert.equal(T.rowMatchesQuery([plumber], match, ctx), true);
+    assert.equal(T.rowMatchesQuery([specialty], match, ctx), true);
+    assert.equal(T.rowMatchesQuery([biographyOnly], match, ctx), false);
+});
+
+test('ménage, déménagement, jardinage and élagage stay apart', () => {
+    const menage = codes('Ménage');
+    const move = { title: 'Déménagement', category: 'Transport & Déménagement', taxonomy_node_code: 'demenagement' };
+    const garden = { title: 'Jardinage', taxonomy_node_code: 'jardinage_entretien' };
+    const pruning = { title: 'Élagage léger', taxonomy_node_code: null };
+    assert.equal(T.rowMatchesQuery([move], menage, ctx), false);
+    assert.equal(T.rowMatchesQuery([garden], menage, ctx), false);
+    assert.equal(T.rowMatchesQuery([{ title: 'Ménage à domicile', taxonomy_node_code: null }], menage, ctx), true);
+    assert.equal(T.rowMatchesQuery([pruning], codes('Élagage'), ctx), true);
+    assert.equal(T.rowMatchesQuery([garden], codes('Élagage'), ctx), false);
+    assert.equal(T.rowMatchesQuery([move], codes('Déménagement'), ctx), true);
+    assert.equal(T.rowMatchesQuery([{ title: 'Ménage', taxonomy_node_code: 'menage_domicile' }], codes('Déménagement'), ctx), false);
+});
+
+test('annonce territory label follows the active territory', () => {
+    assert.equal(T.placeLabel({ territory: 'Martinique (972)', area: '' }, 'annonces'), 'Martinique (972)');
+    assert.equal(T.placeLabel({ territory: 'Guadeloupe (971)', commune: 'Le Gosier' }, 'lyanneurs'), 'Le Gosier · Guadeloupe (971)');
+    assert.equal(T.placeLabel({ territory: '', area: 'Fort-de-France' }, 'annonces'), 'Fort-de-France');
+    assert.equal(T.placeLabel({ territory: '', area: '', commune: '' }, 'annonces'), '');
+});
+
 test('adding a skill respects the quota and refuses a duplicate', () => {
     const skills = require('../profile-skills-v2.js');
     assert.equal(skills.planAdd(['plomberie'], 'plomberie', null).duplicate, true);
-    assert.equal(skills.planAdd(['plomberie'], 'electricite', { limits: { categories: 1 }, usage: { categories: 1 } }).quota, true);
-    assert.deepEqual(skills.planAdd(['plomberie'], 'electricite', { limits: { categories: 3 }, usage: { categories: 1 } }).nodes, ['plomberie', 'electricite']);
+    assert.equal(skills.planAdd(['plomberie'], 'electricite', { enforced: true, limits: { categories: 1 }, usage: { categories: 1 } }).quota, true);
+    assert.equal(skills.planAdd(['plomberie'], 'electricite', { enforced: false, limits: { categories: 1 }, usage: { categories: 1 } }).ok, true);
+    assert.deepEqual(skills.planAdd(['plomberie'], 'electricite', { enforced: true, limits: { categories: 3 }, usage: { categories: 1 } }).nodes, ['plomberie', 'electricite']);
+    assert.equal(skills.planAdd([], 'electricite', { enforced: true, limits: { categories: 1 }, usage: { categories: 0 } }).ok, true);
     assert.equal(skills.planAdd([], 'Fuite', null).ok, false);
+});
+
+test('the skill editor mounts from the auth snapshot and stays closed for a visitor', async () => {
+    const root = global;
+    const elements = new Map();
+    const make = (id) => {
+        const node = {
+            id, hidden: false, dataset: {}, innerHTML: '',
+            insertAdjacentElement(pos, child) { elements.set(child.id, child); return child; },
+            querySelector(sel) { return node.innerHTML.includes(sel.replace('#', '')) ? { textContent: '', addEventListener() {} } : null; },
+            addEventListener() {},
+            closest() { return { hidden: false }; }
+        };
+        return node;
+    };
+    root.document = {
+        getElementById(id) { if (!elements.has(id)) elements.set(id, make(id)); return elements.get(id); },
+        createElement() { return make('lyannSkillEditor'); }
+    };
+    root.LYANN_SUPABASE_LOCK = 'tdktfbtqceldlaeqjtow';
+    root.LYANN_MARKETPLACE_TAXONOMY = { load: async () => null };
+    root.LYANN_TAXONOMY_UX = {};
+    root.LYANN_AUTH_STATE = { ready: async () => {}, getSnapshot: () => ({ userId: '' }) };
+    root.LYANN_API_CLIENT = { supabase: { from() { return { select: () => ({ eq: async () => ({ data: [], error: null }) }) }; }, rpc: async () => ({ data: null }) }, getCurrentUser: async () => null };
+    const skills = require('../profile-skills-v2.js');
+    assert.equal((await skills.mount()).reason, 'anonymous');
+    assert.equal(elements.has('lyannSkillEditor'), false);
+    root.LYANN_AUTH_STATE.getSnapshot = () => ({ userId: '11111111-1111-4111-8111-111111111111' });
+    const mounted = await skills.mount();
+    assert.equal(mounted.mounted, true);
+    assert.equal(elements.get('lyannSkillEditor').innerHTML.includes('lyannSkillSearch'), true);
+    assert.equal(elements.get('cpSkillsTagsContainer').hidden, true);
 });
 
 test('switching pages keeps an explicit territory and drops the other page taxonomy', () => {

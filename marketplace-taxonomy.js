@@ -181,16 +181,55 @@
         return { level: 'node', codes: [...codes], family: top[0].family, question: '', tokens };
     }
 
-    /** Une ligne reste visible si son nœud est dans le résultat, ou si son propre texte contient la saisie. Aucun métier n'est inventé. */
-    function rowMatchesQuery(rows, match, ctx, extraText) {
-        if (!match || match.level === 'none' || match.level === 'text') return true;
+    /** Mots entiers après normalisation. « ménage » n'est pas trouvé dans « déménagement ». */
+    function wordsOf(value) {
+        return fold(value).split(' ').filter(Boolean);
+    }
+    function containsPhrase(haystack, phrase) {
+        const h = wordsOf(haystack);
+        const p = wordsOf(phrase);
+        if (!p.length || p.length > h.length) return false;
+        for (let i = 0; i <= h.length - p.length; i += 1) {
+            if (p.every((word, k) => h[i + k] === word)) return true;
+        }
+        return false;
+    }
+    function skillText(rows) {
+        return (Array.isArray(rows) ? rows : []).filter(Boolean).map((row) => [row.title, row.name, row.category].filter(Boolean).join(' ')).join(' ');
+    }
+    function officialPhrases(match, ctx) {
+        const index = ctx && ctx.index;
+        const phrases = [];
+        if (!index) return phrases;
+        for (const code of match.codes || []) {
+            const node = index.byCode.get(code);
+            if (node && node.label_fr) phrases.push(node.label_fr);
+            for (const term of index.terms || []) if (term.node_code === code && term.norm) phrases.push(term.norm);
+        }
+        return phrases;
+    }
+
+    /**
+     * Une ligne reste visible si son nœud est celui de la recherche, ou si son titre reprend un libellé ou un synonyme officiel.
+     * Le texte libre d'une biographie ne suffit pas, et un mot n'est jamais cherché comme simple fragment d'un autre mot.
+     */
+    function rowMatchesQuery(rows, match, ctx) {
+        if (!match || match.level === 'none') return true;
         const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
-        const own = fold([extraText, ...list.map((row) => [row.title, row.name, row.description, row.category].filter(Boolean).join(' '))].join(' '));
-        const textHit = match.tokens.length > 0 && match.tokens.every((token) => own.includes(token));
-        if (match.level === 'family') return list.some((row) => familyOf(row, ctx) === match.family) || textHit;
+        const text = skillText(list);
+        if (match.level === 'text') return containsPhrase(text, (match.tokens || []).join(' '));
+        if (match.level === 'family') return list.some((row) => familyOf(row, ctx) === match.family) || containsPhrase(text, (match.tokens || []).join(' '));
         const allowed = new Set(match.codes || []);
         const nodeHit = list.some((row) => allowed.has(nodeCodeOf(row, ctx && ctx.leaves)));
-        return nodeHit || textHit;
+        return nodeHit || officialPhrases(match, ctx).some((phrase) => containsPhrase(text, phrase));
+    }
+
+    /** Libellé du lieu réellement filtré. Le territoire choisi prime sur l'ancien champ « zone » des annonces. */
+    function placeLabel(filters, mode) {
+        const f = filters && typeof filters === 'object' ? filters : {};
+        if (f.commune || f.territory) return [f.commune, f.territory].filter(Boolean).join(' · ');
+        if (mode === 'annonces' && f.area) return String(f.area);
+        return '';
     }
 
     /** Filtres d'une autre page : le territoire choisi suit, la famille et le métier de la page quittée ne suivent pas. */
@@ -313,6 +352,6 @@
         ICONS, FAMILIES, FAMILY_CODES, TILES, LEGACY_FAMILY_BRIDGE,
         iconSvg, familyMeta, tileByCode, isFamilyCode, normalizeFamilyParam, tileHref,
         buildIndex, nodeCodeOf, familyOf, tradeOfNode, rowMatches, countByTrade, load,
-        matchQuery, rowMatchesQuery, filtersAcrossModes, fold
+        matchQuery, rowMatchesQuery, filtersAcrossModes, fold, containsPhrase, placeLabel
     });
 });

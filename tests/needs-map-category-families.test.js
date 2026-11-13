@@ -17,6 +17,10 @@ assert.equal(families.familyForCategory('Dépannage Informatique'), 'numerique')
 assert.equal(families.familyForCategory('Covoiturage'), 'transport');
 assert.equal(families.familyForCategory(''), '');
 assert.equal(families.familyForCategory('Catégorie inconnue XYZ'), '');
+assert.equal(families.familyForCategory('Déménagement'), 'transport');
+assert.equal(families.familyForCategory('Transport & Déménagement'), 'transport');
+assert.equal(families.familyForCategory('Nettoyage'), 'entretien');
+assert.equal(families.familyForCategory('Jardinage & Élagage'), 'jardin');
 
 const leaves = [
     { id: 't-plomb', category: 'Plomberie', subcategory: 'Fuite' },

@@ -202,7 +202,10 @@
                 // Some profiles store the territory in lower case ("martinique"): show it as a proper name.
                 .replace(/( · )(\p{Ll})/u, (_, sep, first) => sep + first.toUpperCase());
             const rawSkills = Array.isArray(p.skills) && p.skills.length ? p.skills : (Array.isArray(p.intervention_zone) && p.intervention_zone.length ? p.intervention_zone : (p.services || []).map(s => s.title || s.name).filter(Boolean));
-            const primarySkill = rawSkills[0] || '';
+            const matchedService = taxonomyActive() && V2()
+                ? (p.services || []).find(service => V2().rowMatches(service, taxonomyFilter(), v2Ctx()))
+                : null;
+            const primarySkill = (matchedService && (matchedService.title || matchedService.name)) || rawSkills[0] || '';
             const seed = getSeedProfileMetadata(p);
             const ratingLabel = format()?.ratingLabel({
                 ...p,
@@ -540,15 +543,19 @@
             const base = repo.discover(records, leaves, { ...filters, family: '', groups: '', job: '', specialty: '' }, mode)
                 .filter(record => recordMatchesTaxonomy(record, { family: filters.family, groups: taxonomyFilter().groups, job: '', specialty: '' }));
             const counts = {};
+            let historicalOnly = 0;
             base.forEach(record => {
                 const seen = new Set();
+                let coded = false;
                 recordRows(record).forEach(row => {
                     const node = v2Index?.byCode.get(V2().nodeCodeOf(row, leaves));
-                    if (!node) return;
+                    if (!node || !V2().rowMatches(row, { family: filters.family, groups: taxonomyFilter().groups, job: '', specialty: '' }, v2Ctx())) return;
+                    coded = true;
                     const trade = V2().tradeOfNode(node);
                     if (trade && !seen.has(trade)) { counts[trade] = (counts[trade] || 0) + 1; seen.add(trade); }
                     if (node.kind === 'specialty' && !seen.has(node.code)) { counts[node.code] = (counts[node.code] || 0) + 1; seen.add(node.code); }
                 });
+                if (!coded) historicalOnly += 1;
             });
             const chip = (attrs, label, active, count) => `<button type="button" class="explorer-job-chip${active ? ' is-active' : ''}${!active && !count ? ' is-empty' : ''}" ${attrs} aria-pressed="${active ? 'true' : 'false'}"><span>${escape(label)}</span>${count ? `<span class="explorer-job-count">${count}</span>` : ''}</button>`;
             $('explorerRefineTitle').textContent = `Affiner · ${taxoName()}`;
@@ -559,6 +566,7 @@
                     ? `<div class="explorer-job-specialties" role="group" aria-label="Spécialités : ${escape(selected.label)}">${selected.specialties.map(sp => chip(`data-specialty="${escape(sp.code)}"`, sp.label, filters.specialty === sp.code, counts[sp.code] || 0)).join('')}</div>` : '';
                 return `<section class="explorer-job-group">${group.label ? `<h3 class="explorer-job-group-title">${escape(group.label)}</h3>` : ''}<div class="explorer-job-chips">${group.trades.map(t => chip(`data-job="${escape(t.code)}"`, t.label, filters.job === t.code, counts[t.code] || 0)).join('')}</div>${specialties}</section>`;
             }).join('') || '<p class="explorer-job-empty">Aucun métier de cette famille n\'est encore proposé ici.</p>';
+            if (historicalOnly) body.insertAdjacentHTML('beforeend', `<p class="explorer-job-empty">Les pastilles comptent les Lyanneurs par métier. ${historicalOnly} ${historicalOnly > 1 ? 'Lyanneurs ont' : 'Lyanneur a'} un libellé historique de cette famille, sans métier du référentiel. Le nombre affiché au-dessus reste celui des personnes.</p>`);
             body.scrollTop = scrollTop;
             if (focusedKey) body.querySelector(focusedKey)?.focus({ preventScroll: true });
             syncRefineFooter();
@@ -630,11 +638,12 @@
             applyMapViewLayout();
             // Non-enumerable: read by the Lyanneurs ordering only, never written to the URL or the stored filters.
             Object.defineProperty(filters, 'viewerTerritory', { value: viewerTerritory, enumerable: false, writable: true, configurable: true });
-            let results = repo.discover(records, leaves, filters, mode);
-            if (taxonomyActive()) results = results.filter(record => recordMatchesTaxonomy(record));
             const queryMatch = filters.query && v2Index ? V2().matchQuery(v2Index, filters.query) : null;
-            if (queryMatch && queryMatch.level !== 'none' && queryMatch.level !== 'text') {
-                results = results.filter(record => V2().rowMatchesQuery(recordRows(record), queryMatch, v2Ctx(), [record.name, record.title, record.description, record.bio].filter(Boolean).join(' ')));
+            const discoverFilters = queryMatch && queryMatch.level !== 'none' ? { ...filters, query: '' } : filters;
+            let results = repo.discover(records, leaves, discoverFilters, mode);
+            if (taxonomyActive()) results = results.filter(record => recordMatchesTaxonomy(record));
+            if (queryMatch && queryMatch.level !== 'none') {
+                results = results.filter(record => V2().rowMatchesQuery(recordRows(record), queryMatch, v2Ctx()));
             }
             if (mode === 'annonces' && filters.territory) results = results.filter(annonceInTerritory);
             const stamped = mode === 'annonces' ? results.map(row => {
@@ -650,7 +659,8 @@
             lastResultCount = displayCount;
             syncRefineFooter();
             renderTaxoBar();
-            $('explorerSummary').textContent = `${displayCount} ${countLabel} · ${(mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · ')) || 'Tous les lieux'}`;
+            const place = V2()?.placeLabel ? V2().placeLabel(filters, mode) : (mode === 'annonces' ? filters.area : [filters.commune, filters.territory].filter(Boolean).join(' · '));
+            $('explorerSummary').textContent = `${displayCount} ${countLabel} · ${place || 'Tous les lieux'}`;
             $('explorerRanking').textContent = queryMatch && queryMatch.question
                 ? queryMatch.question
                 : (mode === 'annonces' ? 'Annonces les plus récentes en premier.' : 'Services correspondant à votre recherche, puis noms par ordre alphabétique.');
