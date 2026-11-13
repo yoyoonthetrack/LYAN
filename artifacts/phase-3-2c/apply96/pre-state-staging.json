@@ -1,0 +1,16 @@
+{
+  "project_ref": "tdktfbtqceldlaeqjtow",
+  "project_name": "Lyann-staging-v2",
+  "git_sha": "0bc6b03ffc86e73e1c912fdd72ebfb440cdde909",
+  "state": "before migration 96 (live read, phase 3.2C-5.3)",
+  "migration_sha256": "af5a85dbf94baf551585517a428c794657ba5dbd09fd6f990e107c5f312ea9b3",
+  "rollback_sha256": "80be96157bb0818de7a6f6b71ba1af5aacc18e739ab3b11d3d7cab7f9dfc72f2",
+  "fingerprints_md5": {"col_acl": "b75213796e1bbcc6abea7c72256f50a5", "data": "a050a78e19a98c55461498c6c0dc2e48", "fn_acl": "b81c68fc6bb6c3aa55b03af56c6710c8", "policies": "7b87e80cfabaff84de5311db5335de14", "rel_acl": "b73a110ef62de84d7d6111e3907ac95e", "views": "6144ae1e8b4985e5a25eb4e5fd7f24e2"},
+  "messaging_v2": {"conversations": "85:f4efc03a62262864f0f33f7aeba472e9", "participants": "124:191869aea63c35709838be21acaf5b2b", "messages": "541:1a8d3ff9aa94d7eac00453d18d6c119d", "notifications": "4017:f3ceb3ba0c8f3038061698babaefb1d3", "push_deliveries": "595:ba9375b52651544e5acd5331a0db9c1f", "user_blocks": "1:465680dfa0dcc92807ab65c6966c7954", "requests": "83:6a95007dcea42ddbd39c0eee5a3682ec"},
+  "conversations_policies": ["INSERT No direct insert on conversations for standard users {public} PERMISSIVE check=is_current_user_admin()", "SELECT Participants can view conversation {public} PERMISSIVE", "INSERT Users can insert conversations {public} PERMISSIVE check=true"],
+  "conversations_acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+  "rls": "enabled, not forced",
+  "public_policy_count": 146,
+  "inserting_functions": "get_or_create_conversation, lyann_pair_conversation (SECURITY DEFINER, postgres, bypassrls)",
+  "restore": "96_conversations_insert_policy_lockdown_rollback.sql"
+}

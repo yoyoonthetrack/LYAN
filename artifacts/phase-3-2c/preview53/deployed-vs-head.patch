@@ -1,0 +1,239 @@
+diff --git a/docs/rc-final-go-no-go.md b/docs/rc-final-go-no-go.md
+index a7c8028..256cb26 100644
+--- a/docs/rc-final-go-no-go.md
++++ b/docs/rc-final-go-no-go.md
+@@ -1,12 +1,21 @@
+ # LYANN — décision de release
+ 
++## Opération lancement public — préparation (2026-10-29)
++
++Candidate traçable : `release/lyann-rc-v1-1` @ `40e9464` (Staging servi, PR #13 brouillon → `feature/bokantaj-map-v1`).  
++TestFlight 15 figé à `3c7a2c1`. **Non inclus dans TF15** : Option A annulation, signalement→Litiges, desk admin ops (`f2e56bd`…`40e9464`).  
++Prod `lyann.app` : site HTTP 200 ; `GET /v1/runtime/identity` → 404. Staging : isolé, Stripe Test, `auto_refund_enabled=false`, `customer_fee_refund=retain`.  
++Verdict Production : **NO-GO**. Mode sûr recommandé : assistance manuelle + remboursements hors BO (Stripe Dashboard) + pas d’auto-refund.
++
+ Verdict de release : **NO-GO**
+ 
+ Livraison push APNs Staging vers le compte autorisé `<e-mail-masqué>`, sur TestFlight 1.0 (12) : **GO**. La notification « Vous avez un nouveau message. » a été lue sur l’écran verrouillé de l’iPhone. `PUSH_QA_ONLY=true` reste en place. La liste autorisée reste les trois comptes QA et ce compte, sur le projet Staging seulement. Le projet Production n’a pas été modifié.
+ 
+ Parcours de notification de messagerie sur iPhone physique, TestFlight 1.0 (13) : **GO définitif**. Le 28 octobre 2026, un message de QA A a affiché la notification sur l’iPhone. Le toucher a ouvert directement la conversation de QA A.
+ 
+-Parcours de notification d’annonce sur iPhone physique, TestFlight 1.0 (13) : **GO**. Le 28 octobre 2026, la notification « Une annonce correspond à une de vos compétences. » a été reçue. Le toucher a ouvert directement l’annonce « Annonce QA k7mqp4lyannrc », identifiant `f704bc1c-cd06-4de0-b8a4-2585a46ac028`. Le devis et Bokantaj ne sont pas couverts par ce GO.
++Parcours de notification d’annonce sur iPhone physique, TestFlight 1.0 (13) : **GO**. Le 28 octobre 2026, la notification « Une annonce correspond à une de vos compétences. » a été reçue. Le toucher a ouvert directement l’annonce « Annonce QA k7mqp4lyannrc », identifiant `f704bc1c-cd06-4de0-b8a4-2585a46ac028`. Ce GO d’annonce ne couvre pas le devis ni Bokantaj.
++
++Parcours de notification de devis sur iPhone physique, TestFlight 1.0 (14) : **GO définitif**. Le 28 octobre 2026, la notification « Vous avez reçu une proposition. » a ouvert directement la conversation avec QA Author. Devis `DEV-20261028-9C9F-V1`, annonce « 120 chaises à rodez ». Correctif `c7bb6b8446fd25092718da48b12cd7fdab46e9d6`, également servi par Staging. Bokantaj n’est pas couvert par ce GO.
+ 
+ Tête applicative servie : `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`
+ Paquets natifs : TestFlight 1.0 (12) `ios-mvqzsf62-86ab71`, commit `c35d68ee75365bc815d096120a5c5a9a8e1c2e24`. TestFlight 1.0 (13) `ios-mvrjb9kl-92208e`, commit `b503cea62b7dd3c4270d268ce8bbfdee4ea740f4`, installé sur l’iPhone. Aucun nouveau binaire n’est reconstruit pour cette confirmation.
+@@ -53,6 +62,7 @@ Date : 2026-10-28
+ | iPhone TestFlight 1.0 (12) | Notification push d’un message | GO | Écran verrouillé, compte autorisé | Apple a accepté un seul envoi. La notification LYANN « Vous avez un nouveau message. » est apparue sur l’iPhone verrouillé. Aucun autre compte n’a été notifié | Le toucher de cette notification sur le build 12 n’a pas été refait | — | `17e885b` | P1 clos pour la réception | Confirmation humaine reçue |
+ | iPhone TestFlight 1.0 (13) | Notification push d’un message, application fermée, puis toucher | GO définitif | iPhone physique, compte autorisé | Message de QA A, 28 octobre 2026 à 12 h 15, heure de Paris. Apple HTTP 200 à 12 h 16. La notification est apparue. Le toucher a ouvert la conversation de QA A | Un agent local vidait la file avant le cron. Il ne peut plus le faire sans `LYANN_ALLOW_LOCAL_PUSH_DRAIN=true` | Verrou local, cron Vercel seul consommateur | `b503cea` pour l’écran, verrou dans le commit de ce rapport | P1 clos pour la messagerie | Confirmation humaine reçue |
+ | iPhone TestFlight 1.0 (13) | Notification push d’une annonce, application fermée, puis toucher | GO | iPhone physique, compte autorisé | Annonce « Annonce QA k7mqp4lyannrc », 28 octobre 2026 vers 12 h 29, heure de Paris. Apple HTTP 200. Le toucher a ouvert cette annonce | Les compétences déjà présentes correspondaient aussi à d’autres profils. Une compétence temporaire a ciblé ce compte, puis a été retirée | Cron Vercel | `b503cea` | P1 clos pour l’annonce | Confirmation humaine reçue |
++| iPhone TestFlight 1.0 (14) | Notification push d’un devis, application fermée, puis toucher | GO définitif | iPhone physique, compte autorisé | Devis `DEV-20261028-9C9F-V1`, annonce « 120 chaises à rodez ». La notification « Vous avez reçu une proposition. » a ouvert la conversation de QA Author | Le binaire 13 ouvrait l’accueil ou la liste des messages | Résolution de la conversation après restauration de session | `c7bb6b8` | P1 clos pour le devis | Confirmation humaine reçue |
+ | Staging QA | Clic des autres notifications | OK sur les destinations exercées | Session QA A sur `staging.lyann.app` | Devis, travail à valider, mission acceptée et paiement en échec ouvrent la conversation. Le versement et le paiement sans dossier ouvrent Finances. L’annonce correspondante ouvre le détail. Bokantaj ouvre le fil. Le message n’est pas dans la cloche : le geste push ouvre la conversation | Les lignes anciennes de devis et de travail n’emportent pas l’identifiant d’annonce. Aucun envoi groupé | — | `17e885b` | P2 | Toucher iPhone des autres types non demandé |
+ | iPhone | Arrière-plan, coupure réseau, navigation complète | NON TESTÉ | — | Aucun outil de toucher sur l’appareil | `devicectl` lance et photographie, il ne tape pas | — | — | P1 | Gestes sur l’iPhone |
+ | Android émulateur | Installation et fil Bokantaj | OK | Émulateur API 36 | APK installé, fil QA visible | Le System UI a bloqué au premier essai, puis le fil s’est affiché | Aucune | `f02e6cc` | P2 | Téléphone Android physique absent |
+@@ -94,7 +104,7 @@ Le prochain passage planifié est le 28 octobre 2026 à 07:00, heure de Guadelou
+ ## Blocages qui empêchent le GO
+ 
+ 1. Le remboursement Stripe Test reste fermé. Le paiement unique autorisé par le grant, `9af9963d-d5a6-40d3-bc8d-fc9fbf2f0175`, n’existe pas sur Staging.
+-2. Les touchers de notification de message et d’annonce sont confirmés sur TestFlight 1.0 (13). Le devis a été reçu sur ce binaire, mais le toucher n’a pas ouvert la conversation : NO-GO de navigation. Bokantaj, l’arrière-plan et la coupure réseau ne sont pas confirmés sur l’iPhone. Les achats Sandbox Apple et Google restent NON TESTÉ.
++2. Les touchers de notification de message, d’annonce et de devis sont confirmés. Message et annonce sur TestFlight 1.0 (13). Devis sur TestFlight 1.0 (14), conversation de QA Author pour `DEV-20261028-9C9F-V1`. Bokantaj est préparé dans la cloche et attend la confirmation iPhone. L’arrière-plan et la coupure réseau ne sont pas confirmés. Les achats Sandbox Apple et Google restent NON TESTÉ.
+ 3. Ce Mac ne peut pas créer l’identité Apple Distribution sans une session du compte développeur. Le trousseau n’a que l’identité de développement, et Xcode n’a pas de compte enregistré. Pas d’archive. L’AAB signé est prêt pour un premier dépôt et n’a pas été envoyé.
+ 4. Le seul administrateur hors compte personnel est `qa_finance_610q`. Il ne peut pas modérer, suspendre, changer un rôle ni exporter les paiements. La route d’équipe est servie et lui répond 403.
+ 5. `staging-bokantaj.lyann.app` sert encore `80ceae7c` depuis le projet Production.
+diff --git a/docs/staging-deployment-audit.md b/docs/staging-deployment-audit.md
+index 114169e..c3dcd96 100644
+--- a/docs/staging-deployment-audit.md
++++ b/docs/staging-deployment-audit.md
+@@ -21,6 +21,8 @@ Notifications push TestFlight, compte autorisé : **GO**. Le 28 octobre 2026 à
+ Messagerie sur TestFlight 1.0 (13) : **GO définitif**, confirmé sur l’iPhone physique. Le 28 octobre 2026 à 12 h 15, heure de Paris, QA A a envoyé « Retest navigation 13. ». Le cron Vercel a livré à 12 h 16, statut `sent`, erreur vide, donc HTTP 200. L’identifiant `apns_id` est celui créé par la file et transmis à Apple ; Apple n’en renvoie pas un second. La notification est apparue. Le toucher, application fermée, a ouvert la conversation de QA A. `PUSH_QA_ONLY=true` reste actif. La liste reste les trois comptes QA et ce compte, sur le projet Staging seulement.
+ 
+ Annonce sur TestFlight 1.0 (13) : **GO**, confirmé sur l’iPhone physique. Le 28 octobre 2026 à 12 h 29, heure de Paris, le cron a livré « Une annonce correspond à une de vos compétences. », statut `sent`, erreur vide. Le toucher a ouvert « Annonce QA k7mqp4lyannrc », identifiant `f704bc1c-cd06-4de0-b8a4-2585a46ac028`. Une seule notification, vers ce compte.
++
++Devis sur TestFlight 1.0 (14) : **GO définitif**, confirmé sur l’iPhone physique. Le 28 octobre 2026, « Vous avez reçu une proposition. » a ouvert directement la conversation avec QA Author. Devis `DEV-20261028-9C9F-V1`, annonce « 120 chaises à rodez ». Le statut du devis est resté `SENT`. Apple a répondu HTTP 200. Le serveur Staging sert `c7bb6b8446fd25092718da48b12cd7fdab46e9d6`.
+ Release candidate : **NO-GO**, pour les blocages déjà écrits dans `docs/rc-final-go-no-go.md`. Les contrôles CI ne suffisent pas à les lever.
+ 
+ ## Routes
+@@ -72,20 +74,20 @@ Les quatre variables APNs sont présentes en secret sur la cible servie. Une son
+ 
+ Réceptions confirmées sur l’iPhone : le 28 octobre 2026 à 02:10:35 UTC, TestFlight 1.0 (12), écran verrouillé ; le 28 octobre 2026 à 11:16:36 UTC, TestFlight 1.0 (13), toucher jusqu’à la conversation de QA A. Les deux livraisons sont `sent`, erreur vide. Le jeton production est resté actif. Aucune livraison `sent` de ces essais vers un autre compte.
+ 
+-Un agent local `app.lyann.staging-api` consommait la file toutes les 8 s avec une liste d’un seul compte et marquait le destinataire `QA_EXCLUDED` avant le cron. Le correctif durable interdit cette boucle tant que `LYANN_ALLOW_LOCAL_PUSH_DRAIN` n’est pas `true`, et le chargeur Staging ne lui transmet plus l’envoi automatique ni le secret du cron. Le cron Vercel reste le seul consommateur. Ce verrou n’est pas encore dans le serveur servi : Vercel ne lance pas cette boucle.
++Un agent local `app.lyann.staging-api` consommait la file toutes les 8 s avec une liste d’un seul compte et marquait le destinataire `QA_EXCLUDED` avant le cron. Le correctif durable interdit cette boucle tant que `LYANN_ALLOW_LOCAL_PUSH_DRAIN` n’est pas `true`, et le chargeur Staging ne lui transmet plus l’envoi automatique ni le secret du cron. Le cron Vercel reste le seul consommateur. Le verrou est dans le serveur servi `c7bb6b8`. Vercel ne lance pas cette boucle.
+ 
+ Navigation au clic, session du compte QA A sur `https://staging.lyann.app`, sans nouvel envoi push :
+ 
+ | Événement | Destination observée |
+ | --- | --- |
+ | `NEW_MESSAGE` | Conversation. La cloche masque ce type. Sur TestFlight 1.0 (13), le toucher iPhone a ouvert la conversation de QA A. Les autres lignes de ce tableau restent des vérifications Web |
+-| `QUOTE_RECEIVED` | Conversation, en-tête affiché. La ligne stockée n’a pas l’identifiant d’annonce |
++| `QUOTE_RECEIVED` | Conversation de QA Author, confirmée sur TestFlight 1.0 (14) pour `DEV-20261028-9C9F-V1` |
+ | `MISSION_ACCEPTED` | Conversation |
+ | `WORK_TO_VALIDATE` | Conversation. La ligne stockée n’a pas l’identifiant d’annonce |
+ | `PAYMENT_FAILED` | Conversation quand le contact, le devis et l’annonce sont présents. Finances sinon |
+ | `PAYOUT_READY` | Écran Finances, par le geste push |
+ | `OPPORTUNITY` | Détail de l’annonce |
+-| `BOKANTAJ` | Fil Bokantaj. Le clic depuis l’accueil ouvre le fil, pas une publication précise |
++| `BOKANTAJ` | Publication exacte si l’identifiant est présent. La cloche du compte contient maintenant, en tête, « Nouveau lyann sur Bokantaj » vers `e6278a3d-47ce-44b2-a54a-c2e483fb82ac`. Confirmation iPhone encore en attente |
+ 
+ ## Médias, échéances, maintenance
+ 
+@@ -136,10 +138,10 @@ TestFlight 1.0 (12), commit `c35d68e`, a confirmé la réception sur l’écran
+ 
+ ## Prochains essais, non exécutés sur l’iPhone
+ 
+-L’annonce est confirmée sur l’iPhone. Il reste Bokantaj et le devis. Un seul envoi, après fermeture complète de LYANN. Pas d’envoi groupé.
++Message, annonce et devis sont confirmés sur l’iPhone. Il reste Bokantaj, dans la cloche, sans nouveau push.
+ 
+-| Type | Push APNs | Texte prévu | Destination à confirmer sur l’iPhone | Déjà vu sur le Web |
++| Type | Push APNs | Texte | Destination | État |
+ | --- | --- | --- | --- | --- |
+-| Bokantaj | Non. Ce type n’est pas dans la file APNs | Notification dans l’application | La publication exacte, pas seulement le fil | Le clic ouvre le fil |
+-| Annonce | Oui, `OPPORTUNITY` | « Une annonce correspond à une de vos compétences. » | Confirmé sur l’iPhone : le détail de « Annonce QA k7mqp4lyannrc » | Le détail s’ouvre |
+-| Devis | Oui, `QUOTE_RECEIVED` | « Vous avez reçu une proposition. » | NO-GO sur l’iPhone. La notification est arrivée. Le toucher a ouvert l’accueil ou la liste des messages, pas la conversation de QA Author | La conversation s’ouvre dans une session Web |
++| Annonce | Oui, `OPPORTUNITY` | « Une annonce correspond à une de vos compétences. » | Détail de « Annonce QA k7mqp4lyannrc » | GO sur TestFlight 1.0 (13) |
++| Devis | Oui, `QUOTE_RECEIVED` | « Vous avez reçu une proposition. » | Conversation de QA Author, « 120 chaises à rodez » | GO définitif sur TestFlight 1.0 (14) |
++| Bokantaj | Non. Ce type n’est pas dans la file APNs | « Nouveau lyann sur Bokantaj », texte sur le climat à Pointe-à-Pitre | Publication `e6278a3d-47ce-44b2-a54a-c2e483fb82ac` | Préparé. Confirmation iPhone en attente |
+diff --git a/scripts/backup-production-database.js b/scripts/backup-production-database.js
+index b03db2a..c110735 100644
+--- a/scripts/backup-production-database.js
++++ b/scripts/backup-production-database.js
+@@ -1,14 +1,20 @@
+ 'use strict';
+ 
+-// Read-only logical backup of Production, then a restore into a temporary
+-// local PostgreSQL that is never the Production or Staging database.
+-// The password comes from LYANN_SUPABASE_DB_PASSWORD. Nothing is printed.
++// Read-only logical backup of Production into a local dump file.
++// Password: LYANN_SUPABASE_DB_PASSWORD (never printed). Optional overrides:
++//   LYANN_PRODUCTION_BACKUP, LYANN_SUPABASE_DB_HOST, LYANN_SUPABASE_DB_PORT,
++//   LYANN_SUPABASE_DB_USER, LYANN_PG_BIN
+ 
+ const fs = require('fs');
+ const path = require('path');
+ const { spawnSync } = require('child_process');
+ 
+ const REF = 'gzispjfoywklpqatjyop';
++// Session pooler (IPv4). Direct db.<ref>.supabase.co is IPv6-only and unreachable
++// from this workstation — do not use it for pg_dump here.
++const DEFAULT_HOST = 'aws-0-eu-central-1.pooler.supabase.com';
++const DEFAULT_PORT = '5432';
++const DEFAULT_USER = 'postgres.' + REF;
+ const OUT = process.env.LYANN_PRODUCTION_BACKUP || path.join(process.env.HOME || '', 'Developer/lyann-releases/backups/production-latest.dump');
+ 
+ function bin(name) {
+@@ -24,11 +30,31 @@ function bin(name) {
+ 
+ function run(cmd, args, env) {
+     const result = spawnSync(cmd, args, { env, encoding: 'utf8' });
+-    return { code: result.status, out: result.stdout || '', err: result.stderr || '' };
++    return {
++        code: result.status === null ? 1 : result.status,
++        out: result.stdout || '',
++        err: result.stderr || '',
++        signal: result.signal || null,
++        error: result.error ? String(result.error.message || result.error) : null
++    };
++}
++
++function redact(text, secret) {
++    let out = String(text || '');
++    if (secret) {
++        const parts = [secret, encodeURIComponent(secret)];
++        for (const part of parts) {
++            if (!part) continue;
++            out = out.split(part).join('***');
++        }
++    }
++    out = out.replace(/postgresql:\/\/[^@\s]+@/gi, 'postgresql://***@');
++    out = out.replace(/(password|pwd|PGPASSWORD)\s*[=:]\s*\S+/gi, '$1=***');
++    return out.trim();
+ }
+ 
+ function main() {
+-    const secret = process.env.LYANN_SUPABASE_DB_PASSWORD || '';
++    const secret = String(process.env.LYANN_SUPABASE_DB_PASSWORD || '').trim();
+     if (!secret) {
+         console.error('REFUS : LYANN_SUPABASE_DB_PASSWORD absent.');
+         process.exit(1);
+@@ -37,32 +63,74 @@ function main() {
+         console.error('REFUS : la sauvegarde ne doit pas être écrite dans le dépôt.');
+         process.exit(1);
+     }
++
++    const host = String(process.env.LYANN_SUPABASE_DB_HOST || DEFAULT_HOST).trim();
++    const port = String(process.env.LYANN_SUPABASE_DB_PORT || DEFAULT_PORT).trim();
++    const user = String(process.env.LYANN_SUPABASE_DB_USER || DEFAULT_USER).trim();
++    if (port === '6543') {
++        console.error('REFUS : port 6543 (transaction pooler) incompatible avec pg_dump ; utiliser 5432 (session).');
++        process.exit(1);
++    }
++
++    const pgDump = bin('pg_dump');
++    const pgRestore = bin('pg_restore');
++    const dumpVersion = run(pgDump, ['--version'], process.env);
+     fs.mkdirSync(path.dirname(OUT), { recursive: true, mode: 0o700 });
++    if (fs.existsSync(OUT)) fs.unlinkSync(OUT);
++
+     const env = { ...process.env, PGPASSWORD: secret, PGSSLMODE: 'require' };
+-    const dump = run(bin('pg_dump'), [
+-        '-h', 'aws-0-eu-central-1.pooler.supabase.com',
+-        '-p', '5432',
+-        '-U', 'postgres.' + REF,
++    const dump = run(pgDump, [
++        '-h', host,
++        '-p', port,
++        '-U', user,
+         '-d', 'postgres',
+         '-Fc',
+         '--no-owner',
+         '--no-acl',
+         '-f', OUT
+     ], env);
++
+     if (dump.code !== 0) {
++        const detail = redact(dump.err || dump.error || dump.out || 'no stderr', secret);
++        console.error(JSON.stringify({
++            ok: false,
++            step: 'pg_dump',
++            exitCode: dump.code,
++            signal: dump.signal,
++            client: (dumpVersion.out || dumpVersion.err || '').trim() || pgDump,
++            target: { host, port: Number(port), user, database: 'postgres', sslmode: 'require', mode: 'session_pooler_or_override' },
++            hint: detail.includes('authentication failed')
++                ? 'Mot de passe Database rejeté (Settings → Database). Coller sans espace ; trim appliqué.'
++                : detail.includes('no tenant identifier')
++                    ? 'User pooler invalide : utiliser postgres.<project-ref> sur le pooler.'
++                    : 'Voir stderr masqué.',
++            stderr: detail.slice(0, 800),
++            productionWrites: false
++        }, null, 2));
+         console.error('REFUS : pg_dump a échoué.');
+         process.exit(2);
+     }
++
+     fs.chmodSync(OUT, 0o600);
+-    const list = run(bin('pg_restore'), ['--list', OUT], env);
++    const list = run(pgRestore, ['--list', OUT], env);
+     const required = ['public bokantaj_posts', 'public profiles', 'public payments', 'public requests'];
+     if (list.code !== 0 || required.some((entry) => !list.out.includes(entry))) {
++        console.error(JSON.stringify({
++            ok: false,
++            step: 'pg_restore --list',
++            exitCode: list.code,
++            stderr: redact(list.err || '', secret).slice(0, 800),
++            productionWrites: false
++        }, null, 2));
+         console.error('REFUS : la sauvegarde n’est pas lisible.');
+         process.exit(3);
+     }
+     console.log(JSON.stringify({
+         ok: true,
+         bytes: fs.statSync(OUT).size,
++        path: OUT,
++        client: (dumpVersion.out || '').trim(),
++        target: { host, port: Number(port), user, database: 'postgres', sslmode: 'require' },
+         productionWrites: false,
+         storageBytesIncluded: false,
+         vaultExtension: 'supabase_vault absent d’un PostgreSQL local'

@@ -1,0 +1,34 @@
+{
+  "id": "dpl_E1kjRoA1Qo5CzMx9xxe4pYaZHLrJ",
+  "url": "lyann-staging-preview-p3wky5j7d-yoyo-d85d.vercel.app",
+  "inspectorUrl": "https://vercel.com/yoyo-d85d/lyann-staging-preview/E1kjRoA1Qo5CzMx9xxe4pYaZHLrJ",
+  "name": "lyann-staging-preview",
+  "projectId": "prj_FHIKUKYa8IwpiitigUma4gTtTF6q",
+  "readyState": "READY",
+  "target": null,
+  "source": "cli",
+  "regions": [
+    "iad1"
+  ],
+  "type": "LAMBDAS",
+  "version": 2,
+  "created_utc": "2026-11-12T22:58:47.494000Z",
+  "ready_utc": "2026-11-12T23:03:18Z",
+  "git_commit_at_deploy": "0bc6b03ffc86e73e1c912fdd72ebfb440cdde909",
+  "meta_keys_present": [
+    "actor",
+    "gitCommitAuthorEmail",
+    "gitCommitAuthorName",
+    "gitCommitMessage",
+    "gitCommitRef",
+    "gitCommitSha",
+    "gitDirty",
+    "gitRootDirectory",
+    "lambdaRuntimeStats"
+  ],
+  "file_counts": {
+    "identique-au-commit": 616,
+    "ABSENT-du-commit": 62,
+    "DIFFERE-du-commit": 3
+  }
+}

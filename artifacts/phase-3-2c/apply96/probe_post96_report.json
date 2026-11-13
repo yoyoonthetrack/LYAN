@@ -1,0 +1,9 @@
+{"note":"Rolled-back probe on Staging after durable COMMIT of migration 96 (probe_post96.sql = probe_post95.sql, v_apply96=false). Ends by RAISE EXCEPTION, nothing persisted.",
+"insert_policies_live":["No direct insert on conversations for standard users check=is_current_user_admin()"],
+"anon_direct_insert_conversation":"42501","member_direct_insert_conversation_own":"42501","member_direct_insert_conversation_spoofing_started_by":"42501","admin_direct_insert_conversation":"OK","service_role_direct_insert_conversation":"OK",
+"anon_pair_conversation":"42501","anon_insert_notification":"42501","anon_ensure_support_welcome":"42501","authenticated_pair_conversation":"42501","authenticated_insert_notification":"42501","authenticated_ensure_support_welcome":"42501",
+"service_role_pair_conversation":"OK","service_role_insert_notification":"OK","service_role_ensure_support_welcome":"OK",
+"member_support_conversation":"OK","member_get_or_create_conversation":"OK","member_open_direct_conversation":"OK","member_send_message":"OK","trigger_chain_notification_for_recipient":1,
+"member_direct_insert_notification":"42501","member_direct_insert_participant_for_other":"42501","member_message_as_other_user":"42501",
+"blocked_member_get_or_create_conversation":"42501 Ce membre ne peut pas recevoir vos messages.",
+"counts_before":{"conversations":85,"participants":124,"messages":541,"notifications":4017},"counts_after_in_txn":{"conversations":89,"participants":128,"messages":543,"notifications":4020}}
