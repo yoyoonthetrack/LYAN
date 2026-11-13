@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "description": "Règles du paquet de la Preview Staging isolée (lyann-staging-preview). Le paquet est exporté depuis un commit (git archive), jamais depuis l'arbre de travail.",
+  "entryPoints": [
+    "api/index.js",
+    "api/render.js"
+  ],
+  "functionIncludeFiles": [
+    "commune-geo.js"
+  ],
+  "buildEntry": "scripts/build-staging-preview.js",
+  "rootAlways": [
+    "html",
+    "css"
+  ],
+  "rootMedia": [
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "svg",
+    "gif",
+    "mp4",
+    "ico"
+  ],
+  "includeDirs": [
+    "assets",
+    "vendor",
+    "sounds",
+    ".well-known"
+  ],
+  "includeFiles": [
+    ".vercelignore",
+    "package.json",
+    "package-lock.json",
+    "vercel.staging-preview.json",
+    "config/apple-app-site-association.staging.json",
+    "config/map-assets.sha256.json"
+  ],
+  "excludePaths": [
+    "assets/icon.png",
+    "assets/splash.png",
+    "assets/maps/README.md"
+  ],
+  "requiredResources": [
+    "api/index.js",
+    "api/render.js",
+    "api/public-explorer-requests.js",
+    "api/runtime-isolation.js",
+    "commune-geo.js",
+    "discover.html",
+    "results.html",
+    "feed.html",
+    "auth-callback.html",
+    "api-client.js",
+    "lyann-runtime-config.js",
+    "explorer-ui.js",
+    "visitor-gate.js",
+    "needs-map.js",
+    "bokantaj-map.js",
+    "vendor/leaflet/leaflet.js",
+    "vendor/leaflet/leaflet.css",
+    "vendor/maplibre/maplibre-gl.js",
+    "vendor/maplibre/maplibre-gl.css",
+    "vendor/maplibre/leaflet-maplibre-gl.js",
+    "assets/maps/lyann-liberty.json",
+    "assets/maps/glyphs/.nunito-glyphs-manifest.json",
+    "assets/maps/glyphs/OFL-NunitoSans.txt",
+    "assets/maps/glyphs/Nunito Sans Regular/0-255.pbf",
+    "assets/maps/glyphs/Nunito Sans Bold/0-255.pbf",
+    "assets/maps/glyphs/Nunito Sans Italic/0-255.pbf",
+    "assets/universe-v3/header-lyanneurs.webp",
+    "assets/universe-v3/header-annonces.webp",
+    "vendor/phosphor/phosphor.css",
+    "vendor/phosphor/Phosphor.woff2",
+    "config/apple-app-site-association.staging.json",
+    "config/map-assets.sha256.json",
+    "package.json",
+    "package-lock.json",
+    "vercel.staging-preview.json",
+    "scripts/build-staging-preview.js",
+    "shared-html-build.js"
+  ],
+  "forbiddenPatterns": [
+    "^\\.(codex|momentic-mcp|claude|agents|github|cursor|vercel)/",
+    "^(work|docs|tests|test-results|artifacts|ios|android|www|supabase|migrations|db-backups|backups|node_modules|playwright-report|scratch|dist)/",
+    "(^|/)\\.env($|\\.)",
+    "\\.(sql|dump|backup|pem|p8|p12|key|mobileprovision|entitlements|xcconfig)$",
+    "(^|/)(CLAUDE|AGENTS)\\.md$",
+    "\\.test\\.js$",
+    "(^|/)test_[^/]*$",
+    "^(server|build_mobile|watch|momentic\\.config)\\.(js|yaml)$",
+    "^playwright[^/]*\\.config\\.js$",
+    "^(netlify\\.toml|audit_proof\\.sh|preview-redeploy[^/]*)$",
+    "^config/(App\\.staging\\.entitlements|staging-api\\.env\\.example|vercel-staging-allowlist\\.json)$",
+    "^api/server_python\\.py$"
+  ]
+}

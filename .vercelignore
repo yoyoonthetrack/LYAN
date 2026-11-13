@@ -10,6 +10,8 @@
 .claude
 .agents
 .github
+.codex
+.momentic-mcp
 
 # Node install needs package.json / lockfile in the build context.
 # Root-only tooling patterns (leading /) so api/server.js stays deployable.
@@ -59,3 +61,23 @@ db-backups/
 # Agent / local docs (README stays publishable if present)
 CLAUDE.md
 AGENTS.md
+
+# Phase 3.2C-6: working material that is never needed to run LYANN. The Staging Preview is uploaded from a
+# purpose-built package (scripts/build-staging-package.js), this file is the second line of defence for any
+# other upload from a working tree.
+/work
+/docs
+/supabase
+/migrations
+/momentic.config.yaml
+/netlify.toml
+/audit_proof.sh
+/audit_verification_proof.py
+/preview-redeploy-*
+/config/App.staging.entitlements
+/config/staging-api.env.example
+*.entitlements
+*.pem
+*.p8
+*.p12
+*.mobileprovision
