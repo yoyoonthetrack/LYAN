@@ -33,9 +33,30 @@ function manifestSha256(lines) {
     return sha256(Buffer.from(`${lines.join('\n')}\n`));
 }
 
+// Vercel writes this file from --local-config before the build. It is not part of the exported package.
+const GENERATED_VERCEL_CONFIG = 'vercel.json';
+
 /** Files of the package as it was exported (before any build step rewrites HTML). */
 function packageFiles(root) {
-    return walk(root).filter((file) => file !== PACKAGE_INFO);
+    return walk(root).filter((file) => file !== PACKAGE_INFO && file !== GENERATED_VERCEL_CONFIG);
+}
+
+/** The generated vercel.json may only repeat the shipped Preview build, never a Production target. */
+function generatedVercelConfigProblems(root) {
+    const file = path.join(root, GENERATED_VERCEL_CONFIG);
+    if (!fs.existsSync(file)) return [];
+    let generated;
+    try { generated = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return ['vercel.json illisible']; }
+    const shipped = JSON.parse(fs.readFileSync(path.join(root, 'vercel.staging-preview.json'), 'utf8'));
+    const problems = [];
+    if (generated.buildCommand !== shipped.buildCommand) problems.push('buildCommand différent du paquet');
+    if (generated.installCommand && generated.installCommand !== shipped.installCommand) problems.push('installCommand différent du paquet');
+    if (generated.outputDirectory && generated.outputDirectory !== '.') problems.push('outputDirectory inattendu');
+    const blob = JSON.stringify(generated);
+    if (blob.includes(PRODUCTION_REF) || blob.includes('prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM') || /lyann\.app/.test(blob) || /--prod\b/.test(blob)) {
+        problems.push('marqueur Production');
+    }
+    return problems;
 }
 
 function readPackageInfo(root) {
@@ -57,6 +78,8 @@ function verifyPackage(root, expectedCommit) {
     if (actual !== info.manifestSha256 || files.length !== info.fileCount) {
         throw new Error(`Contenu du paquet modifié : ${files.length} fichiers, empreinte ${actual.slice(0, 12)}…, attendu ${info.fileCount} fichiers, ${String(info.manifestSha256).slice(0, 12)}…`);
     }
+    const configProblems = generatedVercelConfigProblems(root);
+    if (configProblems.length) throw new Error(`vercel.json généré refusé : ${configProblems.join(', ')}`);
     return info;
 }
 
@@ -155,6 +178,7 @@ module.exports = {
     packageFiles,
     readPackageInfo,
     verifyPackage,
+    generatedVercelConfigProblems,
     verifyMapAssets,
     stagingPreviewEnvProblems,
     builtHtmlProblems

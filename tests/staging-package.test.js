@@ -223,3 +223,18 @@ test('Preview env check accepts only a consistent Staging configuration', () => 
     assert.deepEqual(integrity.stagingPreviewEnvProblems(previewEnv()), []);
     assert.ok(integrity.stagingPreviewEnvProblems({}).length >= 8);
 });
+
+test('a vercel.json written by the platform is ignored when it repeats the Preview build', () => {
+    const dir = fs.mkdtempSync(path.join(work, 'vercel-json-'));
+    fs.cpSync(built.packageDir, dir, { recursive: true });
+    fs.copyFileSync(path.join(dir, 'vercel.staging-preview.json'), path.join(dir, 'vercel.json'));
+    assert.equal(integrity.verifyPackage(dir, commit).commit, commit);
+    const generated = JSON.parse(fs.readFileSync(path.join(dir, 'vercel.json'), 'utf8'));
+    generated.buildCommand = 'node scripts/build-web.js';
+    fs.writeFileSync(path.join(dir, 'vercel.json'), JSON.stringify(generated));
+    assert.throws(() => integrity.verifyPackage(dir, commit), /vercel\.json généré refusé/);
+    generated.buildCommand = 'node scripts/build-staging-preview.js';
+    generated.routes = [{ dest: 'https://gzispjfoywklpqatjyop.supabase.co' }];
+    fs.writeFileSync(path.join(dir, 'vercel.json'), JSON.stringify(generated));
+    assert.throws(() => integrity.verifyPackage(dir, commit), /marqueur Production/);
+});
