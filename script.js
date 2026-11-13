@@ -9215,8 +9215,19 @@ safeDomReady(() => {
             syncDrawerAuthState(false, null);
 
             document.querySelectorAll('.app-welcome-screen').forEach((el) => el.remove());
-            document.querySelector('.mobile-bottom-nav')?.remove();
-            document.body.classList.remove('has-member-nav');
+            // A visitor keeps Découvrir, Lyanneurs and Annonces. Only the marketing
+            // welcome and the website drop the native tab bar.
+            const guestPath = window.location.pathname || '';
+            const guestKind = window.LYANN_MOBILE_AUTH && typeof window.LYANN_MOBILE_AUTH.classifyPath === 'function'
+                ? window.LYANN_MOBILE_AUTH.classifyPath(guestPath)
+                : '';
+            const keepVisitorTabs = typeof isNativePlatform === 'function' && isNativePlatform() && guestKind === 'public';
+            if (!keepVisitorTabs) {
+                document.querySelector('.mobile-bottom-nav')?.remove();
+                document.body.classList.remove('has-member-nav');
+            } else if (!document.querySelector('.mobile-bottom-nav') && typeof injectMobileInterface === 'function') {
+                injectMobileInterface();
+            }
 
             const nameEls = document.querySelectorAll('.user-name-display, #accountUserName, #accountModalName, #drawerUserName, #profileUserName, #quickProfileName, #publicMemberName');
             nameEls.forEach(el => {
@@ -9309,8 +9320,14 @@ safeDomReady(() => {
                 await updateHeaderAuthState();
                 if (typeof isNativePlatform === 'function' && isNativePlatform()) {
                     const path = window.location.pathname;
+                    const kind = window.LYANN_MOBILE_AUTH && typeof window.LYANN_MOBILE_AUTH.classifyPath === 'function'
+                        ? window.LYANN_MOBILE_AUTH.classifyPath(path)
+                        : '';
                     const isHome = path.endsWith('index.html') || path.endsWith('/') || !path.includes('.html');
-                    if (!isHome) window.location.replace('index.html');
+                    // A public page stays put. A private page returns to Découvrir.
+                    if (!isHome && kind !== 'public' && kind !== 'guest-entry' && kind !== 'open') {
+                        window.location.replace('discover.html');
+                    }
                 }
 
                 const userAccountModal = document.getElementById('userAccountModal');

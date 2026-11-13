@@ -193,9 +193,6 @@ async function initMobileHomeDashboard() {
 // compatibility aliases after its own initialization; app-shell defines none.
 
 async function injectMobileInterface() {
-    if (window.LYANN_AUTH_STATE) {
-        try { await window.LYANN_AUTH_STATE.ready(); } catch (e) {}
-    }
     console.log("⚡ [BOOT 05] injectMobileInterface entered");
     if (window.__LYANN_RUNTIME_DIAG__) window.__LYANN_RUNTIME_DIAG__.injectMobileInterfaceEntered = true;
     logLyannTrace("injectMobileInterface_entered");
@@ -244,7 +241,16 @@ async function injectMobileInterface() {
         window.location.replace('discover.html' + (window.location.search || '') + (window.location.hash || ''));
         return;
     }
-    if (!isLoggedIn && isMarketingLanding) {
+    // Public tabs must not wait on getSession. A slow or unreachable auth call
+    // used to leave a visitor on Découvrir with no navigation. bienvenue still
+    // waits, so a restored member is not shown the marketing welcome.
+    if (isMarketingLanding && window.LYANN_AUTH_STATE) {
+        try { await window.LYANN_AUTH_STATE.ready(); } catch (e) {}
+    }
+    const sessionKnown = window.LYANN_AUTH_STATE
+        ? window.LYANN_AUTH_STATE.isAuthenticated()
+        : isLoggedIn;
+    if (!sessionKnown && isMarketingLanding) {
         document.querySelectorAll('.app-welcome-screen').forEach((el) => el.remove());
         if (typeof window.mountNativeGuestHome === 'function') window.mountNativeGuestHome();
     }

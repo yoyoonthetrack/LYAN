@@ -152,6 +152,7 @@ const scenarios = {
         for (const url of PUBLIC_PAGES) {
             await page.goto(`${origin}/${url}`, { waitUntil: 'domcontentloaded' });
             await page.waitForFunction(() => document.documentElement.getAttribute('data-lyann-mobile-auth') === 'GUEST', null, { timeout: 8000 }).catch(() => {});
+            await page.waitForSelector('.mobile-bottom-nav', { timeout: 8000 }).catch(() => {});
             const state = await page.evaluate(() => ({
                 path: location.pathname.split('/').pop() + location.search,
                 nav: document.querySelectorAll('.mobile-bottom-nav').length,
