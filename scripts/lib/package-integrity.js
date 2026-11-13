@@ -49,9 +49,15 @@ function generatedVercelConfigProblems(root) {
     try { generated = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return ['vercel.json illisible']; }
     const shipped = JSON.parse(fs.readFileSync(path.join(root, 'vercel.staging-preview.json'), 'utf8'));
     const problems = [];
-    if (generated.buildCommand !== shipped.buildCommand) problems.push('buildCommand différent du paquet');
+    // Vercel keeps the routing in this file and drops build, install, ignore and output: those stay project settings.
+    if (generated.buildCommand && generated.buildCommand !== shipped.buildCommand) problems.push('buildCommand différent du paquet');
     if (generated.installCommand && generated.installCommand !== shipped.installCommand) problems.push('installCommand différent du paquet');
     if (generated.outputDirectory && generated.outputDirectory !== '.') problems.push('outputDirectory inattendu');
+    for (const key of ['version', 'cleanUrls', 'trailingSlash', 'rewrites', 'headers', 'functions']) {
+        if (generated[key] !== undefined && JSON.stringify(generated[key]) !== JSON.stringify(shipped[key])) problems.push(`${key} différent du paquet`);
+    }
+    const extraKeys = Object.keys(generated).filter((key) => !Object.prototype.hasOwnProperty.call(shipped, key));
+    if (extraKeys.length) problems.push(`clés inattendues : ${extraKeys.join(', ')}`);
     const blob = JSON.stringify(generated);
     if (blob.includes(PRODUCTION_REF) || blob.includes('prj_avTkY4HCjHZSdd9ZvRj1JPSQSAfM') || /lyann\.app/.test(blob) || /--prod\b/.test(blob)) {
         problems.push('marqueur Production');

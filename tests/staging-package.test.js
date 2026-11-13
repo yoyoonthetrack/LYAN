@@ -229,6 +229,10 @@ test('a vercel.json written by the platform is ignored when it repeats the Previ
     fs.cpSync(built.packageDir, dir, { recursive: true });
     fs.copyFileSync(path.join(dir, 'vercel.staging-preview.json'), path.join(dir, 'vercel.json'));
     assert.equal(integrity.verifyPackage(dir, commit).commit, commit);
+    const platform = JSON.parse(fs.readFileSync(path.join(dir, 'vercel.staging-preview.json'), 'utf8'));
+    for (const key of ['buildCommand', 'installCommand', 'ignoreCommand', 'outputDirectory', 'crons']) delete platform[key];
+    fs.writeFileSync(path.join(dir, 'vercel.json'), JSON.stringify(platform));
+    assert.equal(integrity.verifyPackage(dir, commit).commit, commit);
     const generated = JSON.parse(fs.readFileSync(path.join(dir, 'vercel.json'), 'utf8'));
     generated.buildCommand = 'node scripts/build-web.js';
     fs.writeFileSync(path.join(dir, 'vercel.json'), JSON.stringify(generated));
