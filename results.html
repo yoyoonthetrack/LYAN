@@ -25,8 +25,8 @@
     <link rel="stylesheet" href="style.css?v=20261112a">
     <link rel="stylesheet" href="visitor-gate.css?v=20261112a">
     <link rel="stylesheet" href="explorer.css?v=20261114d">
-    <link rel="stylesheet" href="needs-map.css?v=20261115-pins">
-    <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261114f">
+    <link rel="stylesheet" href="needs-map.css?v=20261115-v42">
+    <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261115-v42">
     <link rel="stylesheet" href="lyann-layout.css?v=20261112a">
     <link rel="stylesheet" href="results-v3.css?v=20261114g">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
@@ -233,15 +233,11 @@
         <dialog id="explorerMapCategorySheet" class="explorer-filter-sheet explorer-map-category-sheet" aria-labelledby="explorerMapCategoryTitle">
             <form method="dialog" id="explorerMapCategoryForm">
                 <div class="explorer-sheet-heading">
-                    <div><h2 id="explorerMapCategoryTitle">Catégories sur la carte</h2><p class="explorer-sheet-sub">Filtrez les missions par famille de service.</p></div>
+                    <div><h2 id="explorerMapCategoryTitle">Catégories</h2><p class="explorer-sheet-sub">Une catégorie à la fois. La carte se met à jour tout de suite.</p></div>
                     <button type="button" id="explorerMapCategoryClose" aria-label="Fermer les catégories">×</button>
                 </div>
                 <div class="explorer-sheet-body">
-                    <div id="explorerMapCategoryGrid" class="explorer-map-category-grid" role="group" aria-label="Familles de catégories"></div>
-                </div>
-                <div class="explorer-sheet-actions">
-                    <button type="button" id="explorerMapCategoryClear" class="btn btn-outline">Effacer</button>
-                    <button type="button" id="explorerMapCategoryApply" class="btn btn-primary">Appliquer</button>
+                    <div id="explorerMapCategoryGrid" class="explorer-map-category-grid" role="radiogroup" aria-label="Catégories sur la carte"></div>
                 </div>
             </form>
         </dialog>
@@ -1261,12 +1257,12 @@
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20261019-drom5"></script>
     <script src="needs-map-category-families.js?v=20261105pins"></script>
-    <script src="needs-map-pin-styles.js?v=20261115-pins"></script>
-    <script src="needs-map.js?v=20261115-pins"></script>
+    <script src="needs-map-pin-styles.js?v=20261115-v42"></script>
+    <script src="needs-map.js?v=20261115-v42"></script>
     <script src="marketplace-taxonomy.js?v=20261114h"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
     <script src="lyann-skeleton.js?v=20261114g"></script>
-    <script src="explorer-ui.js?v=20261115a" defer></script>
+    <script src="explorer-ui.js?v=20261115-v42" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

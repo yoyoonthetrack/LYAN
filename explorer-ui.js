@@ -44,7 +44,7 @@
         let lastSearchArea = filters.area;
         /** @type {string[]|null} null = toutes les familles visuelles */
         let mapFamilyFilter = null;
-        let mapFamilyDraft = null;
+        let mapPinStyle = '';
         let mapCategorySheetOpen = false;
         // The delay filter offers the same date modes the cards display, so a chosen
         // option always matches what a reader sees on the results.
@@ -95,10 +95,18 @@
             const url = typeof raw === 'string' && /^https?:\/\//i.test(raw) ? raw : 'default-avatar.svg';
             return `<img class="explorer-annonce-photo" src="${escape(url)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='default-avatar.svg'">`;
         }
+        function annonceCategory(r) {
+            const precise = V2()?.categoryLabel?.(r, v2Ctx()) || '';
+            const line = format()?.categoryLine(r, leaves) || '';
+            const readable = precise || (line && !/^g[ée]n[ée]ral$/i.test(String(line).trim()) ? line : '');
+            if (readable) return readable;
+            const family = r._v2Family || (v2Index ? V2()?.familyOf?.(r, v2Ctx()) : '');
+            return V2()?.familyMeta?.(family)?.short || '';
+        }
         function requestCard(r, showType = false) {
             const own = Boolean(currentUserId()) && r.requester_id === currentUserId();
             const authorName = name(r.profiles);
-            const taxonomy = format()?.categoryLine(r, leaves);
+            const taxonomy = annonceCategory(r);
             const age = format()?.relativeAge(r.created_at);
             const badge = format()?.verifiedLabel(r.profiles);
             const rating = format()?.ratingLabel(r.profiles);
@@ -305,74 +313,51 @@
             if (!api || !mapFamiliesActive()) return results;
             return api.filterRowsByFamilies(results, mapFamilyFilter, leaves);
         }
+        function rowsForMapPin(results) {
+            const pins = window.LYANN_MAP_PIN_STYLES;
+            if (!pins || !mapPinStyle) return results;
+            return pins.filterRows(results, mapPinStyle, leaves);
+        }
         function closeMapCategorySheet() {
             mapCategorySheetOpen = false;
             document.body.classList.remove('explorer-map-category-sheet-open');
             $('explorerMapCategorySheet')?.close();
         }
         function openMapCategorySheet() {
-            const api = mapFamiliesApi();
-            if (!api) return;
-            // Brouillon = liste explicite ; vide = « Toutes » (aucun filtre).
-            mapFamilyDraft = api.canonicalFamilySelection(mapFamilyFilter || []);
+            if (!window.LYANN_MAP_PIN_STYLES) return;
             mapCategorySheetOpen = true;
             document.body.classList.add('explorer-map-category-sheet-open');
             renderMapCategoryGrid();
-            const sheet = $('explorerMapCategorySheet');
-            sheet?.showModal();
+            $('explorerMapCategorySheet')?.showModal();
             render({ quiet: true });
         }
         function renderMapCategoryGrid() {
-            const api = mapFamiliesApi();
+            const pins = window.LYANN_MAP_PIN_STYLES;
             const host = $('explorerMapCategoryGrid');
-            if (!api || !host) return;
-            const draft = api.canonicalFamilySelection(mapFamilyDraft || []);
-            const allOn = draft.length === 0 || draft.length >= api.FAMILIES.length;
-            // Chaque puce reflète uniquement sa propre famille : « Toutes » n'allume jamais les autres puces.
-            const familyEmoji = {
-                maison: '🔧', jardin: '🌿', entretien: '🧹', beaute: '💅',
-                transport: '🚚', famille: '👨‍👩‍👧', evenement: '🍽️', numerique: '💻'
+            if (!pins || !host) return;
+            const chip = (id, label, icon, active) => {
+                const color = id === 'all' ? '#5C5146' : pins.specFor(id).to;
+                return `<button type="button" role="radio" class="explorer-map-category-chip${active ? ' is-active' : ''}" data-pin-style="${escape(id)}" aria-checked="${active ? 'true' : 'false'}" style="--pin-main:${color}"><span class="explorer-map-category-mark" aria-hidden="true">${pins.iconSvg(icon)}</span><span>${escape(label)}</span></button>`;
             };
-            host.innerHTML = `<button type="button" class="explorer-map-category-chip is-tone-green${allOn ? ' is-active' : ''}" data-family="__all__" aria-pressed="${allOn ? 'true' : 'false'}">Toutes</button>`
-                + api.FAMILIES.map((family) => {
-                    const active = draft.includes(family.id);
-                    const emoji = familyEmoji[family.id] || '📍';
-                    return `<button type="button" class="explorer-map-category-chip is-tone-green${active ? ' is-active' : ''}" data-family="${escape(family.id)}" aria-pressed="${active ? 'true' : 'false'}"><span class="explorer-map-category-emoji" aria-hidden="true">${emoji}</span><span>${escape(family.label)}</span></button>`;
+            host.innerHTML = chip('all', 'Toutes les catégories', 'all', !mapPinStyle)
+                + pins.CATALOG.map((id) => {
+                    const spec = pins.specFor(id);
+                    return chip(id, spec.label, spec.icon, mapPinStyle === id);
                 }).join('');
         }
-        // Un seul écouteur délégué (jamais rattaché aux puces recréées) : état lu au moment du clic, pas capturé au rendu.
         function onMapCategoryGridClick(event) {
-            const button = event.target.closest('[data-family]');
-            if (!button) return;
-            const api = mapFamiliesApi();
-            if (!api) return;
+            const button = event.target.closest('[data-pin-style]');
+            const pins = window.LYANN_MAP_PIN_STYLES;
+            if (!button || !pins) return;
             event.preventDefault();
             event.stopPropagation();
-            const id = button.dataset.family;
-            mapFamilyDraft = id === '__all__'
-                ? []
-                : api.toggleFamilySelection(mapFamilyDraft || [], id);
-            renderMapCategoryGrid();
-        }
-        function applyMapCategoryFilter() {
-            const api = mapFamiliesApi();
-            if (!api) return;
-            mapFamilyFilter = api.effectiveFamilyFilter(mapFamilyDraft || []);
-            if (mapFamilyFilter && mapFamilyFilter.length === 1) {
-                filters.family = mapFamilyFilter[0];
-                filters.groups = '';
-                filters.job = '';
-                filters.specialty = '';
-            } else {
-                clearTaxonomy();
-            }
+            mapPinStyle = pins.nextStyle(mapPinStyle, button.dataset.pinStyle);
             closeMapCategorySheet();
             render({ quiet: true });
         }
         function clearMapCategoryFilter() {
-            mapFamilyFilter = null;
-            mapFamilyDraft = [];
-            renderMapCategoryGrid();
+            mapPinStyle = '';
+            closeMapCategorySheet();
             render({ quiet: true });
         }
         function ensureNeedsMap() {
@@ -382,7 +367,7 @@
                     onShowList: () => setView('list'),
                     onReset: () => reset(),
                     onCategoriesOpen: () => openMapCategorySheet(),
-                    onClearCategoryFilter: () => { mapFamilyFilter = null; closeMapCategorySheet(); render({ quiet: true }); }
+                    onClearCategoryFilter: () => { mapPinStyle = ''; closeMapCategorySheet(); render({ quiet: true }); }
                 });
             }
             return needsMap;
@@ -706,7 +691,8 @@
                 return family ? Object.assign({}, row, { _v2Family: family }) : row;
             }) : results;
             if (mode === 'annonces' && mapFamiliesActive()) results = rowsForMapFamilies(stamped);
-            const mapScoped = mode === 'annonces' ? (mapFamiliesActive() ? results : stamped) : results;
+            if (mode === 'annonces' && mapPinStyle) results = rowsForMapPin(mapFamiliesActive() ? results : stamped);
+            const mapScoped = mode === 'annonces' ? ((mapFamiliesActive() || mapPinStyle) ? results : stamped) : results;
             const countLabel = mode === 'annonces'
                 ? (mapScoped.length <= 1 ? 'annonce' : 'annonces')
                 : (results.length <= 1 ? 'Lyanneur' : 'Lyanneurs');
@@ -728,9 +714,11 @@
                 ensureNeedsMap().update({
                     rows: mapScoped,
                     leaves,
+                    index: v2Index,
                     area: filters.area,
                     reframe: options.reframe === true,
                     mapFamilyFilter: mapFamilyFilter || undefined,
+                    mapPinStyle: mapPinStyle || '',
                     categorySheetOpen: mapCategorySheetOpen
                 });
                 if (revealMap && !document.body.classList.contains('explorer-annonces-map-view')) {
@@ -866,7 +854,7 @@
             filters = {query:'',category:'',service:'',area:'',territory:'',commune:'',urgency:'',budget:'',family:'',groups:'',job:'',specialty:''};
             closeRefine({ restoreFocus: false });
             mapFamilyFilter = null;
-            mapFamilyDraft = null;
+            mapPinStyle = '';
             closeMapCategorySheet();
             search();
         }
@@ -1028,8 +1016,6 @@
         });
         $('explorerMapCategoryGrid')?.addEventListener('click', onMapCategoryGridClick);
         $('explorerMapCategoryClose')?.addEventListener('click', closeMapCategorySheet);
-        $('explorerMapCategoryApply')?.addEventListener('click', applyMapCategoryFilter);
-        $('explorerMapCategoryClear')?.addEventListener('click', clearMapCategoryFilter);
         $('explorerMapCategorySheet')?.addEventListener('click', (event) => {
             if (event.target === $('explorerMapCategorySheet')) closeMapCategorySheet();
         });

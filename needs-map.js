@@ -479,18 +479,18 @@
                 && data.mapFamilyFilter.length < api.FAMILIES.length) {
                 rows = api.filterRowsByFamilies(rows, data.mapFamilyFilter, leaves);
             }
+            const pinStyle = data.mapPinStyle || '';
+            if (pinStyle && root.LYANN_MAP_PIN_STYLES) rows = root.LYANN_MAP_PIN_STYLES.filterRows(rows, pinStyle, leaves);
             const result = groupByCommune(rows, geo);
             const categoriesBtn = shell.querySelector('[data-needs-map-categories]');
             const badge = shell.querySelector('.needs-map-categories-badge');
-            const activeCount = Array.isArray(data.mapFamilyFilter) ? data.mapFamilyFilter.length : 0;
-            const filterActive = activeCount > 0 && activeCount < (api?.FAMILIES.length || 8);
             if (categoriesBtn) {
-                categoriesBtn.classList.toggle('has-active-filters', filterActive);
+                categoriesBtn.classList.toggle('has-active-filters', Boolean(pinStyle));
                 categoriesBtn.setAttribute('aria-expanded', data.categorySheetOpen ? 'true' : 'false');
             }
             if (badge) {
-                badge.hidden = !filterActive;
-                badge.textContent = filterActive ? String(activeCount) : '';
+                badge.hidden = true;
+                badge.textContent = '';
             }
 
             if (!result.total && rows.length === 0 && Array.isArray(data.rows) && data.rows.length > 0) {

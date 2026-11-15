@@ -11,8 +11,9 @@ assert.match(ui, /title: 'Annonces', subtitle: 'Des besoins réels autour de vou
 assert.match(results, /explorer-annonces-ux\.css/);
 assert.match(results, /needs-map-category-families\.js/);
 assert.match(results, /explorerMapCategorySheet/);
-assert.match(ui, /mapFamilyFilter/);
-assert.match(ui, /explorerMapCategoryApply/);
+assert.match(ui, /mapPinStyle/);
+assert.doesNotMatch(ui, /explorerMapCategoryApply/);
+assert.doesNotMatch(results, /explorerMapCategoryApply/);
 assert.match(results, /explorerFiltersIcon/);
 assert.match(results, /data-view="list"[\s\S]*data-view="map"/);
 assert.doesNotMatch(ui, /De quoi avez-vous besoin/);

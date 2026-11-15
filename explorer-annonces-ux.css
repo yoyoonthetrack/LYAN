@@ -384,36 +384,61 @@ body.results-page.explorer-annonces-map-view .needs-map-summary {
 }
 
 .explorer-map-category-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .explorer-map-category-chip {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 48px;
-    padding: 10px 12px;
-    border: 2px solid #d8e3dc;
-    border-radius: 14px;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 8px 14px;
+    border: 2px solid #e4ebe4;
+    border-radius: 16px;
     background: #fff;
-    color: #1B3B2B;
+    color: #3d4a40;
     font: inherit;
-    font-size: 0.86rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 700;
     text-align: left;
     cursor: pointer;
 }
 
-.explorer-map-category-chip.is-tone-green,
-.explorer-map-category-chip.is-tone-yellow { background: #eef6ef; border-color: #c5d9cb; }
-
-.explorer-map-category-emoji { font-size: 1.15rem; line-height: 1; }
+.explorer-map-category-mark {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--pin-main, #83969D) 16%, #fff);
+}
+.explorer-map-category-mark .needs-map-pin-icon {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: var(--pin-main, #5C5146);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
 
 .explorer-map-category-chip.is-active {
-    border-color: #1B3B2B;
-    box-shadow: 0 0 0 1px #1B3B2B;
+    background: color-mix(in srgb, var(--pin-main, #35A85C) 12%, #fff);
+    border-color: var(--pin-main, #35A85C);
+    box-shadow: none;
+}
+.explorer-map-category-chip.is-active::after {
+    content: "";
+    width: 8px;
+    height: 14px;
+    margin-left: auto;
+    border: solid var(--pin-main, #35A85C);
+    border-width: 0 2.5px 2.5px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
 }
 
 .explorer-map-category-chip i {

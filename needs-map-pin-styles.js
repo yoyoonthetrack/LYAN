@@ -17,21 +17,21 @@
 
     /* from = nuance claire, to = nuance du corps. Le dégradé reste dans une seule teinte. */
     const STYLES = Object.freeze({
-        jardinage: { id: 'jardinage', label: 'Jardinage', from: '#A9D7A4', to: '#4F9A66', icon: 'sprout' },
-        plomberie: { id: 'plomberie', label: 'Plomberie', from: '#9ED0EC', to: '#3E86B8', icon: 'droplet' },
-        electricite: { id: 'electricite', label: 'Électricité', from: '#F6D56A', to: '#C49212', icon: 'zap' },
-        bricolage: { id: 'bricolage', label: 'Bricolage', from: '#F0C4A4', to: '#C17D58', icon: 'hammer' },
-        menage: { id: 'menage', label: 'Ménage', from: '#F4D59A', to: '#C9923A', icon: 'brush-cleaning' },
-        beaute: { id: 'beaute', label: 'Beauté', from: '#E4C0E6', to: '#A56EB0', icon: 'scissors' },
-        transport: { id: 'transport', label: 'Transport', from: '#F0AAA6', to: '#C45A60', icon: 'car-front' },
-        famille: { id: 'famille', label: 'Famille', from: '#B7DDD6', to: '#3E8F86', icon: 'users' },
-        evenement: { id: 'evenement', label: 'Événementiel', from: '#F6C9A4', to: '#D07A45', icon: 'utensils' },
-        numerique: { id: 'numerique', label: 'Numérique', from: '#C5D2F2', to: '#5C6FBF', icon: 'laptop' },
-        autres: { id: 'autres', label: 'Autres', from: '#C9D3D4', to: '#7E9094', icon: 'shapes' }
+        jardinage: { id: 'jardinage', label: 'Jardinage', from: '#9ADD9F', to: '#35A85C', icon: 'sprout' },
+        plomberie: { id: 'plomberie', label: 'Plomberie', from: '#9BD9FA', to: '#278FDC', icon: 'droplet' },
+        electricite: { id: 'electricite', label: 'Électricité', from: '#FFE780', to: '#F2C230', icon: 'zap' },
+        bricolage: { id: 'bricolage', label: 'Bricolage', from: '#F8C59A', to: '#E58A4B', icon: 'hammer' },
+        menage: { id: 'menage', label: 'Ménage', from: '#F8D786', to: '#E9A52C', icon: 'brush-cleaning' },
+        beaute: { id: 'beaute', label: 'Beauté', from: '#E9B9F0', to: '#B86BC8', icon: 'scissors' },
+        transport: { id: 'transport', label: 'Transport', from: '#F6A0A3', to: '#E5484D', icon: 'car-front' },
+        famille: { id: 'famille', label: 'Famille', from: '#8FE3D8', to: '#1FA898', icon: 'users' },
+        evenement: { id: 'evenement', label: 'Événementiel', from: '#FFD0A8', to: '#F08A3C', icon: 'utensils' },
+        numerique: { id: 'numerique', label: 'Numérique', from: '#C9D4FF', to: '#5C6FE6', icon: 'laptop' },
+        autres: { id: 'autres', label: 'Autres', from: '#C8D5D9', to: '#83969D', icon: 'shapes' }
     });
 
     const MIXED = Object.freeze({
-        id: 'mixed', label: 'Plusieurs métiers', from: '#7EBF8C', to: '#146B43', icon: ''
+        id: 'mixed', label: 'Plusieurs métiers', from: '#8FD9A2', to: '#17864C', icon: ''
     });
 
     const FAMILY_STYLE = Object.freeze({
@@ -57,8 +57,11 @@
         shapes: '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>',
         users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
         utensils: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
-        laptop: '<path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/>'
+        laptop: '<path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/>',
+        all: '<circle cx="12" cy="12" r="7.5"/>'
     });
+
+    const CATALOG = Object.freeze(['jardinage', 'plomberie', 'electricite', 'bricolage', 'menage', 'beaute', 'transport', 'famille', 'evenement', 'numerique', 'autres']);
 
     function categoryOf(row, leaves) {
         if (row && row.taxonomy_id && Array.isArray(leaves)) {
@@ -100,6 +103,18 @@
         return `<svg class="needs-map-pin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
     }
 
+    function filterRows(rows, styleId, leaves) {
+        const list = Array.isArray(rows) ? rows : [];
+        if (!styleId || !STYLES[styleId]) return list;
+        return list.filter((row) => styleIdForRow(row, leaves) === styleId);
+    }
+
+    /** Sélection unique : recliquer ou « Toutes » revient à l'ensemble. */
+    function nextStyle(current, clicked) {
+        if (!clicked || clicked === 'all' || clicked === current) return '';
+        return STYLES[clicked] ? clicked : (current || '');
+    }
+
     function faceHtml(styleId, count) {
         const n = Math.max(1, Number(count) || 1);
         const spec = specFor(styleId);
@@ -107,16 +122,19 @@
         const mark = cluster
             ? `<span class="needs-map-pin-count">${n}</span>`
             : iconSvg(spec.icon);
-        return `<span class="needs-map-pin-face is-pin-${spec.id}${cluster ? ' has-count' : ''}" style="--pin-from:${spec.from};--pin-to:${spec.to}" data-pin="${spec.id}" aria-hidden="true">${mark}</span>`;
+        return `<span class="needs-map-pin-face is-pin-${spec.id}${cluster ? ' has-count' : ''}" style="--pin-from:${spec.from};--pin-to:${spec.to}" data-pin="${spec.id}" aria-hidden="true"><span class="needs-map-pin-glyph">${mark}</span></span>`;
     }
 
     const api = Object.freeze({
         STYLES,
         MIXED,
+        CATALOG,
         FAMILY_STYLE,
         styleIdForRow,
         styleIdForItems,
         specFor,
+        filterRows,
+        nextStyle,
         faceHtml,
         iconSvg
     });

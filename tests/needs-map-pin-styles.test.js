@@ -35,7 +35,21 @@ test('chaque métier réel a sa couleur et son icône, sans nouvel identifiant',
     assert.doesNotMatch(plumbing, /key|wrench/i);
     const transport = pins.faceHtml('transport', 1);
     assert.match(transport, /car-front|rect width="18"/);
-    assert.match(transport, /#C45A60/);
+    assert.match(transport, /#E5484D/);
+    const bolt = pins.faceHtml('electricite', 1);
+    assert.match(bolt, /#F2C230/);
+    assert.match(bolt, /needs-map-pin-glyph/);
+    assert.equal(pins.iconSvg('droplet'), pins.iconSvg(pins.specFor('plomberie').icon));
+});
+
+test('une seule catégorie s’applique, et recliquer la retire', () => {
+    assert.equal(pins.nextStyle('', 'bricolage'), 'bricolage');
+    assert.equal(pins.nextStyle('bricolage', 'plomberie'), 'plomberie');
+    assert.equal(pins.nextStyle('plomberie', 'plomberie'), '');
+    assert.equal(pins.nextStyle('plomberie', 'all'), '');
+    const rows = [row('Plomberie'), row('Bricolage'), row('Covoiturage')];
+    assert.deepEqual(pins.filterRows(rows, 'plomberie', []).map((item) => item.category), ['Plomberie']);
+    assert.equal(pins.filterRows(rows, '', []).length, 3);
 });
 
 test('un groupe homogène garde sa couleur, un groupe mixte est vert sans pictogramme', () => {
@@ -47,6 +61,6 @@ test('un groupe homogène garde sa couleur, un groupe mixte est vert sans pictog
     assert.equal(pins.styleIdForItems([row('Plomberie'), row('Électricité')], []), 'mixed');
     const mixed = pins.faceHtml('mixed', 7);
     assert.match(mixed, /data-pin="mixed"/);
-    assert.match(mixed, /#146B43/);
+    assert.match(mixed, /#17864C/);
     assert.doesNotMatch(mixed, /<svg/);
 });
