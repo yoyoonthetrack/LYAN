@@ -247,6 +247,10 @@
             if (retry) { load(); return; }
             const card = event.target.closest('[data-request-id]');
             if (!card) return;
+            if (knownLoggedOut()) {
+                window.location.href = 'results.html?mode=annonces';
+                return;
+            }
             const row = requests.find(item => item.id === card.dataset.requestId);
             if (row) openRequest(row);
         });

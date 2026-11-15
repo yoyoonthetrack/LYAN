@@ -13,26 +13,32 @@ body.results-page,
 body.results-page[data-explorer-mode="annonces"],
 body.results-page[data-explorer-mode="lyanneurs"] { background: var(--lyann-cream); }
 
-/* Header 3.2C-2 : une photo naturelle, sans voile ni dégradé, et un titre posé sur un fond uni de l'univers (vert pastel Lyanneurs, miel pastel Annonces).
- * Mobile : la photo en haut (visages entiers), le titre dessous. Ordinateur : titre à gauche, photo à droite. Le titre ne recouvre jamais la photo ;
- * le contraste vient du fond uni (vert profond sur pastel : 10:1 et plus). Un trait de couleur sous le titre marque l'univers. */
+/* L'ancienne photo d'ambiance (hero-image) ne fait plus partie de cet écran. */
+body.results-page.is-native-app::before {
+    display: none !important;
+    background-image: none !important;
+    content: none;
+}
+main#explorer #explorerResults { min-height: 320px; }
+main#explorer #explorerResults .lyann-skel-annonce {
+    height: 156px;
+    min-height: 156px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+main#explorer #explorerResults .lyann-skel-profile { min-height: 168px; box-sizing: border-box; }
+
+/* Header : l'image fournie contient déjà le titre, le sous-titre et le décor. Pleine largeur, coins 24 px, proportions conservées. */
 main#explorer .results-v3-header {
-    --hdr-bg: var(--lyann-green-pastel); --hdr-ink: var(--lyann-green-deep); --hdr-accent: var(--lyann-green-primary);
-    position: relative; display: flex; flex-direction: column; align-items: stretch; width: 100%; margin: 0 0 14px; padding: 10px 10px 4px; overflow: hidden;
-    background: var(--hdr-bg); border-radius: 24px; box-shadow: none; filter: none;
+    position: relative; display: block; width: 100%; margin: 0 0 14px; padding: 0; overflow: hidden;
+    background: transparent; border-radius: 24px; box-shadow: none; filter: none;
 }
-main#explorer[data-mode="annonces"] .results-v3-header { --hdr-bg: var(--lyann-honey-pastel); --hdr-accent: var(--lyann-honey-icon); }
 main#explorer .results-v3-photo {
-    display: none; position: static; width: 100%; height: 108px; object-fit: cover; border-radius: 16px; filter: none; box-shadow: none; -webkit-mask-image: none; mask-image: none;
+    display: none; width: 100%; height: auto; aspect-ratio: 2.4 / 1; object-fit: cover; object-position: center; border-radius: 24px;
+    filter: none; box-shadow: none; -webkit-mask-image: none; mask-image: none;
 }
-/* Lyanneurs : les trois visages restent entiers. */
-main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { display: block; object-position: 50% 6%; }
-/* Annonces : la voisine perplexe et la fuite restent entières. */
-main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; object-position: 40% 8%; }
-main#explorer .results-v3-overlay { position: relative; display: block; max-width: none; padding: 10px 10px 8px; text-align: left; color: var(--hdr-ink); pointer-events: none; background: none; }
-main#explorer .results-v3-overlay h1 { margin: 0; font-family: Outfit, sans-serif; font-size: clamp(1.75rem, 8vw, 2.1rem); line-height: 1.05; font-weight: 800; letter-spacing: -0.015em; color: var(--hdr-ink); text-align: left; text-shadow: none; }
-main#explorer .results-v3-overlay h1::after { content: ""; display: block; width: 48px; height: 4px; margin: 8px 0 0; border-radius: 4px; background: var(--hdr-accent); }
-main#explorer .results-v3-overlay p { margin: 8px 0 0; max-width: 26em; font-size: 0.9rem; line-height: 1.3; font-weight: 600; color: var(--hdr-ink); text-align: left; text-shadow: none; }
+main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs,
+main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { display: block; }
 body.is-native-app[data-explorer-mode] main#explorer #explorerPanel { margin-top: 0; }
 
 /* Recherche : une ligne pleine largeur, puis territoire + filtres juste dessous */
@@ -118,8 +124,13 @@ main#explorer .explorer-toggle-icon { width: 18px; height: 18px; fill: currentCo
 main#explorer .explorer-toggle-icon circle { stroke: none; }
 main#explorer .explorer-view-toggle .ph { font-size: 1.1rem; }
 
-/* Pas de ligne intermédiaire entre le toggle / le rail et les résultats */
+/* Pas de ligne intermédiaire entre le toggle / le rail et les résultats. Le bouton « Poster une annonce » reste visible dans Annonces. */
 main#explorer .explorer-annonces-meta, main#explorer .explorer-ranking, main#explorer .explorer-results-heading { display: none; }
+main#explorer[data-mode="annonces"] .explorer-results-heading { display: block; margin: 0 0 12px; }
+main#explorer[data-mode="annonces"] .explorer-results-heading .explorer-publish {
+    display: inline-flex !important; width: 100% !important; min-height: 52px !important; border-radius: 999px !important;
+    font-size: 1.05rem !important; font-weight: 800 !important; justify-content: center !important;
+}
 main#explorer #explorerSummary { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 
 /* Résultats */
@@ -161,14 +172,6 @@ body.results-page.explorer-annonces-map-view main#explorer .results-v3-header { 
 main#explorer.explorer-page { max-width: var(--lyann-page-max, 100%); margin-left: auto; margin-right: auto; box-sizing: border-box; }
 @media (min-width: 720px) {
     main#explorer.explorer-page { padding-left: var(--lyann-page-gutter); padding-right: var(--lyann-page-gutter); }
-    main#explorer .results-v3-header { flex-direction: row; align-items: stretch; min-height: 232px; padding: 14px; border-radius: 28px; }
-    main#explorer .results-v3-overlay { order: 1; flex: 1 1 44%; align-self: center; padding: 8px 24px 8px 22px; }
-    main#explorer .results-v3-photo { order: 2; flex: 0 0 56%; width: 56%; height: auto; min-height: 204px; border-radius: 20px; }
-    main#explorer[data-mode="lyanneurs"] .results-v3-photo.is-lyanneurs { object-position: 50% 14%; }
-    main#explorer[data-mode="annonces"] .results-v3-photo.is-annonces { object-position: 30% 20%; }
-    main#explorer .results-v3-overlay h1 { font-size: clamp(2.4rem, 3.6vw, 3.2rem); }
-    main#explorer .results-v3-overlay h1::after { width: 64px; height: 5px; margin-top: 12px; }
-    main#explorer .results-v3-overlay p { margin-top: 12px; font-size: 1.08rem; }
     /* Recherche et filtres : une seule rangée large. */
     main#explorer .explorer-search-row { margin-bottom: 12px; }
     main#explorer .explorer-quickbar { max-width: 560px; }
@@ -177,15 +180,9 @@ main#explorer.explorer-page { max-width: var(--lyann-page-max, 100%); margin-lef
     main#explorer .lyann-family-disc { width: 60px; height: 60px; }
 }
 @media (min-width: 1024px) {
-    main#explorer .results-v3-header { min-height: 248px; }
-    main#explorer .results-v3-photo { min-height: 220px; }
     main#explorer .lyann-family-disc { width: 68px; height: 68px; }
     main#explorer .lyann-family-icon { width: 31px; height: 31px; }
     main#explorer .lyann-family-label { font-size: 0.8rem; }
-}
-@media (min-width: 1280px) {
-    main#explorer .results-v3-header { min-height: 264px; }
-    main#explorer .results-v3-photo { min-height: 236px; }
 }
 /* Résultats : plusieurs colonnes dès la tablette large. Les cartes se répartissent, elles ne s'étirent pas. */
 @media (min-width: 720px) {
@@ -207,6 +204,7 @@ main#explorer.explorer-page { max-width: var(--lyann-page-max, 100%); margin-lef
 /* Annonces : cartes blanches sur fond crème, bordure très légère et ombre douce. */
 main#explorer .explorer-annonce.explorer-card { background: var(--lyann-white); border: 1px solid var(--lyann-border); box-shadow: var(--lyann-shadow-card); }
 main#explorer .explorer-annonce .explorer-annonce-facts { background: var(--lyann-cream); border-color: var(--lyann-border); }
+main#explorer[data-mode="annonces"] .explorer-annonce-compact .explorer-annonce-facts { background: transparent; border: 0; }
 main#explorer .explorer-annonce .explorer-annonce-title { color: var(--lyann-text-primary); }
 main#explorer .explorer-annonce .explorer-annonce-taxonomy { background: var(--lyann-green-pastel); border: 1px solid var(--lyann-border); color: var(--lyann-text-primary); }
 main#explorer .explorer-annonce .explorer-annonce-age { color: var(--lyann-text-secondary-aa); }
@@ -230,6 +228,12 @@ main#explorer .lyann-cta-primary {
     border: 1px solid var(--lyann-green-primary) !important; box-shadow: 0 6px 16px rgba(36, 107, 73, 0.22) !important;
 }
 main#explorer .explorer-annonce-actions .btn-primary { box-shadow: 0 6px 16px rgba(36, 107, 73, 0.22) !important; }
+main#explorer[data-mode="annonces"] .explorer-results-heading .explorer-publish.lyann-cta-primary {
+    background: linear-gradient(110deg, var(--lyann-cta-green) 0%, var(--lyann-cta-mid) 42%, var(--lyann-cta-gold) 100%) !important;
+    background-image: linear-gradient(110deg, var(--lyann-cta-green) 0%, var(--lyann-cta-mid) 42%, var(--lyann-cta-gold) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    border-radius: 999px !important;
+}
 main#explorer .explorer-annonce-actions .explorer-btn-lyanner { background: var(--lyann-white); border-color: var(--lyann-border-control); color: var(--lyann-text-primary); }
 
 /* Carte : une seule ligne d'information, discrète. */
@@ -249,11 +253,17 @@ body.results-page.explorer-annonces-map-view .needs-map-summary { margin: 0 2px 
 main#explorer[data-mode="annonces"] .explorer-search .explorer-search-icon { color: var(--lyann-honey-icon); }
 main#explorer[data-mode="annonces"] .explorer-annonce .explorer-annonce-taxonomy { background: var(--lyann-honey-pastel); border-color: var(--lyann-honey); color: var(--lyann-text-primary); }
 main#explorer[data-mode="annonces"] .explorer-annonce .explorer-fact-icon { color: var(--lyann-honey-icon); }
-main#explorer[data-mode="annonces"] .explorer-annonce .explorer-fact-price .explorer-fact-text { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--lyann-honey-pastel); color: var(--lyann-text-primary); font-weight: 800; }
-/* « Voir l'annonce » : miel doux, texte vert profond (7,31:1), sans brillance ni dégradé ; plus fort que la règle verte commune. */
+main#explorer[data-mode="annonces"] .explorer-annonce .explorer-fact-price .explorer-fact-text { display: inline; padding: 0; border-radius: 0; background: none; color: var(--lyann-text-primary); font-weight: 600; font-size: 0.82rem; }
+/* « Voir l'annonce » : fond vert très pâle, sans bordure. */
 main#explorer[data-mode="annonces"] .explorer-annonce-actions .btn-primary {
-    background: var(--lyann-honey) !important; background-image: none !important; color: var(--lyann-text-primary) !important;
-    border: 1px solid var(--lyann-honey) !important; box-shadow: 0 3px 8px rgba(22, 61, 45, 0.12) !important; font-weight: 800;
+    background: var(--lyann-green-pastel) !important; background-image: none !important; color: var(--lyann-text-primary) !important;
+    border: 0 !important; box-shadow: none !important; font-weight: 800;
+}
+main#explorer[data-mode="annonces"] .explorer-annonce-actions .explorer-btn-lyanner {
+    display: inline-flex; flex: 1; align-items: center; justify-content: center; min-height: 44px;
+    background: linear-gradient(110deg, var(--lyann-cta-green) 0%, var(--lyann-cta-mid) 42%, var(--lyann-cta-gold) 100%) !important;
+    background-image: linear-gradient(110deg, var(--lyann-cta-green) 0%, var(--lyann-cta-mid) 42%, var(--lyann-cta-gold) 100%) !important;
+    color: #fff !important; border: 0 !important; border-radius: 999px !important; box-shadow: none !important; font-weight: 800;
 }
 main#explorer .explorer-annonce-actions .btn { white-space: nowrap; padding-left: 12px; padding-right: 12px; font-size: 0.92rem; }
 /* Navigation native : l'onglet actif est une pastille arrondie contenue dans la barre (verte pour Lyanneurs, miel très clair pour Annonces),

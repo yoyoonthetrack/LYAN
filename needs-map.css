@@ -126,7 +126,7 @@
     justify-content: center;
     width: 40px;
     height: 40px;
-    border: 2.5px solid #1B3B2B;
+    border: 1.5px solid #246B49;
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
     color: #1B3B2B;
@@ -136,13 +136,16 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.needs-map-pin-face.is-tone-green { background: #C8E6C9; }
-.needs-map-pin-face.is-tone-yellow { background: #FFF3B0; }
-.needs-map-pin-face.is-tone-neutral { background: #E8EDE4; color: #1B3B2B; }
+.needs-map-pin-face.is-tone-green,
+.needs-map-pin-face.is-tone-yellow,
+.needs-map-pin-face.is-tone-neutral { background: #E5B345; color: #1B3B2B; }
 
-.needs-map-pin-face svg {
+.needs-map-pin-face svg,
+.needs-map-pin-emoji {
     transform: rotate(45deg);
     flex: none;
+    font-size: 1.05rem;
+    line-height: 1;
 }
 
 .needs-map-pin-count {

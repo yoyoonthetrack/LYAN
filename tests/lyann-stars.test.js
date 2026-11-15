@@ -33,7 +33,7 @@ test('the three universe titles share one Newsreader cut', () => {
     const results = fs.readFileSync(path.join(__dirname, '../results.html'), 'utf8');
     assert.match(feed, /<h1 class="banner-title">Bokantaj<\/h1>/);
     // Phase 3.1A: Lyanneurs / Annonces use one compact photo header; the visible title is #explorerTitle (copy set by explorer-ui.js).
-    assert.match(results, /<h1 id="explorerTitle">Lyanneurs<\/h1>/);
+    assert.match(results, /<h1 id="explorerTitle" class="sr-only">Lyanneurs<\/h1>/);
     assert.match(fs.readFileSync(path.join(__dirname, '../explorer-ui.js'), 'utf8'), /title: 'Annonces', subtitle: 'Des besoins réels autour de vous'/);
     assert.match(feed, /family=Newsreader:opsz,wght@72,700/);
     assert.match(results, /family=Newsreader:opsz,wght@72,700/);

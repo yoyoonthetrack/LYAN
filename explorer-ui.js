@@ -37,6 +37,9 @@
         let needsMap = null;
         let revealMap = view === 'map';
         let leaves = [], records = [], revision = 0, savedArea = '', viewerTerritory = '';
+        let catalogReady = false;
+        const remembered = { annonces: null, lyanneurs: null };
+        const modeTokens = { annonces: 0, lyanneurs: 0 };
         let listScrollY = 0;
         let lastSearchArea = filters.area;
         /** @type {string[]|null} null = toutes les familles visuelles */
@@ -86,12 +89,11 @@
             const label = kind === 'annonce' ? 'Annonce' : 'Profil';
             return `<span class="explorer-type-pill is-${kind}">${label}</span>`;
         }
-        // Petit avatar rond de l'auteur, à gauche du titre. Il ouvre le profil public ; sans identifiant (contrat visiteur) il invite à se connecter.
-        function authorAvatar(r, label) {
-            const memberId = r.requester_id || r.profiles?.id;
-            const img = `<img src="${avatar(r.profiles)}" alt="" width="36" height="36" loading="lazy" onerror="window.handleAvatarError(this)">`;
-            if (!memberId && currentUserId()) return `<span class="explorer-annonce-avatar" aria-hidden="true">${img}</span>`;
-            return `<button type="button" class="explorer-annonce-avatar" data-action="profile"${memberId ? ` data-id="${escape(memberId)}"` : ''} aria-label="${memberId ? `Voir le profil de ${escape(label)}` : `Se connecter pour voir le profil de ${escape(label)}`}">${img}</button>`;
+        function annonceMedia(r) {
+            const profile = r.profiles || {};
+            const raw = profile.avatar_url || profile.avatar || '';
+            const url = typeof raw === 'string' && /^https?:\/\//i.test(raw) ? raw : 'default-avatar.svg';
+            return `<img class="explorer-annonce-photo" src="${escape(url)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='default-avatar.svg'">`;
         }
         function requestCard(r, showType = false) {
             const own = Boolean(currentUserId()) && r.requester_id === currentUserId();
@@ -101,28 +103,29 @@
             const badge = format()?.verifiedLabel(r.profiles);
             const rating = format()?.ratingLabel(r.profiles);
             const distanceKnown = Boolean(window.LYANN_GEO?.referencePoint?.());
-            // The card carries the short title only; the full description the author
-            // wrote is the payload of the Détails surface.
+            const title = String(r.title || '').replace(/\s+/g, ' ').trim();
+            const description = String(r.description || '').replace(/\s+/g, ' ').trim();
             return `<article class="explorer-card explorer-annonce explorer-annonce-compact" data-request-id="${escape(r.id)}">
-                <div class="explorer-card-top explorer-annonce-head">
-                    <div class="explorer-annonce-labels">
-                        ${showType ? typePill('annonce') : ''}
-                        ${taxonomy ? `<span class="explorer-annonce-taxonomy" title="${escape(taxonomy)}">${escape(taxonomy)}</span>` : ''}
-                        ${age ? `<span class="explorer-annonce-age">${escape(age)}</span>` : ''}
+                <div class="explorer-annonce-media">${annonceMedia(r)}</div>
+                <div class="explorer-annonce-main">
+                    <div class="explorer-card-top explorer-annonce-head">
+                        <div class="explorer-annonce-labels">
+                            ${showType ? typePill('annonce') : ''}
+                            ${taxonomy ? `<span class="explorer-annonce-taxonomy" title="${escape(taxonomy)}">${escape(taxonomy)}</span>` : ''}
+                            ${age ? `<span class="explorer-annonce-age">${escape(age)}</span>` : ''}
+                        </div>
+                        ${favorite('REQUEST', r.id)}
                     </div>
-                    ${favorite('REQUEST', r.id)}
+                    <h2 class="explorer-annonce-title">${escape(title)}</h2>
+                    ${description ? `<p class="explorer-annonce-excerpt">${escape(description)}</p>` : ''}
+                    <ul class="explorer-annonce-facts">
+                        ${annonceFact('ph-map-pin', 'Lieu', placeText(r), distanceKnown ? 'Distance approximative entre communes' : '', 'explorer-fact-location')}
+                        ${annonceFact('ph-currency-eur', 'Prix', format()?.priceLabel(r), '', 'explorer-fact-price')}
+                        ${annonceFact('ph-calendar-blank', 'Date', format()?.dateLabel(r), '', 'explorer-fact-date')}
+                    </ul>
                 </div>
-                <div class="explorer-annonce-titlerow">
-                    ${authorAvatar(r, authorName)}
-                    <h2 class="explorer-annonce-title">${escape(format()?.shortTitle(r.title) || r.title)}</h2>
-                </div>
-                <ul class="explorer-annonce-facts">
-                    ${annonceFact('ph-map-pin', 'Lieu', placeText(r), distanceKnown ? 'Distance approximative entre communes' : '', 'explorer-fact-location')}
-                    ${annonceFact('ph-currency-eur', 'Prix', format()?.priceLabel(r), '', 'explorer-fact-price')}
-                    ${annonceFact('ph-calendar-blank', 'Date', format()?.dateLabel(r), '', 'explorer-fact-date')}
-                </ul>
                 <div class="explorer-person explorer-person-zone explorer-annonce-author">${profileZoneTrigger(r.requester_id || r.profiles?.id, authorName)}<span class="explorer-person-name">${escape(authorName)}${own ? ' · Votre annonce' : ''}</span>${badge ? `<span class="explorer-person-badge"><i class="ph-fill ph-seal-check" aria-hidden="true"></i>${escape(badge)}</span>` : ''}${rating ? `<span class="explorer-person-rating"><i class="ph-fill ph-star" aria-hidden="true"></i><span class="sr-only">Note : </span>${escape(rating)}</span>` : ''}</div>
-                <div class="explorer-card-actions explorer-annonce-actions"><button class="btn btn-primary" data-action="detail" data-id="${escape(r.id)}">Voir l'annonce →</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}">Lyanner</button>` : ''}</div>
+                <div class="explorer-card-actions explorer-annonce-actions"><button class="btn btn-primary" data-action="detail" data-id="${escape(r.id)}">Voir l'annonce →</button>${!own && r.status === 'OPEN' ? `<button class="btn btn-outline explorer-btn-lyanner" data-action="help" data-id="${escape(r.id)}"><i class="ph ph-handshake" aria-hidden="true"></i> Lyanner</button>` : ''}</div>
             </article>`;
         }
         function formatDisplayName(p) {
@@ -232,11 +235,42 @@
             const matches = (territory ? [territory] : territories()).flatMap(t => Object.values(window.LYANN_TERRITORY_DATASET[t]).flat().filter(c => clean(c) === clean(value)).map(c => ({territory:t, commune:c})));
             return matches.length === 1 ? matches[0] : {territory:territory || '', commune:''};
         }
+        function communesFor(territory) {
+            const source = territory
+                ? Object.values(window.LYANN_TERRITORY_DATASET?.[territory] || {}).flat()
+                : territories().flatMap(t => Object.values(window.LYANN_TERRITORY_DATASET?.[t] || {}).flat());
+            return [...new Set(source)].sort((a, b) => a.localeCompare(b, 'fr'));
+        }
         function syncCommunes(territory, selected = '') {
-            const communes = [...new Set(Object.values(window.LYANN_TERRITORY_DATASET?.[territory] || {}).flat())].sort((a,b) => a.localeCompare(b, 'fr'));
-            $('explorerCommune').innerHTML = '<option value="">Toutes les communes</option>' + communes.map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
-            $('explorerCommune').disabled = !territory;
-            $('explorerCommune').value = communes.includes(selected) ? selected : '';
+            const communes = communesFor(territory);
+            const known = selected && !communes.includes(selected) ? [...communes, selected] : communes;
+            $('explorerCommune').innerHTML = '<option value="">Toutes les communes</option>' + known.map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
+            $('explorerCommune').disabled = false;
+            $('explorerCommune').value = known.includes(selected) ? selected : '';
+        }
+        const territoryDrawerLabel = value => {
+            const match = String(value || '').match(/^(.*?)\s*\((\d+)\)\s*$/);
+            const name = (match ? match[1] : String(value || '')).replace('La Réunion', 'Réunion').trim();
+            return match ? `${name} - ${match[2]}` : name;
+        };
+        function paintDrawer(selectId, keepOpen = true) {
+            const select = $(selectId);
+            const host = document.querySelector(`[data-drawer="${selectId}"]`);
+            if (!select || !host) return;
+            const current = [...select.options].find(option => option.value === select.value) || select.options[0];
+            const groups = new Map();
+            for (const option of select.options) {
+                const parts = option.textContent.split(' — ');
+                const group = parts.length > 1 ? parts[0] : '';
+                const label = parts.length > 1 ? parts.slice(1).join(' — ') : option.textContent;
+                if (!groups.has(group)) groups.set(group, []);
+                groups.get(group).push({ value: option.value, label, selected: option.value === select.value });
+            }
+            const wasOpen = keepOpen && host.querySelector('.explorer-drawer-panel') && !host.querySelector('.explorer-drawer-panel').hidden;
+            host.innerHTML = `<button type="button" class="explorer-drawer-btn" aria-expanded="${wasOpen ? 'true' : 'false'}">${escape(current?.textContent || '')}</button><div class="explorer-drawer-panel"${wasOpen ? '' : ' hidden'}>${[...groups.entries()].map(([group, items]) => `${group ? `<p class="explorer-drawer-group">${escape(group)}</p>` : ''}${items.map(item => `<button type="button" class="explorer-drawer-option${item.selected ? ' is-selected' : ''}" data-value="${escape(item.value)}">${escape(item.label)}</button>`).join('')}`).join('')}</div>`;
+        }
+        function paintDrawers() {
+            ['explorerService', 'explorerTerritory', 'explorerCommune'].forEach(paintDrawer);
         }
         $('explorerTerritory').addEventListener('change', () => syncCommunes($('explorerTerritory').value, $('explorerCommune').value));
         function syncUrl() {
@@ -294,17 +328,16 @@
             if (!api || !host) return;
             const draft = api.canonicalFamilySelection(mapFamilyDraft || []);
             const allOn = draft.length === 0 || draft.length >= api.FAMILIES.length;
-            const familyIcon = {
-                maison: 'ph-wrench', jardin: 'ph-plant', entretien: 'ph-broom', beaute: 'ph-flower',
-                transport: 'ph-truck', famille: 'ph-users', evenement: 'ph-cooking-pot', numerique: 'ph-laptop'
-            };
             // Chaque puce reflète uniquement sa propre famille : « Toutes » n'allume jamais les autres puces.
-            host.innerHTML = `<button type="button" class="explorer-map-category-chip${allOn ? ' is-active' : ''}" data-family="__all__" aria-pressed="${allOn ? 'true' : 'false'}">Toutes</button>`
+            const familyEmoji = {
+                maison: '🔧', jardin: '🌿', entretien: '🧹', beaute: '💅',
+                transport: '🚚', famille: '👨‍👩‍👧', evenement: '🍽️', numerique: '💻'
+            };
+            host.innerHTML = `<button type="button" class="explorer-map-category-chip is-tone-green${allOn ? ' is-active' : ''}" data-family="__all__" aria-pressed="${allOn ? 'true' : 'false'}">Toutes</button>`
                 + api.FAMILIES.map((family) => {
                     const active = draft.includes(family.id);
-                    const tone = family.tone === 'yellow' ? 'is-tone-yellow' : 'is-tone-green';
-                    const icon = familyIcon[family.id] || 'ph-calendar-blank';
-                    return `<button type="button" class="explorer-map-category-chip ${tone}${active ? ' is-active' : ''}" data-family="${escape(family.id)}" aria-pressed="${active ? 'true' : 'false'}"><i class="ph ${icon}" aria-hidden="true"></i><span>${escape(family.label)}</span></button>`;
+                    const emoji = familyEmoji[family.id] || '📍';
+                    return `<button type="button" class="explorer-map-category-chip is-tone-green${active ? ' is-active' : ''}" data-family="${escape(family.id)}" aria-pressed="${active ? 'true' : 'false'}"><span class="explorer-map-category-emoji" aria-hidden="true">${emoji}</span><span>${escape(family.label)}</span></button>`;
                 }).join('');
         }
         // Un seul écouteur délégué (jamais rattaché aux puces recréées) : état lu au moment du clic, pas capturé au rendu.
@@ -394,7 +427,7 @@
             const filterSub = $('explorerFilterSub');
             if (filterTitle) filterTitle.textContent = mode === 'annonces' ? 'Filtrer les annonces' : 'Filtrer les Lyanneurs';
             if (filterSub) filterSub.textContent = mode === 'annonces'
-                ? 'Affinez le service, le lieu ou le budget.'
+                ? 'Affinez le service ou le lieu.'
                 : 'Affinez le métier, le territoire ou la commune.';
             root.dataset.universe = copy.art;
             const header = root.querySelector('.lyann-universe-header');
@@ -405,6 +438,13 @@
             if (tall) tall.src = `assets/universe/${copy.art}-portrait.webp`;
             document.querySelectorAll('[data-explorer-nav]').forEach(link => {
                 link.classList.toggle('active', link.getAttribute('data-explorer-nav') === mode);
+            });
+            document.querySelectorAll('#tab-annonces, #tab-lyanneurs').forEach(tab => {
+                const on = tab.id === (mode === 'annonces' ? 'tab-annonces' : 'tab-lyanneurs');
+                tab.classList.toggle('active', on);
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+                if (on) tab.setAttribute('aria-current', 'page');
+                else tab.removeAttribute('aria-current');
             });
             $('explorerPanel').setAttribute('aria-labelledby', 'explorerTitle');
             $('explorerSearchInput').placeholder = mode === 'annonces' ? 'Rechercher une annonce, un besoin…' : 'Rechercher un talent, un service…';
@@ -423,37 +463,45 @@
             $('explorerCategory').innerHTML = '<option value="">Toutes les catégories</option>' + categories.map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join('');
             $('explorerCategory').value = filters.category;
             renderCategoryPills();
-            $('explorerRequestFilters').hidden = mode !== 'annonces';
-            $('explorerAreaLabel').hidden = mode !== 'annonces';
-            $('explorerProfileGeography').hidden = mode !== 'lyanneurs';
-            $('explorerSavedArea').hidden = mode !== 'annonces' || !savedArea;
+            $('explorerRequestFilters').hidden = true;
+            $('explorerAreaLabel').hidden = true;
+            $('explorerProfileGeography').hidden = false;
+            $('explorerSavedArea').hidden = !savedArea;
             // A refresh must not discard a territory the reader has chosen but not applied yet.
             if (!$('explorerFilters')?.open) {
                 $('explorerService').innerHTML = '<option value="">Tous les services</option>' + leaves.filter(t => !filters.category || t.category === filters.category).map(t => `<option value="${escape(t.id)}">${escape(t.category)} — ${escape(t.subcategory)}</option>`).join('');
                 $('explorerService').value = filters.service;
                 for (const key of ['area','urgency','budget']) $('explorer' + key[0].toUpperCase() + key.slice(1)).value = filters[key];
-                $('explorerTerritory').innerHTML = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(t.replace(/\s*\(\d+\)/, '').replace('La Réunion', 'Réunion'))}</option>`).join('');
+                const territoryOptions = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(territoryDrawerLabel(t))}</option>`).join('');
+                if ($('explorerTerritory').dataset.options !== territoryOptions) {
+                    $('explorerTerritory').dataset.options = territoryOptions;
+                    $('explorerTerritory').innerHTML = territoryOptions;
+                }
                 $('explorerTerritory').value = filters.territory;
                 syncCommunes(filters.territory, filters.commune);
+                paintDrawers();
             }
             const chips = [];
-            const territoryName = value => String(value || '').replace(/\s*\(\d+\)/, '').replace('La Réunion', 'Réunion');
-            for (const key of ['query','service','area','territory','commune','urgency','budget']) {
-                if (!filters[key] || mode === 'lyanneurs' && ['area','urgency','budget'].includes(key) || mode === 'annonces' && key === 'commune') continue;
-                const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'budget' ? `Budget ≤ ${filters.budget} €` : key === 'urgency' ? dateModeLabel(filters[key]) : key === 'territory' ? territoryName(filters[key]) : filters[key];
+            for (const key of ['query','service','area','territory','commune']) {
+                if (!filters[key] || mode === 'lyanneurs' && key === 'area') continue;
+                const label = key === 'service' ? leaves.find(t => t.id === filters.service)?.subcategory : key === 'territory' ? territoryDrawerLabel(filters[key]) : filters[key];
                 chips.push(`<button data-remove="${key}" aria-label="Retirer le filtre ${escape(label)}">${escape(label)} ×</button>`);
             }
             // Métier V2 : famille, métier et spécialité sont portés par la barre compacte (renderTaxoBar), pas par des pastilles.
             // Territoire rapide, à côté de la recherche
             const quick = $('explorerTerritoryQuick');
             if (quick) {
-                quick.innerHTML = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(territoryName(t))}</option>`).join('');
+                const territoryOptions = '<option value="">Tous les territoires</option>' + territories().map(t => `<option value="${escape(t)}">${escape(territoryDrawerLabel(t))}</option>`).join('');
+                if (quick.dataset.options !== territoryOptions) {
+                    quick.dataset.options = territoryOptions;
+                    quick.innerHTML = territoryOptions;
+                }
                 quick.value = filters.territory;
             }
             $('explorerActiveFilters').innerHTML = chips.join('');
             const filterIcon = $('explorerFiltersIcon');
             if (filterIcon) {
-                const active = Boolean(filters.service || filters.urgency || filters.budget || (mode === 'annonces' ? filters.area : filters.commune));
+                const active = Boolean(filters.service || filters.territory || filters.commune || filters.area);
                 filterIcon.classList.toggle('has-active-filters', active);
                 filterIcon.hidden = false;
             }
@@ -485,6 +533,9 @@
         function renderCategoryPills() {
             const host = $('explorerCategoryPills');
             if (!host || !V2()) return;
+            const signature = V2().FAMILIES.map(f => f.code + (filters.family === f.code ? '*' : '')).join(',');
+            if (host.dataset.pills === signature && host.childElementCount === V2().FAMILIES.length) return;
+            host.dataset.pills = signature;
             // Le focus clavier survit au rendu : on le rend à la famille qui l'avait.
             const focused = host.contains(document.activeElement) ? document.activeElement.dataset.family : null;
             host.innerHTML = V2().FAMILIES.map(f => {
@@ -646,6 +697,10 @@
                 results = results.filter(record => V2().rowMatchesQuery(recordRows(record), queryMatch, v2Ctx()));
             }
             if (mode === 'annonces' && filters.territory) results = results.filter(annonceInTerritory);
+            if (mode === 'annonces' && filters.commune) {
+                const wantedCommune = cleanTerritory(filters.commune);
+                results = results.filter(record => cleanTerritory(record.location).includes(wantedCommune));
+            }
             const stamped = mode === 'annonces' ? results.map(row => {
                 const family = v2Index ? V2().familyOf(row, v2Ctx()) : '';
                 return family ? Object.assign({}, row, { _v2Family: family }) : row;
@@ -693,15 +748,70 @@
             setSurface(false);
             container.dataset.state = results.length ? 'SUCCESS' : 'EMPTY';
             if (!results.length) {
-                container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${(mode === 'annonces' ? filters.area : filters.territory) ? `<button class="btn btn-outline" data-remove="${mode === 'annonces' ? 'area' : 'territory'}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>' : ''}</div>`;
+                const zoneRemove = filters.commune ? 'commune' : (filters.territory ? 'territory' : (filters.area ? 'area' : ''));
+                container.innerHTML = `<div class="explorer-state"><h2>${mode === 'annonces' ? "Pas encore d'annonce correspondant à votre recherche." : 'Aucun Lyanneur trouvé pour cette recherche.'}</h2><p>Essayez un autre service ou élargissez votre zone.</p><button class="btn btn-outline" data-action="reset">Modifier les filtres</button>${zoneRemove ? `<button class="btn btn-outline" data-remove="${zoneRemove}">Élargir la zone</button>` : ''}${mode === 'annonces' ? '<button class="btn btn-primary explorer-publish"><i class="ph ph-plus" aria-hidden="true"></i> Poster une annonce</button>' : ''}</div>`;
             } else {
                 const cards = results.map(record => (mode === 'annonces' ? requestCard(record) : profileCard(record)));
                 container.innerHTML = cards.join('');
             }
             window.syncFavoriteButtonStates?.();
         }
+        function rowCacheId(nextMode) {
+            const identity = window.LYANN_AUTH_STATE?.getSnapshot?.().userId || 'anonymous';
+            return `${identity}:${nextMode === 'annonces' ? 'requests' : 'profiles'}`;
+        }
+        function cachedRows(nextMode) {
+            const value = window.LYANN_DATA_CACHE?.get('explorer', rowCacheId(nextMode));
+            return Array.isArray(value) ? value : null;
+        }
+        function switchExplorerMode(nextMode) {
+            if (nextMode !== 'annonces' && nextMode !== 'lyanneurs' || nextMode === mode) return;
+            syncUrl();
+            const carried = { territory: filters.territory, commune: filters.commune, area: filters.area };
+            if (mode === 'annonces') {
+                destroyNeedsMap();
+                view = 'list';
+                applyMapViewLayout();
+            }
+            mode = nextMode;
+            let saved = null;
+            try { saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + mode) || 'null'); } catch (_) {}
+            filters = V2().filtersAcrossModes(carried, saved);
+            mapFamilyFilter = filters.family ? [filters.family] : null;
+            closeRefine({ restoreFocus: false });
+            if (typeof window.closeLyannHamburgerDrawer === 'function') window.closeLyannHamburgerDrawer();
+            const fresh = cachedRows(mode);
+            const shown = fresh || remembered[mode];
+            if (shown && catalogReady) {
+                revision += 1;
+                records = shown;
+                $('explorerResults').setAttribute('aria-busy', 'false');
+                render({ quiet: true });
+                if (!fresh) search(false, true);
+                return;
+            }
+            search();
+        }
+        function warmOtherMode() {
+            const other = mode === 'annonces' ? 'lyanneurs' : 'annonces';
+            if (cachedRows(other)) return;
+            const load = other === 'annonces' ? repo.loadRequests() : repo.load();
+            Promise.resolve(load).catch(() => {});
+        }
         async function search(force = false, quiet = false) {
+            const cached = !force && catalogReady ? cachedRows(mode) : null;
+            if (cached) {
+                revision += 1;
+                remembered[mode] = cached;
+                records = cached;
+                $('explorerResults').setAttribute('aria-busy', 'false');
+                render({ quiet: true });
+                return;
+            }
+            const requestedMode = mode;
             const token = ++revision;
+            const modeToken = ++modeTokens[requestedMode];
+            const loadRows = requestedMode === 'annonces' ? () => repo.loadRequests({force}) : () => repo.load({force});
             const areaChanged = filters.area !== lastSearchArea;
             if (!quiet) lastSearchArea = filters.area;
             syncControls();
@@ -719,13 +829,27 @@
             }
             try {
                 await window.LYANN_AUTH_STATE?.ready?.();
-                const [data, taxonomy, index] = await Promise.all([mode === 'annonces' ? repo.loadRequests({force}) : repo.load({force}), repo.taxonomy(force), V2().load(window.LYANN_API_CLIENT?.supabase, force)]);
-                if (token !== revision) return;
-                records = data; leaves = taxonomy; v2Index = index;
+                const [data, taxonomy, index] = await Promise.all([loadRows(), repo.taxonomy(force), V2().load(window.LYANN_API_CLIENT?.supabase, force)]);
+                if (modeToken !== modeTokens[requestedMode]) return;
+                remembered[requestedMode] = data;
+                catalogReady = true;
+                leaves = taxonomy; v2Index = index;
+                if (mode !== requestedMode) return;
+                records = data;
                 if (mode === 'annonces') $('explorerUrgency').innerHTML = '<option value="">Tous les délais</option>' + [...new Set(data.map(r => format()?.dateMode(r)).filter(Boolean))].map(u => `<option value="${escape(u)}">${escape(dateModeLabel(u))}</option>`).join('');
                 render({ quiet, reframe: !quiet && areaChanged });
+                if (!quiet) warmOtherMode();
             } catch (error) {
-                if (token !== revision) return;
+                if (modeToken !== modeTokens[requestedMode]) return;
+                if (quiet && Array.isArray(remembered[requestedMode])) {
+                    if (mode === requestedMode) {
+                        records = remembered[requestedMode];
+                        render({ quiet: true });
+                    }
+                    console.warn('[Explorer] Background refresh failed', error);
+                    return;
+                }
+                if (mode !== requestedMode) return;
                 // A failed load is reported by the list surface, with its retry button.
                 destroyNeedsMap();
                 setSurface(false);
@@ -775,23 +899,7 @@
             }
             if (button.dataset.view && button.closest('#explorerViewToggle')) { setView(button.dataset.view); return; }
             if (button.dataset.mode) {
-                const nextMode = button.dataset.mode;
-                if (nextMode !== mode && (nextMode === 'annonces' || nextMode === 'lyanneurs')) {
-                    syncUrl();
-                    const carried = { territory: filters.territory, commune: filters.commune, area: filters.area };
-                    if (mode === 'annonces' && nextMode !== 'annonces') {
-                        destroyNeedsMap();
-                        view = 'list';
-                        applyMapViewLayout();
-                    }
-                    mode = nextMode;
-                    let saved = null;
-                    try { saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + mode) || 'null'); } catch (_) {}
-                    filters = V2().filtersAcrossModes(carried, saved);
-                    mapFamilyFilter = filters.family ? [filters.family] : null;
-                    closeRefine({ restoreFocus: false });
-                    search();
-                }
+                switchExplorerMode(button.dataset.mode);
                 return;
             }
             if (button.dataset.remove) {
@@ -893,8 +1001,12 @@
         $('explorerFiltersIcon')?.addEventListener('click', openFilters);
         $('explorerFiltersClose').addEventListener('click', () => $('explorerFilters').close());
         const readFilterSheet = () => {
-            const keys = mode === 'annonces' ? ['service','area','urgency','budget'] : ['service','territory','commune'];
-            for (const key of keys) filters[key] = $('explorer' + key[0].toUpperCase() + key.slice(1)).value.trim();
+            filters.service = $('explorerService').value.trim();
+            filters.territory = $('explorerTerritory').value.trim();
+            filters.commune = $('explorerCommune').value.trim();
+            filters.urgency = '';
+            filters.budget = '';
+            filters.area = '';
         };
         // Read the sheet on click, before the dialog closes and can restore the
         // values from when it opened. Otherwise the applied territory is stale.
@@ -926,29 +1038,69 @@
             document.body.classList.remove('explorer-map-category-sheet-open');
             render({ quiet: true });
         });
+        $('explorerFilterForm').addEventListener('click', event => {
+            const trigger = event.target.closest('.explorer-drawer-btn');
+            const option = event.target.closest('.explorer-drawer-option');
+            if (trigger) {
+                const panel = trigger.nextElementSibling;
+                const willOpen = panel.hidden;
+                document.querySelectorAll('#explorerFilterForm .explorer-drawer-panel').forEach(panelNode => {
+                    panelNode.hidden = true;
+                    panelNode.previousElementSibling?.setAttribute('aria-expanded', 'false');
+                });
+                panel.hidden = !willOpen;
+                trigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                return;
+            }
+            if (!option) return;
+            event.preventDefault();
+            const drawer = option.closest('.explorer-drawer');
+            const select = $(drawer.dataset.drawer);
+            select.value = option.dataset.value;
+            select.dispatchEvent(new Event('change'));
+            if (drawer.dataset.drawer === 'explorerTerritory') paintDrawer('explorerCommune');
+            paintDrawer(drawer.dataset.drawer, false);
+        });
         $('explorerSavedArea').addEventListener('click', () => {
             if (!savedArea) return;
-            filters.area = savedArea;
+            const geo = inferGeography(savedArea);
+            filters.territory = geo.territory || '';
+            filters.commune = geo.commune || '';
+            filters.area = geo.territory || geo.commune ? '' : savedArea;
+            $('explorerFilters')?.close();
             search();
         });
         window.addEventListener('lyann_request_created', () => { mode = 'annonces'; search(true); });
         document.addEventListener('click', event => {
-            const link = event.target.closest && event.target.closest('[data-explorer-nav]');
-            if (!link) return;
-            const nextMode = link.getAttribute('data-explorer-nav');
-            if (nextMode !== 'annonces' && nextMode !== 'lyanneurs' || nextMode === mode) return;
-            syncUrl();
-            let saved = null;
-            try { saved = JSON.parse(sessionStorage.getItem('lyann-explorer-filters:' + nextMode) || 'null'); } catch (_) {}
-            try {
-                sessionStorage.setItem('lyann-explorer-filters:' + nextMode, JSON.stringify(V2().filtersAcrossModes({
-                    territory: filters.territory, commune: filters.commune, area: filters.area
-                }, saved)));
-            } catch (_) {}
+            const link = event.target.closest && event.target.closest('#tab-annonces, #tab-lyanneurs, [data-explorer-nav="annonces"], [data-explorer-nav="lyanneurs"]');
+            if (!link || !document.getElementById('explorer')) return;
+            const nextMode = link.id === 'tab-annonces' || link.getAttribute('data-explorer-nav') === 'annonces' ? 'annonces' : 'lyanneurs';
+            if (nextMode === mode) {
+                event.preventDefault();
+                return;
+            }
+            event.preventDefault();
+            switchExplorerMode(nextMode);
         }, true);
-        window.addEventListener('pageshow', event => { if (event.persisted) search(true); });
-        // Leaving the page (tab, back swipe, app switch into the page cache) always releases the Carte lock;
-        // a restored page re-applies it from its own state through search() above.
+        function resumeExplorer() {
+            if (catalogReady && Array.isArray(remembered[mode])) {
+                if (!cachedRows(mode)) search(false, true);
+                else applyMapViewLayout();
+                return;
+            }
+            search(true);
+        }
+        let resumeQueued = false;
+        function queueResume() {
+            if (resumeQueued) return;
+            resumeQueued = true;
+            queueMicrotask(() => { resumeQueued = false; resumeExplorer(); });
+        }
+        window.addEventListener('pageshow', event => { if (event.persisted) queueResume(); });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') queueResume();
+        });
+        // Leaving the page releases the Carte lock. Coming back reapplies it from the current mode.
         window.addEventListener('pagehide', () => {
             document.body.classList.remove('explorer-annonces-map-view', 'explorer-map-category-sheet-open');
         });
@@ -971,6 +1123,9 @@
             } catch (_) { /* Optional saved location must not block public discovery. */ }
         }
         (async () => {
+            if (!params.has('territory') && !params.has('commune') && filters.area) Object.assign(filters, inferGeography(filters.area));
+            syncControls();
+            const firstSearch = search();
             await window.LYANN_AUTH_STATE?.ready?.();
             let identity = currentUserId() || null;
             window.LYANN_AUTH_STATE?.subscribe(state => {
@@ -979,9 +1134,9 @@
                 refreshSavedArea(identity);
                 search(true);
             }, {immediate:false});
-            if (!params.has('territory') && !params.has('commune') && filters.area) Object.assign(filters, inferGeography(filters.area));
             await refreshSavedArea(identity);
-            await search();
+            await firstSearch;
+            if (catalogReady) render({ quiet: true });
             if (params.get('openLyann')) {
                 const request = records.find(r => r.id === params.get('openLyann'));
                 if (mode === 'annonces' && request) window.openLyannDetailModal(request.id, request);
@@ -994,7 +1149,7 @@
                 return search(true, true);
             });
         }
-        window.LYANN_EXPLORER = { refresh: () => search(true) };
+        window.LYANN_EXPLORER = { refresh: () => search(true), switchMode: switchExplorerMode };
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

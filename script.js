@@ -1482,16 +1482,19 @@ safeDomReady(() => {
 
         // Build Skills ("Je peux aider pour")
         let servicesHTML = '';
-        const allSkills = (userServices && userServices.length > 0) ? userServices.map(s => typeof s === 'string' ? s : (s.title || s.name || '')) : (Array.isArray(pData.skills) ? pData.skills : []);
-        if (allSkills.length > 0) {
+        const skillRows = (userServices && userServices.length > 0)
+            ? userServices.map(s => (typeof s === 'string' ? { title: s, id: '' } : { title: s.title || s.name || '', id: s.id || '' }))
+            : (Array.isArray(pData.skills) ? pData.skills.map(s => ({ title: s, id: '' })) : []);
+        const skillRemove = (row) => (isSelf && row.id) ? `<button type="button" class="lyann-profile-action" data-remove-skill="${window.escapeHtmlAttr(row.id)}" aria-label="Retirer ${window.escapeHtmlAttr(row.title)}">Retirer</button>` : '';
+        if (skillRows.length > 0) {
             servicesHTML = `
                 <div class="lyann-profile-section">
                     <div class="lyann-section-header">
                         <h4 class="lyann-section-title"><i class="ph ph-hand-waving" aria-hidden="true"></i> Je peux aider pour</h4>
-                        ${isSelf ? '<button type="button" class="lyann-profile-action" id="btnAddNewServiceHub">Ajouter un service</button>' : ''}
+                        ${isSelf ? '<button type="button" class="lyann-profile-action" id="btnAddSkill">Ajouter une compétence</button>' : ''}
                     </div>
                     <ul class="lyann-skills-flex">
-                        ${allSkills.map(s => `<li class="lyann-service-tag"><i class="ph ph-check" aria-hidden="true"></i> ${window.escapeHtmlAttr(s)}</li>`).join('')}
+                        ${skillRows.map(row => `<li class="lyann-service-tag"><i class="ph ph-check" aria-hidden="true"></i> ${window.escapeHtmlAttr(row.title)} ${skillRemove(row)}</li>`).join('')}
                     </ul>
                 </div>
             `;
@@ -1500,7 +1503,7 @@ safeDomReady(() => {
                 <div class="lyann-profile-section">
                     <div class="lyann-section-header">
                         <h4 class="lyann-section-title"><i class="ph ph-hand-waving" aria-hidden="true"></i> Je peux aider pour</h4>
-                        <button type="button" class="lyann-profile-action" id="btnAddNewServiceHub">Ajouter un service</button>
+                        <button type="button" class="lyann-profile-action" id="btnAddSkill">Ajouter une compétence</button>
                     </div>
                     <div class="lyann-zero-data" onclick="if(typeof window.openCompleteProfileModal==='function') window.openCompleteProfileModal();" style="cursor:pointer; background: #FAF7F2; border: 1px dashed #E4DDD2; border-radius: 14px; padding: 16px; text-align: center;">
                         <span class="lyann-zero-data-title" style="font-size: 0.88rem; color: #475569; font-weight: 600;"><i class="ph ph-plus-circle"></i> Ajoute les compétences pour lesquelles tu peux aider</span>
@@ -1512,12 +1515,13 @@ safeDomReady(() => {
         // Build Intervention Zone
         const formattedLocation = window.formatProfileLocation(pData.city, pData.territory);
         const radiusText = pData.intervention_radius_km ? ` + autour de ${pData.intervention_radius_km} km` : '';
+        const requestsHTML = `<div class="lyann-profile-section"><div class="lyann-section-header"><h4 class="lyann-section-title"><i class="ph ph-megaphone" aria-hidden="true"></i> Annonces en cours</h4></div><div id="lyannProfileAnnonces" class="explorer-page" data-mode="annonces" data-user-id="${window.escapeHtmlAttr(pData.id || '')}" data-self="${isSelf ? '1' : '0'}" data-avatar="${window.escapeHtmlAttr(pData.avatar_url || pData.avatar || '')}"></div></div>`;
         const relocationHTML = `
             <div class="lyann-profile-section">
                 <div class="lyann-section-header">
                     <h4 class="lyann-section-title"><i class="ph ph-navigation-arrow"></i> Zone</h4>
                 </div>
-                <div class="lyann-relocation-card" style="display: flex; align-items: center; gap: 10px; background: #FAF7F2; border: 1px solid #E4DDD2; border-radius: 14px; padding: 12px 16px;">
+                <div class="lyann-relocation-card" ${isSelf ? 'role="button" tabindex="0" data-edit-zone="1"' : ''} style="display: flex; align-items: center; gap: 10px; background: #FAF7F2; border: 1px solid #E4DDD2; border-radius: 14px; padding: 12px 16px;${isSelf ? 'cursor:pointer;' : ''}">
                     <div class="lyann-relocation-icon" style="color: #4A7C59; font-size: 1.2rem;"><i class="ph ph-map-pin"></i></div>
                     <div class="lyann-relocation-text" style="font-size: 0.88rem; color: #1E293B;">
                         <strong>${window.escapeHtmlAttr(formattedLocation)}</strong><span style="color: #64748B;">${radiusText}</span>
@@ -1624,11 +1628,15 @@ safeDomReady(() => {
 
                 ${completionCardHTML}
                 ${servicesHTML}
+                ${requestsHTML}
                 ${relocationHTML}
                 ${portfolioHTML}
                 ${reviewsHTML}
             </div>
         `;
+        if (pData && pData.id && typeof window.lyannFillProfileAnnonces === 'function') {
+            window.lyannFillProfileAnnonces(pData.id, isSelf);
+        }
     }
 
     async function renderPublicReviews(member) {
@@ -7256,6 +7264,45 @@ safeDomReady(() => {
         }
     };
 
+    window.lyannFillProfileAnnonces = async function(userId) {
+        const box = document.getElementById('lyannProfileAnnonces');
+        if (!box || !userId) return;
+        const client = window.LYANN_API_CLIENT || window.apiClient;
+        if (!client || !client.supabase) return;
+        const isSelf = box.dataset.self === '1';
+        const avatar = box.dataset.avatar && /^https?:\/\//i.test(box.dataset.avatar) ? box.dataset.avatar : 'default-avatar.svg';
+        let rows = [];
+        try {
+            const { data, error } = await client.supabase.from('requests')
+                .select('id,title,description,status,visibility,target_user_id,created_at,city,location,safety_status,classification_status,public_moderation_status')
+                .eq('requester_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            if (error) return;
+            rows = (data || []).filter((row) => {
+                if (!row || !row.id) return false;
+                if (row.visibility && row.visibility !== 'PUBLIC') return false;
+                if (row.status && String(row.status).toUpperCase() !== 'OPEN') return false;
+                if (row.safety_status && row.safety_status !== 'SAFE') return false;
+                if (row.target_user_id) return false;
+                if (row.classification_status && !['CLASSIFIED', 'UNCLASSIFIED'].includes(row.classification_status)) return false;
+                if (row.public_moderation_status != null && row.public_moderation_status !== 'approved') return false;
+                return true;
+            });
+        } catch (_) { return; }
+        const esc = window.escapeHtmlAttr || ((value) => String(value ?? ''));
+        if (!rows.length) {
+            box.innerHTML = '<p class="lyann-zero-data">Aucune annonce en cours.</p>';
+            return;
+        }
+        box.innerHTML = rows.map((row) => {
+            const title = String(row.title || '').replace(/\s+/g, ' ').trim();
+            const desc = String(row.description || '').replace(/\s+/g, ' ').trim();
+            const place = row.city || row.location || 'Lieu non précisé';
+            return `<article class="explorer-card explorer-annonce explorer-annonce-compact"><div class="explorer-annonce-media"><img class="explorer-annonce-photo" src="${esc(avatar)}" alt="" onerror="this.onerror=null;this.src='default-avatar.svg'"></div><div class="explorer-annonce-main"><h3 class="explorer-annonce-title">${esc(title)}</h3><p class="explorer-annonce-excerpt">${esc(desc)}</p><p>${esc(place)}</p></div><div class="explorer-card-actions explorer-annonce-actions"><button type="button" class="btn btn-primary" data-profile-request="${esc(row.id)}">Voir l'annonce</button>${isSelf ? `<button type="button" class="btn btn-outline" data-profile-delete="${esc(row.id)}">Supprimer</button>` : ''}</div></article>`;
+        }).join('');
+    };
+
     window.deleteMyAnnouncement = async function(requestId) {
         if (!requestId) return;
         const confirmed = window.lyannConfirm
@@ -7288,6 +7335,10 @@ safeDomReady(() => {
                 await window.switchActivityTab('requests', userId);
             }
             if (typeof window.loadExplorerResults === 'function') window.loadExplorerResults();
+            const profileBox = document.getElementById('lyannProfileAnnonces');
+            if (profileBox && profileBox.dataset.userId && typeof window.lyannFillProfileAnnonces === 'function') {
+                window.lyannFillProfileAnnonces(profileBox.dataset.userId);
+            }
         } catch (err) {
             if (window.NotificationService) window.NotificationService.showToast('warning', err.message || "La suppression n'a pas abouti.");
             else if (window.lyannAlert) window.lyannAlert(err.message || "La suppression n'a pas abouti.");
@@ -8269,6 +8320,40 @@ safeDomReady(() => {
 
     // Initial service rendering
     renderUserServices();
+
+    document.addEventListener('click', (e) => {
+        const skillAdd = e.target.closest && e.target.closest('#btnAddSkill');
+        if (skillAdd) {
+            e.preventDefault();
+            if (typeof window.openCompleteProfileModal === 'function') window.openCompleteProfileModal(2);
+            return;
+        }
+        const zone = e.target.closest && e.target.closest('[data-edit-zone]');
+        if (zone) {
+            e.preventDefault();
+            if (typeof window.openCompleteProfileModal === 'function') window.openCompleteProfileModal(1);
+        }
+        const profileOpen = e.target.closest && e.target.closest('[data-profile-request]');
+        if (profileOpen && typeof window.openLyannDetailModal === 'function') {
+            e.preventDefault();
+            window.openLyannDetailModal(profileOpen.dataset.profileRequest);
+            return;
+        }
+        const profileDelete = e.target.closest && e.target.closest('[data-profile-delete]');
+        if (profileDelete && typeof window.deleteMyAnnouncement === 'function') {
+            e.preventDefault();
+            window.deleteMyAnnouncement(profileDelete.dataset.profileDelete);
+            return;
+        }
+        const skillRemove = e.target.closest && e.target.closest('[data-remove-skill]');
+        if (skillRemove && window.LYANN_PROFILE_SKILLS_V2) {
+            e.preventDefault();
+            window.LYANN_PROFILE_SKILLS_V2.remove(skillRemove.dataset.removeSkill).then((result) => {
+                if (result && result.ok) skillRemove.closest('li')?.remove();
+                else if (result && result.message && window.lyannAlert) window.lyannAlert(result.message);
+            });
+        }
+    });
 
     // Wire up "+ Nouveau service" triggers
     document.addEventListener('click', (e) => {
@@ -10785,6 +10870,9 @@ safeDomReady(() => {
         });
     }
 
+    const wizardPhotoHint = document.querySelector('#wizardPhotoUploadZone p[style*="text-muted"], #wizardPhotoUploadZone .text-muted');
+    if (wizardPhotoHint) wizardPhotoHint.textContent = 'Jusqu’à 3 photos, facultatives. JPG, PNG ou WEBP, 5 Mo maximum.';
+
     if (wizardPhotoInput) {
         wizardPhotoInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files || []);
@@ -10793,7 +10881,18 @@ safeDomReady(() => {
             const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
             const maxSize = 5 * 1024 * 1024; // 5MB
 
+            if (!window.wizardSelectedPhotos) window.wizardSelectedPhotos = [];
+            const room = 3 - window.wizardSelectedPhotos.length;
+            if (room <= 0) {
+                const full = '3 photos maximum. Retirez-en une pour en ajouter une autre.';
+                if (window.NotificationService) window.NotificationService.showToast('error', full);
+                else alert(full);
+                e.target.value = '';
+                return;
+            }
+            let kept = 0;
             files.forEach((file) => {
+                if (kept >= room) return;
                 const fileType = (file.type || '').toLowerCase();
                 if (!allowedMimes.includes(fileType)) {
                     const msg = `Format de fichier non accepté pour "${file.name}". Seuls JPG, PNG et WEBP sont autorisés.`;
@@ -10810,7 +10909,13 @@ safeDomReady(() => {
                 }
 
                 window.wizardSelectedPhotos.push(file);
+                kept += 1;
             });
+            if (files.length > room) {
+                const extra = '3 photos maximum. Les suivantes n’ont pas été ajoutées.';
+                if (window.NotificationService) window.NotificationService.showToast('error', extra);
+                else alert(extra);
+            }
 
             e.target.value = ''; // Reset input to allow selecting same file again if removed
             window.renderWizardPhotoPreviews();
@@ -10903,13 +11008,22 @@ safeDomReady(() => {
         syncWizardTitleCounter();
     }
 
+    function distinctWizardTitles(list, description) {
+        const banned = String(description || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const seen = new Set();
+        const out = [];
+        for (const item of list) {
+            const title = String(item || '').replace(/\s+/g, ' ').trim();
+            const key = title.toLowerCase();
+            if (title.length < 3 || title.length > TITLE_MAX || key === banned || seen.has(key)) continue;
+            seen.add(key);
+            out.push(title);
+        }
+        return out;
+    }
+
     function ensureWizardTitleFromNeed() {
-        if (!titleInput) return '';
-        let value = titleInput.value.trim();
-        if (value.length >= 3) return value;
-        value = titleFromNeed(descriptionInput ? descriptionInput.value : '');
-        if (value.length >= 3) applyWizardTitle(value);
-        return (titleInput.value || '').trim();
+        return titleInput ? titleInput.value.trim() : '';
     }
     window.titleFromNeed = titleFromNeed;
     window.ensureWizardTitleFromNeed = ensureWizardTitleFromNeed;
@@ -10978,32 +11092,19 @@ safeDomReady(() => {
         if (titleSuggestBtn) titleSuggestBtn.disabled = false;
         if (!force && (titlePicked || titleTouched)) return;
 
-        if (result?.titles?.length === 3) {
-            setWizardTitleStatus('Choisissez le titre qui convient le mieux, ou corrigez-le.');
-            renderWizardTitleChoices(result.titles);
-            if (!titleTouched) applyWizardTitle(result.titles[0]);
-            if (titleSuggestBtn) titleSuggestBtn.hidden = false;
-            return;
-        }
-        const local = threeTitlesFromNeed(description);
-        if (local.length) {
-            renderWizardTitleChoices(local);
-            if (!titleTouched) applyWizardTitle(local[0]);
-            if (titleSuggestBtn) titleSuggestBtn.hidden = false;
+        const proposed = distinctWizardTitles([].concat(result?.titles || [], threeTitlesFromNeed(description)), description);
+        if (proposed.length) {
             setWizardTitleStatus(result?.error === 'RATE'
-                ? 'Trop de propositions demandées. Voici trois titres lus dans votre besoin.'
-                : 'Choisissez le titre qui convient le mieux, ou corrigez-le.');
+                ? 'Trop de propositions demandées. Choisissez un titre, ou gardez le vôtre.'
+                : 'Choisissez un titre, ou gardez celui que vous avez écrit.');
+            renderWizardTitleChoices(proposed.slice(0, 3));
+            if (titleSuggestBtn) titleSuggestBtn.hidden = false;
             return;
         }
         renderWizardTitleChoices([]);
         if (titleEdit) titleEdit.hidden = false;
         if (titleSuggestBtn) titleSuggestBtn.hidden = false;
-        applyWizardTitle(titleFromNeed(description));
-        if (result?.error === 'RATE') {
-            setWizardTitleStatus('Trop de propositions demandées. Votre texte sert de titre, vous pouvez le raccourcir.');
-            return;
-        }
-        setWizardTitleStatus('Choisissez le titre qui convient le mieux, ou corrigez-le.');
+        setWizardTitleStatus('Écrivez un titre, ou reformulez le besoin pour obtenir des propositions.');
     }
     window.suggestWizardTitle = suggestWizardTitle;
 
@@ -11441,6 +11542,13 @@ safeDomReady(() => {
                 directId = window._lyannDirectAskContactId;
                 const audience = document.querySelector('#wizardDirectAudience input[name="wizardAudience"]:checked')?.value || 'person';
                 privateOnly = Boolean(directId) && audience !== 'network';
+                const photos = (window.wizardSelectedPhotos || []).slice(0, 3);
+                const mediaUrls = [];
+                for (const file of photos) {
+                    const url = await window.LYANN_API_CLIENT.uploadRequestPhoto(file);
+                    if (!url) throw new Error('Une photo n’a pas pu être envoyée.');
+                    mediaUrls.push(url);
+                }
                 createdRequest = await window.LYANN_API_CLIENT.createRequest({
                     title: title,
                     description: desc,
@@ -11455,7 +11563,8 @@ safeDomReady(() => {
                     urgency: urgencyVal,
                     status: 'OPEN',
                     visibility: privateOnly ? 'DIRECT' : 'PUBLIC',
-                    target_user_id: privateOnly ? directId : null
+                    target_user_id: privateOnly ? directId : null,
+                    media_urls: mediaUrls
                 });
             } catch (err) {
                 console.error("❌ Erreur publication demande Supabase:", err);

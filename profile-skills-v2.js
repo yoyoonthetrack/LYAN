@@ -55,11 +55,13 @@
         slot.hidden = true;
         const custom = root.document.getElementById('cpCustomSkill');
         if (custom) custom.closest('div').hidden = true;
-        host.innerHTML = '<p class="lyann-skill-intro">Recherchez un métier. Une spécialité n’apparaît que si vous en avez besoin.</p><label class="sr-only" for="lyannSkillSearch">Rechercher un métier</label><input id="lyannSkillSearch" type="search" enterkeyhint="search" autocomplete="off" placeholder="Ex. plomberie, élagage, ménage" style="width:100%;box-sizing:border-box;font-size:16px;min-height:44px;border:1px solid #c5d5c8;border-radius:12px;padding:10px 12px"><div id="lyannSkillChoices"></div><div id="lyannSkillStatus" role="status" style="min-height:1.2em;margin:8px 0;color:#3d5c49"></div><div id="lyannSkillList"></div>';
-        const search = host.querySelector('#lyannSkillSearch');
-        const choices = host.querySelector('#lyannSkillChoices');
+        host.innerHTML = '<div id="lyannSkillList"></div><button type="button" id="lyannSkillAdd" style="min-height:44px;margin-top:8px">Ajouter une compétence</button><div id="lyannSkillDrawer" hidden><button type="button" data-skill-back style="min-height:44px">Retour</button><div id="lyannSkillSteps"></div><div id="lyannSkillOther" hidden><label for="lyannSkillOtherInput">Autre compétence</label><input id="lyannSkillOtherInput" type="text" maxlength="80" autocomplete="off" placeholder="Écrivez la compétence" style="width:100%;box-sizing:border-box;font-size:16px;min-height:44px;border:1px solid #c5d5c8;border-radius:12px;padding:10px 12px"><button type="button" id="lyannSkillOtherSave" style="min-height:44px;margin-top:8px">Ajouter</button></div></div><div id="lyannSkillStatus" role="status" style="min-height:1.2em;margin:8px 0;color:#3d5c49"></div>';
+        const drawer = host.querySelector('#lyannSkillDrawer');
+        const steps = host.querySelector('#lyannSkillSteps');
+        const other = host.querySelector('#lyannSkillOther');
         const status = host.querySelector('#lyannSkillStatus');
         const list = host.querySelector('#lyannSkillList');
+        let trail = [];
         let services = [];
         let index = null;
         let entitlements = null;
@@ -91,7 +93,7 @@
         function precision(service, described) {
             if (!described.needsPrecision) return '';
             const buttons = (described.candidates || []).map((c) => `<button type="button" data-resolve="${esc(service.id)}" data-node="${esc(c.code)}" style="min-height:44px;margin:4px 4px 0 0">${esc(c.label)}</button>`).join('');
-            return `<div style="margin:0 0 8px"><p style="margin:4px 0;color:#5c6b60;font-size:.9rem">Le libellé d’origine est conservé. Choisissez le métier qui correspond.</p>${buttons || '<p>Recherchez le métier dans le champ ci-dessus, puis ajoutez-le.</p>'}</div>`;
+            return `<div style="margin:0 0 8px"><p style="margin:4px 0;color:#5c6b60;font-size:.9rem">Le libellé d’origine est conservé. Choisissez le métier qui correspond.</p>${buttons || '<p>Ouvrez Ajouter une compétence, puis choisissez le métier.</p>'}</div>`;
         }
         async function add(code) {
             const nodes = services.map((s) => s.taxonomy_node_code).filter(Boolean);
@@ -103,38 +105,89 @@
             say('Compétence ajoutée.');
             await reload();
         }
-        search.addEventListener('input', () => {
-            if (!index) { choices.innerHTML = ''; return; }
-            const match = root.LYANN_MARKETPLACE_TAXONOMY.matchQuery(index, search.value);
-            const shown = [];
-            const seen = new Set();
-            for (const code of match.codes || []) {
-                const node = index.byCode.get(code);
-                if (!node || node.kind === 'specialty' || seen.has(node.code)) continue;
-                seen.add(node.code);
-                shown.push(node);
-                if (shown.length === 6) break;
+        function paintSteps() {
+            other.hidden = true;
+            const tax = root.LYANN_MARKETPLACE_TAXONOMY;
+            const button = (attrs, label) => `<button type="button" ${attrs} style="display:block;width:100%;text-align:left;min-height:44px;margin:6px 0">${esc(label)}</button>`;
+            if (!trail.length) {
+                const families = tax && tax.FAMILIES ? tax.FAMILIES : [];
+                steps.innerHTML = families.map((family) => button(`data-family="${esc(family.code)}"`, family.short)).join('')
+                    + button('data-other="1"', 'Autre');
+                say('Choisissez une catégorie.');
+                return;
             }
-            if (match.level === 'family') {
-                const family = index.families[match.family];
-                (family ? family.groups.flatMap((g) => g.trades) : []).slice(0, 6).forEach((trade) => { if (!seen.has(trade.code)) shown.push({ code: trade.code, label_fr: trade.label, kind: 'trade' }); });
+            const family = index && index.families[trail[0].code];
+            if (trail.length === 1) {
+                const groups = family && family.groups.length ? family.groups : [];
+                steps.innerHTML = groups.map((group) => button(`data-group="${esc(group.code)}"`, group.label || group.code)).join('')
+                    + button('data-other="1"', 'Autre');
+                say(groups.length ? 'Choisissez une sous-catégorie.' : 'Aucune sous-catégorie : précisez la compétence.');
+                if (!groups.length) { other.hidden = false; }
+                return;
             }
-            choices.innerHTML = shown.map((node) => `<button type="button" data-add="${esc(node.code)}" style="min-height:44px;margin:6px 6px 0 0">${esc(node.label_fr || node.label)}</button>`).join('');
-            if (match.question) say(match.question);
+            const group = family && family.groups.find((item) => item.code === trail[1].code);
+            const trades = group ? group.trades : [];
+            steps.innerHTML = trades.map((trade) => button(`data-add="${esc(trade.code)}"`, trade.label)).join('')
+                + button('data-other="1"', 'Autre');
+            say('Choisissez une compétence.');
+        }
+        host.querySelector('#lyannSkillAdd').addEventListener('click', () => {
+            trail = [];
+            drawer.hidden = false;
+            paintSteps();
         });
         host.addEventListener('click', async (event) => {
+            if (event.target.closest('[data-skill-back]')) {
+                trail.pop();
+                paintSteps();
+                return;
+            }
+            const familyBtn = event.target.closest('[data-family]');
+            if (familyBtn) {
+                const meta = root.LYANN_MARKETPLACE_TAXONOMY.FAMILIES.find((item) => item.code === familyBtn.dataset.family);
+                trail = [{ code: familyBtn.dataset.family, label: meta ? meta.short : familyBtn.dataset.family }];
+                paintSteps();
+                return;
+            }
+            const groupBtn = event.target.closest('[data-group]');
+            if (groupBtn) {
+                trail = trail.slice(0, 1).concat([{ code: groupBtn.dataset.group, label: groupBtn.textContent.trim() }]);
+                paintSteps();
+                return;
+            }
+            const otherBtn = event.target.closest('[data-other]');
+            if (otherBtn) {
+                other.hidden = false;
+                host.querySelector('#lyannSkillOtherInput').focus();
+                say('Écrivez la compétence qui n’est pas dans la liste.');
+                return;
+            }
             const addBtn = event.target.closest('[data-add]');
             if (addBtn) {
                 const node = index && index.byCode.get(addBtn.dataset.add);
                 const trade = node && node.kind === 'trade' && [...index.byCode.values()].filter((item) => item.parent_code === node.code);
                 if (trade && trade.length && !addBtn.dataset.confirm) {
-                    choices.innerHTML = `<button type="button" data-add="${esc(node.code)}" data-confirm="1" style="min-height:44px;margin:6px 6px 0 0">Tout le métier</button>`
-                        + trade.map((item) => `<button type="button" data-add="${esc(item.code)}" data-confirm="1" style="min-height:44px;margin:6px 6px 0 0">${esc(item.label_fr)}</button>`).join('');
+                    steps.innerHTML = `<button type="button" data-add="${esc(node.code)}" data-confirm="1" style="display:block;width:100%;text-align:left;min-height:44px;margin:6px 0">Tout le métier</button>`
+                        + trade.map((item) => `<button type="button" data-add="${esc(item.code)}" data-confirm="1" style="display:block;width:100%;text-align:left;min-height:44px;margin:6px 0">${esc(item.label_fr)}</button>`).join('');
                     say('Choisissez une spécialité, ou tout le métier.');
                     return;
                 }
                 await add(addBtn.dataset.add);
+                drawer.hidden = true;
                 return;
+            }
+            if (event.target.closest('#lyannSkillOtherSave')) {
+                const text = host.querySelector('#lyannSkillOtherInput').value.replace(/\s+/g, ' ').trim();
+                if (text.length < 2) { say('Écrivez la compétence.'); return; }
+                const family = trail[0] ? trail[0].label : 'Autre';
+                say('Enregistrement…');
+                try {
+                    await client.addUserService(userId, text, 'Sur devis', 'Sur devis', family);
+                    host.querySelector('#lyannSkillOtherInput').value = '';
+                    drawer.hidden = true;
+                    say('Compétence ajoutée.');
+                    await reload();
+                } catch (_) { say('La compétence n’a pas été ajoutée. Réessayez.'); }
             }
             const resolveBtn = event.target.closest('[data-resolve]');
             if (resolveBtn) {
@@ -163,16 +216,43 @@
             say(error ? 'Le retrait a échoué.' : 'Compétence retirée.');
             if (!error) await reload();
         });
+        if (typeof root.document.addEventListener === 'function') {
+            root.document.addEventListener('lyann-skills-changed', () => { if (host.isConnected) reload(); });
+        }
         say('Chargement des compétences…');
         root.LYANN_MARKETPLACE_TAXONOMY.load(client.supabase).then((loaded) => {
             index = loaded;
+            drawer.hidden = false;
+            paintSteps();
             if (!loaded) say('Le référentiel des métiers est indisponible.');
             return reload();
         }).catch(() => say('Les compétences n’ont pas pu être chargées.'));
         return { mounted: true, controlsSave: true };
     }
 
-    const api = { mount, planAdd, STAGING };
+    async function remove(serviceId) {
+        if (!root || root.LYANN_SUPABASE_LOCK !== STAGING || !serviceId) return { ok: false };
+        const client = root.LYANN_API_CLIENT || root.apiClient;
+        const userId = await resolveUserId(client);
+        if (!userId || !client || !client.supabase) return { ok: false };
+        const { data, error } = await client.supabase.from('services').select('id,taxonomy_node_code,base_price,indicative_price,price_type,pricing_model').eq('id', serviceId).eq('owner_id', userId).maybeSingle();
+        if (error || !data) return { ok: false };
+        const priced = data.base_price != null || data.indicative_price != null || data.price_type || data.pricing_model;
+        if (priced) return { ok: false, message: 'Cette compétence a un tarif : elle reste sur le profil.' };
+        if (data.taxonomy_node_code) {
+            const { data: rows } = await client.supabase.from('services').select('taxonomy_node_code').eq('owner_id', userId);
+            const nodes = (rows || []).map((row) => row.taxonomy_node_code).filter((code) => code && code !== data.taxonomy_node_code);
+            const result = await client.supabase.rpc('lyann_sync_profile_skills_v2', { p_user: userId, p_nodes: nodes });
+            if (result.error) return { ok: false };
+        } else {
+            const result = await client.supabase.from('services').delete().eq('id', serviceId).eq('owner_id', userId);
+            if (result.error) return { ok: false };
+        }
+        root.document.dispatchEvent(new Event('lyann-skills-changed'));
+        return { ok: true };
+    }
+
+    const api = { mount, planAdd, remove, STAGING };
     Object.defineProperty(api, 'controlsSave', { get() { return root && root.LYANN_SUPABASE_LOCK === STAGING && root.document && !!root.document.getElementById('lyannSkillEditor'); } });
     return api;
 });

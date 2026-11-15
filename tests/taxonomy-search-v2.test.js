@@ -142,7 +142,8 @@ test('the skill editor mounts from the auth snapshot and stays closed for a visi
     root.LYANN_AUTH_STATE.getSnapshot = () => ({ userId: '11111111-1111-4111-8111-111111111111' });
     const mounted = await skills.mount();
     assert.equal(mounted.mounted, true);
-    assert.equal(elements.get('lyannSkillEditor').innerHTML.includes('lyannSkillSearch'), true);
+    assert.equal(elements.get('lyannSkillEditor').innerHTML.includes('Ajouter une compétence'), true);
+    assert.equal(elements.get('lyannSkillEditor').innerHTML.includes('lyannSkillDrawer'), true);
     assert.equal(elements.get('cpSkillsTagsContainer').hidden, true);
 });
 
@@ -157,4 +158,12 @@ test('switching pages keeps an explicit territory and drops the other page taxon
     assert.equal(next.job, '');
     assert.equal(next.query, '');
     assert.equal(next.area, 'Fort-de-France');
+    const cleared = T.filtersAcrossModes(
+        { territory: '', commune: '', area: '' },
+        { territory: 'Guadeloupe (971)', commune: 'Baie-Mahault', area: 'Le Gosier', family: 'jardin' }
+    );
+    assert.equal(cleared.territory, '');
+    assert.equal(cleared.commune, '');
+    assert.equal(cleared.area, '');
+    assert.equal(cleared.family, '');
 });

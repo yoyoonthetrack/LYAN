@@ -24,36 +24,14 @@
     <!-- Styles -->
     <link rel="stylesheet" href="style.css?v=20261112a">
     <link rel="stylesheet" href="visitor-gate.css?v=20261112a">
-    <link rel="stylesheet" href="explorer.css?v=20261018pub">
-    <link rel="stylesheet" href="needs-map.css?v=20261105pins">
-    <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261112a">
+    <link rel="stylesheet" href="explorer.css?v=20261114d">
+    <link rel="stylesheet" href="needs-map.css?v=20261114d">
+    <link rel="stylesheet" href="explorer-annonces-ux.css?v=20261114f">
     <link rel="stylesheet" href="lyann-layout.css?v=20261112a">
-    <link rel="stylesheet" href="results-v3.css?v=20261112j">
+    <link rel="stylesheet" href="results-v3.css?v=20261114g">
     <link rel="stylesheet" href="universe-header.css?v=20261027v28">
 <link rel="stylesheet" href="business.css">
 
-    <!-- Voile d'arrivée. Posé avant le premier rendu, sinon la page surgit d'un coup. -->
-    <script>
-        (function () {
-            try {
-                var bridge = window.Capacitor;
-                var native = !!(bridge && (
-                    (typeof bridge.isNativePlatform === 'function' && bridge.isNativePlatform())
-                    || (typeof bridge.getPlatform === 'function' && (bridge.getPlatform() === 'ios' || bridge.getPlatform() === 'android'))
-                ));
-                if (!native) return;
-                var root = document.documentElement;
-                root.classList.add('lyann-page-entering');
-                var clear = function () { root.classList.remove('lyann-page-entering'); };
-                root.addEventListener('animationend', function onEnd(event) {
-                    if (event.animationName !== 'lyannPageReveal') return;
-                    root.removeEventListener('animationend', onEnd);
-                    clear();
-                });
-                window.setTimeout(clear, 1200);
-            } catch (e) {}
-        })();
-    </script>
 </head>
 <body class="results-page" data-explorer-mode="lyanneurs">
 
@@ -153,12 +131,10 @@
     <main id="explorer" class="explorer-page lyann-universe" data-mode="lyanneurs" data-universe="lyanneurs">
         <script>(function(){var m=new URLSearchParams(location.search).get('mode')==='annonces'?'annonces':'lyanneurs';var e=document.getElementById('explorer');e.dataset.mode=m;e.dataset.universe=m;})();</script>
         <header class="lyann-universe-header results-v3-header" data-universe="lyanneurs">
-            <img class="results-v3-photo is-lyanneurs" src="assets/universe-v3/header-lyanneurs.webp?v=2" alt="" width="758" height="331" decoding="async" fetchpriority="high">
-            <img class="results-v3-photo is-annonces" src="assets/universe-v3/header-annonces.webp?v=2" alt="" width="758" height="331" decoding="async" loading="lazy">
-            <div class="results-v3-overlay">
-                <h1 id="explorerTitle">Lyanneurs</h1>
-                <p id="explorerSubtitle">Des talents et des pros près de chez vous</p>
-            </div>
+            <img class="results-v3-photo is-lyanneurs" src="assets/universe-v3/header-lyanneurs.jpg?v=3" alt="" width="1024" height="438" decoding="async" fetchpriority="high">
+            <img class="results-v3-photo is-annonces" src="assets/universe-v3/header-annonces.jpg?v=3" alt="" width="1024" height="438" decoding="async">
+            <h1 id="explorerTitle" class="sr-only">Lyanneurs</h1>
+            <p id="explorerSubtitle" class="sr-only">Des talents et des pros près de chez vous</p>
         </header>
         <section id="explorerPanel" aria-labelledby="explorerTitle">
             <div class="explorer-search-row">
@@ -214,7 +190,7 @@
                 <p id="explorerSummary" role="status" aria-live="polite" class="sr-only"></p>
             </div>
             <div class="explorer-results-heading explorer-annonces-list-only">
-                <button class="explorer-publish btn lyann-cta-primary" type="button" hidden><i class="ph ph-plus" aria-hidden="true"></i> Publier une annonce</button>
+                <button class="explorer-publish btn lyann-cta-primary" type="button" hidden><i class="ph ph-plus" aria-hidden="true"></i> Poster une annonce</button>
             </div>
             <div class="explorer-map-shell">
                 <div id="explorerMap" class="explorer-map" hidden></div>
@@ -226,15 +202,29 @@
             <form method="dialog" id="explorerFilterForm">
                 <div class="explorer-sheet-heading"><div><h2 id="explorerFilterTitle">Filtrer</h2><p class="explorer-sheet-sub" id="explorerFilterSub">Choisissez ce que vous souhaitez voir.</p></div><button type="button" id="explorerFiltersClose" aria-label="Fermer les filtres">×</button></div>
                 <div class="explorer-sheet-body">
-                    <label>Service / sous-catégorie<select id="explorerService"><option value="">Tous les services</option></select></label>
-                    <label id="explorerAreaLabel">Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
-                    <div id="explorerProfileGeography"><label>Territoire<select id="explorerTerritory"></select></label><label>Commune<select id="explorerCommune"></select></label></div>
+                    <div class="explorer-field">
+                        <p class="explorer-field-label">Service / sous-catégorie</p>
+                        <div class="explorer-drawer" data-drawer="explorerService"></div>
+                    </div>
+                    <select id="explorerService" class="explorer-native-select" hidden><option value="">Tous les services</option></select>
+                    <label id="explorerAreaLabel" hidden>Commune ou territoire<input id="explorerArea" type="text" placeholder="Ex. Le Gosier, Guadeloupe" autocomplete="address-level2"></label>
+                    <div id="explorerProfileGeography">
+                        <div class="explorer-field">
+                            <p class="explorer-field-label">Territoire</p>
+                            <div class="explorer-drawer" data-drawer="explorerTerritory"></div>
+                        </div>
+                        <select id="explorerTerritory" class="explorer-native-select" hidden></select>
+                        <div class="explorer-field">
+                            <p class="explorer-field-label">Commune</p>
+                            <div class="explorer-drawer" data-drawer="explorerCommune"></div>
+                        </div>
+                        <select id="explorerCommune" class="explorer-native-select" hidden></select>
+                    </div>
                     <p class="explorer-hint">Recherche par lieu renseigné. La distance affichée est approximative, calculée entre votre commune et celle de l'annonce.</p>
                     <button type="button" id="explorerSavedArea" class="btn btn-outline" hidden>Utiliser mon lieu de profil</button>
-                    <div id="explorerRequestFilters">
+                    <div id="explorerRequestFilters" hidden>
                         <label>Délai<select id="explorerUrgency"><option value="">Tous les délais</option></select></label>
                         <label>Budget maximum (€)<input id="explorerBudget" type="number" min="0" step="1" placeholder="Sans limite"></label>
-                        <p class="explorer-hint">Avec un budget maximum, seules les annonces au budget renseigné sont affichées.</p>
                     </div>
                 </div>
                 <div class="explorer-sheet-actions"><button type="button" id="explorerReset" class="btn btn-outline">Réinitialiser</button><button value="apply" class="btn btn-primary">Afficher les résultats</button></div>
@@ -1238,7 +1228,7 @@
     <script src="matching-engine.js"></script>
     <script src="sentry-init.js?v=20260916"></script>
     <script src="surface-manager.js?v=20260922s"></script>
-    <script src="app-router.js?v=20261018legal"></script>
+    <script src="app-router.js?v=20261114g"></script>
     <script src="visitor-gate.js?v=20261112b"></script>
     <script src="api-client.js?v=20261019-coherence"></script>
     <script src="session-store.js"></script>
@@ -1271,11 +1261,11 @@
     <script src="commune-geo.js?v=20260922e"></script>
     <script src="commune-distance.js?v=20261019-drom5"></script>
     <script src="needs-map-category-families.js?v=20261105pins"></script>
-    <script src="needs-map.js?v=20261111a"></script>
-    <script src="marketplace-taxonomy.js?v=20261112b"></script>
+    <script src="needs-map.js?v=20261114d"></script>
+    <script src="marketplace-taxonomy.js?v=20261114h"></script>
     <script src="explorer-repository.js?v=20260922e"></script>
-    <script src="lyann-skeleton.js?v=20261025skel"></script>
-    <script src="explorer-ui.js?v=20261112d" defer></script>
+    <script src="lyann-skeleton.js?v=20261114g"></script>
+    <script src="explorer-ui.js?v=20261115a" defer></script>
     <script src="script.js?v=20261019-drom5"></script>
 
     <!-- ========== BOUTON FLOTTANT SPEED-DIAL (BAS À GAUCHE) ========== -->

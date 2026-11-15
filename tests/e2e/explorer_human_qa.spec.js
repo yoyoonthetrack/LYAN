@@ -96,7 +96,8 @@ test('Each Explorer space keeps its own title and the annonce publish action',as
   await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeHidden();
   await page.goto('/results.html?mode=annonces&area=', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerTitle')).toHaveText('Annonces');
-  await expect(page.locator('.explorer-results-heading .explorer-publish')).toHaveText(/Publier une annonce/);
+  await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeVisible();
+  await expect(page.locator('.explorer-results-heading .explorer-publish')).toHaveText(/Poster une annonce/);
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
   await page.screenshot({path:'artifacts/explorer/human-qa-mobile.png',fullPage:true});
 });

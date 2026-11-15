@@ -49,13 +49,14 @@
 
     function annonceCard() {
         return `<article class="lyann-skel lyann-skel-annonce" aria-hidden="true">
-            <div class="lyann-skel-actions">
-                <span class="lyann-skel-pill"></span>
-                <span class="lyann-skel-pill is-small"></span>
+            <div class="lyann-skel-head">
+                <span class="lyann-skel-avatar is-large"></span>
+                <div class="lyann-skel-head-text">${line('46%', 'is-small')}${line('80%', 'is-title')}${line('70%')}</div>
             </div>
-            ${line('76%', 'is-title')}
-            ${line('94%')}${line('58%')}
-            <span class="lyann-skel-button"></span>
+            <div class="lyann-skel-actions">
+                <span class="lyann-skel-button"></span>
+                <span class="lyann-skel-button"></span>
+            </div>
         </article>`;
     }
 

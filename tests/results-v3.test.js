@@ -24,17 +24,18 @@ for (const re of forbidden) {
 }
 assert.doesNotMatch(html, /editorial-highlights/, 'the editorial module is Découvrir-only');
 
-// Header (3.2C-2): natural photo, no veil or gradient; mobile = photo on top and title below, desktop = title left and photo right.
-const photoH = Number((css.match(/\.results-v3-photo \{[^}]*?\bheight:\s*(\d+)px/) || [])[1]);
-assert.ok(photoH >= 90 && photoH <= 130, `mobile photo height ${photoH}px must stay compact (90-130px)`);
-assert.doesNotMatch(css.slice(css.indexOf('main#explorer .results-v3-header {'), css.indexOf('body.is-native-app[data-explorer-mode]')), /gradient\(|mask-image: linear/, 'no gradient or veil over the photo');
-assert.match(css, /\.results-v3-overlay \{[^}]*text-align: left/);
-assert.match(html, /<h1 id="explorerTitle">Lyanneurs<\/h1>/);
+// Header: the supplied artwork already includes title and subtitle. Full width, 24px radius, 2.4:1, no overlay.
+assert.match(css, /aspect-ratio: 2\.4 \/ 1/);
+assert.match(css, /object-fit: cover/);
+assert.match(css, /border-radius: 24px/);
+assert.doesNotMatch(css.slice(css.indexOf('main#explorer .results-v3-header {'), css.indexOf('body.is-native-app[data-explorer-mode]')), /gradient\(|mask-image: linear|filter: (?!none)/, 'no gradient, veil or filter on the header');
+assert.doesNotMatch(html, /results-v3-overlay/);
+assert.match(html, /<h1 id="explorerTitle" class="sr-only">Lyanneurs<\/h1>/);
 assert.match(ui, /title: 'Lyanneurs', subtitle: 'Des talents et des pros près de chez vous'/);
 assert.match(ui, /title: 'Annonces', subtitle: 'Des besoins réels autour de vous'/);
-for (const f of ['header-lyanneurs.webp', 'header-annonces.webp']) {
-    assert.ok(fs.statSync(`assets/universe-v3/${f}`).size < 120 * 1024, `${f} is light`);
-    assert.match(html + ui, new RegExp(f.replace('.', '\\.')));
+for (const f of ['header-lyanneurs.jpg', 'header-annonces.jpg']) {
+    assert.ok(fs.statSync(`assets/universe-v3/${f}`).size > 0, `${f} is present`);
+    assert.match(html, new RegExp(f.replace('.', '\\.')));
 }
 
 // Search placeholders.

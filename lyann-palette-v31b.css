@@ -46,6 +46,10 @@
 :root {
     --lyann-honey: #EBC568;
     --lyann-honey-bright: #F6C23E; /* départ vif du bouton « Poster une annonce » (fond décoratif, jamais derrière du texte) */
+    /* Dégradé du bouton « Lyanner » : vert, olive, miel. */
+    --lyann-cta-green: #4A7C59;
+    --lyann-cta-mid: #80A86E;
+    --lyann-cta-gold: #E5B345;
     --lyann-honey-pastel: #F9E9BC;
     --lyann-honey-icon: #A87B00;
 }

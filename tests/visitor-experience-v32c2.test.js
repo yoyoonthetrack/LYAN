@@ -196,23 +196,22 @@ test('the Affiner panel is an accessible bottom sheet with swipe, expand, Escape
 
 // ── 1. Headers ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('headers: natural photo, no gradient veil, no dark badge, title below (mobile) or beside (desktop) the photo', () => {
+test('headers: supplied artwork, full width, 2.4:1, no HTML title over the image', () => {
     const block = resultsCss.slice(resultsCss.indexOf('main#explorer .results-v3-header {'), resultsCss.indexOf('body.is-native-app[data-explorer-mode]'));
     assert.doesNotMatch(block, /gradient\(|mask-image: linear|rgba\(22, 61, 45/);
-    assert.match(block, /--hdr-bg: var\(--lyann-green-pastel\)/);
-    assert.match(block, /h1::after \{[^}]*background: var\(--hdr-accent\)/);
-    assert.match(resultsCss, /@media \(min-width: 720px\) \{[\s\S]*\.results-v3-header \{ flex-direction: row;/);
+    assert.match(block, /aspect-ratio: 2\.4 \/ 1/);
+    assert.match(block, /object-fit: cover/);
+    assert.match(block, /border-radius: 24px/);
+    assert.doesNotMatch(results, /results-v3-overlay/);
     assert.match(results, /Des talents et des pros près de chez vous/);
     assert.match(ui, /subtitle: 'Des besoins réels autour de vous'/);
-    assert.ok(ratio('#163D2D', '#E5F0E6') >= 7 && ratio('#163D2D', '#F9E9BC') >= 7);
 });
 
 // ── 3. Publish button ────────────────────────────────────────────────────────────────────────────────────────────
 
-test('publish button: bright honey to deep green, white text whose zone starts on green (AA), + circle, arrow, light hover', () => {
+test('publish button: same green-to-gold gradient as Lyanner, white text, + circle, arrow, light hover', () => {
     const cta = discoverCss.slice(discoverCss.indexOf('.discover-v3 .discover-post-cta {'), discoverCss.indexOf('.discover-v3 .discover-post-icon {'));
-    assert.match(cta, /var\(--lyann-honey-bright\) 0, var\(--lyann-honey-bright\) 40px, var\(--lyann-green-primary\) 104px, var\(--lyann-green-deep\) 100%/);
-    assert.match(cta, /in oklch/, 'vivid yellow-green passage, no grey / beige middle');
+    assert.match(cta, /linear-gradient\(110deg, var\(--lyann-cta-green\) 0%, var\(--lyann-cta-mid\) 42%, var\(--lyann-cta-gold\) 100%\)/);
     const discoverHtml = read('discover.html');
     assert.match(discoverHtml, /<strong>Poster une annonce<\/strong><span>Décrivez votre besoin, les Lyanneurs vous répondent<\/span>/);
     assert.match(discoverHtml, /discover-post-icon[\s\S]*ph-plus[\s\S]*ph-arrow-right discover-post-go/);
@@ -220,16 +219,9 @@ test('publish button: bright honey to deep green, white text whose zone starts o
     assert.match(discoverCss, /\.discover-post-cta:hover \{ transform: translateY\(-2px\)/);
     assert.match(discoverCss, /prefers-reduced-motion[\s\S]*\.discover-post-cta:hover/);
     assert.doesNotMatch(discoverCss, /#[0-9A-Fa-f]{6}\b/);
-    // The text starts at x = 16 + 54 + 26 = 96 px, after the 40 px honey cap and almost at the green stop (104 px): worst case colour at 96 px.
-    const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
-    const honey = [0xF6, 0xC2, 0x3E];
-    const green = [0x24, 0x6B, 0x49];
-    const at96 = mix(honey, green, (96 - 40) / (104 - 40));
-    const hex = '#' + at96.map((v) => v.toString(16).padStart(2, '0')).join('');
-    assert.ok(ratio('#FFFFFF', hex) >= 4.5, `white on the gradient where the text starts (${hex}): ${ratio('#FFFFFF', hex).toFixed(2)}:1`);
-    assert.ok(ratio('#FFFFFF', '#246B49') >= 6, 'white on green primary');
-    assert.ok(ratio('#FFFFFF', '#163D2D') >= 10, 'white on deep green');
-    assert.match(palette, /--lyann-honey-bright: #F6C23E;/);
+    assert.match(palette, /--lyann-cta-green: #4A7C59;/);
+    assert.match(palette, /--lyann-cta-mid: #80A86E;/);
+    assert.match(palette, /--lyann-cta-gold: #E5B345;/);
 });
 
 // ── 2. Widths ────────────────────────────────────────────────────────────────────────────────────────────────────

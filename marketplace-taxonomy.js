@@ -248,11 +248,11 @@
         next.groups = '';
         next.job = '';
         next.specialty = '';
-        if (from.territory) {
-            next.territory = String(from.territory);
-            next.commune = String(from.commune || '');
-        }
-        if (from.area) next.area = String(from.area);
+        // Le lieu suit la page quittée, y compris « tous les territoires » : un lieu vide ne doit pas
+        // ressortir le lieu enregistré de l'autre mode, sinon la liste revient vide.
+        next.territory = from.territory ? String(from.territory) : '';
+        next.commune = from.territory ? String(from.commune || '') : '';
+        next.area = from.area ? String(from.area) : '';
         return next;
     }
 

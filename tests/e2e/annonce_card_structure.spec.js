@@ -75,8 +75,10 @@ test('The card carries taxonomy, age, short title and one fact per line, never t
   await expect(card.locator('.explorer-person-badge')).toHaveText('Pro vérifié');
   await expect(card.locator('.explorer-person-rating')).toContainText('4,8 (12)');
 
-  // The long description belongs to the detail surface only.
-  await expect(card).not.toContainText('trois heures sur place');
+  const excerpt = card.locator('.explorer-annonce-excerpt');
+  await expect(excerpt).toHaveText(row.description);
+  await expect(excerpt).toHaveCSS('white-space', 'nowrap');
+  await expect(excerpt).toHaveCSS('text-overflow', 'ellipsis');
   await expect(card.getByRole('button', { name: "Voir l'annonce", exact: true })).toBeVisible();
   await expect(card.getByRole('button', { name: 'Lyanner', exact: true })).toBeVisible();
 });
@@ -117,7 +119,7 @@ test('Visitor: « Voir l’annonce » opens the invitation and the complete desc
   await page.locator(`[data-request-id="${row.id}"]`).locator('[data-action="detail"]').click();
   await expect(page.locator('#lyannVisitorGate')).toBeVisible();
   await expect(page.locator('#lyannDetailModal')).not.toBeVisible();
-  expect(await page.content()).not.toContain('trois heures sur place');
+  await expect(page.locator('.explorer-annonce-excerpt')).toContainText('Ma fille a 18 ans');
 });
 
 for (const width of [390, 1440]) {

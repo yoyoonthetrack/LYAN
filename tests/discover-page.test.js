@@ -42,6 +42,7 @@ assert.match(source, /\.slice\(0, 4\)/);
 assert.match(source, /goOfferTalents/);
 assert.match(source, /results\.html\?mode=annonces/);
 assert.match(source, /openLyannDetailModal/);
+assert.match(source, /knownLoggedOut\(\)[\s\S]{0,120}results\.html\?mode=annonces/, 'a guest opening an annonce du moment goes to the Annonces tab');
 assert.match(source, /loadRequests\(\)/);
 assert.match(source, /prioritizeTerritory/);
 assert.match(source, /editorial_highlights/);

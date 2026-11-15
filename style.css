@@ -14772,7 +14772,7 @@ body.bokantaj-trim-open.keyboard-open .bokantaj-trim {
     bottom: 0;
     background: rgba(15, 23, 42, 0.85);
     backdrop-filter: blur(8px);
-    z-index: 10000;
+    z-index: 2147483100;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -14786,6 +14786,27 @@ body.bokantaj-trim-open.keyboard-open .bokantaj-trim {
     opacity: 1;
     pointer-events: auto;
 }
+
+#lyannProfileAnnonces {
+    display: grid;
+    gap: 12px;
+}
+#lyannProfileAnnonces .explorer-annonce-compact {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-areas: "media main" "actions actions";
+    gap: 10px 12px;
+    padding: 14px;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(27, 59, 43, 0.06);
+}
+#lyannProfileAnnonces .explorer-annonce-media { grid-area: media; }
+#lyannProfileAnnonces .explorer-annonce-main { grid-area: main; min-width: 0; }
+#lyannProfileAnnonces .explorer-annonce-actions { grid-area: actions; display: flex; gap: 8px; }
+#lyannProfileAnnonces .explorer-annonce-photo { width: 72px; height: 72px; border-radius: 16px; object-fit: cover; }
+#lyannProfileAnnonces .explorer-annonce-title { margin: 0 0 4px; font-size: 1rem; }
+#lyannProfileAnnonces .explorer-annonce-excerpt { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 .lyann-lightbox-card {
     background: #FFFFFF;

@@ -372,3 +372,135 @@ body.keyboard-open #explorerFilters .explorer-sheet-actions {
     border: 0 !important;
     box-shadow: none !important;
 }
+
+/* Les deux feuilles (filtres et catégories) gardent la croix dans le cadre arrondi. */
+.explorer-filter-sheet { overflow: hidden; }
+.explorer-filter-sheet .explorer-sheet-heading { align-items: flex-start; }
+.explorer-filter-sheet .explorer-sheet-heading button {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    flex: 0 0 40px;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    margin: 0;
+    padding: 0;
+    border-radius: 50% !important;
+    border: 1px solid #e5dfd5 !important;
+    background: #fff !important;
+    color: #24352b !important;
+    font-size: 1.35rem !important;
+    line-height: 1;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+#explorerMapCategorySheet.explorer-filter-sheet[open] {
+    background: #fffdf8;
+    color: #24352b;
+    border-radius: 24px 24px 0 0;
+    padding: 18px 18px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+#explorerMapCategorySheet .explorer-sheet-heading {
+    margin: 0 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(74, 124, 89, 0.15);
+}
+#explorerMapCategorySheet .explorer-sheet-heading h2 { font-size: 1.15rem; font-weight: 800; color: #35583f; margin: 0; }
+#explorerMapCategorySheet .explorer-sheet-sub { margin: 4px 0 0; color: #5c6e62; font-size: 0.88rem; font-weight: 500; }
+#explorerMapCategorySheet .explorer-sheet-actions { gap: 8px; margin-top: 16px; }
+#explorerMapCategorySheet .explorer-sheet-actions .btn { min-height: 48px; border-radius: 999px; font-weight: 800; }
+@media (max-width: 600px) {
+    #explorerMapCategorySheet.explorer-filter-sheet[open] {
+        display: flex;
+        flex-direction: column;
+        height: fit-content;
+        max-height: 90dvh;
+        margin: auto 0 0;
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        max-width: none;
+    }
+    #explorerMapCategorySheet form {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        max-height: 100%;
+        overflow: hidden;
+        margin: 0;
+    }
+    #explorerMapCategorySheet .explorer-sheet-body { overflow-y: auto; min-height: 0; }
+}
+
+.explorer-field { margin: 14px 0 0; }
+.explorer-field-label {
+    margin: 0 0 8px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #5c6e62;
+}
+.explorer-drawer-btn {
+    position: relative;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 40px 10px 14px;
+    border: 1.5px solid #d7e3da;
+    border-radius: 14px;
+    background: #fff;
+    color: #24352b;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+.explorer-drawer-btn::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #35583f;
+    border-bottom: 2px solid #35583f;
+    transform: translateY(-70%) rotate(45deg);
+}
+.explorer-drawer-btn[aria-expanded="true"]::after { transform: translateY(-20%) rotate(225deg); }
+.explorer-drawer-panel {
+    max-height: 240px;
+    margin-top: 8px;
+    overflow: auto;
+    border: 1px solid #d7e3da;
+    border-radius: 14px;
+    background: #fff;
+}
+.explorer-drawer-group {
+    margin: 0;
+    padding: 10px 14px 4px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #5c6e62;
+}
+.explorer-drawer-option {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 1px solid #f3eee6;
+    background: #fff;
+    color: #24352b;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.explorer-drawer-option.is-selected { background: #eef6ef; }
+.explorer-native-select { display: none !important; }

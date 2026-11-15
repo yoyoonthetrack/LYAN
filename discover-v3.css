@@ -53,17 +53,13 @@ body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
 }
 .discover-v3 .discover-search-submit i { font-size: 1rem; color: #fff; }
 
-/* « Poster une annonce » : dégradé du miel vif (à gauche, sous le + ) vers le vert profond (à droite).
- * Le texte blanc commence après la zone miel, là où le fond est déjà vert : blanc / vert primaire 6,41:1, blanc / vert profond 11:1.
- * L'interpolation oklch garde un passage jaune-vert vif (pas de milieu gris ou beige) ; sRGB sert de repli. */
+/* « Poster une annonce » : même dégradé que le bouton « Lyanner » (vert à gauche, miel à droite). */
 .discover-v3 .discover-post-cta {
     --cta-gap: 26px;
     position: relative; display: flex; align-items: center; gap: var(--cta-gap); width: 100%; min-height: 76px; padding: 11px 16px 11px 16px; text-align: left; cursor: pointer; overflow: hidden;
-    border: 0; border-radius: 24px; color: var(--lyann-white); font-family: Outfit, sans-serif;
-    background: var(--lyann-green-primary);
-    background: linear-gradient(90deg, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 40px, var(--lyann-green-primary) 104px, var(--lyann-green-deep) 100%);
-    background: linear-gradient(90deg in oklch, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 40px, var(--lyann-green-primary) 104px, var(--lyann-green-deep) 100%);
-    box-shadow: 0 10px 24px rgba(22, 61, 45, 0.24);
+    border: 0; border-radius: 999px; color: var(--lyann-white); font-family: Outfit, sans-serif;
+    background: linear-gradient(110deg, var(--lyann-cta-green) 0%, var(--lyann-cta-mid) 42%, var(--lyann-cta-gold) 100%);
+    box-shadow: 0 10px 24px rgba(74, 124, 89, 0.28);
     transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 .discover-v3 .discover-post-icon { flex: 0 0 54px; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: var(--lyann-white); color: var(--d3-green); font-size: 1.6rem; box-shadow: 0 3px 10px rgba(22, 61, 45, 0.22); }
@@ -87,7 +83,7 @@ body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
 /* Titres de section */
 .discover-v3 .discover-block-head { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
 .discover-v3 .discover-section-title {
-    position: relative; margin: 0; padding-bottom: 6px; font-size: 1.08rem; line-height: 1.2; font-weight: 800; color: var(--d3-ink);
+    position: relative; margin: 0; padding-bottom: 6px; font-size: 1.35rem; line-height: 1.15; font-weight: 800; color: var(--d3-ink);
 }
 .discover-v3 .discover-section-title::after { content: ''; position: absolute; left: 0; bottom: 0; width: 28px; height: 3px; border-radius: 2px; background: var(--lyann-yellow); }
 .discover-v3 .discover-block-head a { flex: 0 0 auto; font-size: 0.78rem; font-weight: 700; color: var(--d3-green-2); text-decoration: none; }
@@ -119,16 +115,17 @@ body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
 .discover-v3 .discover-state h3 { margin: 0 0 2px; font-size: 0.88rem; }
 .discover-v3 .discover-state p { margin: 0; font-size: 0.78rem; color: var(--lyann-text-secondary-aa); }
 
-/* Carte : petite illustration vectorielle intégrée */
+/* Carte : card carrée, grande illustration avec plusieurs épingles */
 .discover-v3 .discover-map-banner {
-    display: flex; align-items: center; gap: 12px; min-height: 84px; padding: 10px 12px 10px 10px; text-decoration: none; color: var(--d3-ink);
-    background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 22px; box-shadow: var(--lyann-shadow-card);
+    display: grid; grid-template-rows: 1fr auto; width: 100%; max-width: 420px; aspect-ratio: 1; margin-left: auto; margin-right: auto;
+    padding: 0; overflow: hidden; text-decoration: none; color: var(--d3-ink); position: relative;
+    background: var(--lyann-white); border: 1px solid var(--lyann-border); border-radius: 24px; box-shadow: var(--lyann-shadow-card);
 }
-.discover-v3 .discover-map-art { flex: 0 0 96px; width: 96px; height: 64px; border-radius: 14px; }
-.discover-v3 .discover-map-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.discover-v3 .discover-map-text strong { font-size: 0.95rem; line-height: 1.2; font-weight: 800; }
-.discover-v3 .discover-map-text span { font-size: 0.76rem; line-height: 1.25; color: var(--lyann-text-secondary-aa); }
-.discover-v3 .discover-map-banner-go { flex: 0 0 34px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--d3-green); color: #fff; }
+.discover-v3 .discover-map-art { width: 100%; height: 100%; min-height: 0; display: block; }
+.discover-v3 .discover-map-text { flex: 0 0 auto; display: flex; flex-direction: column; gap: 2px; padding: 12px 56px 14px 16px; }
+.discover-v3 .discover-map-text strong { font-size: 1.05rem; line-height: 1.2; font-weight: 800; }
+.discover-v3 .discover-map-text span { font-size: 0.82rem; line-height: 1.25; color: var(--lyann-text-secondary-aa); }
+.discover-v3 .discover-map-banner-go { position: absolute; right: 14px; bottom: 16px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--d3-green); color: #fff; }
 
 @media (min-width: 720px) {
     .discover-v3 { padding-top: 96px; }
@@ -146,9 +143,7 @@ body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
     .discover-v3 .discover-heading { font-size: clamp(1.9rem, 2.6vw, 2.5rem); }
     .discover-v3 .discover-search-bar { min-height: 54px; border-radius: 18px; }
     .discover-v3 .discover-search-bar input { font-size: 1.02rem; }
-    .discover-v3 .discover-post-cta { min-height: 88px; padding: 14px 22px 14px 20px; --cta-gap: 34px; border-radius: 28px;
-        background: linear-gradient(90deg, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 48px, var(--lyann-green-primary) 124px, var(--lyann-green-deep) 100%);
-        background: linear-gradient(90deg in oklch, var(--lyann-honey-bright) 0, var(--lyann-honey-bright) 48px, var(--lyann-green-primary) 124px, var(--lyann-green-deep) 100%); }
+    .discover-v3 .discover-post-cta { min-height: 88px; padding: 14px 22px 14px 20px; --cta-gap: 34px; border-radius: 999px; }
     .discover-v3 .discover-post-icon { flex-basis: 60px; width: 60px; height: 60px; }
     .discover-v3 .discover-post-text strong { font-size: 1.35rem; }
     .discover-v3 .discover-post-text span { font-size: 0.95rem; }
@@ -162,9 +157,8 @@ body.has-member-nav .discover-main.discover-v3 { padding-bottom: 4px; }
     .discover-v3 .discover-need-row { padding: 12px 14px 12px 12px; border-radius: 18px; }
     .discover-v3 .discover-need-text strong { font-size: 0.96rem; }
     .discover-v3 .discover-need-text span { font-size: 0.8rem; }
-    .discover-v3 .discover-map-banner { min-height: 104px; padding: 14px 18px 14px 14px; }
-    .discover-v3 .discover-map-art { flex-basis: 150px; width: 150px; height: 76px; }
-    .discover-v3 .discover-map-text strong { font-size: 1.1rem; }
+    .discover-v3 .discover-section-title { font-size: 1.5rem; }
+    .discover-v3 .discover-map-text strong { font-size: 1.15rem; }
     .discover-v3 .discover-map-text span { font-size: 0.9rem; }
 }
 @media (min-width: 1100px) {

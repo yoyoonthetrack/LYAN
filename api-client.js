@@ -360,6 +360,33 @@ window.LYANN_IMAGE_PREPARE = (function () {
     return Object.freeze({ prepare, DEFAULT_MAX_BYTES, DEFAULT_MAX_EDGE });
 })();
 
+function requestPhotoObjectPaths(urls) {
+    const list = Array.isArray(urls) ? urls : [];
+    return list.map((item) => {
+        try {
+            const match = new URL(String(item || '')).pathname.match(/^\/v1\/media\/request-photos-hold\/(.+)$/);
+            return match ? decodeURIComponent(match[1]) : '';
+        } catch (_) {
+            return '';
+        }
+    }).filter(Boolean);
+}
+
+function requestPhotoUrls(value) {
+    const list = Array.isArray(value) ? value : [];
+    if (list.length > 3) throw new Error('3 photos maximum.');
+    return list.map((item) => {
+        const text = String(item || '').trim();
+        let parsed;
+        try { parsed = new URL(text); } catch (_) { throw new Error('Photo d’annonce non acceptée.'); }
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('Photo d’annonce non acceptée.');
+        if (!/^\/v1\/media\/request-photos-hold\/[^/]+\/[^/]+\.(jpe?g|png|webp)$/i.test(parsed.pathname)) {
+            throw new Error('Photo d’annonce non acceptée.');
+        }
+        return text;
+    });
+}
+
 function holdMediaUrl(bucket, objectPath) {
     const binding = resolveLyannClientBinding();
     if (!binding.ok) throw new Error('Environnement média non configuré.');
@@ -2952,9 +2979,7 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) {
             throw new Error("Supabase non initialisé");
         }
-        if (payload.media_urls?.length) {
-            throw new Error("Les annonces se publient sans photo pour le moment.");
-        }
+        const mediaUrls = requestPhotoUrls(payload.media_urls);
         
         // Identity MUST come strictly from session auth.uid()
         const { data: { session } } = await this.supabase.auth.getSession();
@@ -2992,7 +3017,8 @@ const LYANN_API_CLIENT = {
             safety_status: payload.safety_status || 'SAFE',
             created_at: new Date().toISOString(),
             visibility: payload.visibility || 'PUBLIC',
-            target_user_id: payload.target_user_id || null
+            target_user_id: payload.target_user_id || null,
+            media_urls: mediaUrls
         };
 
         // Automatic background classification if taxonomy fields not pre-set
@@ -3131,6 +3157,19 @@ const LYANN_API_CLIENT = {
         if (!this.supabase) throw new Error("Supabase non initialisé");
         const { data: { session } } = await this.supabase.auth.getSession();
         if (!session || !session.user) throw new Error("Utilisateur non connecté");
+
+        const { data: existing, error: readError } = await this.supabase
+            .from('requests')
+            .select('media_urls')
+            .eq('id', requestId)
+            .eq('requester_id', session.user.id)
+            .maybeSingle();
+        if (readError) throw readError;
+        const paths = requestPhotoObjectPaths(existing && existing.media_urls);
+        if (paths.length) {
+            const removed = await this.supabase.storage.from('request-photos-hold').remove(paths);
+            if (removed.error) throw removed.error;
+        }
 
         const { error } = await this.supabase
             .from('requests')

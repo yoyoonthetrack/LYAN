@@ -371,6 +371,11 @@
   register('home', () => hardNavigate('discover.html'));
   register('bienvenue', () => hardNavigate('bienvenue.html'));
   function openExplorer(mode, payload = {}) {
+    const onResults = /(?:^|\/)results(?:\.html)?\/?$/i.test(window.location.pathname || '');
+    if (onResults && typeof window.LYANN_EXPLORER?.switchMode === 'function') {
+      window.LYANN_EXPLORER.switchMode(mode || payload.mode || 'lyanneurs');
+      return true;
+    }
     const params = new URLSearchParams();
     if (mode) params.set('mode', mode);
     else if (payload.mode) params.set('mode', payload.mode);

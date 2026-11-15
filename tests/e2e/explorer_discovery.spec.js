@@ -177,7 +177,8 @@ for (const width of [390,1440]) {
     await ready(page);
     await page.getByRole('button',{name:'Filtres et zone'}).click();
     await expect(page.getByRole('dialog',{name:'Filtrer les annonces'})).toBeVisible();
-    await page.locator('#explorerArea').fill('CommuneIntrouvable');
+    await expect(page.locator('#explorerRequestFilters')).toBeHidden();
+    await page.locator('#explorerCommune').evaluate(el => { el.add(new Option('CommuneIntrouvable', 'CommuneIntrouvable')); el.value = 'CommuneIntrouvable'; });
     await page.getByRole('button',{name:'Afficher les résultats'}).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
@@ -185,8 +186,8 @@ for (const width of [390,1440]) {
     await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','SUCCESS');
     await expect(page.locator('#explorer [role="tab"]')).toHaveCount(0);
     await expect(page.locator('#explorerTitle')).toHaveText('Annonces');
-    // 3.2C (maquette Option 3) : l'écran Annonces n'a plus de bouton « Publier » ; le point d'entrée est « Poster une annonce » sur Découvrir.
-    await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeHidden();
+    await expect(page.locator('.explorer-results-heading .explorer-publish')).toBeVisible();
+    await expect(page.locator('.explorer-results-heading .explorer-publish')).toHaveText(/Poster une annonce/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const targets = await page.locator('#explorer button:visible:not(.explorer-search-submit), #explorer select:visible, #explorer input:visible').evaluateAll(nodes => nodes.map(n => ({text:n.textContent,height:n.getBoundingClientRect().height,width:n.getBoundingClientRect().width})));
     expect(targets.filter(t => t.height < 44 || t.width < 44)).toEqual([]);
@@ -214,41 +215,38 @@ test('A family also selects real published services in Lyanneurs', async ({page}
 });
 
 test('Filter sheet Enter applies the search; Escape discards unapplied edits', async ({page}) => {
-  await ready(page); // Text area remains an Annonces filter; Lyanneurs uses dependent selects.
+  await ready(page);
   await page.getByRole('button',{name:'Filtres et zone'}).click();
-  await page.locator('#explorerArea').fill('CommuneIntrouvable');
-  await page.locator('#explorerArea').press('Enter');
+  await page.locator('#explorerCommune').evaluate(el => { el.add(new Option('CommuneIntrouvable', 'CommuneIntrouvable')); el.value = 'CommuneIntrouvable'; });
+  await page.locator('#explorerFilterForm').press('Enter');
   await expect(page.getByRole('dialog',{name:'Filtrer les annonces'})).not.toBeVisible();
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
-  await expect(page).toHaveURL(/area=CommuneIntrouvable/);
+  await expect(page).toHaveURL(/commune=CommuneIntrouvable/);
   await page.getByRole('button',{name:'Filtres et zone'}).click();
-  await page.locator('#explorerArea').fill('Guadeloupe');
+  await page.locator('#explorerCommune').selectOption({ index: 0 });
   await page.keyboard.press('Escape');
   await expect(page.locator('#explorerResults')).toHaveAttribute('data-state','EMPTY');
   await page.getByRole('button',{name:'Filtres et zone'}).click();
-  await expect(page.locator('#explorerArea')).toHaveValue('CommuneIntrouvable');
+  await expect(page.locator('#explorerCommune')).toHaveValue('CommuneIntrouvable');
 });
 
-test('Lyanneurs filters preserve Request-only criteria when switching modes', async ({page}) => {
+test('Territory chosen in Annonces is restored for that mode', async ({page}) => {
   await ready(page);
   await page.getByRole('button',{name:'Filtres et zone'}).click();
-  const urgency = await page.locator('#explorerUrgency option').nth(1).getAttribute('value');
-  expect(urgency).toBeTruthy();
-  await page.locator('#explorerUrgency').selectOption(urgency);
-  await page.locator('#explorerBudget').fill('150');
-  await page.getByRole('button',{name:'Afficher les résultats'}).click();
-  await expect(page).toHaveURL(/urgency=/);
-  await page.goto('/results.html?mode=lyanneurs', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   await expect(page.locator('#explorerRequestFilters')).toBeHidden();
-  await page.getByRole('button',{name:'Filtres et zone'}).click();
+  await expect(page.locator('#explorerAreaLabel')).toBeHidden();
+  await expect(page.locator('#explorerProfileGeography')).toBeVisible();
   await page.locator('#explorerTerritory').selectOption('Guadeloupe (971)');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
+  await expect(page).toHaveURL(/territory=/);
+  await expect(page).not.toHaveURL(/urgency=|budget=/);
+  await page.goto('/results.html?mode=lyanneurs', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   await page.goto('/results.html?mode=annonces', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#explorerResults')).toHaveAttribute('aria-busy','false');
   await page.getByRole('button',{name:'Filtres et zone'}).click();
-  await expect(page.locator('#explorerUrgency')).toHaveValue(urgency);
-  await expect(page.locator('#explorerBudget')).toHaveValue('150');
+  await expect(page.locator('#explorerTerritory')).toHaveValue('Guadeloupe (971)');
+  await expect(page.locator('#explorerCommune')).toHaveValue('');
 });
 
 test('In-place authentication updates own-annonce actions without reload', async ({page}) => {
@@ -358,7 +356,7 @@ test('Saved territory label finds the same real Request despite reversed code/na
     .find(r => r.status === 'OPEN' && r.location?.includes('971 - Guadeloupe')));
   expect(request,'A real Request with the existing wizard territory format is required').toBeTruthy();
   await page.getByRole('button',{name:'Filtres et zone'}).click();
-  await page.locator('#explorerArea').fill('Guadeloupe (971)');
+  await page.locator('#explorerTerritory').selectOption('Guadeloupe (971)');
   await page.getByRole('button',{name:'Afficher les résultats'}).click();
   await expect(page.locator(`#explorerResults [data-request-id="${request.id}"]`)).toBeVisible();
   await page.reload();
