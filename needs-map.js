@@ -29,7 +29,7 @@
         bridge: 'vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4'
     });
     // Même version de style que Bokantaj : le fichier est déjà en cache.
-    const STYLE_PATH = 'assets/maps/lyann-liberty.json?v=20261023-chic';
+    const STYLE_PATH = 'assets/maps/lyann-liberty.json?v=20261115-pastel-v1';
     const GLYPHS_PATH = 'assets/maps/glyphs/';
 
     /* ---------- Données (pures, testables sans navigateur) ---------- */
@@ -121,12 +121,30 @@
         return '';
     }
 
+    function categoryText(row, format, leaves, index) {
+        const tax = root.LYANN_MARKETPLACE_TAXONOMY;
+        const fromNode = tax && typeof tax.categoryLabel === 'function' ? tax.categoryLabel(row, { index: index || root.LYANN_TAXONOMY_INDEX, leaves }) : '';
+        const line = format.categoryLine && format.categoryLine(row, leaves);
+        const readable = line && !/^g[ée]n[ée]ral$/i.test(String(line).trim()) ? String(line).trim() : '';
+        if (fromNode || readable) return fromNode || readable;
+        const raw = String(row.category || '').trim();
+        if (raw && !/^g[ée]n[ée]ral$/i.test(raw)) return raw;
+        const id = row._v2Family || (familiesApiSafe(row, leaves));
+        const meta = root.LYANN_MAP_CATEGORY_FAMILIES && id ? root.LYANN_MAP_CATEGORY_FAMILIES.familyMeta(id) : null;
+        return meta && meta.label ? meta.label : '';
+    }
+
+    function familiesApiSafe(row, leaves) {
+        const api = root.LYANN_MAP_CATEGORY_FAMILIES;
+        return api && typeof api.familyForRow === 'function' ? api.familyForRow(row, leaves) : '';
+    }
+
     // Une fiche par annonce : catégorie, titre, commune, prix, action.
     function renderPanel(group, deps = {}) {
         const format = deps.format || {};
         const leaves = deps.leaves || [];
         const items = group.items.map((row) => {
-            const category = (format.categoryLine && format.categoryLine(row, leaves)) || row.category || '';
+            const category = categoryText(row, format, leaves, deps.index);
             const title = (format.shortTitle && format.shortTitle(row.title)) || row.title || 'Annonce';
             const price = (format.priceLabel && format.priceLabel(row)) || 'Sur devis';
             return `<li class="needs-map-item">
@@ -261,6 +279,7 @@
         let rowsById = new Map();
         let groupsByKey = new Map();
         let leaves = [];
+        let taxonomyIndex = null;
         let selectedKey = null;
         let paintedSignature = '';
         let framedSignature = '';
@@ -329,7 +348,7 @@
             if (selectedKey && markers.has(selectedKey)) markers.get(selectedKey).getElement?.()?.classList.remove('is-selected');
             selectedKey = group.key;
             markers.get(group.key)?.getElement?.()?.classList.add('is-selected');
-            panel.innerHTML = renderPanel(group, { format: format(), leaves });
+            panel.innerHTML = renderPanel(group, { format: format(), leaves, index: taxonomyIndex });
             panel.hidden = false;
             panel.scrollTop = 0;
             if (map && shouldCenter) {
@@ -362,17 +381,18 @@
             return [...counts.keys()][0];
         }
 
-        const FAMILY_EMOJI = Object.freeze({
-            maison: '🔧', jardin: '🌿', entretien: '🧹', beaute: '💅',
-            transport: '🚚', famille: '👨‍👩‍👧', evenement: '🍽️', numerique: '💻', mixed: '📍'
-        });
+        function pinIcon(visual) {
+            const tax = root.LYANN_MARKETPLACE_TAXONOMY;
+            const meta = tax && tax.familyMeta ? tax.familyMeta(visual) : null;
+            const name = visual === 'mixed' ? 'all' : (meta && meta.icon) || 'dots';
+            return tax && tax.filledIconSvg ? tax.filledIconSvg(name, 'needs-map-pin-icon') : '';
+        }
 
         function pinFaceHtml(group) {
             const count = group.items.length;
-            const visual = groupVisualFamily(group.items);
-            const emoji = FAMILY_EMOJI[visual] || FAMILY_EMOJI.mixed;
+            const visual = groupVisualFamily(group.items) || 'mixed';
             const countBadge = count > 1 ? `<span class="needs-map-pin-count">${count}</span>` : '';
-            return `<span class="needs-map-pin-face is-tone-yellow is-family-${visual}${count > 1 ? ' has-count' : ''}" aria-hidden="true"><span class="needs-map-pin-emoji">${emoji}</span>${countBadge}</span>`;
+            return `<span class="needs-map-pin-face is-tone-yellow is-family-${visual}${count > 1 ? ' has-count' : ''}" aria-hidden="true">${pinIcon(visual)}${countBadge}</span>`;
         }
 
         function ensureMap() {
@@ -456,6 +476,7 @@
         function update(data = {}) {
             const current = ++token;
             leaves = data.leaves || [];
+            taxonomyIndex = data.index || root.LYANN_TAXONOMY_INDEX || null;
             let rows = Array.isArray(data.rows) ? data.rows : [];
             const api = familiesApi();
             if (api && Array.isArray(data.mapFamilyFilter) && data.mapFamilyFilter.length > 0
@@ -537,7 +558,7 @@
                     const group = groupsByKey.get(selectedKey);
                     if (group) {
                         markers.get(selectedKey)?.getElement?.()?.classList.add('is-selected');
-                        panel.innerHTML = renderPanel(group, { format: format(), leaves });
+                        panel.innerHTML = renderPanel(group, { format: format(), leaves, index: taxonomyIndex });
                     } else closePanel(false);
                 }
             }).catch(() => {
