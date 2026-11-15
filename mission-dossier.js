@@ -64,7 +64,14 @@
             return { code: 'in_progress', label: 'En cours' };
         }
         const accepted = quotes.some((quote) => quote && str(quote.status) === 'ACCEPTED');
-        if (accepted || missionStatus === 'AGREED') return { code: 'quote_accepted', label: 'Devis accepté' };
+        if (accepted || missionStatus === 'AGREED') {
+            const secured = quotes.some((quote) => (quote && quote.milestones || []).some((step) => {
+                const code = str(step && step.status).toUpperCase();
+                return code === 'FUNDED' || code === 'IN_PROGRESS' || code === 'COMPLETED' || code === 'VALIDATED' || code === 'RELEASED';
+            }));
+            if (secured && missionStatus !== 'IN_PROGRESS') return { code: 'payment_secured', label: 'Prête à démarrer' };
+            return { code: 'quote_accepted', label: 'Paiement à sécuriser' };
+        }
         if (quotes.some((quote) => quote && PENDING_QUOTE.has(str(quote.status)))) {
             return { code: 'quote_pending', label: 'Devis en attente' };
         }
@@ -203,7 +210,8 @@
     function dossierBucket(row) {
         const code = str(row && row.statusCode);
         if (code === 'done' || code === 'cancelled') return 'done';
-        if (code === 'in_progress' || code === 'quote_accepted' || code === 'dispute') return 'active';
+        if (code === 'in_progress' || code === 'dispute') return 'active';
+        if (code === 'quote_accepted' || code === 'payment_secured') return 'waiting';
         return 'waiting';
     }
 

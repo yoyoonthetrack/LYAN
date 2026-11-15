@@ -1289,8 +1289,22 @@ const { releaseMedia, sweep: sweepBokantajMedia, isVerifiedStagingUrl } = requir
 // Staging scheduler must call the guarded endpoint below with a secret.
 
 function financialSettingBlocked(key, value) {
+    if (key === 'mission_prestation_cap_eur') return false;
     const blob = `${key} ${typeof value === 'string' ? value : JSON.stringify(value || {})}`;
     return /commission|stripe|payout|escrow|financial_lock|platform_fee|fee_rate|protection_montant|verrou.?financier/i.test(blob);
+}
+
+function missionCapSettingError(key, value) {
+    if (key !== 'mission_prestation_cap_eur') return null;
+    const amount = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
+        return 'Le plafond doit être un montant entre 1 € et 100 000 €.';
+    }
+    const cents = Math.round(amount * 100);
+    if (Math.abs(amount * 100 - cents) > 0.001) {
+        return 'Le plafond accepte au plus deux décimales.';
+    }
+    return null;
 }
 
 async function moderateMaisonSubject(subjectType, subjectId) {
@@ -4527,6 +4541,8 @@ app.post('/v1/admin/system/settings', async (req, res) => {
         const entries = Object.entries(incoming || {}).filter(([key]) => !['settings'].includes(key));
         if (!entries.length) return res.status(400).json({ success: false, error: 'Aucun paramètre à enregistrer.' });
         for (const [key, value] of entries) {
+            const capError = missionCapSettingError(key, value);
+            if (capError) return res.status(400).json({ success: false, error: capError });
             if (financialSettingBlocked(key, value)) {
                 return res.status(403).json({
                     success: false,
@@ -4537,9 +4553,12 @@ app.post('/v1/admin/system/settings', async (req, res) => {
         }
         const now = new Date().toISOString();
         for (const [key, value] of entries) {
+            const stored = key === 'mission_prestation_cap_eur'
+                ? Math.round(Number(value) * 100) / 100
+                : value;
             const { error } = await supabaseAdmin.from('system_settings').upsert({
                 key,
-                value,
+                value: stored,
                 updated_by: authResult.userId,
                 updated_at: now
             });
@@ -4825,6 +4844,30 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
         const quote = milestone.quotes;
         if (!quote || quote.status !== 'ACCEPTED') {
             return res.status(400).json({ error: "Le devis associé doit être au statut ACCEPTED." });
+        }
+
+        const { data: siblingMilestones, error: siblingErr } = await supabaseAdmin
+            .from('milestones')
+            .select('amount')
+            .eq('quote_id', quote.id);
+        if (siblingErr) {
+            return res.status(409).json({
+                code: 'CONTRACT_MISMATCH',
+                error: 'Le montant de la mission doit être revérifié. Aucun paiement n’a été créé.'
+            });
+        }
+        const quoteRevision = require('../quote-revision');
+        const milestoneSum = (siblingMilestones || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+        const contractDecision = quoteRevision.paymentContractDecision({
+            contractualEur: quote.total_amount,
+            milestoneSumEur: milestoneSum,
+            acceptedSnapshotEur: quote.accepted_prestation_amount
+        });
+        if (!contractDecision.ok) {
+            return res.status(409).json({
+                code: contractDecision.code || 'CONTRACT_MISMATCH',
+                error: 'Le montant des étapes ne correspond plus au devis accepté. Aucun paiement n’a été créé.'
+            });
         }
 
         const { data: mission, error: missErr } = await supabaseAdmin

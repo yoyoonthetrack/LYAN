@@ -1953,7 +1953,7 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                     lines.push('À payer : ' + eurosLabel(forecast.customerTotalCents));
                 }
                 lines.push('');
-                lines.push('La mission démarre ensuite.');
+                lines.push('La mission s’ouvre ensuite. Le paiement doit être sécurisé avant le démarrage.');
                 suspendQuoteReview();
                 if (window.lyannConfirm) {
                     const ok = await window.lyannConfirm(lines.join('\n'), 'info', 'Signer et accepter le devis');
@@ -1988,8 +1988,6 @@ window.handleAcceptQuote = async function(quoteId, sourceQuote) {
                     contact.activeDossier.quotes.forEach(mark);
                 }
                 applyQuoteStatusToDom(quoteId, 'ACCEPTED');
-                const acceptedAmount = known && known.total_amount != null ? known.total_amount : (sourceQuote && sourceQuote.total_amount);
-                await traceQuoteInThread('accepted', acceptedAmount);
                 if (window.LYANN_MISSION_SURFACES && typeof window.LYANN_MISSION_SURFACES.syncOpenDossier === 'function') {
                     window.LYANN_MISSION_SURFACES.syncOpenDossier();
                 }
@@ -2262,14 +2260,86 @@ function closeQuoteRevision() {
     if (overlay) overlay.remove();
 }
 
-window.openQuoteRevision = function(quoteId) {
+window.withdrawSentQuote = async function(quoteId) {
+    if (!quoteId) return;
+    const confirmed = window.lyannConfirm
+        ? await window.lyannConfirm('Retirer ce devis ? Le demandeur ne pourra plus l’accepter. La proposition reste dans l’historique.', 'warning', 'Retirer le devis')
+        : true;
+    if (!confirmed) return;
+    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.withdrawSentQuote !== 'function') {
+        if (window.lyannAlert) window.lyannAlert('Le retrait du devis n’est pas encore activé.');
+        return;
+    }
+    try {
+        await window.LYANN_API_CLIENT.withdrawSentQuote(quoteId);
+        if (typeof chatToast === 'function') chatToast('Devis retiré.');
+        if (typeof refreshOpenBusinessCards === 'function') await refreshOpenBusinessCards();
+    } catch (err) {
+        const message = String(err && err.message || '');
+        if (window.lyannAlert) window.lyannAlert(message && message.length < 180 ? message : 'Ce devis ne peut plus être retiré.');
+    }
+};
+
+window.cancelOpenMission = async function(quote) {
+    const missionId = quote && (quote.mission_id || (quote.mission && quote.mission.id));
+    if (!missionId) {
+        if (window.lyannAlert) window.lyannAlert('La mission n’est pas encore ouverte.');
+        return;
+    }
+    const confirmed = window.lyannConfirm
+        ? await window.lyannConfirm('Annuler cette mission ? Aucun paiement n’est encore sécurisé. L’historique est conservé. Ce n’est pas une suppression.', 'warning', 'Annuler la mission')
+        : true;
+    if (!confirmed) return;
+    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.cancelMissionSecure !== 'function') {
+        if (window.lyannAlert) window.lyannAlert('L’annulation n’est pas disponible.');
+        return;
+    }
+    try {
+        await window.LYANN_API_CLIENT.cancelMissionSecure(missionId, 'Annulation avant démarrage');
+        if (typeof chatToast === 'function') chatToast('Mission annulée.');
+        if (typeof refreshOpenBusinessCards === 'function') await refreshOpenBusinessCards();
+    } catch (err) {
+        const message = String(err && err.message || '');
+        if (window.lyannAlert) window.lyannAlert(message && message.length < 240 ? message : 'Cette mission ne peut pas être annulée ainsi.');
+    }
+};
+
+window.acceptQuoteAmendment = async function(amendmentId) {
+    if (!amendmentId) return;
+    const confirmed = window.lyannConfirm
+        ? await window.lyannConfirm('Accepter cet avenant ? Il remplace le montant convenu. Aucun paiement déjà effectué n’est modifié.', 'info', 'Accepter l’avenant')
+        : true;
+    if (!confirmed) return;
+    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.acceptQuoteAmendment !== 'function') {
+        if (window.lyannAlert) window.lyannAlert('L’avenant n’est pas encore activé.');
+        return;
+    }
+    try {
+        await window.LYANN_API_CLIENT.acceptQuoteAmendment(amendmentId);
+        if (typeof chatToast === 'function') chatToast('Avenant accepté.');
+        if (typeof refreshOpenBusinessCards === 'function') await refreshOpenBusinessCards();
+    } catch (err) {
+        const message = String(err && err.message || '');
+        if (window.lyannAlert) window.lyannAlert(message && message.length < 240 ? message : 'L’avenant n’a pas pu être accepté.');
+    }
+};
+
+window.openQuoteRevision = function(quoteId, mode) {
     const quote = timelineQuotes.get(String(quoteId));
     const revision = window.LYANN_QUOTE_REVISION;
+    const amendment = mode === 'amendment';
     if (!revision) {
         if (window.lyannAlert) window.lyannAlert('La modification du devis est indisponible.');
         return;
     }
-    const decision = revision.assessRevision(quote, getMyId());
+    const decision = amendment
+        ? revision.assessAmendment(quote, getMyId())
+        : revision.assessRevision(quote, getMyId());
+    if (window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.missionPrestationCapEur === 'function') {
+        window.LYANN_API_CLIENT.missionPrestationCapEur().then((cap) => {
+            if (revision.setMissionCapEur) revision.setMissionCapEur(cap);
+        }).catch(() => {});
+    }
     if (!decision.ok) {
         if (window.lyannAlert) window.lyannAlert(decision.message);
         return;
@@ -2284,10 +2354,14 @@ window.openQuoteRevision = function(quoteId) {
     panel.style.cssText = 'width:min(560px, 100%); max-height:min(88vh, 760px); overflow:auto; background:#fff; border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:10px;';
     const title = document.createElement('h3');
     title.style.margin = '0';
-    title.textContent = rows.length > 1 ? 'Modifier le devis avec paiement par étape' : 'Modifier le devis';
+    title.textContent = amendment
+        ? 'Proposer un avenant'
+        : (rows.length > 1 ? 'Modifier le devis avec paiement par étape' : 'Modifier le devis');
     const hint = document.createElement('p');
     hint.style.cssText = 'margin:0; font-size:0.82rem; color:#64748b;';
-    hint.textContent = 'Version ' + decision.version + '. Le client devra voir cette version avant toute acceptation. Aucun paiement n’est lancé.';
+    hint.textContent = amendment
+        ? 'Le demandeur doit accepter cet avenant. Un paiement déjà sécurisé ne peut pas être modifié ici.'
+        : ('Version ' + decision.version + '. Le client devra voir cette version avant toute acceptation. Aucun paiement n’est lancé.');
     const descriptionLabel = document.createElement('label');
     descriptionLabel.textContent = 'Description et conditions';
     descriptionLabel.style.fontWeight = '700';
@@ -2414,7 +2488,7 @@ window.openQuoteRevision = function(quoteId) {
     save.type = 'submit';
     save.className = 'btn btn-primary';
     save.style.flex = '1';
-    save.textContent = 'Enregistrer la nouvelle version';
+    save.textContent = amendment ? 'Envoyer l’avenant' : 'Enregistrer la nouvelle version';
     actions.append(cancel, save);
     panel.append(title, hint, descriptionLabel, description, dateLabel, validUntil, list, totalLine, add, actions);
     overlay.appendChild(panel);
@@ -2425,7 +2499,7 @@ window.openQuoteRevision = function(quoteId) {
         event.preventDefault();
         if (save.disabled || (dealMutationGuard && dealMutationGuard.isBusy('revise', quoteId))) return;
         const latest = timelineQuotes.get(String(quoteId)) || quote;
-        const payload = revision.validateRevision({
+        const payload = (amendment ? revision.validateAmendment : revision.validateRevision)({
             quote: latest,
             callerId: getMyId(),
             description: description.value,
@@ -2441,7 +2515,11 @@ window.openQuoteRevision = function(quoteId) {
                 quoteId,
                 button: save,
                 execute: async (handle) => {
-                    if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.reviseSentQuote !== 'function') {
+                    if (amendment) {
+                        if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.proposeQuoteAmendment !== 'function') {
+                            throw new Error('L’avenant n’est pas encore activé.');
+                        }
+                    } else if (!window.LYANN_API_CLIENT || typeof window.LYANN_API_CLIENT.reviseSentQuote !== 'function') {
                         throw new Error('La modification du devis n’est pas encore activée.');
                     }
                     const validUntilValue = validUntil.value ? new Date(validUntil.value + 'T23:59:59').toISOString() : null;
@@ -2449,6 +2527,14 @@ window.openQuoteRevision = function(quoteId) {
                         const stale = new Error('__deal_mutation_stale__');
                         stale.dealMutationStale = true;
                         throw stale;
+                    }
+                    if (amendment) {
+                        return window.LYANN_API_CLIENT.proposeQuoteAmendment(
+                            quoteId,
+                            payload.description,
+                            payload.milestones,
+                            payload.version
+                        );
                     }
                     return window.LYANN_API_CLIENT.reviseSentQuote(
                         quoteId,
@@ -2461,7 +2547,9 @@ window.openQuoteRevision = function(quoteId) {
                 apply: async () => {
                     closeQuoteRevision();
                     await refreshOpenBusinessCards();
-                    if (typeof chatToast === 'function') chatToast('Devis mis à jour. Le client voit la nouvelle version.');
+                    if (typeof chatToast === 'function') {
+                        chatToast(amendment ? 'Avenant envoyé. Le demandeur doit l’accepter.' : 'Devis mis à jour. Le client voit la nouvelle version.');
+                    }
                 }
             });
         } catch (err) {
@@ -2473,7 +2561,7 @@ window.openQuoteRevision = function(quoteId) {
             if (window.lyannAlert) window.lyannAlert(friendly);
             if (save.isConnected) {
                 save.disabled = false;
-                save.textContent = 'Enregistrer la nouvelle version';
+                save.textContent = amendment ? 'Envoyer l’avenant' : 'Enregistrer la nouvelle version';
             }
         }
     });
@@ -2555,7 +2643,6 @@ async function createProductionQuoteForContact(contactId, description, amount, m
     }];
     const created = await window.LYANN_API_CLIENT.createRequestQuote(activeInv.id, description, null, milestonePayload);
     invalidateActiveQuoteContext();
-    await traceQuoteInThread('sent', parsedAmount);
     return created;
 }
 
@@ -2756,24 +2843,12 @@ function dealMomentKind(type) {
     return '';
 }
 
-async function traceQuoteInThread(kind, amount) {
-    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
-    const myId = typeof getMyId === 'function' ? getMyId() : null;
-    if (!contact || !contact.id || !myId) return;
-    const text = quoteTraceText(kind, amount);
-    const box = document.getElementById('chatMessagesContainer');
-    const marker = kind === 'accepted' ? 'quote_accepted' : (kind === 'updated' ? 'quote_updated' : 'quote_created');
-    if (box && (box.querySelector('[data-message-type="' + marker + '"]') || threadAlreadySays(box, quoteTracePrefix(kind)))) return;
-    await addMessageToContact(contact.id, { type: 'text', sender: myId, text: text });
+async function traceQuoteInThread() {
+    return;
 }
 
-async function traceMomentLine(text) {
-    const contact = currentChatContact || window.LYANN_ACTIVE_CHAT_CONTACT;
-    const myId = typeof getMyId === 'function' ? getMyId() : null;
-    if (!contact || !contact.id || !myId || !text) return;
-    const box = document.getElementById('chatMessagesContainer');
-    if (box && threadAlreadySays(box, text)) return;
-    await addMessageToContact(contact.id, { type: 'text', sender: myId, text: text });
+async function traceMomentLine() {
+    return;
 }
 
 function milestoneFromOpenDossiers(preferredId, statuses) {
@@ -3149,7 +3224,6 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     if (typeof window.showToast === 'function') {
                         window.showToast((result && result.data && result.data.message) || 'Prestation déclarée réalisée, en attente de validation.', 'success');
                     }
-                    await traceMomentLine('Prestation déclarée terminée.');
                     invalidateActiveQuoteContext();
                     await refreshOpenBusinessCards();
                 }
@@ -3355,7 +3429,6 @@ async function handleChatAction(actionId, missionOrExtra = null, extraDataInput 
                     hideChatWait();
                     invalidateActiveQuoteContext();
                     await refreshOpenBusinessCards();
-                    await traceMomentLine('Fonds libérés.');
                     if (!dealFundsReleased()) {
                         if (typeof window.showToast === 'function') window.showToast('Versement effectué.', 'success');
                         return;
@@ -3938,8 +4011,20 @@ function renderMissionCard(quote) {
     const readiness = payoutReadinessByUser.get(String(providerId || '')) || 'unknown';
     const revision = window.LYANN_QUOTE_REVISION;
     const reviseOk = !!(revision && typeof revision.assessRevision === 'function' && revision.assessRevision(quote, userId).ok);
+    const amendOk = !!(revision && typeof revision.assessAmendment === 'function' && revision.assessAmendment(quote, userId).ok);
+    const engagedMilestone = new Set(['FUNDED', 'IN_PROGRESS', 'COMPLETED', 'VALIDATED', 'RELEASED', 'DISPUTED']);
+    const engagedPayment = new Set(['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED']);
+    const cancelOk = String(quote.status || '') === 'ACCEPTED'
+        && String(quote.mission_status || '') === 'AGREED'
+        && !(quote.milestones || []).some((row) => row && engagedMilestone.has(String(row.status || '').toUpperCase()))
+        && !(quote.payments || []).some((row) => row && engagedPayment.has(String(row.payment_status || row.status || '').toUpperCase()));
     const meta = actionPanelRequestMeta(quote);
-    const view = payment.missionCard(quote, userId, readiness, Object.assign({}, meta, { reviseOk }));
+    const view = payment.missionCard(quote, userId, readiness, Object.assign({}, meta, {
+        reviseOk,
+        amendOk,
+        cancelOk,
+        pendingAmendment: quote.pendingAmendment || null
+    }));
     if (!view) return null;
     // E3: revise is modeled as secondary CTA in the ActionPanel view model when reviseOk.
     // Compat: if an older payment module omitted it, keep the secondary revise home on missionCard only.
@@ -4963,6 +5048,31 @@ function bindMissionAction(parent, quote, action) {
         }
         if (action.id === 'revise') {
             if (typeof window.openQuoteRevision === 'function') window.openQuoteRevision(quote.id);
+            return;
+        }
+        if (action.id === 'amend') {
+            if (typeof window.openQuoteRevision === 'function') window.openQuoteRevision(quote.id, 'amendment');
+            return;
+        }
+        if (action.id === 'withdraw') {
+            setButtonBusy(button, true);
+            Promise.resolve(window.withdrawSentQuote(quote.id)).finally(() => {
+                if (button.isConnected) setButtonBusy(button, false);
+            });
+            return;
+        }
+        if (action.id === 'cancel_mission') {
+            setButtonBusy(button, true);
+            Promise.resolve(window.cancelOpenMission(quote)).finally(() => {
+                if (button.isConnected) setButtonBusy(button, false);
+            });
+            return;
+        }
+        if (action.id === 'accept_amendment') {
+            setButtonBusy(button, true);
+            Promise.resolve(window.acceptQuoteAmendment(action.amendmentId)).finally(() => {
+                if (button.isConnected) setButtonBusy(button, false);
+            });
             return;
         }
         if (action.id === 'retry') {
@@ -8131,6 +8241,11 @@ document.addEventListener('touchstart', (e) => {
         milestoneDevisForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             try {
+                if (window.LYANN_QUOTE_REVISION && window.LYANN_API_CLIENT && typeof window.LYANN_API_CLIENT.missionPrestationCapEur === 'function') {
+                    try {
+                        window.LYANN_QUOTE_REVISION.setMissionCapEur(await window.LYANN_API_CLIENT.missionPrestationCapEur());
+                    } catch (_) {}
+                }
                 const titleInput = document.getElementById('mdTitle');
                 const totalInput = document.getElementById('mdTotalAmount');
                 const title = titleInput ? titleInput.value.trim() : '';

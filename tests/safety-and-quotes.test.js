@@ -303,8 +303,8 @@ test('profile and conversation reports go through the safety repository, not loc
     assert.match(admin, /IN_REVIEW/);
 });
 
-test('a direct quote accepts 80, 200, 500 and 2000 euros without a payment', () => {
-    for (const amount of [80, 200, 500, 2000, 80.5]) {
+test('a direct quote accepts 80, 200, 500 and 1000 euros and refuses 2000', () => {
+    for (const amount of [80, 200, 500, 1000, 80.5]) {
         const result = revision.validateQuoteAmount(amount);
         assert.equal(result.ok, true);
         assert.equal(result.amount, amount);
@@ -313,6 +313,10 @@ test('a direct quote accepts 80, 200, 500 and 2000 euros without a payment', () 
         assert.equal(milestone.ok, true);
         assert.equal(milestone.totalAmount, amount);
     }
+    const over = revision.validateQuoteAmount(2000);
+    assert.equal(over.ok, false);
+    assert.equal(over.code, 'mission_cap');
+    assert.equal(over.message, revision.DEFAULT_CAP_MESSAGE);
     assert.equal(revision.validateQuoteAmount(0).ok, false);
     assert.equal(revision.validateQuoteAmount(-20).ok, false);
     assert.equal(revision.validateQuoteAmount('abc').ok, false);

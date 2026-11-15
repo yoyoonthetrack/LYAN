@@ -643,6 +643,20 @@
         (missionResult.data || []).forEach((mission) => missionStatus.set(mission.id, mission));
       }
     }
+    const amendmentsByQuote = new Map();
+    if (quoteIds.length) {
+      const amendmentResult = await client.supabase
+        .from('quote_amendments')
+        .select('id, quote_id, status, description, total_amount, milestones, created_at')
+        .in('quote_id', quoteIds)
+        .eq('status', 'PROPOSED');
+      if (!amendmentResult.error) {
+        (amendmentResult.data || []).forEach((row) => {
+          if (!amendmentsByQuote.has(row.quote_id)) amendmentsByQuote.set(row.quote_id, []);
+          amendmentsByQuote.get(row.quote_id).push(row);
+        });
+      }
+    }
     const revisionsByQuote = new Map();
     if (quoteIds.length) {
       const revisionResult = await client.supabase
@@ -684,6 +698,7 @@
           : null,
         payments: paymentsByQuote.get(quote.id) || [],
         milestones: byQuote.get(quote.id) || [],
+        pendingAmendment: (amendmentsByQuote.get(quote.id) || [])[0] || null,
         previousRevision
       };
     });

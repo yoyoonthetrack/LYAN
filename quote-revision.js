@@ -8,8 +8,64 @@
     const LOCKED_MILESTONE_STATUSES = new Set([
         'FUNDED', 'IN_PROGRESS', 'COMPLETED', 'VALIDATED', 'RELEASED', 'DISPUTED'
     ]);
+    const OPEN_PAYMENT_STATUSES = new Set([
+        'CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'
+    ]);
+    const STARTED_MISSION = new Set(['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'CANCELED', 'DISPUTED']);
     const IGNORED_PAYMENT_STATUSES = new Set();
     const MAX_MILESTONES = 12;
+    const DEFAULT_CAP_EUR = 1000;
+    const DEFAULT_CAP_MESSAGE = 'Pour le moment, les missions sur LYANN sont limitées à 1 000 €. Ajustez votre devis pour continuer.';
+    let configuredCapEur = DEFAULT_CAP_EUR;
+
+    function setMissionCapEur(value) {
+        const amount = Number(value);
+        if (!Number.isFinite(amount) || amount < 1 || amount > 100000) return configuredCapEur;
+        configuredCapEur = Math.round(amount * 100) / 100;
+        return configuredCapEur;
+    }
+
+    function missionCapEur() {
+        return configuredCapEur;
+    }
+
+    function capMessage(cap) {
+        const cents = moneyCents(cap == null ? configuredCapEur : cap);
+        if (cents == null) return DEFAULT_CAP_MESSAGE;
+        if (cents === 100000) return DEFAULT_CAP_MESSAGE;
+        const euros = (cents / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+        return 'Pour le moment, les missions sur LYANN sont limitées à ' + euros + ' €. Ajustez votre devis pour continuer.';
+    }
+
+    function withinMissionCap(amountEur, capEur) {
+        const cents = moneyCents(amountEur);
+        const limit = moneyCents(capEur == null ? configuredCapEur : capEur);
+        if (cents == null || limit == null) {
+            return { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
+        }
+        if (cents > limit) {
+            return { ok: false, code: 'mission_cap', message: capMessage(limit / 100), cents, limitCents: limit };
+        }
+        return { ok: true, cents, limitCents: limit };
+    }
+
+    function paymentContractDecision(input) {
+        const contractual = Number(input && input.contractualEur);
+        const sum = Number(input && input.milestoneSumEur);
+        const rawSnapshot = input ? input.acceptedSnapshotEur : null;
+        const snapshot = rawSnapshot == null || rawSnapshot === '' ? null : Number(rawSnapshot);
+        if (!Number.isFinite(contractual) || !Number.isFinite(sum)) {
+            return { ok: false, code: 'CONTRACT_MISMATCH' };
+        }
+        if (Math.round(sum * 100) > Math.round(contractual * 100)) {
+            return { ok: false, code: 'CONTRACT_MISMATCH' };
+        }
+        if (snapshot == null) return { ok: true, grandfathered: true };
+        if (!Number.isFinite(snapshot) || Math.round(snapshot * 100) !== Math.round(contractual * 100)) {
+            return { ok: false, code: 'CONTRACT_MISMATCH' };
+        }
+        return { ok: true, grandfathered: false };
+    }
 
     function moneyCents(value) {
         const amount = Number(value);
@@ -43,11 +99,45 @@
         return { ok: true, version: Number(quote.version) || 1 };
     }
 
-    function validateQuoteAmount(value) {
+    function assessAmendment(quote, callerId) {
+        if (!quote || !quote.id) return { ok: false, code: 'missing', message: 'Devis introuvable.' };
+        const providerId = quote.provider_id || quote.helper_id;
+        if (!callerId || String(providerId) !== String(callerId)) {
+            return { ok: false, code: 'forbidden', message: 'Seul l’auteur du devis peut proposer un avenant.' };
+        }
+        if (String(quote.status || '') !== 'ACCEPTED') {
+            return { ok: false, code: 'immutable', message: 'Un avenant concerne un devis déjà accepté.' };
+        }
+        const mission = String(quote.mission_status || (quote.mission && quote.mission.status) || '').toUpperCase();
+        if (STARTED_MISSION.has(mission)) {
+            return { ok: false, code: 'started', message: 'Une mission commencée ne se modifie pas par un simple avenant.' };
+        }
+        const milestones = Array.isArray(quote.milestones) ? quote.milestones : [];
+        if (milestones.some((milestone) => milestone && LOCKED_MILESTONE_STATUSES.has(String(milestone.status || '').toUpperCase()))) {
+            return {
+                ok: false,
+                code: 'payment_secured',
+                message: 'Un paiement est déjà sécurisé. Un avenant qui modifie le montant ne peut pas être appliqué automatiquement. Contactez l’Aide LYANN.'
+            };
+        }
+        const payments = Array.isArray(quote.payments) ? quote.payments : [];
+        if (payments.some((payment) => payment && OPEN_PAYMENT_STATUSES.has(paymentStatus(payment)))) {
+            return {
+                ok: false,
+                code: 'payment_secured',
+                message: 'Un paiement est déjà sécurisé. Un avenant qui modifie le montant ne peut pas être appliqué automatiquement. Contactez l’Aide LYANN.'
+            };
+        }
+        return { ok: true, version: Number(quote.version) || 1 };
+    }
+
+    function validateQuoteAmount(value, capEur) {
         const cents = moneyCents(value);
         if (cents == null || cents <= 0) {
             return { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
         }
+        const capped = withinMissionCap(cents / 100, capEur);
+        if (!capped.ok) return Object.assign({ payment: false }, capped);
         return { ok: true, cents, amount: cents / 100, payment: false };
     }
 
@@ -81,12 +171,36 @@
         if (totalCents <= 0) {
             return { ok: false, code: 'amount', message: 'Le montant total du devis doit être supérieur à 0 €.' };
         }
+        const capped = withinMissionCap(totalCents / 100);
+        if (!capped.ok) return capped;
         return { ok: true, milestones, totalCents, totalAmount: totalCents / 100 };
     }
 
     function validateRevision(input) {
         const quote = input && input.quote;
         const decision = assessRevision(quote, input && input.callerId);
+        if (!decision.ok) return decision;
+        const description = String((input && input.description) || '').trim();
+        if (!description) return { ok: false, code: 'description', message: 'Décrivez la prestation et ses conditions.' };
+        if (description.length > 2000) return { ok: false, code: 'description', message: 'La description est trop longue.' };
+        const milestones = validateMilestones(input && input.milestones);
+        if (!milestones.ok) return milestones;
+        const expected = Number(input && input.expectedVersion);
+        if (!Number.isInteger(expected) || expected !== decision.version) {
+            return { ok: false, code: 'conflict', message: 'Ce devis a été modifié entre-temps. Rechargez la conversation avant de réessayer.' };
+        }
+        return {
+            ok: true,
+            version: decision.version,
+            description,
+            milestones: milestones.milestones,
+            totalAmount: milestones.totalAmount
+        };
+    }
+
+    function validateAmendment(input) {
+        const quote = input && input.quote;
+        const decision = assessAmendment(quote, input && input.callerId);
         if (!decision.ok) return decision;
         const description = String((input && input.description) || '').trim();
         if (!description) return { ok: false, code: 'description', message: 'Décrivez la prestation et ses conditions.' };
@@ -432,11 +546,20 @@
     return {
         LOCKED_MILESTONE_STATUSES,
         MAX_MILESTONES,
+        DEFAULT_CAP_EUR,
+        DEFAULT_CAP_MESSAGE,
         moneyCents,
+        setMissionCapEur,
+        missionCapEur,
+        capMessage,
+        withinMissionCap,
+        paymentContractDecision,
         validateQuoteAmount,
         assessRevision,
+        assessAmendment,
         validateMilestones,
         validateRevision,
+        validateAmendment,
         describeRevision,
         planQuoteAcceptance,
         acceptSignatureFallback,

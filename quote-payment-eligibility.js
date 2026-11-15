@@ -310,6 +310,7 @@
                 context = 'En attente de la réponse du demandeur.';
                 if (opts.reviseOk) {
                     actions.push({ id: 'revise', label: 'Modifier le devis', tone: 'secondary' });
+                    actions.push({ id: 'withdraw', label: 'Retirer le devis', tone: 'secondary' });
                 }
             }
         } else if (quote.status === 'ACCEPTED' && !milestones.length) {
@@ -360,11 +361,24 @@
                             actions.push({ id: 'pay', label: 'Finaliser le paiement', milestoneId: openMilestone.id });
                         }
                     } else {
-                        status = 'Devis accepté';
+                        status = 'Paiement à sécuriser';
                         actorToAct = 'requester';
                         context = role === 'provider'
                             ? 'En attente du paiement du demandeur.'
                             : 'Vous pouvez maintenant sécuriser le paiement.';
+                        if (opts.amendOk && role === 'provider') {
+                            actions.push({ id: 'amend', label: 'Proposer un avenant', tone: 'secondary' });
+                        }
+                        if (opts.cancelOk) {
+                            actions.push({ id: 'cancel_mission', label: 'Annuler la mission', tone: 'secondary' });
+                        }
+                        if (opts.pendingAmendment && role === 'requester') {
+                            actions.push({
+                                id: 'accept_amendment',
+                                label: 'Accepter l’avenant',
+                                amendmentId: opts.pendingAmendment.id
+                            });
+                        }
                     }
                 } else if (phase === 'prestation') {
                     const started = milestones.some((milestone) => milestone && milestone.status === 'IN_PROGRESS');
@@ -482,8 +496,10 @@
                 if (firstAction) {
                     actorToAct = role;
                     if (firstAction.id === 'pay') {
-                        status = 'Devis accepté';
-                        context = 'Sécurisez le paiement du prochain paiement par étape.';
+                        status = paymentInFlight ? 'Paiement en cours' : 'Paiement à sécuriser';
+                        context = paymentInFlight
+                            ? 'Finalisez le paiement sécurisé pour bloquer les fonds.'
+                            : 'Sécurisez le paiement du prochain paiement par étape.';
                     } else if (firstAction.id === 'start') {
                         status = 'Paiement sécurisé';
                         context = 'Le paiement est sécurisé. Touchez J’ai commencé quand vous démarrez : le demandeur ne pourra plus se rembourser tout seul.';

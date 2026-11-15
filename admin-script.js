@@ -221,6 +221,31 @@ window.adminSaveSystemSetting = async function(key, value) {
     return data;
 };
 
+window.adminSaveMissionCap = async function(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    const input = document.getElementById('adminMissionCapInput');
+    const status = document.getElementById('adminMissionCapStatus');
+    const amount = Number(input && input.value);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
+        if (status) status.textContent = 'Indiquez un plafond entre 1 € et 100 000 €.';
+        return;
+    }
+    try {
+        await window.adminSaveSystemSetting('mission_prestation_cap_eur', Math.round(amount * 100) / 100);
+        if (status) status.textContent = 'Plafond enregistré. Les devis déjà acceptés ne changent pas.';
+    } catch (err) {
+        if (status) status.textContent = (err && err.message) || 'Le plafond n’a pas été enregistré.';
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const missionCapForm = document.getElementById('adminMissionCapForm');
+    if (missionCapForm && missionCapForm.dataset.bound !== '1') {
+        missionCapForm.dataset.bound = '1';
+        missionCapForm.addEventListener('submit', window.adminSaveMissionCap);
+    }
+});
+
 function updateAdminHeaderProfile(profile) {
     if (!profile) profile = { username: 'Administrateur', role: 'ADMIN', isOwner: true };
     const headerUserEl = document.getElementById('adminHeaderUsernameText');
@@ -5001,6 +5026,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </tr>`).join('') : adminEmpty(6, 'Aucun devis pour le moment.');
             },
             'sec-finances': async () => {
+                try {
+                    const settingsRes = await window.fetchWithAdminAuth('/v1/admin/system/settings');
+                    const settingsData = await settingsRes.json().catch(() => ({}));
+                    const cap = settingsData && settingsData.settings && settingsData.settings.mission_prestation_cap_eur;
+                    const input = document.getElementById('adminMissionCapInput');
+                    if (input && cap != null && cap !== '') input.value = String(cap);
+                } catch (_) {}
                 const data = await fetchAdminOps('payments');
                 window.__adminPaymentsCache = data.rows || [];
                 const tbody = document.getElementById('paymentsAdminTableBody');

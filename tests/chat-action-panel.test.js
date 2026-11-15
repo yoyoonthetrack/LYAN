@@ -74,7 +74,7 @@ test('E3 matrix: demandeur × état → primary action', () => {
     assert.equal(sent.secondaryActions.length, 0);
 
     const pay = missionCard(quote(), requester, 'active');
-    assert.equal(pay.status, 'Devis accepté');
+    assert.equal(pay.status, 'Paiement à sécuriser');
     assert.equal(pay.actorToAct, 'requester');
     assertPrimary(pay, 'pay');
 

@@ -2334,6 +2334,43 @@ const LYANN_API_CLIENT = {
         return data;
     },
 
+    async missionPrestationCapEur() {
+        if (!this.supabase) return 1000;
+        const { data, error } = await this.supabase.rpc('lyann_mission_prestation_cap_eur');
+        if (error || data == null || data === '') return 1000;
+        const amount = Number(data);
+        return Number.isFinite(amount) && amount >= 1 ? amount : 1000;
+    },
+
+    async withdrawSentQuote(quoteId) {
+        if (!this.supabase) throw new Error('Supabase non disponible.');
+        const { data, error } = await this.supabase.rpc('withdraw_sent_quote', { p_quote_id: quoteId });
+        if (error) throw error;
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'withdrawSentQuote', data });
+        return data;
+    },
+
+    async proposeQuoteAmendment(quoteId, description, milestonesJson, expectedVersion) {
+        if (!this.supabase) throw new Error('Supabase non disponible.');
+        const { data, error } = await this.supabase.rpc('propose_quote_amendment', {
+            p_quote_id: quoteId,
+            p_description: description || null,
+            p_milestones_json: milestonesJson || [],
+            p_expected_version: expectedVersion
+        });
+        if (error) throw error;
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'proposeQuoteAmendment', data });
+        return data;
+    },
+
+    async acceptQuoteAmendment(amendmentId) {
+        if (!this.supabase) throw new Error('Supabase non disponible.');
+        const { data, error } = await this.supabase.rpc('accept_quote_amendment', { p_amendment_id: amendmentId });
+        if (error) throw error;
+        emitLyannClientEvent('lyann:deal-mutated', { rpc: 'acceptQuoteAmendment', data });
+        return data;
+    },
+
     async reviseSentQuote(quoteId, description, validUntil, milestonesJson, expectedVersion) {
         if (!this.supabase) throw new Error('Supabase non disponible.');
         const { data, error } = await this.supabase.rpc('revise_sent_quote', {

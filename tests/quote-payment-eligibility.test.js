@@ -232,7 +232,7 @@ test('one mission card replaces the stack and keeps a single primary action', ()
     assert.match(blocked.context, /compte de versement/);
     assert.equal(blocked.actions.length, 0);
     const pay = missionCard(quote({ total_amount: 100 }), requester, 'active');
-    assert.equal(pay.status, 'Devis accepté');
+    assert.equal(pay.status, 'Paiement à sécuriser');
     assert.equal(pay.actions.length, 1);
     assert.equal(pay.actions[0].label, 'Sécuriser le paiement');
     const funded = quote({

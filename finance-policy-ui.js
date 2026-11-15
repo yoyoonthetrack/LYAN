@@ -96,7 +96,12 @@
         if ((classified && classified.code) === 'DISPUTED' || status === 'DISPUTED') return 'dispute';
         if (status === 'CANCELLED' || status === 'CANCELED') return 'cancelled';
         if (status === 'COMPLETED' || status === 'RELEASED' || status === 'CLOSED') return 'done';
-        if (status === 'IN_PROGRESS' || status === 'AGREED' || status === 'FUNDED' || status === 'WORK_MARKED_COMPLETE' || status === 'ASSIGNED') return 'active';
+        if (status === 'AGREED') {
+            const code = classified && classified.code;
+            if (code === 'FUNDED_HOLD' || code === 'WORK_STARTED' || code === 'WORK_DONE' || code === 'VALIDATED') return 'ready';
+            return 'pending';
+        }
+        if (status === 'IN_PROGRESS' || status === 'FUNDED' || status === 'WORK_MARKED_COMPLETE' || status === 'ASSIGNED') return 'active';
         return 'pending';
     }
 
