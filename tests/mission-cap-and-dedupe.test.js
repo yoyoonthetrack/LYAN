@@ -174,11 +174,71 @@ test('message trigger order stays compatible with timeline protection', () => {
         'lyann_enqueue_push_from_notification',
         'revise_sent_quote',
         'idx_messages_timeline_event',
-        'quote_amendments'
+        'quote_amendments',
+        'lyann_record_mission_transition',
+        'lyann_refuse_paid_amendment'
     ]) {
         assert.match(rollback, new RegExp(name));
     }
     assert.match(rollback, /Ne supprime pas/);
+});
+
+function systemCardFunction(sql) {
+    const start = sql.indexOf('CREATE OR REPLACE FUNCTION public.lyann_skip_legacy_system_card()');
+    const end = sql.indexOf('CREATE OR REPLACE FUNCTION public.lyann_record_mission_transition()');
+    assert.ok(start > 0 && end > start);
+    return sql.slice(start, end);
+}
+
+function amendmentAcceptAllowed(state) {
+    const started = new Set(['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DISPUTED']);
+    const engagedMilestones = new Set(['FUNDED', 'IN_PROGRESS', 'COMPLETED', 'VALIDATED', 'RELEASED', 'DISPUTED']);
+    const engagedPayments = new Set(['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED']);
+    if (started.has(state.mission)) return { ok: false, code: 'started' };
+    if ((state.milestones || []).some((status) => engagedMilestones.has(status))) return { ok: false, code: 'payment_secured' };
+    if ((state.payments || []).some((status) => engagedPayments.has(status))) return { ok: false, code: 'payment_secured' };
+    return { ok: true };
+}
+
+test('a member system_card cannot mint an official mission event', () => {
+    const sql = fs.readFileSync(path.join(root, '99_mission_cap_and_deal_dedupe_staging.sql'), 'utf8');
+    const skip = systemCardFunction(sql);
+    assert.match(skip, /RETURN NULL/);
+    assert.doesNotMatch(skip, /lyann_insert_timeline_event/);
+    assert.doesNotMatch(skip, /lyann_insert_notification/);
+    assert.doesNotMatch(skip, /mission_started/);
+    const recordStart = sql.indexOf('CREATE OR REPLACE FUNCTION public.lyann_record_mission_transition()');
+    const recordEnd = sql.indexOf('REVOKE ALL ON FUNCTION public.lyann_record_mission_transition()');
+    const record = sql.slice(recordStart, recordEnd);
+    assert.match(record, /NEW\.helper_id/);
+    assert.match(record, /NEW\.requester_id/);
+    assert.match(record, /request_invitations/);
+    assert.match(record, /conversation_participants/);
+    assert.doesNotMatch(record, /payload/);
+    assert.doesNotMatch(record, /system_card/);
+    assert.match(record, /OLD\.status = 'AGREED' AND NEW\.status = 'IN_PROGRESS'/);
+});
+
+test('accepting an amendment relocks money and loses the race to a new payment', () => {
+    const sql = fs.readFileSync(path.join(root, '99_mission_cap_and_deal_dedupe_staging.sql'), 'utf8');
+    const start = sql.indexOf('CREATE OR REPLACE FUNCTION public.lyann_refuse_paid_amendment');
+    const end = sql.indexOf('REVOKE ALL ON FUNCTION public.lyann_refuse_paid_amendment');
+    const guard = sql.slice(start, end);
+    assert.match(guard, /FROM public\.missions[\s\S]*FOR UPDATE/);
+    assert.match(guard, /FROM public\.milestones[\s\S]*FOR UPDATE/);
+    assert.match(guard, /FROM public\.payments[\s\S]*FOR UPDATE/);
+    assert.match(guard, /'CREATED'/);
+    assert.match(guard, /'FUNDED'/);
+    assert.match(sql, /PERFORM public\.lyann_refuse_paid_amendment\(v_quote\.id, v_quote\.mission_id\)/);
+    const open = { mission: 'AGREED', milestones: ['PENDING'], payments: [] };
+    assert.equal(amendmentAcceptAllowed(open).ok, true);
+    const paymentFirst = amendmentAcceptAllowed({ mission: 'AGREED', milestones: ['PENDING'], payments: ['CREATED'] });
+    assert.equal(paymentFirst.ok, false);
+    assert.equal(paymentFirst.code, 'payment_secured');
+    const started = amendmentAcceptAllowed({ mission: 'IN_PROGRESS', milestones: ['FUNDED'], payments: ['SUCCEEDED'] });
+    assert.equal(started.ok, false);
+    const funded = amendmentAcceptAllowed({ mission: 'AGREED', milestones: ['FUNDED'], payments: [] });
+    assert.equal(funded.code, 'payment_secured');
 });
 
 test('a secured payment blocks an amendment and a sent quote can still be revised', () => {

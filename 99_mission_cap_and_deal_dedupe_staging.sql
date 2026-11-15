@@ -595,6 +595,9 @@ $$;
 
 REVOKE ALL ON FUNCTION public.lyann_notify_on_message() FROM PUBLIC, anon, authenticated;
 
+-- A system_card is never proof of a mission transition. The JSON is dropped.
+-- Official events are written by lyann_record_mission_transition from the
+-- mission row updated by the secure RPCs.
 CREATE OR REPLACE FUNCTION public.lyann_skip_legacy_system_card()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -603,12 +606,6 @@ SET search_path = public
 AS $$
 DECLARE
     payload jsonb;
-    event_name text;
-    mission_id uuid;
-    other_user uuid;
-    kind text;
-    label text;
-    notif_type text;
 BEGIN
     IF NEW.message_type IS NOT NULL THEN
         RETURN NEW;
@@ -624,43 +621,6 @@ BEGIN
     IF COALESCE(payload->>'type', '') IS DISTINCT FROM 'system_card' THEN
         RETURN NEW;
     END IF;
-    event_name := COALESCE(payload->>'event_type', '');
-    IF event_name IN ('MILESTONE_COMPLETED', 'MILESTONE_VALIDATED') THEN
-        RETURN NULL;
-    END IF;
-    mission_id := NULLIF(payload->>'mission_id', '')::uuid;
-    IF event_name = 'MISSION_STARTED' THEN
-        kind := 'mission_started';
-        label := 'Mission commencée';
-        notif_type := 'MISSION_STARTED';
-    ELSIF event_name = 'MISSION_COMPLETED' THEN
-        kind := 'mission_completed';
-        label := 'Mission terminée';
-        notif_type := 'MISSION_COMPLETED';
-    ELSIF event_name = 'MISSION_CANCELLED' THEN
-        kind := 'mission_cancelled';
-        label := 'Mission annulée';
-        notif_type := 'MISSION_CANCELLED';
-    ELSE
-        RETURN NULL;
-    END IF;
-    IF mission_id IS NOT NULL AND NEW.conversation_id IS NOT NULL AND NEW.sender_id IS NOT NULL THEN
-        PERFORM public.lyann_insert_timeline_event(
-            NEW.conversation_id, NEW.sender_id, kind, 'mission', mission_id, label,
-            jsonb_build_object('status', event_name, 'reason', payload->>'reason')
-        );
-        SELECT cp.user_id INTO other_user
-        FROM public.conversation_participants cp
-        WHERE cp.conversation_id = NEW.conversation_id
-          AND cp.user_id IS DISTINCT FROM NEW.sender_id
-        LIMIT 1;
-        IF other_user IS NOT NULL THEN
-            PERFORM public.lyann_insert_notification(
-                other_user, notif_type, 'LYANN', label, 'mission',
-                NEW.sender_id::text || ':' || mission_id::text
-            );
-        END IF;
-    END IF;
     RETURN NULL;
 END;
 $$;
@@ -668,12 +628,7 @@ $$;
 -- BEFORE INSERT order is alphabetical:
 --   messages_protect_timeline_insert  (token required for reserved types)
 --   trg_block_restricted_messages     (restricted account)
---   trg_lyann_skip_legacy_system_card (this trigger, after both)
--- A system_card row is not stored. Mission start, completion and cancellation
--- are rewritten through lyann_insert_timeline_event, which claims the timeline
--- token before the nested insert reaches messages_protect_timeline_insert.
--- Milestone cards are dropped: milestones_timeline_event already wrote them.
--- trg_lyann_notify_on_message is AFTER INSERT and skips those reserved types.
+--   trg_lyann_skip_legacy_system_card (drops system_card, creates nothing)
 DROP TRIGGER IF EXISTS trg_lyann_skip_legacy_system_card ON public.messages;
 CREATE TRIGGER trg_lyann_skip_legacy_system_card
     BEFORE INSERT ON public.messages
@@ -681,6 +636,90 @@ CREATE TRIGGER trg_lyann_skip_legacy_system_card
     EXECUTE FUNCTION public.lyann_skip_legacy_system_card();
 
 REVOKE ALL ON FUNCTION public.lyann_skip_legacy_system_card() FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.lyann_record_mission_transition()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_actor uuid;
+    v_other uuid;
+    v_conv uuid;
+    v_kind text;
+    v_label text;
+    v_notif text;
+BEGIN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
+        RETURN NEW;
+    END IF;
+    v_actor := auth.uid();
+    IF v_actor IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF OLD.status = 'AGREED' AND NEW.status = 'IN_PROGRESS' AND v_actor = NEW.helper_id THEN
+        v_kind := 'mission_started';
+        v_label := 'Mission commencée';
+        v_notif := 'MISSION_STARTED';
+        v_other := NEW.requester_id;
+    ELSIF NEW.status = 'COMPLETED' AND OLD.status IS DISTINCT FROM 'COMPLETED' AND v_actor = NEW.requester_id THEN
+        v_kind := 'mission_completed';
+        v_label := 'Mission terminée';
+        v_notif := 'MISSION_COMPLETED';
+        v_other := NEW.helper_id;
+    ELSIF OLD.status = 'AGREED' AND NEW.status = 'CANCELLED'
+          AND (v_actor = NEW.helper_id OR v_actor = NEW.requester_id) THEN
+        v_kind := 'mission_cancelled';
+        v_label := 'Mission annulée';
+        v_notif := 'MISSION_CANCELLED';
+        v_other := CASE WHEN v_actor = NEW.helper_id THEN NEW.requester_id ELSE NEW.helper_id END;
+    ELSE
+        RETURN NEW;
+    END IF;
+
+    SELECT ri.conversation_id
+      INTO v_conv
+    FROM public.request_invitations ri
+    WHERE ri.id = NEW.request_invitation_id;
+    IF v_conv IS NULL OR NOT EXISTS (
+        SELECT 1
+        FROM public.conversation_participants cp
+        WHERE cp.conversation_id = v_conv
+          AND cp.user_id = v_actor
+    ) THEN
+        RETURN NEW;
+    END IF;
+
+    PERFORM public.lyann_insert_timeline_event(
+        v_conv, v_actor, v_kind, 'mission', NEW.id, v_label,
+        jsonb_build_object('status', NEW.status)
+    );
+    IF v_other IS NOT NULL
+       AND v_other IS DISTINCT FROM v_actor
+       AND EXISTS (
+            SELECT 1
+            FROM public.conversation_participants cp
+            WHERE cp.conversation_id = v_conv
+              AND cp.user_id = v_other
+       ) THEN
+        PERFORM public.lyann_insert_notification(
+            v_other, v_notif, 'LYANN', v_label, 'mission',
+            v_actor::text || ':' || NEW.id::text
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_record_mission_transition() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_lyann_mission_status_event ON public.missions;
+CREATE TRIGGER trg_lyann_mission_status_event
+    AFTER UPDATE OF status ON public.missions
+    FOR EACH ROW
+    EXECUTE FUNCTION public.lyann_record_mission_transition();
 
 CREATE OR REPLACE FUNCTION public.withdraw_sent_quote(p_quote_id uuid)
 RETURNS jsonb
@@ -792,7 +831,6 @@ DECLARE
     v_amount numeric;
     v_title text;
     v_id uuid;
-    v_mission_status text;
 BEGIN
     PERFORM set_config('lock_timeout', '4s', true);
     v_my_id := auth.uid();
@@ -813,24 +851,7 @@ BEGIN
         RAISE EXCEPTION 'Ce devis a été modifié entre-temps. Rechargez la conversation avant de réessayer.'
             USING ERRCODE = 'P0001';
     END IF;
-    SELECT status INTO v_mission_status FROM public.missions WHERE id = v_quote.mission_id;
-    IF v_mission_status IN ('IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DISPUTED') THEN
-        RAISE EXCEPTION 'Une mission commencée ne se modifie pas par un simple avenant.' USING ERRCODE = '22000';
-    END IF;
-    IF EXISTS (
-        SELECT 1 FROM public.milestones
-        WHERE quote_id = p_quote_id
-          AND status IN ('FUNDED', 'IN_PROGRESS', 'COMPLETED', 'VALIDATED', 'RELEASED', 'DISPUTED')
-    ) OR EXISTS (
-        SELECT 1
-        FROM public.payments p
-        JOIN public.milestones m ON m.id = p.milestone_id
-        WHERE m.quote_id = p_quote_id
-          AND p.payment_status IN ('CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED')
-    ) THEN
-        RAISE EXCEPTION 'Un paiement est déjà sécurisé. Un avenant qui modifie le montant ne peut pas être appliqué automatiquement. Contactez l’Aide LYANN.'
-            USING ERRCODE = '22000', HINT = 'payment_secured';
-    END IF;
+    PERFORM public.lyann_refuse_paid_amendment(p_quote_id, v_quote.mission_id);
     v_description := btrim(COALESCE(p_description, ''));
     IF v_description = '' OR char_length(v_description) > 2000 THEN
         RAISE EXCEPTION 'Décrivez la prestation et ses conditions.' USING ERRCODE = '22000';
@@ -863,6 +884,66 @@ $$;
 
 REVOKE ALL ON FUNCTION public.propose_quote_amendment(uuid, text, jsonb, int) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.propose_quote_amendment(uuid, text, jsonb, int) TO authenticated, service_role;
+
+-- Locks the mission, its milestones and their payments, then repeats the
+-- proposal checks. A payment inserted by a concurrent transaction is visible
+-- once this function holds those locks.
+CREATE OR REPLACE FUNCTION public.lyann_refuse_paid_amendment(p_quote_id uuid, p_mission_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_mission_status text;
+BEGIN
+    IF p_mission_id IS NOT NULL THEN
+        SELECT status
+          INTO v_mission_status
+        FROM public.missions
+        WHERE id = p_mission_id
+        FOR UPDATE;
+        IF v_mission_status IN ('IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DISPUTED') THEN
+            RAISE EXCEPTION 'Une mission commencée ne se modifie pas par un simple avenant.'
+                USING ERRCODE = '22000';
+        END IF;
+    END IF;
+
+    PERFORM 1
+    FROM public.milestones
+    WHERE quote_id = p_quote_id
+    ORDER BY id
+    FOR UPDATE;
+
+    PERFORM 1
+    FROM public.payments p
+    JOIN public.milestones m ON m.id = p.milestone_id
+    WHERE m.quote_id = p_quote_id
+    ORDER BY p.id
+    FOR UPDATE;
+
+    IF EXISTS (
+        SELECT 1
+        FROM public.milestones
+        WHERE quote_id = p_quote_id
+          AND status IN ('FUNDED', 'IN_PROGRESS', 'COMPLETED', 'VALIDATED', 'RELEASED', 'DISPUTED')
+    ) OR EXISTS (
+        SELECT 1
+        FROM public.payments p
+        JOIN public.milestones m ON m.id = p.milestone_id
+        WHERE m.quote_id = p_quote_id
+          AND p.payment_status IN (
+              'CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED',
+              'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'
+          )
+    ) THEN
+        RAISE EXCEPTION 'Un paiement est déjà sécurisé. Un avenant qui modifie le montant ne peut pas être appliqué automatiquement. Contactez l’Aide LYANN.'
+            USING ERRCODE = '22000', HINT = 'payment_secured';
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_refuse_paid_amendment(uuid, uuid) FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.accept_quote_amendment(p_amendment_id uuid)
 RETURNS jsonb
@@ -897,15 +978,10 @@ BEGIN
     IF v_quote.requester_id IS DISTINCT FROM v_my_id THEN
         RAISE EXCEPTION 'Seul le demandeur peut accepter cet avenant.' USING ERRCODE = '42501';
     END IF;
-    IF EXISTS (
-        SELECT 1 FROM public.milestones
-        WHERE quote_id = v_quote.id
-          AND status IS DISTINCT FROM 'PENDING'
-          AND status IS DISTINCT FROM 'CANCELLED'
-    ) THEN
-        RAISE EXCEPTION 'Un paiement est déjà sécurisé. Un avenant qui modifie le montant ne peut pas être appliqué automatiquement. Contactez l’Aide LYANN.'
-            USING ERRCODE = '22000';
+    IF v_quote.status IS DISTINCT FROM 'ACCEPTED' THEN
+        RAISE EXCEPTION 'Un avenant concerne un devis déjà accepté.' USING ERRCODE = '22000';
     END IF;
+    PERFORM public.lyann_refuse_paid_amendment(v_quote.id, v_quote.mission_id);
     PERFORM public.lyann_assert_prestation_cap(v_amendment.total_amount);
     PERFORM set_config('lyann.contract_amendment', 'on', true);
     v_new_version := COALESCE(v_quote.version, 1) + 1;
