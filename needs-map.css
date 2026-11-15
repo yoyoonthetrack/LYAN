@@ -129,7 +129,7 @@
     box-sizing: border-box;
     border: 3px solid #fff;
     border-radius: 50% 50% 50% 0;
-    background: radial-gradient(circle at 30% 30%, var(--pin-from, #C8D5D9) 0%, var(--pin-to, #83969D) 58%);
+    background: var(--pin-to, #A8B6BA);
     transform: rotate(-45deg);
     color: #fff;
     font-size: 1.05rem;
