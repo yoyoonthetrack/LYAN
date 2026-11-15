@@ -139,16 +139,42 @@
 .needs-map-pin-face.is-tone-green,
 .needs-map-pin-face.is-tone-yellow,
 .needs-map-pin-face.is-tone-neutral,
-.needs-map-pin-face[class*="is-family-"] { background: #F2D994; color: #246B49; }
+.needs-map-pin-face[class*="is-family-"] { background: #F2C14E; color: #fff; }
+.needs-map-pin-face.is-family-maison { background: #E26B6B; }
+.needs-map-pin-face.is-family-jardin { background: #7CB342; }
+.needs-map-pin-face.is-family-entretien { background: #F2C14E; }
+.needs-map-pin-face.is-family-beaute { background: #8E5BD6; }
+.needs-map-pin-face.is-family-transport { background: #F0A03A; }
+.needs-map-pin-face.is-family-famille { background: #2F9A62; }
+.needs-map-pin-face.is-family-evenement { background: #E8893A; }
+.needs-map-pin-face.is-family-numerique { background: #5B8DEF; }
+.needs-map-pin-face.is-family-mixed,
+.needs-map-pin-face.has-count { background: #1F8A4C; }
 
 .needs-map-pin-face svg,
 .needs-map-pin-icon {
-    width: 23px;
-    height: 23px;
+    width: 20px;
+    height: 20px;
     transform: rotate(45deg);
     flex: none;
-    fill: #246B49;
+    fill: #fff;
     stroke: none;
+}
+
+.needs-map-pin-face.has-count .needs-map-pin-icon { display: none; }
+.needs-map-pin-face.has-count .needs-map-pin-count {
+    position: static;
+    top: auto;
+    right: auto;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 0.95rem;
+    line-height: 1;
+    transform: rotate(45deg);
 }
 
 .needs-map-pin-count {

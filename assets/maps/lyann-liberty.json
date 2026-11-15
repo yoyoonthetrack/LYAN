@@ -23,8 +23,8 @@
       "source-layer": "park",
       "paint": {
         "fill-color": "#8FB58B",
-        "fill-opacity": 0.94,
-        "fill-outline-color": "#7EAA78"
+        "fill-opacity": 0.96,
+        "fill-outline-color": "#7EAE78"
       },
       "minzoom": 12
     },
@@ -59,7 +59,7 @@
       ],
       "paint": {
         "fill-color": "#F5E5C9",
-        "fill-opacity": 0.94
+        "fill-opacity": 0.96
       },
       "minzoom": 10
     },
@@ -77,11 +77,11 @@
         "wood"
       ],
       "paint": {
-        "fill-antialias": false,
-        "fill-color": "#7EAA78",
-        "fill-opacity": 0.92
+        "fill-antialias": true,
+        "fill-color": "#8FBF80",
+        "fill-opacity": 0.96
       },
-      "minzoom": 11
+      "minzoom": 6
     },
     {
       "id": "landcover_grass",
@@ -98,8 +98,8 @@
       ],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "#A3C49A",
-        "fill-opacity": 0.75
+        "fill-color": "#A5C99A",
+        "fill-opacity": 0.8
       },
       "minzoom": 13
     },
@@ -315,7 +315,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#78B4D4",
+        "line-color": "#6FB4D6",
         "line-width": [
           "interpolate",
           [
@@ -378,7 +378,7 @@
           6
         ]
       },
-      "minzoom": 13
+      "minzoom": 14
     },
     {
       "id": "water",
@@ -415,8 +415,8 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#78B4D4",
-        "line-opacity": 0.45,
+        "line-color": "#6FB4D6",
+        "line-opacity": 0.35,
         "line-width": [
           "interpolate",
           [
@@ -632,9 +632,9 @@
           20,
           15
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 15
+      "minzoom": 14
     },
     {
       "id": "tunnel_service_track_casing",
@@ -670,7 +670,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-dasharray": [
           0.5,
           0.25
@@ -691,9 +691,9 @@
           20,
           11
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 16
+      "minzoom": 14
     },
     {
       "id": "tunnel_link_casing",
@@ -724,7 +724,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -743,9 +743,9 @@
           20,
           15
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 15
+      "minzoom": 14
     },
     {
       "id": "tunnel_street_casing",
@@ -781,8 +781,8 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
-        "line-opacity": 0.22,
+        "line-color": "#B7B3AB",
+        "line-opacity": 0.18,
         "line-width": [
           "interpolate",
           [
@@ -802,7 +802,7 @@
           15
         ]
       },
-      "minzoom": 15
+      "minzoom": 14
     },
     {
       "id": "tunnel_secondary_tertiary_casing",
@@ -838,7 +838,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -853,9 +853,9 @@
           20,
           17
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 13
+      "minzoom": 14
     },
     {
       "id": "tunnel_trunk_primary_casing",
@@ -910,9 +910,9 @@
           20,
           22
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 11
+      "minzoom": 14
     },
     {
       "id": "tunnel_motorway_casing",
@@ -974,9 +974,9 @@
           20,
           22
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 11
+      "minzoom": 14
     },
     {
       "id": "tunnel_path_pedestrian",
@@ -1020,7 +1020,7 @@
         ]
       ],
       "paint": {
-        "line-color": "#D5D1C8",
+        "line-color": "#DDD9D2",
         "line-dasharray": [
           1,
           0.75
@@ -1139,7 +1139,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D5D1C8",
+        "line-color": "#DDD9D2",
         "line-width": [
           "interpolate",
           [
@@ -1208,7 +1208,7 @@
           11.5
         ]
       },
-      "minzoom": 14
+      "minzoom": 13
     },
     {
       "id": "tunnel_minor",
@@ -1261,7 +1261,7 @@
           11.5
         ]
       },
-      "minzoom": 14
+      "minzoom": 13
     },
     {
       "id": "tunnel_secondary_tertiary",
@@ -1315,7 +1315,7 @@
           10
         ]
       },
-      "minzoom": 12
+      "minzoom": 11
     },
     {
       "id": "tunnel_trunk_primary",
@@ -1355,21 +1355,22 @@
         "line-width": [
           "interpolate",
           [
-            "exponential",
-            1.2
+            "linear"
           ],
           [
             "zoom"
           ],
-          5,
-          0.0,
           7,
-          1.2,
-          20,
-          21.6
+          1.15,
+          10,
+          2.1,
+          14,
+          4.2,
+          18,
+          10
         ]
       },
-      "minzoom": 10
+      "minzoom": 7
     },
     {
       "id": "tunnel_motorway",
@@ -1412,21 +1413,22 @@
         "line-width": [
           "interpolate",
           [
-            "exponential",
-            1.2
+            "linear"
           ],
           [
             "zoom"
           ],
-          5,
-          0.0,
           7,
-          1.2,
-          20,
-          21.6
+          1.15,
+          10,
+          2.1,
+          14,
+          4.2,
+          18,
+          10
         ]
       },
-      "minzoom": 10
+      "minzoom": 7
     },
     {
       "id": "tunnel_major_rail",
@@ -1661,7 +1663,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 15,
+      "minzoom": 14,
       "filter": [
         "all",
         [
@@ -1718,7 +1720,7 @@
           20,
           15
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       }
     },
     {
@@ -1760,7 +1762,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -1777,16 +1779,16 @@
           20,
           8.4
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 16
+      "minzoom": 14
     },
     {
       "id": "road_link_casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 15,
+      "minzoom": 14,
       "filter": [
         "all",
         [
@@ -1832,7 +1834,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -1851,7 +1853,7 @@
           20,
           15
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       }
     },
     {
@@ -1912,8 +1914,8 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
-        "line-opacity": 0.22,
+        "line-color": "#B7B3AB",
+        "line-opacity": 0.18,
         "line-width": [
           "interpolate",
           [
@@ -1933,7 +1935,7 @@
           15.2
         ]
       },
-      "minzoom": 15
+      "minzoom": 14
     },
     {
       "id": "road_secondary_tertiary_casing",
@@ -1982,7 +1984,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -1997,9 +1999,9 @@
           20,
           15.3
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 13
+      "minzoom": 14
     },
     {
       "id": "road_trunk_primary_casing",
@@ -2059,16 +2061,16 @@
           20,
           19.8
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 11
+      "minzoom": 14
     },
     {
       "id": "road_motorway_casing",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 11,
+      "minzoom": 14,
       "filter": [
         "all",
         [
@@ -2125,7 +2127,7 @@
           20,
           19.8
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       }
     },
     {
@@ -2180,7 +2182,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D5D1C8",
+        "line-color": "#DDD9D2",
         "line-dasharray": [
           1,
           0.7
@@ -2305,7 +2307,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#D5D1C8",
+        "line-color": "#DDD9D2",
         "line-width": [
           "interpolate",
           [
@@ -2331,7 +2333,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 14,
+      "minzoom": 13,
       "filter": [
         "all",
         [
@@ -2466,7 +2468,7 @@
           13.7
         ]
       },
-      "minzoom": 14
+      "minzoom": 13
     },
     {
       "id": "road_secondary_tertiary",
@@ -2525,7 +2527,7 @@
           11.7
         ]
       },
-      "minzoom": 12
+      "minzoom": 11
     },
     {
       "id": "road_trunk_primary",
@@ -2570,28 +2572,29 @@
         "line-width": [
           "interpolate",
           [
-            "exponential",
-            1.2
+            "linear"
           ],
           [
             "zoom"
           ],
-          5,
-          0.0,
           7,
-          1.08,
-          20,
-          19.44
+          1.15,
+          10,
+          2.1,
+          14,
+          4.2,
+          18,
+          10
         ]
       },
-      "minzoom": 10
+      "minzoom": 7
     },
     {
       "id": "road_motorway",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 10,
+      "minzoom": 7,
       "filter": [
         "all",
         [
@@ -2633,18 +2636,19 @@
         "line-width": [
           "interpolate",
           [
-            "exponential",
-            1.2
+            "linear"
           ],
           [
             "zoom"
           ],
-          5,
-          0.0,
           7,
-          1.08,
-          20,
-          19.44
+          1.15,
+          10,
+          2.1,
+          14,
+          4.2,
+          18,
+          10
         ]
       }
     },
@@ -2969,9 +2973,9 @@
           20,
           15
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 15
+      "minzoom": 14
     },
     {
       "id": "bridge_service_track_casing",
@@ -3007,7 +3011,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -3024,9 +3028,9 @@
           20,
           11
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 16
+      "minzoom": 14
     },
     {
       "id": "bridge_link_casing",
@@ -3057,7 +3061,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -3076,9 +3080,9 @@
           20,
           15
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 15
+      "minzoom": 14
     },
     {
       "id": "bridge_street_casing",
@@ -3114,8 +3118,8 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
-        "line-opacity": 0.22,
+        "line-color": "#B7B3AB",
+        "line-opacity": 0.18,
         "line-width": [
           "interpolate",
           [
@@ -3135,7 +3139,7 @@
           25
         ]
       },
-      "minzoom": 15
+      "minzoom": 14
     },
     {
       "id": "bridge_path_pedestrian_casing",
@@ -3179,7 +3183,7 @@
         ]
       ],
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-dasharray": [
           1,
           0
@@ -3198,13 +3202,13 @@
           20,
           18
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
       "layout": {
         "line-cap": "round",
         "line-join": "round"
       },
-      "minzoom": 16
+      "minzoom": 14
     },
     {
       "id": "bridge_secondary_tertiary_casing",
@@ -3240,7 +3244,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D9D5CD",
+        "line-color": "#B7B3AB",
         "line-width": [
           "interpolate",
           [
@@ -3255,9 +3259,9 @@
           20,
           17
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 13
+      "minzoom": 14
     },
     {
       "id": "bridge_trunk_primary_casing",
@@ -3312,9 +3316,9 @@
           20,
           22
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 11
+      "minzoom": 14
     },
     {
       "id": "bridge_motorway_casing",
@@ -3372,9 +3376,9 @@
           20,
           22
         ],
-        "line-opacity": 0.22
+        "line-opacity": 0.18
       },
-      "minzoom": 11
+      "minzoom": 14
     },
     {
       "id": "bridge_path_pedestrian",
@@ -3418,7 +3422,7 @@
         ]
       ],
       "paint": {
-        "line-color": "#D5D1C8",
+        "line-color": "#DDD9D2",
         "line-dasharray": [
           1,
           0.3
@@ -3537,7 +3541,7 @@
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#D5D1C8",
+        "line-color": "#DDD9D2",
         "line-width": [
           "interpolate",
           [
@@ -3606,7 +3610,7 @@
           11.5
         ]
       },
-      "minzoom": 14
+      "minzoom": 13
     },
     {
       "id": "bridge_street",
@@ -3659,7 +3663,7 @@
           18
         ]
       },
-      "minzoom": 14
+      "minzoom": 13
     },
     {
       "id": "bridge_secondary_tertiary",
@@ -3713,7 +3717,7 @@
           10
         ]
       },
-      "minzoom": 12
+      "minzoom": 11
     },
     {
       "id": "bridge_trunk_primary",
@@ -3753,21 +3757,22 @@
         "line-width": [
           "interpolate",
           [
-            "exponential",
-            1.2
+            "linear"
           ],
           [
             "zoom"
           ],
-          5,
-          0.0,
           7,
-          1.2,
-          20,
-          21.6
+          1.15,
+          10,
+          2.1,
+          14,
+          4.2,
+          18,
+          10
         ]
       },
-      "minzoom": 10
+      "minzoom": 7
     },
     {
       "id": "bridge_motorway",
@@ -3810,21 +3815,22 @@
         "line-width": [
           "interpolate",
           [
-            "exponential",
-            1.2
+            "linear"
           ],
           [
             "zoom"
           ],
-          5,
-          0.0,
           7,
-          1.2,
-          20,
-          21.6
+          1.15,
+          10,
+          2.1,
+          14,
+          4.2,
+          18,
+          10
         ]
       },
-      "minzoom": 10
+      "minzoom": 7
     },
     {
       "id": "bridge_major_rail",
@@ -4029,9 +4035,9 @@
       "source-layer": "building",
       "minzoom": 15,
       "paint": {
-        "fill-color": "#F7EBDA",
-        "fill-outline-color": "#E6D5BC",
-        "fill-opacity": 0.95
+        "fill-color": "#F3E4CC",
+        "fill-outline-color": "#E4D2B4",
+        "fill-opacity": 0.85
       }
     },
     {
@@ -5076,7 +5082,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation_name",
-      "minzoom": 13,
+      "minzoom": 12,
       "filter": [
         "all",
         [
@@ -5143,15 +5149,18 @@
           ]
         ],
         "text-font": [
-          "Nunito Sans Regular"
+          "Nunito Sans Bold"
         ],
         "text-rotation-alignment": "viewport",
-        "text-size": 10
+        "text-size": 11
       },
       "paint": {
-        "icon-opacity": 0.55,
-        "text-opacity": 0.72,
-        "text-halo-color": "#FAF7F0"
+        "icon-opacity": 0,
+        "text-color": "#5C5146",
+        "text-halo-color": "#F3D36B",
+        "text-halo-width": 5,
+        "text-halo-blur": 0,
+        "text-opacity": 0.9
       }
     },
     {
@@ -6166,7 +6175,7 @@
       }
     }
   ],
-  "name": "LYANN · Pastel V3",
+  "name": "LYANN · Pastel V4",
   "metadata": {
     "lyann:source": "OpenFreeMap Liberty, retrieved 2026-10-22",
     "lyann:changes": "Warm pastel palette only; original geometry, filters, widths and labels retained."

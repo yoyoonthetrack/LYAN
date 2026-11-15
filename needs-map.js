@@ -29,7 +29,7 @@
         bridge: 'vendor/maplibre/leaflet-maplibre-gl.js?v=0.1.4'
     });
     // Même version de style que Bokantaj : le fichier est déjà en cache.
-    const STYLE_PATH = 'assets/maps/lyann-liberty.json?v=20261115-pastel-v3';
+    const STYLE_PATH = 'assets/maps/lyann-liberty.json?v=20261115-pastel-v4';
     const GLYPHS_PATH = 'assets/maps/glyphs/';
 
     /* ---------- Données (pures, testables sans navigateur) ---------- */
