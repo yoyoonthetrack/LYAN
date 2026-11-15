@@ -238,7 +238,13 @@ test('accepting an amendment relocks money and loses the race to a new payment',
     assert.match(insertBody, /PERFORM public\.lyann_lock_quote_payment_rows\(v_quote_id\)/);
     const insertAt = insertBody.indexOf('INSERT INTO public.payments');
     const lockAt = insertBody.indexOf('lyann_lock_quote_payment_rows');
-    assert.ok(lockAt > 0 && lockAt < insertAt);
+    const amountAt = insertBody.indexOf('lyann_money_cents(v_milestone.amount)');
+    assert.ok(lockAt > 0 && amountAt > lockAt && amountAt < insertAt);
+    assert.match(insertBody, /service_amount_cents'\)::bigint IS DISTINCT FROM v_service_cents/);
+    assert.match(insertBody, /customer_fee_cents/);
+    assert.match(insertBody, /customer_total_cents/);
+    assert.match(insertBody, /provider_net_cents/);
+    assert.match(insertBody, /GREATEST\(v_provider_fee, 149\)/);
     const api = fs.readFileSync(path.join(root, 'api/server.js'), 'utf8');
     assert.match(api, /rpc\('lyann_insert_milestone_payment'/);
     assert.match(sql, /PERFORM public\.lyann_refuse_paid_amendment\(v_quote\.id, v_quote\.mission_id\)/);

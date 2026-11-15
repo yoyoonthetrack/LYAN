@@ -968,7 +968,10 @@ $$;
 REVOKE ALL ON FUNCTION public.lyann_refuse_paid_amendment(uuid, uuid) FROM PUBLIC, anon, authenticated;
 
 -- Inserts the payment row only after the same locks as an amendment.
--- Amounts come from the API. The quote, mission and milestone come from the locked rows.
+-- The locked milestone amount must match the service amount. Fees, the
+-- customer total and the provider net must match the existing 3 % policy
+-- (customer fee at least 149 cents). Quote, mission and milestone ids
+-- come from the locked rows.
 CREATE OR REPLACE FUNCTION public.lyann_insert_milestone_payment(p_milestone_id uuid, p_row jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -980,6 +983,9 @@ DECLARE
     v_milestone public.milestones%ROWTYPE;
     v_quote public.quotes%ROWTYPE;
     v_payment public.payments%ROWTYPE;
+    v_service_cents bigint;
+    v_provider_fee bigint;
+    v_customer_fee bigint;
 BEGIN
     PERFORM set_config('lock_timeout', '4s', true);
     SELECT quote_id INTO v_quote_id
@@ -996,6 +1002,29 @@ BEGIN
     END IF;
     IF v_milestone.status IS DISTINCT FROM 'PENDING' OR v_quote.status IS DISTINCT FROM 'ACCEPTED' THEN
         RAISE EXCEPTION 'Cette Partie n''est pas payable.' USING ERRCODE = '22000';
+    END IF;
+    v_service_cents := public.lyann_money_cents(v_milestone.amount);
+    IF v_service_cents <= 0 THEN
+        RAISE EXCEPTION 'Le montant de la partie doit être supérieur à 0 centime.' USING ERRCODE = '22000';
+    END IF;
+    IF (p_row->>'service_amount_cents')::bigint IS DISTINCT FROM v_service_cents THEN
+        RAISE EXCEPTION 'Le montant du jalon a changé. Aucun paiement n''a été créé.'
+            USING ERRCODE = '22000', HINT = 'amount_mismatch';
+    END IF;
+    -- Same arithmetic as calculateMilestonePricing: half-up 3 %, customer fee floor 149.
+    v_provider_fee := (v_service_cents * 3 + 50) / 100;
+    v_customer_fee := GREATEST(v_provider_fee, 149);
+    IF (p_row->>'customer_fee_cents')::bigint IS DISTINCT FROM v_customer_fee
+       OR (p_row->>'provider_fee_cents')::bigint IS DISTINCT FROM v_provider_fee
+       OR (p_row->>'customer_total_cents')::bigint IS DISTINCT FROM v_service_cents + v_customer_fee
+       OR (p_row->>'provider_net_cents')::bigint IS DISTINCT FROM v_service_cents - v_provider_fee
+       OR (p_row->>'lyann_revenue_cents')::bigint IS DISTINCT FROM v_customer_fee + v_provider_fee
+       OR (p_row->>'amount_gross_cents')::bigint IS DISTINCT FROM v_service_cents + v_customer_fee
+       OR (p_row->>'amount_platform_fee_cents')::bigint IS DISTINCT FROM v_customer_fee + v_provider_fee
+       OR (p_row->>'amount_provider_net_cents')::bigint IS DISTINCT FROM v_service_cents - v_provider_fee
+    THEN
+        RAISE EXCEPTION 'Les frais ne correspondent pas au montant du jalon. Aucun paiement n''a été créé.'
+            USING ERRCODE = '22000', HINT = 'pricing_mismatch';
     END IF;
     INSERT INTO public.payments (
         milestone_id, quote_id, mission_id, requester_id, provider_id,
