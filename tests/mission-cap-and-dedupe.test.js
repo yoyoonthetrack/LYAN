@@ -255,6 +255,16 @@ test('accepting an amendment relocks money and loses the race to a new payment',
     assert.match(rollback, /GRANT INSERT ON TABLE public\.payments TO service_role/);
     assert.match(rollback, /'quote_updated'/);
     assert.doesNotMatch(rollback, /DELETE FROM public\.messages/);
+    const versionExpr = "COALESCE(metadata->>'version', '')";
+    const catalog = fs.readFileSync(path.join(root, '99_mission_cap_catalog_readonly.sql'), 'utf8');
+    for (const source of [sql, rollback]) {
+        const start = source.indexOf('CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_quote_updated_version');
+        const index = source.slice(start, source.indexOf(';', start));
+        assert.match(index, /ON public\.messages \(entity_id, \(COALESCE\(metadata->>'version', ''\)\)\)/);
+        assert.match(index, /WHERE message_type = 'quote_updated' AND entity_id IS NOT NULL/);
+    }
+    assert.equal(catalog.includes(`GROUP BY entity_id, message_type, ${versionExpr}`), true);
+    assert.equal(catalog.includes(`AND message_type NOT IN (\n      'text', 'photo', 'document', 'visit_proposed', 'visit_rescheduled', 'system', 'quote_updated'`), true);
     const api = fs.readFileSync(path.join(root, 'api/server.js'), 'utf8');
     assert.match(api, /rpc\('lyann_insert_milestone_payment'/);
     assert.match(sql, /PERFORM public\.lyann_refuse_paid_amendment\(v_quote\.id, v_quote\.mission_id\)/);

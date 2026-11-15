@@ -17,7 +17,6 @@
 --   les triggers trg_lyann_guard_quote_cap, trg_lyann_guard_quote_bounds,
 --   trg_lyann_guard_milestone_sum, trg_lyann_guard_milestone_money,
 --   trg_lyann_skip_legacy_system_card n'existent plus ;
---   idx_messages_quote_updated_version n'existe plus ;
 --   idx_messages_timeline_event existe et exclut quote_updated ;
 --   idx_messages_quote_updated_version existe ;
 --   plusieurs quote_updated d'un même devis sont conservés ;
@@ -70,6 +69,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_quote_updated_version
 -- Restores the direct insert used by the API that predates lyann_insert_milestone_payment.
 -- Confirmed by the preflight: service_role currently holds INSERT. anon and authenticated do not get it back.
 GRANT INSERT ON TABLE public.payments TO service_role;
+
+-- Staging SQL Editor, 15 Nov 2026: anon false, authenticated true, service_role true.
+GRANT EXECUTE ON FUNCTION public.create_milestone_payment_secure(uuid) TO authenticated, service_role;
 
 -- Restored from 45_chat_timeline.sql
 CREATE OR REPLACE FUNCTION public.lyann_insert_timeline_event(

@@ -1554,4 +1554,11 @@ $$;
 
 REVOKE ALL ON FUNCTION public.lyann_enqueue_push_from_notification() FROM PUBLIC, anon, authenticated;
 
+-- create_milestone_payment_secure is SECURITY DEFINER and inserts as its owner,
+-- so revoking INSERT on payments does not stop it. The insert trigger rejects
+-- the row because this function does not set the payment marker. Application
+-- roles also lose EXECUTE. No payment row is updated or deleted. Webhooks
+-- continue to UPDATE existing payments.
+REVOKE ALL ON FUNCTION public.create_milestone_payment_secure(uuid) FROM PUBLIC, anon, authenticated, service_role;
+
 COMMIT;

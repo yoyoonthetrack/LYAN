@@ -440,3 +440,60 @@ test('half-up fees match the pricing policy and application roles cannot set the
         assert.equal(psqlValue(args, 'SELECT count(*) FROM public.payments;'), '3');
     });
 });
+
+test('the historical security definer insert cannot bypass the payment guard', async () => {
+    await withDatabase('legacy_rpc', async (args) => {
+        const created = psqlRun(args, `
+            CREATE FUNCTION public.create_milestone_payment_secure(p_milestone_id uuid)
+            RETURNS void
+            LANGUAGE plpgsql
+            SECURITY DEFINER
+            SET search_path = public
+            AS $fn$
+            BEGIN
+                INSERT INTO public.payments (
+                    milestone_id, quote_id, mission_id, requester_id, provider_id,
+                    service_amount_cents, customer_fee_cents, customer_total_cents,
+                    provider_fee_cents, provider_net_cents, lyann_revenue_cents,
+                    amount_refunded_cents, currency, payment_status, transfer_status
+                )
+                SELECT m.id, m.quote_id, '${missionId}', '${requesterId}', '${providerId}',
+                       10000, 300, 10300, 300, 9700, 600, 0, 'EUR', 'CREATED', 'NOT_STARTED'
+                FROM public.milestones m
+                WHERE m.id = p_milestone_id;
+            END;
+            $fn$;
+            REVOKE ALL ON FUNCTION public.create_milestone_payment_secure(uuid) FROM PUBLIC;
+            GRANT EXECUTE ON FUNCTION public.create_milestone_payment_secure(uuid) TO authenticated, service_role;
+        `);
+        assert.equal(created.status, 0, created.stderr);
+        const called = psqlRun(args, `SELECT public.create_milestone_payment_secure('${milestoneId}'::uuid);`);
+        assert.notEqual(called.status, 0);
+        assert.match(called.stderr, /parcours verrouillé/);
+        assert.equal(psqlValue(args, 'SELECT count(*) FROM public.payments;'), '0');
+
+        const migration = fs.readFileSync(path.join(root, '99_mission_cap_and_deal_dedupe_staging.sql'), 'utf8');
+        const revoke = migration.slice(
+            migration.indexOf('REVOKE ALL ON FUNCTION public.create_milestone_payment_secure'),
+            migration.indexOf('COMMIT;')
+        );
+        assert.match(revoke, /FROM PUBLIC, anon, authenticated, service_role/);
+        const revoked = psqlRun(args, revoke);
+        assert.equal(revoked.status, 0, revoked.stderr);
+        for (const role of ['anon', 'authenticated', 'service_role']) {
+            assert.equal(psqlValue(args, `SELECT has_function_privilege('${role}', 'public.create_milestone_payment_secure(uuid)', 'EXECUTE');`), 'f', role);
+        }
+
+        const rollback = fs.readFileSync(path.join(root, '99_mission_cap_and_deal_dedupe_rollback.sql'), 'utf8');
+        const grantStart = rollback.indexOf('GRANT EXECUTE ON FUNCTION public.create_milestone_payment_secure');
+        const grant = rollback.slice(grantStart, rollback.indexOf(';', grantStart) + 1);
+        assert.match(grant, /TO authenticated, service_role/);
+        assert.doesNotMatch(grant, /anon/);
+        const restored = psqlRun(args, grant);
+        assert.equal(restored.status, 0, restored.stderr);
+        assert.equal(psqlValue(args, `SELECT has_function_privilege('anon', 'public.create_milestone_payment_secure(uuid)', 'EXECUTE');`), 'f');
+        assert.equal(psqlValue(args, `SELECT has_function_privilege('authenticated', 'public.create_milestone_payment_secure(uuid)', 'EXECUTE');`), 't');
+        assert.equal(psqlValue(args, `SELECT has_function_privilege('service_role', 'public.create_milestone_payment_secure(uuid)', 'EXECUTE');`), 't');
+        assert.equal(psqlValue(args, 'SELECT count(*) FROM public.payments;'), '0');
+    });
+});
