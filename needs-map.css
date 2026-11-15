@@ -70,13 +70,13 @@
     overflow: hidden;
     border: 1px solid #E5EAE3;
     border-radius: 18px;
-    background: #C9DFAE;
+    background: #EAD5B0;
 }
 
 .needs-map-canvas {
     width: 100%;
     height: clamp(420px, 64vh, 640px);
-    background: #C9DFAE;
+    background: #EAD5B0;
 }
 
 .needs-map-canvas .leaflet-bar a.leaflet-control-zoom-in,
