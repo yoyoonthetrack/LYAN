@@ -19,9 +19,9 @@
     let configuredCapEur = DEFAULT_CAP_EUR;
 
     function setMissionCapEur(value) {
-        const amount = Number(value);
-        if (!Number.isFinite(amount) || amount < 1 || amount > 100000) return configuredCapEur;
-        configuredCapEur = Math.round(amount * 100) / 100;
+        const cents = moneyCents(value);
+        if (cents == null || cents < 100 || cents > 10000000) return configuredCapEur;
+        configuredCapEur = cents / 100;
         return configuredCapEur;
     }
 
@@ -38,9 +38,13 @@
     }
 
     function withinMissionCap(amountEur, capEur) {
-        const cents = moneyCents(amountEur);
-        const limit = moneyCents(capEur == null ? configuredCapEur : capEur);
-        if (cents == null || limit == null) {
+        const amount = moneyDecision(amountEur);
+        const limitDecision = moneyDecision(capEur == null ? configuredCapEur : capEur);
+        if (!amount.ok) return amount;
+        if (!limitDecision.ok) return limitDecision;
+        const cents = amount.cents;
+        const limit = limitDecision.cents;
+        if (cents <= 0) {
             return { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
         }
         if (cents > limit) {
@@ -50,27 +54,76 @@
     }
 
     function paymentContractDecision(input) {
-        const contractual = Number(input && input.contractualEur);
-        const sum = Number(input && input.milestoneSumEur);
+        const contractual = moneyDecision(input && input.contractualEur);
+        const sum = moneyDecision(input && input.milestoneSumEur);
+        if (!contractual.ok || !sum.ok) {
+            return { ok: false, code: contractual.code === 'money_scale' || sum.code === 'money_scale' ? 'money_scale' : 'CONTRACT_MISMATCH' };
+        }
+        if (sum.cents > contractual.cents) return { ok: false, code: 'CONTRACT_MISMATCH' };
         const rawSnapshot = input ? input.acceptedSnapshotEur : null;
-        const snapshot = rawSnapshot == null || rawSnapshot === '' ? null : Number(rawSnapshot);
-        if (!Number.isFinite(contractual) || !Number.isFinite(sum)) {
-            return { ok: false, code: 'CONTRACT_MISMATCH' };
-        }
-        if (Math.round(sum * 100) > Math.round(contractual * 100)) {
-            return { ok: false, code: 'CONTRACT_MISMATCH' };
-        }
-        if (snapshot == null) return { ok: true, grandfathered: true };
-        if (!Number.isFinite(snapshot) || Math.round(snapshot * 100) !== Math.round(contractual * 100)) {
-            return { ok: false, code: 'CONTRACT_MISMATCH' };
-        }
+        if (rawSnapshot == null || rawSnapshot === '') return { ok: true, grandfathered: true };
+        const snapshot = moneyDecision(rawSnapshot);
+        if (!snapshot.ok || snapshot.cents !== contractual.cents) return { ok: false, code: snapshot.code === 'money_scale' ? 'money_scale' : 'CONTRACT_MISMATCH' };
         return { ok: true, grandfathered: false };
     }
 
-    function moneyCents(value) {
+    const MONEY_SCALE_MESSAGE = 'Le montant doit être exprimé en euros avec deux décimales au plus.';
+
+    function moneyDecision(value) {
+        if (typeof value === 'string') {
+            const text = value.trim().replace(',', '.');
+            if (!/^\d+(\.\d+)?$/.test(text)) return { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
+            if ((text.split('.')[1] || '').length > 2) {
+                return { ok: false, code: 'money_scale', message: MONEY_SCALE_MESSAGE };
+            }
+        }
         const amount = Number(value);
-        if (!Number.isFinite(amount)) return null;
-        return Math.round((amount + Number.EPSILON) * 100);
+        if (!Number.isFinite(amount)) {
+            return { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
+        }
+        const scaled = amount * 100;
+        const cents = Math.round(scaled);
+        if (Math.abs(scaled - cents) > 1e-6) {
+            return { ok: false, code: 'money_scale', message: MONEY_SCALE_MESSAGE };
+        }
+        return { ok: true, cents };
+    }
+
+    function moneyCents(value) {
+        const decision = moneyDecision(value);
+        return decision.ok ? decision.cents : null;
+    }
+
+    // Deferred check, after the quote row is locked. Each batch is one transaction.
+    // Batches run one after another, which is what FOR UPDATE forces on concurrent writers.
+    function settleLockedMilestoneBatches(input) {
+        const cap = moneyDecision(input && input.capEur != null ? input.capEur : configuredCapEur);
+        const accepted = input && input.acceptedEur != null && input.acceptedEur !== ''
+            ? moneyDecision(input.acceptedEur)
+            : null;
+        if (!cap.ok) return cap;
+        if (accepted && !accepted.ok) return accepted;
+        const status = String((input && input.status) || 'SENT');
+        let committed = 0;
+        const batches = Array.isArray(input && input.batches) ? input.batches : [];
+        for (let i = 0; i < batches.length; i += 1) {
+            let next = committed;
+            const rows = batches[i];
+            for (let j = 0; j < rows.length; j += 1) {
+                const row = moneyDecision(rows[j]);
+                if (!row.ok) return row;
+                if (row.cents <= 0) return { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
+                next += row.cents;
+            }
+            if ((status === 'SENT' || status === 'DRAFT') && next > cap.cents) {
+                return { ok: false, code: 'mission_cap', message: capMessage(cap.cents / 100), cents: next };
+            }
+            if (status === 'ACCEPTED' && accepted && next > accepted.cents) {
+                return { ok: false, code: 'CONTRACT_MISMATCH', cents: next };
+            }
+            committed = next;
+        }
+        return { ok: true, cents: committed };
     }
 
     function paymentStatus(payment) {
@@ -132,8 +185,14 @@
     }
 
     function validateQuoteAmount(value, capEur) {
-        const cents = moneyCents(value);
-        if (cents == null || cents <= 0) {
+        const decision = moneyDecision(value);
+        if (!decision.ok) {
+            return decision.code === 'money_scale'
+                ? decision
+                : { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
+        }
+        const cents = decision.cents;
+        if (cents <= 0) {
             return { ok: false, code: 'amount', message: 'Indiquez un montant supérieur à 0 €.' };
         }
         const capped = withinMissionCap(cents / 100, capEur);
@@ -154,12 +213,18 @@
             const row = rows[index] || {};
             const title = String(row.title || '').trim();
             const description = String(row.description || '').trim();
-            const cents = moneyCents(row.amount);
+            const decision = moneyDecision(row.amount);
             if (!title) return { ok: false, code: 'title', message: 'Chaque partie a besoin d’un titre.' };
             if (title.length > 160) return { ok: false, code: 'title', message: 'Un titre est trop long.' };
-            if (cents == null || cents <= 0) {
+            if (!decision.ok) {
+                return decision.code === 'money_scale'
+                    ? decision
+                    : { ok: false, code: 'amount', message: 'Chaque montant doit être supérieur à 0 €.' };
+            }
+            if (decision.cents <= 0) {
                 return { ok: false, code: 'amount', message: 'Chaque montant doit être supérieur à 0 €.' };
             }
+            const cents = decision.cents;
             totalCents += cents;
             milestones.push({
                 title,
@@ -549,6 +614,8 @@
         DEFAULT_CAP_EUR,
         DEFAULT_CAP_MESSAGE,
         moneyCents,
+        moneyDecision,
+        settleLockedMilestoneBatches,
         setMissionCapEur,
         missionCapEur,
         capMessage,

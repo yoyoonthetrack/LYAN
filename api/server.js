@@ -1300,8 +1300,9 @@ function missionCapSettingError(key, value) {
     if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
         return 'Le plafond doit être un montant entre 1 € et 100 000 €.';
     }
-    const cents = Math.round(amount * 100);
-    if (Math.abs(amount * 100 - cents) > 0.001) {
+    const scaled = amount * 100;
+    const cents = Math.round(scaled);
+    if (Math.abs(scaled - cents) > 1e-6) {
         return 'Le plafond accepte au plus deux décimales.';
     }
     return null;

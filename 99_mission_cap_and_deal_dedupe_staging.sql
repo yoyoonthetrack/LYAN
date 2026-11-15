@@ -55,15 +55,16 @@ BEGIN
     EXCEPTION WHEN OTHERS THEN
         RETURN 1000;
     END;
-    IF amount IS NULL OR amount < 1 OR amount > 100000 THEN
+    -- A stored value that is not already exact cents is ignored.
+    -- It is not rounded into a higher or lower ceiling.
+    IF amount IS NULL OR amount <> trunc(amount, 2) OR amount < 1 OR amount > 100000 THEN
         RETURN 1000;
     END IF;
-    RETURN round(amount, 2);
+    RETURN amount;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.lyann_mission_cap_eur() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.lyann_mission_cap_eur() TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.lyann_mission_cap_eur() FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.lyann_mission_prestation_cap_eur()
 RETURNS numeric
@@ -78,6 +79,34 @@ $$;
 REVOKE ALL ON FUNCTION public.lyann_mission_prestation_cap_eur() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.lyann_mission_prestation_cap_eur() TO authenticated, service_role;
 
+-- Exact euro cents. Rejects a third decimal instead of rounding it away.
+CREATE OR REPLACE FUNCTION public.lyann_money_cents(p_amount numeric)
+RETURNS bigint
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = public
+AS $$
+DECLARE
+    v_scaled numeric;
+BEGIN
+    IF p_amount IS NULL THEN
+        RAISE EXCEPTION 'Indiquez un montant supérieur à 0 €.' USING ERRCODE = '22000';
+    END IF;
+    IF p_amount <> trunc(p_amount, 2) THEN
+        RAISE EXCEPTION 'Le montant doit être exprimé en euros avec deux décimales au plus.'
+            USING ERRCODE = '22000', HINT = 'money_scale';
+    END IF;
+    v_scaled := p_amount * 100;
+    IF v_scaled <> trunc(v_scaled, 0) THEN
+        RAISE EXCEPTION 'Le montant doit être exprimé en euros avec deux décimales au plus.'
+            USING ERRCODE = '22000', HINT = 'money_scale';
+    END IF;
+    RETURN trunc(v_scaled, 0)::bigint;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_money_cents(numeric) FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.lyann_assert_prestation_cap(p_amount numeric)
 RETURNS void
 LANGUAGE plpgsql
@@ -90,12 +119,12 @@ DECLARE
     v_cents bigint;
     v_cap_cents bigint;
 BEGIN
-    IF p_amount IS NULL THEN
+    v_cents := public.lyann_money_cents(p_amount);
+    IF v_cents < 0 THEN
         RAISE EXCEPTION 'Indiquez un montant supérieur à 0 €.' USING ERRCODE = '22000';
     END IF;
     v_cap := public.lyann_mission_cap_eur();
-    v_cents := round(p_amount * 100);
-    v_cap_cents := round(v_cap * 100);
+    v_cap_cents := public.lyann_money_cents(v_cap);
     IF v_cents > v_cap_cents THEN
         IF v_cap_cents = 100000 THEN
             RAISE EXCEPTION 'Pour le moment, les missions sur LYANN sont limitées à 1 000 €. Ajustez votre devis pour continuer.'
@@ -131,6 +160,13 @@ BEGIN
             USING ERRCODE = '22000';
     END IF;
 
+    IF v_amount IS NOT NULL THEN
+        IF public.lyann_money_cents(v_amount) < 0
+           OR (NEW.status IN ('SENT', 'ACCEPTED') AND public.lyann_money_cents(v_amount) = 0) THEN
+            RAISE EXCEPTION 'Indiquez un montant supérieur à 0 €.' USING ERRCODE = '22000';
+        END IF;
+    END IF;
+
     IF TG_OP = 'INSERT' AND NEW.status IN ('SENT', 'ACCEPTED') THEN
         PERFORM public.lyann_assert_prestation_cap(v_amount);
     ELSIF TG_OP = 'UPDATE'
@@ -158,11 +194,108 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.lyann_guard_quote_cap() FROM PUBLIC, anon, authenticated;
+
 DROP TRIGGER IF EXISTS trg_lyann_guard_quote_cap ON public.quotes;
 CREATE TRIGGER trg_lyann_guard_quote_cap
     BEFORE INSERT OR UPDATE OF status, total_amount, amount ON public.quotes
     FOR EACH ROW
     EXECUTE FUNCTION public.lyann_guard_quote_cap();
+
+CREATE OR REPLACE FUNCTION public.lyann_guard_milestone_money()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+DECLARE
+    v_cents bigint;
+BEGIN
+    IF NEW.amount IS NULL THEN
+        RAISE EXCEPTION 'Chaque montant doit être supérieur à 0 €.' USING ERRCODE = '22000';
+    END IF;
+    v_cents := public.lyann_money_cents(NEW.amount);
+    IF NEW.status IS DISTINCT FROM 'CANCELLED' AND v_cents <= 0 THEN
+        RAISE EXCEPTION 'Chaque montant doit être supérieur à 0 €.' USING ERRCODE = '22000';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_guard_milestone_money() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_lyann_guard_milestone_money ON public.milestones;
+CREATE TRIGGER trg_lyann_guard_milestone_money
+    BEFORE INSERT OR UPDATE OF amount, status ON public.milestones
+    FOR EACH ROW
+    EXECUTE FUNCTION public.lyann_guard_milestone_money();
+
+-- Sees every milestone of the quote, including rows hidden by RLS.
+-- Locks the quote so two concurrent writes cannot each pass on a stale sum.
+CREATE OR REPLACE FUNCTION public.lyann_assert_quote_milestone_bounds(p_quote_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_status text;
+    v_total numeric;
+    v_sum numeric;
+BEGIN
+    IF p_quote_id IS NULL THEN
+        RETURN;
+    END IF;
+    SELECT status, COALESCE(total_amount, amount)
+      INTO v_status, v_total
+    FROM public.quotes
+    WHERE id = p_quote_id
+    FOR UPDATE;
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+    SELECT COALESCE(sum(amount), 0)
+      INTO v_sum
+    FROM public.milestones
+    WHERE quote_id = p_quote_id
+      AND status IS DISTINCT FROM 'CANCELLED';
+    IF v_sum <> 0 AND v_sum <> trunc(v_sum, 2) THEN
+        RAISE EXCEPTION 'Le montant doit être exprimé en euros avec deux décimales au plus.'
+            USING ERRCODE = '22000', HINT = 'money_scale';
+    END IF;
+    IF v_status IN ('SENT', 'DRAFT') AND v_sum > 0 THEN
+        PERFORM public.lyann_assert_prestation_cap(v_sum);
+    END IF;
+    IF v_status = 'ACCEPTED'
+       AND public.lyann_money_cents(v_sum) > public.lyann_money_cents(COALESCE(v_total, 0)) THEN
+        RAISE EXCEPTION 'Le total des jalons dépasse le montant accepté.'
+            USING ERRCODE = '22000', HINT = 'mission_cap';
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_assert_quote_milestone_bounds(uuid) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.lyann_guard_quote_bounds()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Deferred: milestones replaced in the same transaction are already visible.
+    PERFORM public.lyann_assert_quote_milestone_bounds(NEW.id);
+    RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_guard_quote_bounds() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_lyann_guard_quote_bounds ON public.quotes;
+CREATE CONSTRAINT TRIGGER trg_lyann_guard_quote_bounds
+    AFTER UPDATE OF status, total_amount, amount ON public.quotes
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW
+    EXECUTE FUNCTION public.lyann_guard_quote_bounds();
 
 CREATE OR REPLACE FUNCTION public.lyann_guard_milestone_sum()
 RETURNS trigger
@@ -171,38 +304,35 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+    v_ids uuid[];
     v_quote_id uuid;
-    v_status text;
-    v_total numeric;
-    v_sum numeric;
 BEGIN
-    v_quote_id := COALESCE(NEW.quote_id, OLD.quote_id);
-    SELECT status, COALESCE(total_amount, amount)
-      INTO v_status, v_total
-    FROM public.quotes
-    WHERE id = v_quote_id;
-    IF NOT FOUND THEN
-        RETURN NULL;
+    IF TG_OP = 'INSERT' THEN
+        v_ids := ARRAY[NEW.quote_id];
+    ELSIF TG_OP = 'DELETE' THEN
+        v_ids := ARRAY[OLD.quote_id];
+    ELSE
+        v_ids := ARRAY[OLD.quote_id, NEW.quote_id];
     END IF;
-    SELECT COALESCE(sum(amount), 0)
-      INTO v_sum
-    FROM public.milestones
-    WHERE quote_id = v_quote_id
-      AND status IS DISTINCT FROM 'CANCELLED';
-    IF v_status IN ('SENT', 'DRAFT') THEN
-        PERFORM public.lyann_assert_prestation_cap(v_sum);
-    END IF;
-    IF v_status = 'ACCEPTED' AND v_sum > COALESCE(v_total, 0) + 0.001 THEN
-        RAISE EXCEPTION 'Le total des jalons dépasse le montant accepté.'
-            USING ERRCODE = '22000', HINT = 'mission_cap';
-    END IF;
+
+    -- One lock order for every transaction: smallest uuid first.
+    FOR v_quote_id IN
+        SELECT DISTINCT q.id
+        FROM public.quotes q
+        WHERE q.id = ANY (v_ids)
+        ORDER BY q.id
+    LOOP
+        PERFORM public.lyann_assert_quote_milestone_bounds(v_quote_id);
+    END LOOP;
     RETURN NULL;
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.lyann_guard_milestone_sum() FROM PUBLIC, anon, authenticated;
+
 DROP TRIGGER IF EXISTS trg_lyann_guard_milestone_sum ON public.milestones;
 CREATE CONSTRAINT TRIGGER trg_lyann_guard_milestone_sum
-    AFTER INSERT OR UPDATE OF amount, status OR DELETE ON public.milestones
+    AFTER INSERT OR UPDATE OF amount, status, quote_id OR DELETE ON public.milestones
     DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW
     EXECUTE FUNCTION public.lyann_guard_milestone_sum();
@@ -336,6 +466,8 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.lyann_quote_timeline() FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.lyann_notify_quote_push()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -396,6 +528,8 @@ EXCEPTION WHEN OTHERS THEN
     RETURN NEW;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.lyann_notify_quote_push() FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS trg_lyann_notify_quote_push ON public.quotes;
 CREATE TRIGGER trg_lyann_notify_quote_push
@@ -531,6 +665,15 @@ BEGIN
 END;
 $$;
 
+-- BEFORE INSERT order is alphabetical:
+--   messages_protect_timeline_insert  (token required for reserved types)
+--   trg_block_restricted_messages     (restricted account)
+--   trg_lyann_skip_legacy_system_card (this trigger, after both)
+-- A system_card row is not stored. Mission start, completion and cancellation
+-- are rewritten through lyann_insert_timeline_event, which claims the timeline
+-- token before the nested insert reaches messages_protect_timeline_insert.
+-- Milestone cards are dropped: milestones_timeline_event already wrote them.
+-- trg_lyann_notify_on_message is AFTER INSERT and skips those reserved types.
 DROP TRIGGER IF EXISTS trg_lyann_skip_legacy_system_card ON public.messages;
 CREATE TRIGGER trg_lyann_skip_legacy_system_card
     BEFORE INSERT ON public.messages
@@ -699,7 +842,7 @@ BEGIN
         v_count := v_count + 1;
         v_amount := (v_elem->>'amount')::numeric;
         v_title := btrim(COALESCE(v_elem->>'title', ''));
-        IF v_title = '' OR v_amount IS NULL OR v_amount <= 0 THEN
+        IF v_title = '' OR v_amount IS NULL OR public.lyann_money_cents(v_amount) <= 0 THEN
             RAISE EXCEPTION 'Chaque partie a besoin d’un titre et d’un montant supérieur à 0 €.' USING ERRCODE = '22000';
         END IF;
         v_total := v_total + v_amount;
@@ -910,7 +1053,7 @@ BEGIN
         IF v_title = '' OR char_length(v_title) > 160 THEN
             RAISE EXCEPTION 'Chaque partie a besoin d’un titre.' USING ERRCODE = '22000';
         END IF;
-        IF v_amount IS NULL OR v_amount <= 0 THEN
+        IF v_amount IS NULL OR public.lyann_money_cents(v_amount) <= 0 THEN
             RAISE EXCEPTION 'Chaque montant doit être supérieur à 0 €.' USING ERRCODE = '22000';
         END IF;
         v_total := v_total + v_amount;
