@@ -885,9 +885,48 @@ $$;
 REVOKE ALL ON FUNCTION public.propose_quote_amendment(uuid, text, jsonb, int) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.propose_quote_amendment(uuid, text, jsonb, int) TO authenticated, service_role;
 
--- Locks the mission, its milestones and their payments, then repeats the
--- proposal checks. A payment inserted by a concurrent transaction is visible
--- once this function holds those locks.
+-- Shared lock order for an amendment and for a new payment row:
+-- quote, then mission, then milestones by id, then payments by id.
+CREATE OR REPLACE FUNCTION public.lyann_lock_quote_payment_rows(p_quote_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_mission_id uuid;
+BEGIN
+    PERFORM 1
+    FROM public.quotes
+    WHERE id = p_quote_id
+    FOR UPDATE;
+    SELECT mission_id INTO v_mission_id
+    FROM public.quotes
+    WHERE id = p_quote_id;
+    IF v_mission_id IS NOT NULL THEN
+        PERFORM 1
+        FROM public.missions
+        WHERE id = v_mission_id
+        FOR UPDATE;
+    END IF;
+    PERFORM 1
+    FROM public.milestones
+    WHERE quote_id = p_quote_id
+    ORDER BY id
+    FOR UPDATE;
+    PERFORM 1
+    FROM public.payments p
+    WHERE p.milestone_id IN (
+        SELECT m.id FROM public.milestones m WHERE m.quote_id = p_quote_id
+    )
+    ORDER BY p.id
+    FOR UPDATE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_lock_quote_payment_rows(uuid) FROM PUBLIC, anon, authenticated;
+
+-- Any payment row blocks the amendment, whatever its status.
 CREATE OR REPLACE FUNCTION public.lyann_refuse_paid_amendment(p_quote_id uuid, p_mission_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -897,30 +936,17 @@ AS $$
 DECLARE
     v_mission_status text;
 BEGIN
+    PERFORM public.lyann_lock_quote_payment_rows(p_quote_id);
     IF p_mission_id IS NOT NULL THEN
         SELECT status
           INTO v_mission_status
         FROM public.missions
-        WHERE id = p_mission_id
-        FOR UPDATE;
+        WHERE id = p_mission_id;
         IF v_mission_status IN ('IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DISPUTED') THEN
             RAISE EXCEPTION 'Une mission commencée ne se modifie pas par un simple avenant.'
                 USING ERRCODE = '22000';
         END IF;
     END IF;
-
-    PERFORM 1
-    FROM public.milestones
-    WHERE quote_id = p_quote_id
-    ORDER BY id
-    FOR UPDATE;
-
-    PERFORM 1
-    FROM public.payments p
-    JOIN public.milestones m ON m.id = p.milestone_id
-    WHERE m.quote_id = p_quote_id
-    ORDER BY p.id
-    FOR UPDATE;
 
     IF EXISTS (
         SELECT 1
@@ -932,10 +958,6 @@ BEGIN
         FROM public.payments p
         JOIN public.milestones m ON m.id = p.milestone_id
         WHERE m.quote_id = p_quote_id
-          AND p.payment_status IN (
-              'CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED',
-              'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED'
-          )
     ) THEN
         RAISE EXCEPTION 'Un paiement est déjà sécurisé. Un avenant qui modifie le montant ne peut pas être appliqué automatiquement. Contactez l’Aide LYANN.'
             USING ERRCODE = '22000', HINT = 'payment_secured';
@@ -944,6 +966,72 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.lyann_refuse_paid_amendment(uuid, uuid) FROM PUBLIC, anon, authenticated;
+
+-- Inserts the payment row only after the same locks as an amendment.
+-- Amounts come from the API. The quote, mission and milestone come from the locked rows.
+CREATE OR REPLACE FUNCTION public.lyann_insert_milestone_payment(p_milestone_id uuid, p_row jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_quote_id uuid;
+    v_milestone public.milestones%ROWTYPE;
+    v_quote public.quotes%ROWTYPE;
+    v_payment public.payments%ROWTYPE;
+BEGIN
+    PERFORM set_config('lock_timeout', '4s', true);
+    SELECT quote_id INTO v_quote_id
+    FROM public.milestones
+    WHERE id = p_milestone_id;
+    IF v_quote_id IS NULL THEN
+        RAISE EXCEPTION 'Étape de paiement introuvable.' USING ERRCODE = 'P0002';
+    END IF;
+    PERFORM public.lyann_lock_quote_payment_rows(v_quote_id);
+    SELECT * INTO v_milestone FROM public.milestones WHERE id = p_milestone_id;
+    SELECT * INTO v_quote FROM public.quotes WHERE id = v_quote_id;
+    IF v_milestone.id IS NULL OR v_quote.id IS NULL THEN
+        RAISE EXCEPTION 'Étape de paiement introuvable.' USING ERRCODE = 'P0002';
+    END IF;
+    IF v_milestone.status IS DISTINCT FROM 'PENDING' OR v_quote.status IS DISTINCT FROM 'ACCEPTED' THEN
+        RAISE EXCEPTION 'Cette Partie n''est pas payable.' USING ERRCODE = '22000';
+    END IF;
+    INSERT INTO public.payments (
+        milestone_id, quote_id, mission_id, requester_id, provider_id,
+        service_amount_cents, customer_fee_cents, customer_total_cents,
+        provider_fee_cents, provider_net_cents, lyann_revenue_cents,
+        amount_refunded_cents, currency, payment_status, transfer_status,
+        amount_gross_cents, amount_platform_fee_cents, amount_provider_net_cents,
+        metadata
+    ) VALUES (
+        v_milestone.id,
+        v_quote.id,
+        v_quote.mission_id,
+        COALESCE(v_quote.requester_id, (p_row->>'requester_id')::uuid),
+        COALESCE(v_quote.provider_id, (p_row->>'provider_id')::uuid),
+        (p_row->>'service_amount_cents')::bigint,
+        (p_row->>'customer_fee_cents')::bigint,
+        (p_row->>'customer_total_cents')::bigint,
+        (p_row->>'provider_fee_cents')::bigint,
+        (p_row->>'provider_net_cents')::bigint,
+        (p_row->>'lyann_revenue_cents')::bigint,
+        COALESCE((p_row->>'amount_refunded_cents')::bigint, 0),
+        COALESCE(p_row->>'currency', 'EUR'),
+        'CREATED',
+        'NOT_STARTED',
+        (p_row->>'amount_gross_cents')::bigint,
+        (p_row->>'amount_platform_fee_cents')::bigint,
+        (p_row->>'amount_provider_net_cents')::bigint,
+        COALESCE(p_row->'metadata', '{}'::jsonb)
+    )
+    RETURNING * INTO v_payment;
+    RETURN to_jsonb(v_payment);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_insert_milestone_payment(uuid, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.lyann_insert_milestone_payment(uuid, jsonb) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.accept_quote_amendment(p_amendment_id uuid)
 RETURNS jsonb

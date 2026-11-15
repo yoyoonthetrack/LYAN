@@ -5076,36 +5076,32 @@ app.post('/v1/payments/create-milestone-intent', async (req, res) => {
             });
         }
 
-        // 7. Insert payment record into public.payments (payment_status = CREATED, transfer_status = NOT_STARTED)
+        // 7. Insert under the same quote/mission/milestone/payment locks as an amendment.
+        const legacyAmounts = legacyPaymentColumns(financials);
         const { data: paymentRecord, error: insertErr } = await supabaseAdmin
-            .from('payments')
-            .insert({
-                milestone_id: milestone.id,
-                quote_id: quote.id,
-                mission_id: mission.id,
-                requester_id: mission.requester_id,
-                provider_id: quote.provider_id,
-                service_amount_cents: Number(financials.service_amount_cents),
-                customer_fee_cents: Number(financials.customer_fee_cents),
-                customer_total_cents: Number(financials.customer_total_cents),
-                provider_fee_cents: Number(financials.provider_fee_cents),
-                provider_net_cents: Number(financials.provider_net_cents),
-                lyann_revenue_cents: Number(financials.lyann_revenue_cents),
-                amount_refunded_cents: 0,
-                currency: 'EUR',
-                payment_status: 'CREATED',
-                transfer_status: 'NOT_STARTED',
-                ...legacyPaymentColumns(financials),
-                metadata: {
-                    milestone_id: milestone.id,
-                    quote_id: quote.id,
-                    mission_id: mission.id,
+            .rpc('lyann_insert_milestone_payment', {
+                p_milestone_id: milestone.id,
+                p_row: {
                     requester_id: mission.requester_id,
-                    provider_id: quote.provider_id
+                    provider_id: quote.provider_id,
+                    service_amount_cents: Number(financials.service_amount_cents),
+                    customer_fee_cents: Number(financials.customer_fee_cents),
+                    customer_total_cents: Number(financials.customer_total_cents),
+                    provider_fee_cents: Number(financials.provider_fee_cents),
+                    provider_net_cents: Number(financials.provider_net_cents),
+                    lyann_revenue_cents: Number(financials.lyann_revenue_cents),
+                    amount_refunded_cents: 0,
+                    currency: 'EUR',
+                    ...legacyAmounts,
+                    metadata: {
+                        milestone_id: milestone.id,
+                        quote_id: quote.id,
+                        mission_id: mission.id,
+                        requester_id: mission.requester_id,
+                        provider_id: quote.provider_id
+                    }
                 }
-            })
-            .select()
-            .single();
+            });
 
         if (insertErr) {
             if (insertErr.code === '23505') { // Concurrency catch: DB partial unique index constraint

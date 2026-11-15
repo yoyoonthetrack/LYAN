@@ -193,10 +193,9 @@ function systemCardFunction(sql) {
 function amendmentAcceptAllowed(state) {
     const started = new Set(['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'DISPUTED']);
     const engagedMilestones = new Set(['FUNDED', 'IN_PROGRESS', 'COMPLETED', 'VALIDATED', 'RELEASED', 'DISPUTED']);
-    const engagedPayments = new Set(['CREATED', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'PARTIALLY_REFUNDED', 'DISPUTED', 'REFUNDED']);
     if (started.has(state.mission)) return { ok: false, code: 'started' };
     if ((state.milestones || []).some((status) => engagedMilestones.has(status))) return { ok: false, code: 'payment_secured' };
-    if ((state.payments || []).some((status) => engagedPayments.has(status))) return { ok: false, code: 'payment_secured' };
+    if ((state.payments || []).length > 0) return { ok: false, code: 'payment_secured' };
     return { ok: true };
 }
 
@@ -224,17 +223,32 @@ test('accepting an amendment relocks money and loses the race to a new payment',
     const start = sql.indexOf('CREATE OR REPLACE FUNCTION public.lyann_refuse_paid_amendment');
     const end = sql.indexOf('REVOKE ALL ON FUNCTION public.lyann_refuse_paid_amendment');
     const guard = sql.slice(start, end);
-    assert.match(guard, /FROM public\.missions[\s\S]*FOR UPDATE/);
-    assert.match(guard, /FROM public\.milestones[\s\S]*FOR UPDATE/);
-    assert.match(guard, /FROM public\.payments[\s\S]*FOR UPDATE/);
-    assert.match(guard, /'CREATED'/);
+    assert.match(guard, /lyann_lock_quote_payment_rows/);
+    assert.doesNotMatch(guard, /payment_status/);
     assert.match(guard, /'FUNDED'/);
+    const lockStart = sql.indexOf('CREATE OR REPLACE FUNCTION public.lyann_lock_quote_payment_rows');
+    const lockEnd = sql.indexOf('REVOKE ALL ON FUNCTION public.lyann_lock_quote_payment_rows');
+    const lock = sql.slice(lockStart, lockEnd);
+    assert.match(lock, /FROM public\.quotes[\s\S]*FOR UPDATE/);
+    assert.match(lock, /FROM public\.missions[\s\S]*FOR UPDATE/);
+    assert.match(lock, /FROM public\.milestones[\s\S]*ORDER BY id[\s\S]*FOR UPDATE/);
+    assert.match(lock, /ORDER BY p\.id[\s\S]*FOR UPDATE/);
+    const insertStart = sql.indexOf('CREATE OR REPLACE FUNCTION public.lyann_insert_milestone_payment');
+    const insertBody = sql.slice(insertStart, sql.indexOf('REVOKE ALL ON FUNCTION public.lyann_insert_milestone_payment'));
+    assert.match(insertBody, /PERFORM public\.lyann_lock_quote_payment_rows\(v_quote_id\)/);
+    const insertAt = insertBody.indexOf('INSERT INTO public.payments');
+    const lockAt = insertBody.indexOf('lyann_lock_quote_payment_rows');
+    assert.ok(lockAt > 0 && lockAt < insertAt);
+    const api = fs.readFileSync(path.join(root, 'api/server.js'), 'utf8');
+    assert.match(api, /rpc\('lyann_insert_milestone_payment'/);
     assert.match(sql, /PERFORM public\.lyann_refuse_paid_amendment\(v_quote\.id, v_quote\.mission_id\)/);
     const open = { mission: 'AGREED', milestones: ['PENDING'], payments: [] };
     assert.equal(amendmentAcceptAllowed(open).ok, true);
-    const paymentFirst = amendmentAcceptAllowed({ mission: 'AGREED', milestones: ['PENDING'], payments: ['CREATED'] });
-    assert.equal(paymentFirst.ok, false);
-    assert.equal(paymentFirst.code, 'payment_secured');
+    for (const status of ['CREATED', 'FAILED', 'CANCELLED', 'REFUNDED']) {
+        const blocked = amendmentAcceptAllowed({ mission: 'AGREED', milestones: ['PENDING'], payments: [status] });
+        assert.equal(blocked.ok, false, status);
+        assert.equal(blocked.code, 'payment_secured');
+    }
     const started = amendmentAcceptAllowed({ mission: 'IN_PROGRESS', milestones: ['FUNDED'], payments: ['SUCCEEDED'] });
     assert.equal(started.ok, false);
     const funded = amendmentAcceptAllowed({ mission: 'AGREED', milestones: ['FUNDED'], payments: [] });

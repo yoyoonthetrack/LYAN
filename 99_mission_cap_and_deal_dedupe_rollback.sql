@@ -31,7 +31,9 @@ DROP TRIGGER IF EXISTS trg_lyann_skip_legacy_system_card ON public.messages;
 DROP TRIGGER IF EXISTS trg_lyann_mission_status_event ON public.missions;
 
 DROP FUNCTION IF EXISTS public.lyann_record_mission_transition();
+DROP FUNCTION IF EXISTS public.lyann_insert_milestone_payment(uuid, jsonb);
 DROP FUNCTION IF EXISTS public.lyann_refuse_paid_amendment(uuid, uuid);
+DROP FUNCTION IF EXISTS public.lyann_lock_quote_payment_rows(uuid);
 DROP FUNCTION IF EXISTS public.withdraw_sent_quote(uuid);
 DROP FUNCTION IF EXISTS public.propose_quote_amendment(uuid, text, jsonb, int);
 DROP FUNCTION IF EXISTS public.accept_quote_amendment(uuid);
