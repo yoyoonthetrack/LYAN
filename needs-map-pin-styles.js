@@ -17,21 +17,21 @@
 
     /* from = nuance claire, to = nuance du corps. Le dégradé reste dans une seule teinte. */
     const STYLES = Object.freeze({
-        jardinage: { id: 'jardinage', label: 'Jardinage', from: '#9ADD9F', to: '#35A85C', icon: 'sprout' },
-        plomberie: { id: 'plomberie', label: 'Plomberie', from: '#9BD9FA', to: '#278FDC', icon: 'droplet' },
-        electricite: { id: 'electricite', label: 'Électricité', from: '#FFE780', to: '#F2C230', icon: 'zap' },
-        bricolage: { id: 'bricolage', label: 'Bricolage', from: '#F8C59A', to: '#E58A4B', icon: 'hammer' },
-        menage: { id: 'menage', label: 'Ménage', from: '#F8D786', to: '#E9A52C', icon: 'brush-cleaning' },
-        beaute: { id: 'beaute', label: 'Beauté', from: '#E9B9F0', to: '#B86BC8', icon: 'scissors' },
-        transport: { id: 'transport', label: 'Transport', from: '#F6A0A3', to: '#E5484D', icon: 'car-front' },
-        famille: { id: 'famille', label: 'Famille', from: '#8FE3D8', to: '#1FA898', icon: 'users' },
-        evenement: { id: 'evenement', label: 'Événementiel', from: '#FFD0A8', to: '#F08A3C', icon: 'utensils' },
-        numerique: { id: 'numerique', label: 'Numérique', from: '#C9D4FF', to: '#5C6FE6', icon: 'laptop' },
-        autres: { id: 'autres', label: 'Autres', from: '#C8D5D9', to: '#83969D', icon: 'shapes' }
+        jardinage: { id: 'jardinage', label: 'Jardinage', from: '#C8EBC4', to: '#6FB584', icon: 'sprout' },
+        plomberie: { id: 'plomberie', label: 'Plomberie', from: '#C8E8F8', to: '#5AABD4', icon: 'droplet' },
+        electricite: { id: 'electricite', label: 'Électricité', from: '#FFF3C4', to: '#E8C56A', icon: 'zap' },
+        bricolage: { id: 'bricolage', label: 'Bricolage', from: '#F8E0CC', to: '#D4A888', icon: 'hammer' },
+        menage: { id: 'menage', label: 'Ménage', from: '#F8EBC4', to: '#E2B86A', icon: 'brush-cleaning' },
+        beaute: { id: 'beaute', label: 'Beauté', from: '#F3DCF4', to: '#C9A4CC', icon: 'scissors' },
+        transport: { id: 'transport', label: 'Transport', from: '#F6D0D2', to: '#E08B90', icon: 'car-front' },
+        famille: { id: 'famille', label: 'Famille', from: '#D4F0EC', to: '#6BB8B0', icon: 'users' },
+        evenement: { id: 'evenement', label: 'Événementiel', from: '#F8E2D0', to: '#E2B08A', icon: 'utensils' },
+        numerique: { id: 'numerique', label: 'Numérique', from: '#DDE4F8', to: '#95A4D8', icon: 'laptop' },
+        autres: { id: 'autres', label: 'Autres', from: '#E2E8EA', to: '#A8B6BA', icon: 'shapes' }
     });
 
     const MIXED = Object.freeze({
-        id: 'mixed', label: 'Plusieurs métiers', from: '#8FD9A2', to: '#17864C', icon: ''
+        id: 'mixed', label: 'Plusieurs métiers', from: '#C5E8D0', to: '#4EAA78', icon: ''
     });
 
     const FAMILY_STYLE = Object.freeze({

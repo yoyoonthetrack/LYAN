@@ -35,9 +35,9 @@ test('chaque métier réel a sa couleur et son icône, sans nouvel identifiant',
     assert.doesNotMatch(plumbing, /key|wrench/i);
     const transport = pins.faceHtml('transport', 1);
     assert.match(transport, /car-front|rect width="18"/);
-    assert.match(transport, /#E5484D/);
+    assert.match(transport, /#E08B90/);
     const bolt = pins.faceHtml('electricite', 1);
-    assert.match(bolt, /#F2C230/);
+    assert.match(bolt, /#E8C56A/);
     assert.match(bolt, /needs-map-pin-glyph/);
     assert.equal(pins.iconSvg('droplet'), pins.iconSvg(pins.specFor('plomberie').icon));
 });
@@ -61,6 +61,6 @@ test('un groupe homogène garde sa couleur, un groupe mixte est vert sans pictog
     assert.equal(pins.styleIdForItems([row('Plomberie'), row('Électricité')], []), 'mixed');
     const mixed = pins.faceHtml('mixed', 7);
     assert.match(mixed, /data-pin="mixed"/);
-    assert.match(mixed, /#17864C/);
+    assert.match(mixed, /#4EAA78/);
     assert.doesNotMatch(mixed, /<svg/);
 });

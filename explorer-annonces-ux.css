@@ -427,8 +427,8 @@ body.results-page.explorer-annonces-map-view .needs-map-summary {
 }
 
 .explorer-map-category-chip.is-active {
-    background: color-mix(in srgb, var(--pin-main, #35A85C) 12%, #fff);
-    border-color: var(--pin-main, #35A85C);
+    background: color-mix(in srgb, var(--pin-main, #6FB584) 12%, #fff);
+    border-color: var(--pin-main, #6FB584);
     box-shadow: none;
 }
 .explorer-map-category-chip.is-active::after {
@@ -436,7 +436,7 @@ body.results-page.explorer-annonces-map-view .needs-map-summary {
     width: 8px;
     height: 14px;
     margin-left: auto;
-    border: solid var(--pin-main, #35A85C);
+    border: solid var(--pin-main, #6FB584);
     border-width: 0 2.5px 2.5px 0;
     transform: rotate(45deg) translate(-1px, -1px);
 }
