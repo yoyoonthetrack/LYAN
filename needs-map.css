@@ -124,41 +124,31 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    border: 2.5px solid #fff;
+    width: 48px;
+    height: 48px;
+    box-sizing: border-box;
+    border: 3px solid #fff;
     border-radius: 50% 50% 50% 0;
+    background: linear-gradient(318deg, var(--pin-from, #C9D3D4) 0%, var(--pin-to, #7E9094) 70%);
     transform: rotate(-45deg);
-    color: #1B3B2B;
-    font-size: 0.92rem;
+    color: #fff;
+    font-size: 1.05rem;
     font-weight: 800;
-    box-shadow: 0 3px 10px rgba(27, 59, 43, 0.28);
+    box-shadow: 0 3px 8px rgba(72, 48, 24, 0.28);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.needs-map-pin-face.is-tone-green,
-.needs-map-pin-face.is-tone-yellow,
-.needs-map-pin-face.is-tone-neutral,
-.needs-map-pin-face[class*="is-family-"] { background: #F2C14E; color: #fff; }
-.needs-map-pin-face.is-family-maison { background: #E26B6B; }
-.needs-map-pin-face.is-family-jardin { background: #7CB342; }
-.needs-map-pin-face.is-family-entretien { background: #F2C14E; }
-.needs-map-pin-face.is-family-beaute { background: #8E5BD6; }
-.needs-map-pin-face.is-family-transport { background: #F0A03A; }
-.needs-map-pin-face.is-family-famille { background: #2F9A62; }
-.needs-map-pin-face.is-family-evenement { background: #E8893A; }
-.needs-map-pin-face.is-family-numerique { background: #5B8DEF; }
-.needs-map-pin-face.is-family-mixed,
-.needs-map-pin-face.has-count { background: #1F8A4C; }
-
 .needs-map-pin-face svg,
 .needs-map-pin-icon {
-    width: 20px;
-    height: 20px;
-    transform: rotate(45deg);
+    width: 23px;
+    height: 23px;
+    transform: translate(-6px, -6px) rotate(45deg);
     flex: none;
-    fill: #fff;
-    stroke: none;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .needs-map-pin-face.has-count .needs-map-pin-icon { display: none; }
@@ -172,9 +162,11 @@
     border: 0;
     background: transparent;
     color: #fff;
-    font-size: 0.95rem;
+    font-size: 1.05rem;
+    font-weight: 800;
     line-height: 1;
-    transform: rotate(45deg);
+    letter-spacing: -0.03em;
+    transform: translate(-6px, -6px) rotate(45deg);
 }
 
 .needs-map-pin-count {

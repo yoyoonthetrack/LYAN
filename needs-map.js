@@ -381,18 +381,14 @@
             return [...counts.keys()][0];
         }
 
-        function pinIcon(visual) {
-            const tax = root.LYANN_MARKETPLACE_TAXONOMY;
-            const meta = tax && tax.familyMeta ? tax.familyMeta(visual) : null;
-            const name = visual === 'mixed' ? 'all' : (meta && meta.icon) || 'dots';
-            return tax && tax.filledIconSvg ? tax.filledIconSvg(name, 'needs-map-pin-icon') : '';
-        }
-
         function pinFaceHtml(group) {
+            const pins = root.LYANN_MAP_PIN_STYLES;
             const count = group.items.length;
+            if (pins && typeof pins.faceHtml === 'function') {
+                return pins.faceHtml(pins.styleIdForItems(group.items, leaves), count);
+            }
             const visual = groupVisualFamily(group.items) || 'mixed';
-            const countBadge = count > 1 ? `<span class="needs-map-pin-count">${count}</span>` : '';
-            return `<span class="needs-map-pin-face is-tone-yellow is-family-${visual}${count > 1 ? ' has-count' : ''}" aria-hidden="true">${pinIcon(visual)}${countBadge}</span>`;
+            return `<span class="needs-map-pin-face is-pin-${visual}${count > 1 ? ' has-count' : ''}" aria-hidden="true">${count > 1 ? `<span class="needs-map-pin-count">${count}</span>` : ''}</span>`;
         }
 
         function ensureMap() {
@@ -452,7 +448,7 @@
                 const icon = L.divIcon({
                     className: 'needs-map-pin',
                     html: pinFaceHtml(group),
-                    iconSize: [44, 44], iconAnchor: [22, 22]
+                    iconSize: [48, 48], iconAnchor: [24, 46]
                 });
                 const marker = L.marker([group.lat, group.lng], { icon, title: name, alt: name, keyboard: true, riseOnHover: true });
                 marker.addTo(markerLayer);
