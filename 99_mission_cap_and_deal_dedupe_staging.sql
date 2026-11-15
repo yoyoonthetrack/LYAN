@@ -968,10 +968,10 @@ $$;
 REVOKE ALL ON FUNCTION public.lyann_refuse_paid_amendment(uuid, uuid) FROM PUBLIC, anon, authenticated;
 
 -- Inserts the payment row only after the same locks as an amendment.
--- The locked milestone amount must match the service amount. Fees, the
--- customer total and the provider net must match the existing 3 % policy
--- (customer fee at least 149 cents). Quote, mission and milestone ids
--- come from the locked rows.
+-- The locked milestone amount must match the service amount. Fees follow
+-- calculateMilestonePricing: half-up 3 % via (cents * 3 + 50) / 100, not a
+-- ceiling, and the customer fee is at least 149 cents. Quote, mission and
+-- milestone ids come from the locked rows.
 CREATE OR REPLACE FUNCTION public.lyann_insert_milestone_payment(p_milestone_id uuid, p_row jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1011,7 +1011,7 @@ BEGIN
         RAISE EXCEPTION 'Le montant du jalon a changé. Aucun paiement n''a été créé.'
             USING ERRCODE = '22000', HINT = 'amount_mismatch';
     END IF;
-    -- Same arithmetic as calculateMilestonePricing: half-up 3 %, customer fee floor 149.
+    -- Same arithmetic as halfUpPercent. Nearest cent, halves upward. Not a ceiling.
     v_provider_fee := (v_service_cents * 3 + 50) / 100;
     v_customer_fee := GREATEST(v_provider_fee, 149);
     IF (p_row->>'customer_fee_cents')::bigint IS DISTINCT FROM v_customer_fee
@@ -1026,6 +1026,8 @@ BEGIN
         RAISE EXCEPTION 'Les frais ne correspondent pas au montant du jalon. Aucun paiement n''a été créé.'
             USING ERRCODE = '22000', HINT = 'pricing_mismatch';
     END IF;
+    -- Local to this transaction, and cleared before the function returns.
+    PERFORM set_config('lyann.payment_insert', 'on', true);
     INSERT INTO public.payments (
         milestone_id, quote_id, mission_id, requester_id, provider_id,
         service_amount_cents, customer_fee_cents, customer_total_cents,
@@ -1055,12 +1057,78 @@ BEGIN
         COALESCE(p_row->'metadata', '{}'::jsonb)
     )
     RETURNING * INTO v_payment;
+    PERFORM set_config('lyann.payment_insert', 'off', true);
     RETURN to_jsonb(v_payment);
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.lyann_insert_milestone_payment(uuid, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.lyann_insert_milestone_payment(uuid, jsonb) TO service_role;
+
+-- Every insert takes the same locks as an amendment, then repeats the amount checks.
+-- Without the transaction-local marker, the row is refused. service_role also loses INSERT,
+-- so an old API process cannot write payments through PostgREST.
+CREATE OR REPLACE FUNCTION public.lyann_guard_payment_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_quote_id uuid;
+    v_milestone public.milestones%ROWTYPE;
+    v_quote public.quotes%ROWTYPE;
+    v_service_cents bigint;
+    v_provider_fee bigint;
+    v_customer_fee bigint;
+BEGIN
+    PERFORM set_config('lock_timeout', '4s', true);
+    IF current_setting('lyann.payment_insert', true) IS DISTINCT FROM 'on' THEN
+        RAISE EXCEPTION 'Création de paiement refusée hors du parcours verrouillé.'
+            USING ERRCODE = '42501';
+    END IF;
+    SELECT quote_id INTO v_quote_id
+    FROM public.milestones
+    WHERE id = NEW.milestone_id;
+    IF v_quote_id IS NULL THEN
+        RAISE EXCEPTION 'Étape de paiement introuvable.' USING ERRCODE = 'P0002';
+    END IF;
+    PERFORM public.lyann_lock_quote_payment_rows(v_quote_id);
+    SELECT * INTO v_milestone FROM public.milestones WHERE id = NEW.milestone_id;
+    SELECT * INTO v_quote FROM public.quotes WHERE id = v_quote_id;
+    IF v_milestone.status IS DISTINCT FROM 'PENDING' OR v_quote.status IS DISTINCT FROM 'ACCEPTED' THEN
+        RAISE EXCEPTION 'Cette Partie n''est pas payable.' USING ERRCODE = '22000';
+    END IF;
+    v_service_cents := public.lyann_money_cents(v_milestone.amount);
+    -- halfUpPercent: nearest cent, halves upward. Not a ceiling.
+    v_provider_fee := (v_service_cents * 3 + 50) / 100;
+    v_customer_fee := GREATEST(v_provider_fee, 149);
+    IF v_service_cents <= 0
+       OR NEW.service_amount_cents IS DISTINCT FROM v_service_cents
+       OR NEW.customer_fee_cents IS DISTINCT FROM v_customer_fee
+       OR NEW.provider_fee_cents IS DISTINCT FROM v_provider_fee
+       OR NEW.customer_total_cents IS DISTINCT FROM v_service_cents + v_customer_fee
+       OR NEW.provider_net_cents IS DISTINCT FROM v_service_cents - v_provider_fee
+       OR NEW.lyann_revenue_cents IS DISTINCT FROM v_customer_fee + v_provider_fee
+       OR NEW.payment_status IS DISTINCT FROM 'CREATED'
+       OR NEW.transfer_status IS DISTINCT FROM 'NOT_STARTED'
+    THEN
+        RAISE EXCEPTION 'Le montant du jalon a changé. Aucun paiement n''a été créé.'
+            USING ERRCODE = '22000', HINT = 'amount_mismatch';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.lyann_guard_payment_insert() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trg_lyann_guard_payment_insert ON public.payments;
+CREATE TRIGGER trg_lyann_guard_payment_insert
+    BEFORE INSERT ON public.payments
+    FOR EACH ROW
+    EXECUTE FUNCTION public.lyann_guard_payment_insert();
+
+REVOKE INSERT ON TABLE public.payments FROM PUBLIC, anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.accept_quote_amendment(p_amendment_id uuid)
 RETURNS jsonb

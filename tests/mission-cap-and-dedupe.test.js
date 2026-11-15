@@ -245,6 +245,16 @@ test('accepting an amendment relocks money and loses the race to a new payment',
     assert.match(insertBody, /customer_total_cents/);
     assert.match(insertBody, /provider_net_cents/);
     assert.match(insertBody, /GREATEST\(v_provider_fee, 149\)/);
+    assert.match(insertBody, /lyann\.payment_insert/);
+    const guardAt = insertBody.indexOf('lyann.payment_insert');
+    assert.ok(guardAt > amountAt && guardAt < insertAt);
+    assert.match(sql, /REVOKE INSERT ON TABLE public\.payments FROM PUBLIC, anon, authenticated, service_role/);
+    assert.match(sql, /CREATE TRIGGER trg_lyann_guard_payment_insert/);
+    const rollback = fs.readFileSync(path.join(root, '99_mission_cap_and_deal_dedupe_rollback.sql'), 'utf8');
+    assert.match(rollback, /DROP TRIGGER IF EXISTS trg_lyann_guard_payment_insert/);
+    assert.match(rollback, /GRANT INSERT ON TABLE public\.payments TO service_role/);
+    assert.match(rollback, /'quote_updated'/);
+    assert.doesNotMatch(rollback, /DELETE FROM public\.messages/);
     const api = fs.readFileSync(path.join(root, 'api/server.js'), 'utf8');
     assert.match(api, /rpc\('lyann_insert_milestone_payment'/);
     assert.match(sql, /PERFORM public\.lyann_refuse_paid_amendment\(v_quote\.id, v_quote\.mission_id\)/);

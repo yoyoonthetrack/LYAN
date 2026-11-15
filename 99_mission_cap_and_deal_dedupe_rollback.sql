@@ -18,7 +18,9 @@
 --   trg_lyann_guard_milestone_sum, trg_lyann_guard_milestone_money,
 --   trg_lyann_skip_legacy_system_card n'existent plus ;
 --   idx_messages_quote_updated_version n'existe plus ;
---   idx_messages_timeline_event existe et n'exclut pas quote_updated ;
+--   idx_messages_timeline_event existe et exclut quote_updated ;
+--   idx_messages_quote_updated_version existe ;
+--   plusieurs quote_updated d'un même devis sont conservés ;
 --   quotes, milestones, payments, messages et quote_amendments ont le même nombre de lignes.
 
 BEGIN;
@@ -29,7 +31,9 @@ DROP TRIGGER IF EXISTS trg_lyann_guard_milestone_sum ON public.milestones;
 DROP TRIGGER IF EXISTS trg_lyann_guard_milestone_money ON public.milestones;
 DROP TRIGGER IF EXISTS trg_lyann_skip_legacy_system_card ON public.messages;
 DROP TRIGGER IF EXISTS trg_lyann_mission_status_event ON public.missions;
+DROP TRIGGER IF EXISTS trg_lyann_guard_payment_insert ON public.payments;
 
+DROP FUNCTION IF EXISTS public.lyann_guard_payment_insert();
 DROP FUNCTION IF EXISTS public.lyann_record_mission_transition();
 DROP FUNCTION IF EXISTS public.lyann_insert_milestone_payment(uuid, jsonb);
 DROP FUNCTION IF EXISTS public.lyann_refuse_paid_amendment(uuid, uuid);
@@ -48,13 +52,24 @@ DROP FUNCTION IF EXISTS public.lyann_money_cents(numeric);
 DROP FUNCTION IF EXISTS public.lyann_mission_prestation_cap_eur();
 DROP FUNCTION IF EXISTS public.lyann_mission_cap_eur();
 
-DROP INDEX IF EXISTS public.idx_messages_quote_updated_version;
+-- quote_updated is kept, including several versions of the same quote.
+-- The pre-99 unique index cannot be rebuilt over those rows without deleting them.
 DROP INDEX IF EXISTS public.idx_messages_timeline_event;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_timeline_event
     ON public.messages (entity_type, entity_id, message_type)
     WHERE entity_id IS NOT NULL
       AND message_type IS NOT NULL
-      AND message_type NOT IN ('text', 'photo', 'document', 'visit_proposed', 'visit_rescheduled', 'system');
+      AND message_type NOT IN (
+          'text', 'photo', 'document', 'visit_proposed', 'visit_rescheduled', 'system', 'quote_updated'
+      );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_quote_updated_version
+    ON public.messages (entity_id, (COALESCE(metadata->>'version', '')))
+    WHERE message_type = 'quote_updated' AND entity_id IS NOT NULL;
+
+-- Restores the direct insert used by the API that predates lyann_insert_milestone_payment.
+-- Confirmed by the preflight: service_role currently holds INSERT. anon and authenticated do not get it back.
+GRANT INSERT ON TABLE public.payments TO service_role;
 
 -- Restored from 45_chat_timeline.sql
 CREATE OR REPLACE FUNCTION public.lyann_insert_timeline_event(
